@@ -1,0 +1,24 @@
+<div{{ attributes }}>
+    <div class="col">
+        <div class="card shadow-sm">
+            <div class="card-header text-center">
+                {% if videoFace.faceImagePath %}
+                    <img src="{{ this.videoUrl }}" class="card-img-top" alt="Face image" {{ this.imageDimensions|raw }}>
+                {% endif %}
+            </div>
+
+            <div class="card-body">
+                {% if videoFace.person %}
+                    <h5 class="card-title">{{ videoFace.person.name }}</h5>
+                {% endif %}
+                <p class="card-text">
+                    {% if videoFace.age %}<strong>Age:</strong> {{ videoFace.age }}<br>{% endif %}
+                    {% if videoFace.emotion %}<strong>Emotion:</strong> {{ videoFace.emotion }}<br>{% endif %}
+                </p>
+                {% if videoFace.video %}
+                    <a href="{{ path('person_detail', {id: videoFace.person.id}) }}" class="btn btn-sm btn-primary">Check Person</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>

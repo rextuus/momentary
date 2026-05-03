@@ -1,0 +1,17 @@
+{% extends 'base.html.twig' %}
+{% block title %}Persons{% endblock %}
+
+{% block body %}
+    <div class="container mt-5">
+        <h1 class="mb-4">Person Listing</h1>
+
+        <div class="row">
+            {% for person in persons %}
+                <div class="col-md-4">
+                    {% set randomNumber = random(0, 10000) %}
+                    {{ component('PersonComponent', { person: person, key: 'key' ~ person.id ~ randomNumber}) }}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}

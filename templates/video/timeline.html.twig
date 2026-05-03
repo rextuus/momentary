@@ -1,0 +1,80 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ video.title }} - Timeline{% endblock %}
+
+{% block body %}
+    <div class="container mt-4">
+        <h1 class="mb-4">{{ video.title }}</h1>
+        <a href="{{ video.youtubeUrl }}" target="_blank" class="btn btn-primary mb-4">Watch on YouTube</a>
+
+        <div class="timeline">
+            {% for key, timeStamp in map.getTimeStamps %}
+                <div class="timeline-item mb-5 {{ loop.index is odd ? '' : 'timeline-item-indented' }}">
+                    <div class="timeline-entry">
+                        <div class="timeline-time mb-2">
+                            <span class="text-muted fw-bold">{{ key | date('H:i:s') }}</span>
+                        </div>
+                        <div class="timeline-content-wrapper">
+                            <div class="timeline-content-container d-flex flex-wrap gap-2">
+                                {% for videoFace in timeStamp %}
+                                    <div class="timeline-content border rounded p-3 shadow-sm">
+                                        {% if videoFace.person %}
+                                            {{ component('TimelineVideoFaceComponent', {videoFace: videoFace}) }}
+                                        {% else %}
+                                            <p class="text-muted">Unknown person</p>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <style>
+        .timeline {
+            position: relative;
+            padding-left: 2rem;
+            border-left: 2px solid #ddd;
+        }
+
+        .timeline-item {
+            position: relative;
+            padding-left: 1.5rem;
+        }
+
+        .timeline-item-indented {
+            padding-left: 3rem; /* Indent the even entries */
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -6px;
+            top: 0.5rem;
+            width: 12px;
+            height: 12px;
+            background: #000000;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            z-index: 1;
+        }
+
+        .timeline-content-wrapper {
+            overflow-x: auto; /* Enable horizontal scrolling */
+            white-space: nowrap; /* Ensure items stay in a straight horizontal line */
+        }
+
+        .timeline-content-container {
+            display: flex; /* Arrange videoFaces horizontally */
+            gap: 1rem; /* Add space between items */
+        }
+
+        .timeline-content {
+            flex: 0 0 auto; /* Prevent items from shrinking */
+            width: 200px; /* Fixed width for each videoFace */
+        }
+    </style>
+{% endblock %}
