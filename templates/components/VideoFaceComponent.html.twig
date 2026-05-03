@@ -1,0 +1,52 @@
+<div{{ attributes }}>
+    <div class="col">
+        <div class="card shadow-sm">
+            <div class="card-header text-center">
+                {% if videoFace.faceImagePath %}
+                    <img src="{{ this.videoUrl }}" class="card-img-top" alt="Face image" {{ this.imageDimensions|raw }}>
+                {% endif %}
+                {% if videoFace.matchSimilarity is not null %}
+                    <div>{{ videoFace.matchSimilarity|round(2, 'floor') }}</div>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if videoFace.video %}
+                    <h5 class="card-title">{{ videoFace.video.title }}</h5>
+                {% endif %}
+                <p class="card-text">
+                    <strong>Timestamp:</strong> {{ videoFace.timestamp | date('H:i:s') }}<br>
+                    {% if videoFace.age %}<strong>Age:</strong> {{ videoFace.age }}<br>{% endif %}
+                    {% if videoFace.emotion %}<strong>Emotion:</strong> {{ videoFace.emotion }}<br>{% endif %}
+                </p>
+                {% if videoFace.video %}
+                    <a href="{{ path('video_timeline', {id: videoFace.video.id}) }}" class="btn btn-sm btn-primary">View Video</a>
+                {% endif %}
+                <button class="btn btn-sm btn-primary"
+                        data-action="live#action"
+                        data-live-action-param="switchDetectionFace">
+                    Set as detection face
+                </button>
+                <button class="btn btn-sm btn-danger"
+                        data-action="live#action"
+                        data-live-action-param="remove">
+                    Remove
+                </button>
+                <div class="border p-3 mt-4 bg-light shadow-sm">
+                    {{ form_start(form, {
+                        attr: {
+                            'data-action': 'live#action:prevent',
+                            'data-live-action-param': 'submit',
+                            'class': 'row gy-3'
+                        }
+                    }) }}
+                    {{ form_row(form.target) }}
+                    {{ form_row(form._token) }}
+                    <button type="submit" class="btn btn-secondary col-5 ms-3">
+                        <i class="fas fa-repeat me-2"></i> Switch
+                    </button>
+                    {{ form_end(form) }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

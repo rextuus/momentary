@@ -1,0 +1,63 @@
+<div{{ attributes }} class="card mb-4 shadow-sm {% if not person.identified %}bg-warning{% endif %}">
+    <div class="card-header d-flex flex-column align-items-center">
+        <h5 class="card-title text-primary text-center">{{ person.name }}</h5>
+
+        <div class="my-3">
+            <img src="{{ display_image(person.detectionFace) }}" class="card-img-top rounded-circle" alt="Face image"
+                 style="width: 100px; height: 100px; object-fit: cover;">
+        </div>
+
+        <div>
+            <span class="badge bg-info text-dark">Faces Detected: {{ person.videoFaces|length }}</span>
+        </div>
+
+        <button class="btn btn-sm btn-danger mt-3"
+                data-action="live#action"
+                data-live-action-param="wastePerson">
+            <i class="fas fa-trash-alt"></i> Waste
+        </button>
+    </div>
+
+    <div class="card-body">
+        <p class="card-text">
+            {% if person.description %}
+                {{ person.description }}
+            {% else %}
+                <em class="text-muted">No description provided</em>
+            {% endif %}
+        </p>
+
+        <ul class="list-group list-group-flush mb-3">
+            <li class="list-group-item">
+                <strong>Identified: </strong>
+                <span class="badge {% if person.identified %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                    {{ person.identified ? 'Yes' : 'No' }}
+                </span>
+            </li>
+            <li class="list-group-item">
+                <strong>Gender: </strong>
+                {{ person.probablyGender|capitalize }}
+            </li>
+        </ul>
+
+        <a href="{{ path('person_detail', { id: person.id }) }}" class="btn btn-primary w-100">
+            View Details
+        </a>
+
+        <div class="border border-danger rounded p-3 mt-4">
+            {{ form_start(form, {
+                attr: {
+                    'data-action': 'live#action:prevent',
+                    'data-live-action-param': 'submit',
+                    'class': 'row gy-3'
+                }
+            }) }}
+
+            {{ form_row(form._token) }}
+            <button type="submit" class="btn btn-secondary col-5 ms-3">
+                <i class="fas fa-compress-arrows-alt me-2"></i> Merge
+            </button>
+            {{ form_end(form) }}
+        </div>
+    </div>
+</div>

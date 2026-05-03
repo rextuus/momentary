@@ -22,6 +22,7 @@
 ###> symfony/asset-mapper ###
 /public/assets/
 /assets/vendor/
+/public/uploads/
 ###< symfony/asset-mapper ###
 
 ###> symfony/webpack-encore-bundle ###
@@ -30,3 +31,4 @@
 npm-debug.log
 yarn-error.log
 ###< symfony/webpack-encore-bundle ###
+.venv
