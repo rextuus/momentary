@@ -25,7 +25,7 @@ final class PersonComponent extends AbstractController
     public ?PersonCombineData $initialFormData = null;
 
     #[LiveProp]
-    public ?Person $person;
+    public Person $person;
 
     public function __construct(
         private readonly EntityManagerInterface $entityManager
@@ -45,33 +45,34 @@ final class PersonComponent extends AbstractController
     public function submit(): RedirectResponse
     {
         $this->submitForm();
-
-        /** @var PersonCombineData $combineData */
         $combineData = $this->getForm()->getData();
-
         $targetPerson = $combineData->getTarget();
-        if ($this->person->getId() === $targetPerson->getId()) {
+
+        if (!$targetPerson || $this->person->getId() === $targetPerson->getId()) {
             return $this->redirectToRoute('person_index');
         }
 
+        // Alle Gesichter der aktuellen Person zur Zielperson verschieben
         foreach ($this->person->getVideoFaces() as $videoFace) {
             $videoFace->setPerson($targetPerson);
-            $targetPerson->addVideoFace($videoFace);
-            $this->person->removeVideoFace($videoFace);
+            // Wir müssen nicht manuell add/remove auf den Collections aufrufen,
+            // wenn die Gegenseite (VideoFace) korrekt konfiguriert ist.
             $this->entityManager->persist($videoFace);
         }
 
+        // Falls vorhanden: DetectionFaces (Referenzbilder) übertragen
         foreach ($this->person->getDetectionFaces() as $detectionFace) {
-            $targetPerson->addDetectionFace($detectionFace);
+            $detectionFace->setDetection($targetPerson);
+            $this->entityManager->persist($detectionFace);
         }
 
-        $this->entityManager->persist($this->person);
-        $this->entityManager->persist($targetPerson);
         $this->entityManager->flush();
 
+        // Jetzt die alte Person löschen
         $this->entityManager->remove($this->person);
         $this->entityManager->flush();
 
+        $this->addFlash('success', 'Persons merged successfully.');
         return $this->redirectToRoute('person_index');
     }
 

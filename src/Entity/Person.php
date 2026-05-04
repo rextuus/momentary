@@ -136,23 +136,17 @@ class Person
 
     function determineGenderFromDbField(string $input): ?string
     {
-        // Handle 'unknown' case
-        if (trim(strtolower($input)) === 'unknown') {
+        if (trim(strtolower($input)) === 'unknown' || empty($input)) {
             return null;
         }
 
-        // Try to convert the string to valid JSON format
-        // Use regex to replace single quotes with double quotes and remove 'np.float32'
-        $jsonString = preg_replace([
-            "/'/",                    // Replace single quotes with double quotes
-            "/np\.float32\((.*?)\)/", // Remove np.float32(...) and only use the number inside
-        ], [
-            '"',                     // Replacement for single quotes
-            '$1'                     // Keep the inner number from np.float32(...)
-        ], $input);
+        // Wenn der String direkt "Male" oder "Female" ist (AWS Format)
+        if (in_array(ucfirst(strtolower($input)), ['Male', 'Female'])) {
+            return ucfirst(strtolower($input));
+        }
 
-        // Decode potential JSON to an associative array
-        $parsed = json_decode($jsonString, true);
+        // Altes Python-Format (JSON) Fallback
+        $parsed = json_decode($input, true);
 
         // Check if JSON decoding failed
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($parsed)) {

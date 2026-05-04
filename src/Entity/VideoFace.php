@@ -19,6 +19,7 @@ class VideoFace
     private ?Video $video = null;
 
     #[ORM\ManyToOne(inversedBy: 'videoFaces')]
+    #[ORM\JoinColumn(nullable: false)] // Falls jedes Gesicht zwingend eine Person braucht
     private ?Person $person = null;
 
     #[ORM\Column]
@@ -43,7 +44,6 @@ class VideoFace
     private ?string $emotion = null;
 
     #[ORM\ManyToOne(inversedBy: 'detectionFaces')]
-    #[ORM\JoinColumn(onDelete: 'SET NULL')]
     private ?Person $detection = null;
 
     #[ORM\ManyToOne(targetEntity: self::class, inversedBy: 'matchFor')]

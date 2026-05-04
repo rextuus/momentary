@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\Person;
-use App\Entity\Video;
 use App\Entity\VideoFace;
 use App\Message\FrameAnalyzerMessage;
 use App\Repository\PersonRepository;
 use App\Repository\VideoRepository;
+use App\Service\Aws\AmazonRekognitionService;
 use Doctrine\ORM\EntityManagerInterface;
 use League\Flysystem\FilesystemOperator;
 use Ramsey\Uuid\Uuid;
@@ -25,6 +25,7 @@ readonly class VideoAnalyzer
         private EntityManagerInterface $entityManager,
         private VideoRepository $videoRepository,
         private PersonRepository $personRepository,
+        private AmazonRekognitionService $rekognitionService,
         #[Autowire('%env(PYTHON_BINARY)%')]
         private string $pythonBinary = '/usr/bin/python3'
     ) {}
@@ -38,116 +39,114 @@ readonly class VideoAnalyzer
                 $youtubeUrl,
                 '--video-id=' . $videoId
             ]);
-            $process->setTimeout(300);
-            $process->mustRun();
+            $process->setTimeout(600);
+            $process->run();
+
+            if (!$process->isSuccessful()) {
+                throw new \RuntimeException('Python Script failed: ' . $process->getErrorOutput());
+            }
 
             $output = trim($process->getOutput());
             $frameList = null;
-            if (preg_match('/\[\{.*\}\]/s', $output, $matches)) {
-                $json = $matches[0];
-                $frameList = json_decode($json, true);
-            } else {
-                echo "No JSON found.";
+
+            if (preg_match('/\[\s*\{.*\}\s*\]/s', $output, $matches)) {
+                $frameList = json_decode($matches[0], true);
             }
 
-            if ($frameList === null) {
-                return false;
+            if ($frameList === null || empty($frameList)) {
+                throw new \RuntimeException('Could not parse JSON from Python output.');
             }
 
-            $lastKey = array_key_last($frameList);
             foreach ($frameList as $index => $frame) {
                 $this->bus->dispatch(new FrameAnalyzerMessage(
                     $videoId,
                     $frame['path'],
-                    $frame['timestamp'],
-                    $index === $lastKey
+                    (int) $frame['timestamp'],
+                    $index === array_key_last($frameList)
                 ));
             }
 
             return true;
         } catch (\Throwable $e) {
-            dd($e);
+            dump($e->getMessage());
             return false;
         }
     }
 
     public function analyzeFrame(int $videoId, string $framePath, int $timestamp): void
     {
-        $process = new Process([
-            $this->pythonBinary,
-            'video-analyzer/python/analyze_frame.py',
-            $framePath
-        ]);
-        $process->mustRun();
-
-        $output = trim($process->getOutput());
-        $results = json_decode($output, true);
-        if (!is_array($results)) {
-            throw new \RuntimeException('Invalid result from Python script.');
-        }
-
-        $video = $this->entityManager->getRepository(Video::class)->find($videoId);
+        // 1. Grundlegende Daten laden
+        $video = $this->videoRepository->find($videoId);
         if (!$video) {
-            throw new \RuntimeException("Video with ID {$videoId} not found.");
+            return;
         }
 
-        foreach ($results as $faceData) {
-            $imageContent = file_get_contents($faceData['path']);
-            $uuid = Uuid::uuid4();
+        $faceData = $this->rekognitionService->processFaceImage($framePath);
+        if (empty($faceData)) {
+            return;
+        }
 
-            $storagePath = "video_faces/{$uuid}.jpg";
+        // 2. Bild speichern (Flysystem)
+        $imageContent = file_get_contents($framePath);
+        $uuid = Uuid::uuid4()->toString();
+        $storagePath = "video_faces/{$uuid}.jpg";
+        $this->filesystem->write($storagePath, $imageContent);
 
-            $this->filesystem->write($storagePath, $imageContent);
+        // 3. Datenbank-Operationen
+        try {
+            // Wir verzichten auf wrapInTransaction, um SQLite nicht zu blockieren,
+            // nutzen aber manuelle Flush-Kontrolle.
 
-            if (file_exists($faceData['path'])) {
-                unlink($faceData['path']);
+            $person = null;
+            $matchedFace = null;
+
+            // Suche nach existierendem Gesicht (Face Matching)
+            if (!empty($faceData['matchedFaceId'])) {
+                $matchedFace = $this->entityManager->getRepository(VideoFace::class)
+                    ->findOneBy(['faceLabel' => $faceData['matchedFaceId']]);
+
+                if ($matchedFace && $matchedFace->getPerson()) {
+                    $person = $matchedFace->getPerson();
+                }
             }
 
-            $videoFace = new VideoFace();
-            $videoFace->setVideo($video);
-            $videoFace->setTimestamp($timestamp);
-            $videoFace->setFaceLabel($faceData['label']);
-            $videoFace->setFaceImagePath($storagePath);
-            $videoFace->setEmbedding($faceData['embedding']);
-            $videoFace->setAge($faceData['age']);
-            $videoFace->setGender($faceData['gender']);
-            $videoFace->setEmotion($faceData['emotion']);
-
-            $person = $this->personRepository->findOneBy(['name' => $faceData['label']]);
-            if ($person === null){
-                $latestUnknown = $this->personRepository->findBy(['identified' => false], ['id' => 'DESC'], 1);
-
-                $unknownIndex = 0;
-                if (count($latestUnknown) > 0){
-                    $nameParts = explode('_', $latestUnknown[0]->getName());
-                    $unknownIndex = (int) $nameParts[1];
-                }
-
+            // Falls keine Person gefunden wurde, neue anlegen
+            if ($person === null) {
                 $person = new Person();
-                $person->setName('unknown_' . ($unknownIndex + 1));
+                $person->setName('unknown_' . substr($faceData['faceId'], 0, 8));
                 $person->setIdentified(false);
-                $person->setDescription('Unknown person. Needs to be identified.');
-                $person->addDetectionFace($videoFace);
-                $videoFace->setDetection($person);
 
                 $this->entityManager->persist($person);
+                // WICHTIG: Sofort flashen, damit die ID für SQLite generiert wird
+                $this->entityManager->flush();
             }
 
-            $videoFace->setPerson($person);
-            $person->addVideoFace($videoFace);
-            if ((int) $faceData['matched_face_path'] >= 0) {
-                $faceCausingMatch = $person->getDetectionFaces()->get((int) $faceData['matched_face_path']);
-                $videoFace->setMatchedBy($faceCausingMatch);
-                $videoFace->setMatchSimilarity($faceData['best_similarity']);
-                $faceCausingMatch->addMatchFor($videoFace);
-                $this->entityManager->persist($faceCausingMatch);
+            // 4. VideoFace erstellen
+            $videoFace = new VideoFace();
+            $videoFace->setVideo($video);
+            $videoFace->setPerson($person); // Die Verknüpfung zur Person
+            $videoFace->setTimestamp($timestamp);
+            $videoFace->setFaceImagePath($storagePath);
+            $videoFace->setFaceLabel($faceData['faceId']);
+
+            // Mapping der numerischen/string Werte (sicherstellen, dass sie valide sind)
+            $videoFace->setAge((int)($faceData['age'] ?? 0));
+            $videoFace->setGender((string)($faceData['gender'] ?? 'unknown'));
+            $videoFace->setEmotion((string)($faceData['emotion'] ?? 'unknown'));
+
+            if ($matchedFace) {
+                $videoFace->setMatchedBy($matchedFace);
+                $videoFace->setMatchSimilarity((float)($faceData['similarity'] ?? 0));
             }
 
             $this->entityManager->persist($videoFace);
-
+            // Finaler Flush für das VideoFace
             $this->entityManager->flush();
-        }
 
-        $this->entityManager->flush();
+        } catch (\Exception $e) {
+            // Im Fehlerfall EntityManager leeren, damit beim nächsten Retry kein Müll drin steht
+            $this->entityManager->clear();
+            throw $e;
+        }
     }
 }

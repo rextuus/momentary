@@ -12,11 +12,10 @@ def find_project_root(start_path: Path) -> Path:
     raise FileNotFoundError("Could not find Symfony project root (no composer.json)")
 
 def extract_timestamp_from_filename(filename: str, fps: float) -> int:
-    """Calculate timestamp based on frame number and fps (default: every 5s → 0.2 fps)"""
-    stem = Path(filename).stem  # e.g., frame_0001
+    stem = Path(filename).stem
     try:
         number = int(stem.split("_")[-1])
-        return int((number - 1) * (1 / fps))  # assuming frame_0001 starts at 0s
+        return int((number - 1) * (1 / fps))
     except Exception:
         return 0
 
@@ -26,36 +25,61 @@ def main():
         sys.exit(1)
 
     url = sys.argv[1]
-    fps = 0.2  # one frame every 5 seconds
+    fps = 0.2
 
     script_dir = Path(__file__).resolve().parent
     project_root = find_project_root(script_dir)
     var_dir = project_root / "var" / "video-processing"
 
-    video_id = str(uuid.uuid4())[:8]
+    # Nutze die ID von Symfony, falls übergeben, sonst Zufall
+    video_id_arg = next((arg.split('=')[1] for arg in sys.argv if arg.startswith('--video-id=')), None)
+    video_id = video_id_arg if video_id_arg else str(uuid.uuid4())[:8]
+
     video_dir = var_dir / f"video_{video_id}"
     frame_dir = video_dir / "frames"
-    video_path = video_dir / "video.webm"
+
+    # Wir setzen hier nur den Basisnamen ohne Endung
+    video_base_path = video_dir / "video"
 
     video_dir.mkdir(parents=True, exist_ok=True)
     frame_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"[⏬] Downloading video to {video_path}...", file=sys.stderr)
+    print(f"[⏬] Downloading video to {video_dir}...", file=sys.stderr)
+
+    # Wir sagen yt-dlp, es soll die Datei einfach "video.EXT" nennen
     subprocess.run([
         "yt-dlp",
-        "-o", str(video_path.with_suffix(".%(ext)s")),
+        "-q", "--no-warnings",
+        "-o", f"{video_base_path}.%(ext)s",
         url
     ], check=True)
 
-    print(f"[🎞️] Extracting frames to {frame_dir}...", file=sys.stderr)
+    # Jetzt suchen wir, welche Datei yt-dlp tatsächlich erzeugt hat (mp4, mkv, webm...)
+    actual_video_path = None
+    for ext in ['mp4', 'mkv', 'webm', 'avi']:
+        p = video_base_path.with_suffix(f".{ext}")
+        if p.exists():
+            actual_video_path = p
+            break
+
+    if not actual_video_path:
+        # Fallback: Nimm die erste Datei im Ordner, die nicht der Frame-Ordner ist
+        files = [f for f in video_dir.iterdir() if f.is_file()]
+        if files: actual_video_path = files[0]
+
+    if not actual_video_path or not actual_video_path.exists():
+        print(f"Error: Downloaded video not found in {video_dir}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"[🎞️] Extracting frames from {actual_video_path}...", file=sys.stderr)
     subprocess.run([
         "ffmpeg",
-        "-i", str(video_path),
+        "-loglevel", "error", # Weniger Noise auf stdout
+        "-i", str(actual_video_path),
         "-vf", f"fps={fps}",
         str(frame_dir / "frame_%04d.jpg")
     ], check=True)
 
-    # Build JSON with frame paths and timestamps
     frame_list = []
     for frame_file in sorted(frame_dir.glob("frame_*.jpg")):
         frame_list.append({
@@ -63,13 +87,12 @@ def main():
             "timestamp": extract_timestamp_from_filename(frame_file.name, fps)
         })
 
-    # Output JSON to stdout
-    print(json.dumps(frame_list))  # 👈 Symfony expects this only!
+    # Das ist das einzige, was PHP auf stdout sehen darf:
+    print(json.dumps(frame_list))
 
-    # Delete the video file after processing
-    if video_path.exists():
-        video_path.unlink()
-        print(f"[🗑️] Deleted video file: {video_path}", file=sys.stderr)
+    # Cleanup: Video löschen
+    if actual_video_path.exists():
+        actual_video_path.unlink()
 
 if __name__ == "__main__":
     main()
