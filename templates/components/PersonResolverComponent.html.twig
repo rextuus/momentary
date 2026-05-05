@@ -2,7 +2,7 @@
     {# Flash-Messages für Fehlermeldungen #}
     {% for label, messages in app.flashes %}
         {% for message in messages %}
-            <div class="alert alert-danger alert-dismissible fade show shadow-sm mx-auto mb-3" style="max-width: 90%;">
+            <div class="alert alert-{{ label == 'error' ? 'danger' : label }} alert-dismissible fade show shadow-sm mx-auto mb-3" style="max-width: 90%;">
                 {{ message }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
@@ -44,19 +44,16 @@
                                         {% if mainFace and mainFace.boundingBox %}
                                             {% set box = mainFace.boundingBox %}
 
-                                            {# Wir berechnen, wie breit das Bild sein muss, damit die Box 300px füllt #}
-                                            {# Wenn die Box 10% breit ist (0.1), muss das Bild 10x so groß wie der Container sein #}
-                                            {% set zoomFactor = 0.35 %} {# Wert anpassen: Kleiner = mehr Zoom, Größer = weniger Zoom #}
+                                            {# Zoom-Logik mit object-fit: none für präzise Zentrierung #}
+                                            {% set zoomFactor = 0.35 %}
                                             {% set imgWidth = (1 / (box.Width ?: 0.1)) * 100 * zoomFactor %}
-
-                                            {# Die Mitte der Box in Prozent #}
                                             {% set centerX = (box.Left + (box.Width / 2)) * 100 %}
                                             {% set centerY = (box.Top + (box.Height / 2)) * 100 %}
 
                                             <img src="{{ asset('uploads/faces/' ~ mainFace.faceImagePath) }}"
                                                  style="width: {{ imgWidth }}%;
                                                          height: auto;
-                                                         aspect-ratio: 16/9; {# Oder das Format deiner Quelldaten #}
+                                                         aspect-ratio: 16/9;
                                                          object-fit: none;
                                                          object-position: {{ centerX }}% {{ centerY }}%;
                                                          display: block;
@@ -135,12 +132,19 @@
                                            autocomplete="off">
                                 </div>
 
-                                <div class="mt-auto">
+                                <div class="mt-auto d-grid gap-2">
                                     <button type="button"
-                                            class="btn btn-primary w-100 btn-lg py-3 shadow fw-bold"
+                                            class="btn btn-primary btn-lg py-3 shadow fw-bold"
                                             data-action="live#action"
                                             data-live-action-param="prevent|processIdentification">
                                         Speichern & Nächste
+                                    </button>
+
+                                    <button type="button"
+                                            class="btn btn-outline-danger shadow-sm py-2 mt-2"
+                                            data-action="live#action"
+                                            data-live-action-param="markAsUnknown">
+                                        <i class="bi bi-person-x-fill me-2"></i> Als unbekannt markieren
                                     </button>
                                 </div>
                                 {# Verhindert doppeltes Rendern von Feldern #}

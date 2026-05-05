@@ -3,6 +3,7 @@
 namespace App\Twig\Components;
 
 use App\Entity\Person;
+use App\Enum\PersonStatus;
 use App\Form\PersonResolverType;
 use App\Repository\PersonRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -55,8 +56,9 @@ class PersonResolverComponent extends AbstractController
         $qb = $this->personRepository->createQueryBuilder('p')
             ->select('p.id')
             ->leftJoin('p.videoFaces', 'f')
-            ->where('p.identified = :identified')
-            ->setParameter('identified', false);
+            // Wir laden nur Personen, die noch den Status NEW haben
+            ->where('p.status = :status')
+            ->setParameter('status', PersonStatus::NEW);
 
         if ($this->currentPersonId) {
             $qb->andWhere('p.id != :cid')->setParameter('cid', $this->currentPersonId);
@@ -68,12 +70,11 @@ class PersonResolverComponent extends AbstractController
 
         $result = $qb->getQuery()->getOneOrNullResult();
 
-        if (!$result && $this->currentPersonId) {
-            // behalte aktuelle
-        } else {
-            $this->currentPersonId = $result ? (int) $result['id'] : null;
-            // WICHTIG: Setze das aktive Face auf null, damit das erste der neuen Person genommen wird
+        if ($result) {
+            $this->currentPersonId = (int) $result['id'];
             $this->activeFaceId = null;
+        } else {
+            $this->currentPersonId = null;
         }
         $this->newName = '';
     }
@@ -102,6 +103,20 @@ class PersonResolverComponent extends AbstractController
     }
 
     #[LiveAction]
+    public function markAsUnknown(): void
+    {
+        $currentPerson = $this->getUnidentifiedPerson();
+        if (!$currentPerson) return;
+
+        // Dauerhaft aus dem Loop entfernen
+        $currentPerson->setStatus(PersonStatus::UNKNOWN);
+
+        $this->entityManager->flush();
+        $this->resetForm();
+        $this->loadNextBestPerson();
+    }
+
+    #[LiveAction]
     public function processIdentification(): void
     {
         $currentPerson = $this->getUnidentifiedPerson();
@@ -111,22 +126,29 @@ class PersonResolverComponent extends AbstractController
         $targetPerson = $this->getForm()->get('targetPerson')->getData();
 
         if ($targetPerson instanceof Person) {
+            // MERGE: Bestehende Person ausgewählt
             foreach ($currentPerson->getVideoFaces() as $face) {
                 $face->setPerson($targetPerson);
             }
-            $currentPerson->setIdentified(true);
+            $currentPerson->setStatus(PersonStatus::IDENTIFIED);
+            $currentPerson->setIdentified(true); // Kompatibilität
             $currentPerson->setName($currentPerson->getName() . ' (merged)');
         }
         elseif (!empty(trim($this->newName))) {
+            // NEU: Name eingegeben
             $trimmedName = trim($this->newName);
             $existingPerson = $this->personRepository->findOneBy(['name' => $trimmedName]);
+
             if ($existingPerson) {
                 $this->addFlash('error', sprintf('Die Person "%s" existiert bereits.', $trimmedName));
                 return;
             }
+
             $currentPerson->setName($trimmedName);
-            $currentPerson->setIdentified(true);
+            $currentPerson->setStatus(PersonStatus::IDENTIFIED);
+            $currentPerson->setIdentified(true); // Kompatibilität
         } else {
+            // Nichts ausgewählt oder eingegeben
             return;
         }
 
@@ -144,6 +166,7 @@ class PersonResolverComponent extends AbstractController
 
     public function getRemainingCount(): int
     {
-        return $this->personRepository->count(['identified' => false]);
+        // Zähle nur die Personen, die noch bearbeitet werden müssen
+        return $this->personRepository->count(['status' => PersonStatus::NEW]);
     }
 }
