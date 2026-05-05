@@ -39,21 +39,29 @@
                                 <div class="text-center w-100 mb-4">
                                     <small class="text-light opacity-50 d-block mb-2 text-uppercase fw-bold">Gesichts-Zoom</small>
                                     <div class="d-inline-block shadow-lg border border-4 border-white rounded overflow-hidden bg-black"
-                                         style="width: 300px; height: 300px; position: relative;">
+                                         style="width: 300px; height: 300px;">
 
                                         {% if mainFace and mainFace.boundingBox %}
                                             {% set box = mainFace.boundingBox %}
-                                            {# Zoom-Level 0.2 wie besprochen #}
-                                            {% set scale = (1 / (box.Width ?: 0.1)) * 0.2 %}
 
-                                            {# Fokus auf Oberkante der Box #}
+                                            {# Wir berechnen, wie breit das Bild sein muss, damit die Box 300px füllt #}
+                                            {# Wenn die Box 10% breit ist (0.1), muss das Bild 10x so groß wie der Container sein #}
+                                            {% set zoomFactor = 0.35 %} {# Wert anpassen: Kleiner = mehr Zoom, Größer = weniger Zoom #}
+                                            {% set imgWidth = (1 / (box.Width ?: 0.1)) * 100 * zoomFactor %}
+
+                                            {# Die Mitte der Box in Prozent #}
                                             {% set centerX = (box.Left + (box.Width / 2)) * 100 %}
-                                            {% set centerY = (box.Top) * 100 %}
+                                            {% set centerY = (box.Top + (box.Height / 2)) * 100 %}
 
                                             <img src="{{ asset('uploads/faces/' ~ mainFace.faceImagePath) }}"
-                                                 style="position: absolute; width: 100%; top: 50%; left: 50%;
-                                                         transform: translate(-{{ centerX }}%, -{{ centerY }}%) scale({{ scale }});
-                                                         transform-origin: center; display: block;">
+                                                 style="width: {{ imgWidth }}%;
+                                                         height: auto;
+                                                         aspect-ratio: 16/9; {# Oder das Format deiner Quelldaten #}
+                                                         object-fit: none;
+                                                         object-position: {{ centerX }}% {{ centerY }}%;
+                                                         display: block;
+                                                         width: 300px;
+                                                         height: 300px;">
                                         {% else %}
                                             <div class="text-white p-5">Vorschau nicht verfügbar</div>
                                         {% endif %}
