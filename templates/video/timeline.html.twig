@@ -3,78 +3,188 @@
 {% block title %}{{ video.title }} - Timeline{% endblock %}
 
 {% block body %}
-    <div class="container mt-4">
-        <h1 class="mb-4">{{ video.title }}</h1>
-        <a href="{{ video.youtubeUrl }}" target="_blank" class="btn btn-primary mb-4">Watch on YouTube</a>
+    <div class="container mt-5 pb-5">
+        <!-- Header Bereich -->
+        <div class="d-flex justify-content-between align-items-start mb-5">
+            <div>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb small">
+                        <li class="breadcrumb-item"><a href="{{ path('app_dashboard') }}" class="text-decoration-none">Dashboard</a></li>
+                        <li class="breadcrumb-item active">Timeline</li>
+                    </ol>
+                </nav>
+                <h1 class="fw-bold mb-1">{{ video.title }}</h1>
+                <p class="text-muted small"><i class="fas fa-video me-2"></i>Video-Analyse Timeline</p>
+            </div>
+            <a href="{{ video.youtubeUrl }}" target="_blank" class="btn btn-sm btn-outline-danger shadow-sm">
+                <i class="fab fa-youtube me-2"></i>YouTube
+            </a>
+        </div>
 
-        <div class="timeline">
-            {% for key, timeStamp in map.getTimeStamps %}
-                <div class="timeline-item mb-5 {{ loop.index is odd ? '' : 'timeline-item-indented' }}">
-                    <div class="timeline-entry">
-                        <div class="timeline-time mb-2">
-                            <span class="text-muted fw-bold">{{ key | date('H:i:s') }}</span>
-                        </div>
-                        <div class="timeline-content-wrapper">
-                            <div class="timeline-content-container d-flex flex-wrap gap-2">
-                                {% for videoFace in timeStamp %}
-                                    <div class="timeline-content border rounded p-3 shadow-sm">
-                                        {% if videoFace.person %}
-                                            {{ component('TimelineVideoFaceComponent', {videoFace: videoFace}) }}
-                                        {% else %}
-                                            <p class="text-muted">Unknown person</p>
+        <div class="modern-timeline">
+            {% for key, facesAtTime in map.getTimeStamps %}
+                <div class="timeline-block mb-5">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-time mb-3">
+                        <span class="badge bg-dark fs-6 shadow-sm fw-normal">{{ key | date('H:i:s') }}</span>
+                    </div>
+
+                    <div class="timeline-cards-grid">
+                        {% for videoFace in facesAtTime %}
+                            {# Status-Check für das Styling #}
+                            {% set isUnknown = not videoFace.person or videoFace.person.status.value == 'unknown' %}
+
+                            <div class="face-card shadow-sm border-0 {{ isUnknown ? 'is-unknown' : 'is-identified' }}">
+                                <div class="face-card-header position-relative overflow-hidden bg-dark" style="height: 150px;">
+
+                                    {# Hauptbild der Sichtung - öffnet das Modal #}
+                                    <div class="face-thumb img-clickable w-100 h-100"
+                                         style="cursor: zoom-in; {{ face_zoom_style(asset('uploads/faces/' ~ videoFace.faceImagePath), videoFace.boundingBox, 0.5) }}"
+                                         data-bs-toggle="modal"
+                                         data-bs-target="#imageModal"
+                                         data-bs-img="{{ asset('uploads/faces/' ~ videoFace.faceImagePath) }}"
+                                         data-bs-box="{{ videoFace.boundingBoxStyles }}"
+                                         data-bs-caption="Gesichtet um {{ videoFace.timestamp }}s - {{ videoFace.person ? videoFace.person.name : 'Unbekannt' }}">
+                                    </div>
+
+                                    {# Profilbild-Avatar oder Unknown-Icon #}
+                                    {% if videoFace.person %}
+                                        {% set profileFace = videoFace.person.profileFace ?: videoFace.person.videoFaces|first %}
+                                        <a href="{{ path('person_detail', {id: videoFace.person.id}) }}"
+                                           class="position-absolute top-0 end-0 m-2 rounded-circle border border-2 border-white shadow-sm overflow-hidden bg-white hover-scale d-flex align-items-center justify-content-center"
+                                           style="width: 38px; height: 38px; z-index: 10;"
+                                           title="{{ isUnknown ? 'Unbekannte Person verwalten' : 'Zum Profil von ' ~ videoFace.person.name }}">
+
+                                            {% if not isUnknown %}
+                                                {# Bekanntes Gesicht #}
+                                                <div class="w-100 h-100" style="{{ face_zoom_style(asset('uploads/faces/' ~ profileFace.faceImagePath), profileFace.boundingBox, 0.1) }}"></div>
+                                            {% else %}
+                                                {# Unknown Icon #}
+                                                <i class="fas fa-user-secret text-muted" style="font-size: 1.2rem;"></i>
+                                            {% endif %}
+                                        </a>
+                                    {% endif %}
+
+                                    {# Gender Badge #}
+                                    <div class="gender-badge" style="z-index: 5;">
+                                        {% if videoFace.gender|lower == 'female' %}
+                                            <i class="fas fa-venus text-white"></i>
+                                        {% elseif videoFace.gender|lower == 'male' %}
+                                            <i class="fas fa-mars text-white"></i>
                                         {% endif %}
                                     </div>
-                                {% endfor %}
+                                </div>
+
+                                <div class="face-card-body p-3 text-center">
+                                    {% if not isUnknown %}
+                                        <h6 class="fw-bold mb-1 text-truncate">
+                                            <a href="{{ path('person_detail', {id: videoFace.person.id}) }}" class="text-decoration-none text-primary">
+                                                {{ videoFace.person.name }}
+                                            </a>
+                                        </h6>
+                                    {% else %}
+                                        <h6 class="fw-normal mb-1 text-muted italic small">Unbekannt</h6>
+                                    {% endif %}
+
+                                    <div class="d-flex justify-content-center align-items-center gap-3 small mt-2 opacity-75">
+                                        <span><i class="fas fa-child me-1 small"></i>{{ videoFace.age }}</span>
+                                        <span>
+                                            {% set emotions = {'HAPPY': '😊', 'SAD': '😢', 'ANGRY': '😠', 'CONFUSED': '😕', 'SURPRISED': '😲', 'CALM': '😐'} %}
+                                            {{ emotions[videoFace.emotion] ?? '😐' }}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        {% endfor %}
                     </div>
                 </div>
             {% endfor %}
         </div>
     </div>
 
+    <!-- Modal für Bild-Vorschau -->
+    <div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content bg-dark border-0">
+                <div class="modal-header border-0 pb-0">
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center p-0 pb-5">
+                    <div class="position-relative d-inline-block">
+                        <img src="" id="modalImage" class="img-fluid rounded shadow" alt="Full view">
+                        <div id="modalBox" class="position-absolute border border-primary border-4 shadow" style="display: none; pointer-events: none;"></div>
+                    </div>
+                    <div id="modalCaption" class="text-white mt-3 opacity-75 small"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <style>
-        .timeline {
-            position: relative;
-            padding-left: 2rem;
-            border-left: 2px solid #ddd;
+        .modern-timeline { position: relative; padding-left: 3rem; border-left: 2px solid #dee2e6; }
+        .timeline-block { position: relative; }
+        .timeline-marker { position: absolute; left: -3.35rem; top: 8px; width: 14px; height: 14px; background: #212529; border: 3px solid #fff; border-radius: 50%; z-index: 2; }
+        .timeline-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 1.25rem; }
+
+        .face-card { background: white; border-radius: 12px; overflow: hidden; transition: all 0.2s ease-in-out; }
+
+        /* Unknown Styling */
+        .face-card.is-unknown {
+            filter: grayscale(100%);
+            opacity: 0.6;
+            background: #f8f9fa;
+        }
+        .face-card.is-unknown:hover {
+            filter: grayscale(30%);
+            opacity: 0.9;
         }
 
-        .timeline-item {
-            position: relative;
-            padding-left: 1.5rem;
+        .face-card.is-identified:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
         }
 
-        .timeline-item-indented {
-            padding-left: 3rem; /* Indent the even entries */
+        /* Profil-Icon Hover */
+        .hover-scale {
+            transition: transform 0.15s ease-in-out, border-color 0.15s;
+        }
+        .hover-scale:hover {
+            transform: scale(1.15);
+            border-color: #0d6efd !important;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2) !important;
         }
 
-        .timeline-item::before {
-            content: '';
-            position: absolute;
-            left: -6px;
-            top: 0.5rem;
-            width: 12px;
-            height: 12px;
-            background: #000000;
-            border: 2px solid #fff;
-            border-radius: 50%;
-            z-index: 1;
-        }
+        .gender-badge { position: absolute; bottom: 8px; left: 8px; background: rgba(0,0,0,0.4); width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 5px; font-size: 0.75rem; backdrop-filter: blur(2px); }
+        .img-clickable { transition: opacity 0.2s; }
+        .img-clickable:hover { opacity: 0.9; }
 
-        .timeline-content-wrapper {
-            overflow-x: auto; /* Enable horizontal scrolling */
-            white-space: nowrap; /* Ensure items stay in a straight horizontal line */
-        }
-
-        .timeline-content-container {
-            display: flex; /* Arrange videoFaces horizontally */
-            gap: 1rem; /* Add space between items */
-        }
-
-        .timeline-content {
-            flex: 0 0 auto; /* Prevent items from shrinking */
-            width: 200px; /* Fixed width for each videoFace */
+        .text-truncate {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
     </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const imageModal = document.getElementById('imageModal');
+            imageModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                const modalImg = imageModal.querySelector('#modalImage');
+                const modalTitle = imageModal.querySelector('#modalCaption');
+                const modalBox = imageModal.querySelector('#modalBox');
+
+                modalImg.src = button.getAttribute('data-bs-img');
+                modalTitle.textContent = button.getAttribute('data-bs-caption');
+
+                const boxStyles = button.getAttribute('data-bs-box');
+                if (boxStyles) {
+                    modalBox.style.cssText = boxStyles;
+                    modalBox.style.display = 'block';
+                } else {
+                    modalBox.style.display = 'none';
+                }
+            });
+        });
+    </script>
 {% endblock %}
