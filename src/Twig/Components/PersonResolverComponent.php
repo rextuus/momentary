@@ -52,15 +52,28 @@ class PersonResolverComponent extends AbstractController
             ->select('p.id')
             ->leftJoin('p.videoFaces', 'f')
             ->where('p.identified = :identified')
-            ->setParameter('identified', false)
-            ->groupBy('p.id')
+            ->setParameter('identified', false);
+
+        // Falls wir gerade jemanden überspringen, schlagen wir eine andere ID vor
+        if ($this->currentPersonId) {
+            $qb->andWhere('p.id != :currentId')
+                ->setParameter('currentId', $this->currentPersonId);
+        }
+
+        $qb->groupBy('p.id')
             ->orderBy('COUNT(f.id)', 'DESC')
             ->setMaxResults(1);
 
         $result = $qb->getQuery()->getOneOrNullResult();
 
-        $this->currentPersonId = $result ? (int) $result['id'] : null;
-        // WICHTIG: Felder für die neue Person leeren
+        // Falls nichts anderes gefunden wurde (nur noch eine Person übrig),
+        // nehmen wir doch wieder die aktuelle
+        if (!$result && $this->currentPersonId) {
+            $this->currentPersonId = $this->currentPersonId;
+        } else {
+            $this->currentPersonId = $result ? (int) $result['id'] : null;
+        }
+
         $this->newName = '';
     }
 
@@ -74,7 +87,6 @@ class PersonResolverComponent extends AbstractController
         $targetPerson = $this->getForm()->get('targetPerson')->getData();
 
         if ($targetPerson instanceof Person) {
-            // MERGE LOGIK
             foreach ($currentPerson->getVideoFaces() as $face) {
                 $face->setPerson($targetPerson);
             }
@@ -83,16 +95,13 @@ class PersonResolverComponent extends AbstractController
         }
         elseif (!empty(trim($this->newName))) {
             $trimmedName = trim($this->newName);
-
-            // PRÜFUNG: Existiert der Name schon?
             $existingPerson = $this->personRepository->findOneBy(['name' => $trimmedName]);
 
             if ($existingPerson) {
-                $this->addFlash('error', sprintf('Die Person "%s" existiert bereits. Bitte wähle sie im Suchfeld aus.', $trimmedName));
+                $this->addFlash('error', sprintf('Die Person "%s" existiert bereits.', $trimmedName));
                 return;
             }
 
-            // Falls nicht existent: Umbenennen
             $currentPerson->setName($trimmedName);
             $currentPerson->setIdentified(true);
         } else {
@@ -100,8 +109,6 @@ class PersonResolverComponent extends AbstractController
         }
 
         $this->entityManager->flush();
-
-        // Erst das Formular im State zurücksetzen, dann die nächste Person laden
         $this->resetForm();
         $this->loadNextBestPerson();
     }
