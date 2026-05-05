@@ -164,6 +164,75 @@ class PersonResolverComponent extends AbstractController
         $this->loadNextBestPerson();
     }
 
+    /**
+     * Holt Quick-Vorschläge basierend auf Video-Häufigkeit und globaler Häufigkeit
+     */
+    public function getQuickSuggestions(): array
+    {
+        $currentPerson = $this->getUnidentifiedPerson();
+        if (!$currentPerson) return [];
+
+        // Wir brauchen das Video der aktuellen Gesichter
+        $faces = $currentPerson->getVideoFaces();
+        if ($faces->isEmpty()) return [];
+
+        $videoId = $faces->first()->getVideo()?->getId();
+
+        // 1. Top Personen in DIESEM Video
+        $videoTop = $this->personRepository->createQueryBuilder('p')
+            ->select('p')
+            ->join('p.videoFaces', 'f')
+            ->where('f.video = :videoId')
+            ->andWhere('p.status = :status')
+            ->setParameter('videoId', $videoId)
+            ->setParameter('status', PersonStatus::IDENTIFIED)
+            ->groupBy('p.id')
+            ->orderBy('COUNT(f.id)', 'DESC')
+            ->setMaxResults(3)
+            ->getQuery()
+            ->getResult();
+
+        // 2. Generelle Top Personen (global)
+        $globalTop = $this->personRepository->createQueryBuilder('p')
+            ->select('p')
+            ->join('p.videoFaces', 'f')
+            ->where('p.status = :status')
+            ->setParameter('status', PersonStatus::IDENTIFIED)
+            ->groupBy('p.id')
+            ->orderBy('COUNT(f.id)', 'DESC')
+            ->setMaxResults(5)
+            ->getQuery()
+            ->getResult();
+
+        // Zusammenführen und Duplikate entfernen
+        $suggestions = array_unique(array_merge($videoTop, $globalTop), SORT_REGULAR);
+
+        // Max 5-6 Vorschläge zurückgeben
+        return array_slice($suggestions, 0, 6);
+    }
+
+    #[LiveAction]
+    public function selectSuggestedPerson(#[LiveArg] int $id): void
+    {
+        $targetPerson = $this->personRepository->find($id);
+        if (!$targetPerson) return;
+
+        $currentPerson = $this->getUnidentifiedPerson();
+        if (!$currentPerson) return;
+
+        // Dieselbe Logik wie beim Formular-Submit
+        foreach ($currentPerson->getVideoFaces() as $face) {
+            $face->setPerson($targetPerson);
+        }
+        $currentPerson->setStatus(PersonStatus::IDENTIFIED);
+        $currentPerson->setIdentified(true);
+        $currentPerson->setName($currentPerson->getName() . ' (merged)');
+
+        $this->entityManager->flush();
+        $this->resetForm();
+        $this->loadNextBestPerson();
+    }
+
     public function getRemainingCount(): int
     {
         // Zähle nur die Personen, die noch bearbeitet werden müssen

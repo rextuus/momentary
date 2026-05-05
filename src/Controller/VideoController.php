@@ -4,44 +4,58 @@ namespace App\Controller;
 
 use App\Entity\Video;
 use App\Form\VideoType;
-use App\Message\InitVideoMessage;
+use App\Message\DetectVideoScenesMessage;
+use App\Message\DownloadVideoMessage;
+use App\Message\SplitVideoIntoFramesMessage;
+use App\Repository\VideoRepository;
 use App\Service\Video\VideoFaceMap;
-use App\Service\VideoAnalyzer;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Annotation\Route;
 
 #[Route('/video')]
 final class VideoController extends AbstractController
 {
+    public function __construct(
+        private MessageBusInterface $messageBus,
+        private VideoRepository $videoRepository,
+        private EntityManagerInterface $entityManager
+    ) {}
 
-
-    public function __construct(private MessageBusInterface $messageBus)
+    /**
+     * Die Übersicht (vorher Index im AdminController)
+     */
+    #[Route('/', name: 'app_video_index', methods: ['GET'])]
+    public function index(): Response
     {
+        return $this->render('video/index.html.twig', [
+            'videos' => $this->videoRepository->findAll(),
+        ]);
     }
 
-    #[Route('/new', name: 'video_new')]
-    public function index(Request $request, EntityManagerInterface $em, VideoAnalyzer $analyzer): Response
+    /**
+     * Neues Video hinzufügen
+     */
+    #[Route('/new', name: 'video_new', methods: ['GET', 'POST'])]
+    public function new(Request $request): Response
     {
         $video = new Video();
         $form = $this->createForm(VideoType::class, $video);
-
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
             $video->setCreatedAt(new \DateTimeImmutable());
 
-            $em->persist($video);
-            $em->flush();
+            $this->entityManager->persist($video);
+            $this->entityManager->flush();
 
-            $message = new InitVideoMessage($video->getId());
-            $this->messageBus->dispatch($message);
+            $this->messageBus->dispatch(new DownloadVideoMessage($video->getId()));
 
-            $this->addFlash('success', 'Video hinzugefügt!');
-            return $this->redirectToRoute('video_new'); // or to a list
+            $this->addFlash('success', 'Video hinzugefügt und Download gestartet!');
+            return $this->redirectToRoute('app_video_index');
         }
 
         return $this->render('video/new.html.twig', [
@@ -49,22 +63,43 @@ final class VideoController extends AbstractController
         ]);
     }
 
-    #[Route('/{id}/timeline', name: 'video_timeline')]
+    /**
+     * Die fehlende Trigger-Route für die Buttons im Template
+     */
+    #[Route('/{id}/trigger/{step}', name: 'app_video_trigger', methods: ['GET'])]
+    public function trigger(Video $video, string $step): Response
+    {
+        try {
+            match ($step) {
+                'download' => $this->messageBus->dispatch(new DownloadVideoMessage($video->getId())),
+                'scenes'   => $this->messageBus->dispatch(new DetectVideoScenesMessage($video->getId(), (string)$video->getLocalPath())),
+                'split'    => $this->messageBus->dispatch(new SplitVideoIntoFramesMessage($video->getId(), (string)$video->getLocalPath())),
+                default    => throw new \InvalidArgumentException("Ungültiger Schritt"),
+            };
+
+            $this->addFlash('success', "Schritt '$step' wurde für '{$video->getTitle()}' manuell getriggert.");
+        } catch (\Exception $e) {
+            $this->addFlash('error', "Fehler beim Triggern: " . $e->getMessage());
+        }
+
+        return $this->redirectToRoute('app_video_index');
+    }
+
+    /**
+     * Timeline Ansicht
+     */
+    #[Route('/{id}/timeline', name: 'video_timeline', methods: ['GET'])]
     public function timeline(Video $video): Response
     {
-        // Get videoFaces sorted by timestamp
         $videoFaces = $video->getVideoFaces()->toArray();
-//        usort($videoFaces, fn ($a, $b) => $a->getTimestamp() <=> $b->getTimestamp());
         $map = new VideoFaceMap();
         foreach ($videoFaces as $videoFace) {
             $map->addFace($videoFace);
         }
-
 
         return $this->render('video/timeline.html.twig', [
             'video' => $video,
             'map' => $map,
         ]);
     }
-
 }

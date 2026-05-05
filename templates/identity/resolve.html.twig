@@ -1,0 +1,23 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Identify Persons - Family Archive{% endblock %}
+
+{% block body %}
+    <div class="container mt-5">
+        {# Header-Bereich für den Kontext #}
+        <div class="row justify-content-center mb-4">
+            <div class="col-md-10">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+{#                        <li class="breadcrumb-item"><a href="{{ path('video_index') }}">Dashboard</a></li>#}
+                        <li class="breadcrumb-item active">Identity Resolver</li>
+                    </ol>
+                </nav>
+                <hr>
+            </div>
+        </div>
+
+        {# Die Live-Komponente #}
+        {{ component('PersonResolverComponent') }}
+    </div>
+{% endblock %}

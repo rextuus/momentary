@@ -1,41 +1,8 @@
 {% extends 'base.html.twig' %}
+
 {% block title %}{{ person.name }} - Details{% endblock %}
 
 {% block body %}
-    <div class="container mt-4">
-        <h1 class="mb-4">{{ person.name }}</h1>
-
-        <div class="card mb-4 shadow-sm border-0">
-            <div class="card-body">
-                {% if person.description %}
-                    <p class="text-muted mb-2">{{ person.description }}</p>
-                {% else %}
-                    <p class="text-muted mb-2"><em>No description available for this person.</em></p>
-                {% endif %}
-
-                {% if person.identified %}
-                    <p><span class="badge bg-success">Identified</span></p>
-                {% else %}
-                    <p><span class="badge bg-warning">Unidentified</span></p>
-                {% endif %}
-
-                <p>{{ person.getProbablyGender }}</p>
-
-                <div class="d-flex flex-wrap gap-2">
-                    {% for detectionFace in person.detectionFaces %}
-                        <img src="{{ display_image(detectionFace) }}" class="rounded border shadow-sm" alt="Face image" style="max-width: 100px; max-height:100px;">
-                    {% endfor %}
-                </div>
-            </div>
-            {{ component('PersonName', {person: person}) }}
-
-        </div>
-
-        <h3 class="mb-3">Appearances</h3>
-            {{ component('VideoFaceListing', {videoFaces: videoFaces}) }}
-
-        {% if videoFaces|length == 0 %}
-            <p class="mt-4 text-muted">No appearances recorded for this person.</p>
-        {% endif %}
-    </div>
+    {# Die gesamte Logik und Interaktion wird in die LiveComponent ausgelagert #}
+    {{ component('PersonDetailComponent', { person: person }) }}
 {% endblock %}

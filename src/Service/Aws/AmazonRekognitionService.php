@@ -26,55 +26,64 @@ class AmazonRekognitionService
     }
 
     /**
-     * Analysiert ein Bild, indiziert das Gesicht und sucht nach Übereinstimmungen.
+     * Analysiert ein Bild und verarbeitet ALLE darin gefundenen Gesichter einzeln.
+     * Ideal für Gruppenfotos wie in grafik.jpg.
      */
-    public function processFaceImage(string $imagePath): array
+    public function processAllFacesInImage(string $imagePath): array
     {
         $imageContent = file_get_contents($imagePath);
+        $results = [];
 
-        // 1. Gesicht indizieren und Metadaten extrahieren
+        // 1. Alle Gesichter im Bild indizieren
+        // Wir setzen MaxFaces auf 15, um sicherzustellen, dass niemand übersehen wird.
         $indexResponse = $this->client->indexFaces([
             'CollectionId' => $this->collectionId,
             'Image' => ['Bytes' => $imageContent],
-            'DetectionAttributes' => ['ALL'], // Wichtig für Alter, Emotion, Gender
-            'MaxFaces' => 1, // Wir gehen von einem Gesicht pro Screenshot aus
+            'DetectionAttributes' => ['ALL'], // Extrahiert Alter, Emotionen, Gender
+            'MaxFaces' => 15,
         ]);
 
         if (empty($indexResponse['FaceRecords'])) {
-            return []; // Kein Gesicht gefunden
+            return [];
         }
 
-        $faceRecord = $indexResponse['FaceRecords'][0];
-        $faceId = $faceRecord['Face']['FaceId'];
-        $details = $faceRecord['FaceDetail'];
+        // 2. Jedes erkannte Gesicht einzeln gegen die Collection prüfen
+        foreach ($indexResponse['FaceRecords'] as $faceRecord) {
+            $faceId = $faceRecord['Face']['FaceId'];
+            $details = $faceRecord['FaceDetail'];
 
-        // 2. Sofort prüfen: Kennen wir dieses Gesicht schon aus anderen Videos?
-        $searchResponse = $this->client->searchFaces([
-            'CollectionId' => $this->collectionId,
-            'FaceId' => $faceId,
-            'FaceMatchThreshold' => 90.0, // 90% Ähnlichkeit
-            'MaxFaces' => 1,
-        ]);
+            // Suche nach Übereinstimmungen für diese spezifische FaceId
+            $searchResponse = $this->client->searchFaces([
+                'CollectionId' => $this->collectionId,
+                'FaceId' => $faceId,
+                'FaceMatchThreshold' => 90.0,
+                'MaxFaces' => 1,
+            ]);
 
-        $matchedFaceId = null;
-        $similarity = null;
+            $matchedFaceId = null;
+            $similarity = null;
 
-        if (!empty($searchResponse['FaceMatches'])) {
-            $match = $searchResponse['FaceMatches'][0];
-            $matchedFaceId = $match['Face']['FaceId'];
-            $similarity = $match['Similarity'];
+            if (!empty($searchResponse['FaceMatches'])) {
+                $match = $searchResponse['FaceMatches'][0];
+                $matchedFaceId = $match['Face']['FaceId'];
+                $similarity = $match['Similarity'];
+            }
+
+            // 3. Ergebnisse für dieses Gesicht sammeln
+            $results[] = [
+                'faceId' => $faceId,
+                'matchedFaceId' => $matchedFaceId,
+                'similarity' => $similarity,
+                'age' => $this->calculateAverageAge($details['AgeRange']),
+                'gender' => $details['Gender']['Value'] ?? 'Unknown',
+                'emotion' => $details['Emotions'][0]['Type'] ?? 'CALM',
+                'confidence' => $details['Confidence'],
+                // BoundingBox ist essentiell für den blauen Rahmen im Modal
+                'boundingBox' => $faceRecord['Face']['BoundingBox']
+            ];
         }
 
-        // 3. Daten für die Entity aufbereiten
-        return [
-            'faceId' => $faceId,
-            'matchedFaceId' => $matchedFaceId,
-            'similarity' => $similarity,
-            'age' => $this->calculateAverageAge($details['AgeRange']),
-            'gender' => $details['Gender']['Value'] ?? 'Unknown',
-            'emotion' => $details['Emotions'][0]['Type'] ?? 'CALM', // Die dominanteste Emotion
-            'confidence' => $details['Confidence']
-        ];
+        return $results;
     }
 
     private function calculateAverageAge(array $ageRange): int

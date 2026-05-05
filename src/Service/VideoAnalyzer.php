@@ -6,8 +6,9 @@ namespace App\Service;
 
 use App\Entity\Person;
 use App\Entity\VideoFace;
+use App\Entity\VideoScene;
+use App\Enum\VideoStatus;
 use App\Message\FrameAnalyzerMessage;
-use App\Repository\PersonRepository;
 use App\Repository\VideoRepository;
 use App\Service\Aws\AmazonRekognitionService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -24,129 +25,210 @@ readonly class VideoAnalyzer
         private FilesystemOperator $filesystem,
         private EntityManagerInterface $entityManager,
         private VideoRepository $videoRepository,
-        private PersonRepository $personRepository,
         private AmazonRekognitionService $rekognitionService,
+        #[Autowire('%kernel.project_dir%')]
+        private string $projectDir,
         #[Autowire('%env(PYTHON_BINARY)%')]
         private string $pythonBinary = '/usr/bin/python3'
     ) {}
 
-    public function downloadVideoAndSplitInFrames(int $videoId, string $youtubeUrl): bool
+    private function updateStatus(int $videoId, VideoStatus $status, ?string $localPath = null): void
     {
+        $video = $this->videoRepository->find($videoId);
+        if ($video) {
+            $video->setStatus($status);
+            if ($localPath) {
+                $video->setLocalPath($localPath);
+            }
+            $this->entityManager->flush();
+        }
+    }
+
+    public function downloadVideo(int $videoId, string $youtubeUrl): ?string
+    {
+        $this->updateStatus($videoId, VideoStatus::DOWNLOADING);
+
+        $process = new Process([
+            $this->pythonBinary,
+            $this->projectDir . '/video-analyzer/python/download_video.py',
+            $youtubeUrl,
+            '--video-id=' . $videoId
+        ]);
+
+        $process->setTimeout(300);
+        $process->run();
+        if (!$process->isSuccessful()) {
+            // Hier ist der entscheidende Teil: Wir loggen jetzt STDOUT und STDERR!
+            $errorOutput = $process->getErrorOutput();
+            $stdOutput = $process->getOutput();
+
+            $msg = "Download failed: " . $errorOutput . " | STDOUT: " . $stdOutput;
+
+            // Schreibe es in die Logs von Symfony
+            error_log($msg);
+
+            $this->updateStatus($videoId, VideoStatus::ERROR);
+            throw new \RuntimeException($msg);
+        }
+
+        $data = json_decode($process->getOutput(), true);
+        $path = $data['video_path'] ?? null;
+
+        // Nach dem Download speichern wir den Pfad direkt am Video
+        $this->updateStatus($videoId, VideoStatus::PENDING, $path);
+
+        return $path;
+    }
+
+    public function detectScenes(string $videoPath, int $videoId): array
+    {
+        $this->updateStatus($videoId, VideoStatus::SCENE_DETECTION);
+
+        $process = new Process([
+            $this->pythonBinary,
+            $this->projectDir . '/video-analyzer/python/detect_scenes.py',
+            $videoPath
+        ]);
+
+        $process->setTimeout(900);
+        $process->run();
+
+        if (!$process->isSuccessful()) {
+            $this->updateStatus($videoId, VideoStatus::ERROR);
+            throw new \RuntimeException('Scene detection failed: ' . $process->getErrorOutput());
+        }
+
+        return json_decode($process->getOutput(), true);
+    }
+
+    public function storeScenes(int $videoId, array $scenes): void
+    {
+        $video = $this->videoRepository->find($videoId);
+        if (!$video) throw new \RuntimeException("Video $videoId nicht gefunden.");
+
+        foreach ($scenes as $data) {
+            $scene = new VideoScene();
+            $scene->setVideo($video);
+            $scene->setSceneNumber((int) $data['scene_number']);
+            $scene->setStartSeconds((float) $data['start_seconds']);
+            $scene->setEndSeconds((float) $data['end_seconds']);
+            $this->entityManager->persist($scene);
+        }
+
+        $this->entityManager->flush();
+    }
+
+    public function extractFrames(int $videoId, string $videoPath): bool
+    {
+        $this->updateStatus($videoId, VideoStatus::SPLITTING);
+
         try {
             $process = new Process([
                 $this->pythonBinary,
-                'video-analyzer/python/download_and_extract.py',
-                $youtubeUrl,
-                '--video-id=' . $videoId
+                $this->projectDir . '/video-analyzer/python/extract_frames.py',
+                $videoPath
             ]);
+
             $process->setTimeout(600);
             $process->run();
 
             if (!$process->isSuccessful()) {
-                throw new \RuntimeException('Python Script failed: ' . $process->getErrorOutput());
+                $this->updateStatus($videoId, VideoStatus::ERROR);
+                return false;
             }
 
-            $output = trim($process->getOutput());
-            $frameList = null;
-
-            if (preg_match('/\[\s*\{.*\}\s*\]/s', $output, $matches)) {
-                $frameList = json_decode($matches[0], true);
-            }
-
-            if ($frameList === null || empty($frameList)) {
-                throw new \RuntimeException('Could not parse JSON from Python output.');
-            }
-
+            $frameList = json_decode($process->getOutput(), true);
             foreach ($frameList as $index => $frame) {
                 $this->bus->dispatch(new FrameAnalyzerMessage(
                     $videoId,
                     $frame['path'],
                     (int) $frame['timestamp'],
-                    $index === array_key_last($frameList)
+                    $index === array_key_last($frameList) // Letztes Frame markieren
                 ));
             }
 
             return true;
         } catch (\Throwable $e) {
-            dump($e->getMessage());
+            $this->updateStatus($videoId, VideoStatus::ERROR);
             return false;
         }
     }
 
-    public function analyzeFrame(int $videoId, string $framePath, int $timestamp): void
+    public function analyzeFrame(int $videoId, string $framePath, int $timestamp, bool $isLastFrame): void
     {
-        // 1. Grundlegende Daten laden
+        // Wir setzen den Status nur beim ersten Frame auf "Analyzing"
+        $this->updateStatus($videoId, VideoStatus::ANALYZING_FACES);
+
         $video = $this->videoRepository->find($videoId);
-        if (!$video) {
-            return;
+        if (!$video) return;
+
+        $currentScene = $this->entityManager->getRepository(VideoScene::class)
+            ->createQueryBuilder('s')
+            ->where('s.video = :video')
+            ->andWhere(':ts >= s.startSeconds')
+            ->andWhere(':ts < s.endSeconds')
+            ->setParameter('video', $video)
+            ->setParameter('ts', (float) $timestamp)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        $allFacesData = $this->rekognitionService->processAllFacesInImage($framePath);
+
+        if (!empty($allFacesData)) {
+            $imageContent = file_get_contents($framePath);
+            $uuid = Uuid::uuid4()->toString();
+            $storagePath = "video_faces/{$uuid}.jpg";
+            $this->filesystem->write($storagePath, $imageContent);
+
+            foreach ($allFacesData as $faceData) {
+                $this->saveFaceData($video, $faceData, $timestamp, $storagePath, $currentScene);
+            }
         }
 
-        $faceData = $this->rekognitionService->processFaceImage($framePath);
-        if (empty($faceData)) {
-            return;
+        // Wenn es das letzte Frame war: FINALE!
+        if ($isLastFrame) {
+            $this->updateStatus($videoId, VideoStatus::COMPLETED);
         }
+    }
 
-        // 2. Bild speichern (Flysystem)
-        $imageContent = file_get_contents($framePath);
-        $uuid = Uuid::uuid4()->toString();
-        $storagePath = "video_faces/{$uuid}.jpg";
-        $this->filesystem->write($storagePath, $imageContent);
-
-        // 3. Datenbank-Operationen
-        try {
-            // Wir verzichten auf wrapInTransaction, um SQLite nicht zu blockieren,
-            // nutzen aber manuelle Flush-Kontrolle.
-
+    private function saveFaceData($video, $faceData, $timestamp, $storagePath, $currentScene): void
+    {
+        $this->entityManager->wrapInTransaction(function() use ($video, $faceData, $timestamp, $storagePath, $currentScene) {
             $person = null;
             $matchedFace = null;
 
-            // Suche nach existierendem Gesicht (Face Matching)
             if (!empty($faceData['matchedFaceId'])) {
                 $matchedFace = $this->entityManager->getRepository(VideoFace::class)
                     ->findOneBy(['faceLabel' => $faceData['matchedFaceId']]);
-
-                if ($matchedFace && $matchedFace->getPerson()) {
-                    $person = $matchedFace->getPerson();
-                }
+                $person = $matchedFace?->getPerson();
             }
 
-            // Falls keine Person gefunden wurde, neue anlegen
             if ($person === null) {
                 $person = new Person();
                 $person->setName('unknown_' . substr($faceData['faceId'], 0, 8));
                 $person->setIdentified(false);
-
                 $this->entityManager->persist($person);
-                // WICHTIG: Sofort flashen, damit die ID für SQLite generiert wird
                 $this->entityManager->flush();
             }
 
-            // 4. VideoFace erstellen
             $videoFace = new VideoFace();
             $videoFace->setVideo($video);
-            $videoFace->setPerson($person); // Die Verknüpfung zur Person
+            $videoFace->setPerson($person);
             $videoFace->setTimestamp($timestamp);
             $videoFace->setFaceImagePath($storagePath);
             $videoFace->setFaceLabel($faceData['faceId']);
+            $videoFace->setAge((int)$faceData['age']);
+            $videoFace->setGender((string)$faceData['gender']);
+            $videoFace->setEmotion((string)$faceData['emotion']);
+            $videoFace->setBoundingBox($faceData['boundingBox']);
 
-            // Mapping der numerischen/string Werte (sicherstellen, dass sie valide sind)
-            $videoFace->setAge((int)($faceData['age'] ?? 0));
-            $videoFace->setGender((string)($faceData['gender'] ?? 'unknown'));
-            $videoFace->setEmotion((string)($faceData['emotion'] ?? 'unknown'));
-
+            if ($currentScene) $videoFace->setVideoScene($currentScene);
             if ($matchedFace) {
                 $videoFace->setMatchedBy($matchedFace);
-                $videoFace->setMatchSimilarity((float)($faceData['similarity'] ?? 0));
+                $videoFace->setMatchSimilarity((float)$faceData['similarity']);
             }
 
             $this->entityManager->persist($videoFace);
-            // Finaler Flush für das VideoFace
-            $this->entityManager->flush();
-
-        } catch (\Exception $e) {
-            // Im Fehlerfall EntityManager leeren, damit beim nächsten Retry kein Müll drin steht
-            $this->entityManager->clear();
-            throw $e;
-        }
+        });
     }
 }

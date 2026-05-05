@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Enum\PersonStatus;
 use App\Repository\PersonRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -25,13 +26,13 @@ class Person
     /**
      * @var Collection<int, VideoFace>
      */
-    #[ORM\OneToMany(targetEntity: VideoFace::class, mappedBy: 'person')]
+    #[ORM\OneToMany(targetEntity: VideoFace::class, mappedBy: 'person', cascade: ['remove'], orphanRemoval: true)]
     private Collection $videoFaces;
 
-    #[ORM\Column(type: Types::BOOLEAN, options: [ 'default' => false])]
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $identified = false;
 
-    #[ORM\Column(type: Types::BOOLEAN, options: [ 'default' => false])]
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $wasted = false;
 
     /**
@@ -39,6 +40,12 @@ class Person
      */
     #[ORM\OneToMany(targetEntity: VideoFace::class, mappedBy: 'detection')]
     private Collection $detectionFaces;
+
+    #[ORM\Column(type: 'string', enumType: PersonStatus::class, options: ['default' => PersonStatus::NEW->value])]
+    private PersonStatus $status = PersonStatus::NEW;
+
+    #[ORM\ManyToOne(targetEntity: VideoFace::class)]
+    private ?VideoFace $profileFace = null;
 
     public function __construct()
     {
@@ -49,6 +56,17 @@ class Person
     public function getId(): ?int
     {
         return $this->id;
+    }
+
+    public function getProfileFace(): ?VideoFace
+    {
+        return $this->profileFace;
+    }
+
+    public function setProfileFace(?VideoFace $face): self
+    {
+        $this->profileFace = $face;
+        return $this;
     }
 
     public function getName(): ?string
@@ -223,5 +241,16 @@ class Person
         }
 
         return $this->detectionFaces->first();
+    }
+
+    public function getStatus(): PersonStatus
+    {
+        return $this->status;
+    }
+
+    public function setStatus(PersonStatus $status): self
+    {
+        $this->status = $status;
+        return $this;
     }
 }

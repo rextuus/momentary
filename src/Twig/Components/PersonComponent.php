@@ -72,7 +72,7 @@ final class PersonComponent extends AbstractController
         $this->entityManager->remove($this->person);
         $this->entityManager->flush();
 
-        $this->addFlash('success', 'Persons merged successfully.');
+        $this->addFlash('success', sprintf('Merged into %s', $targetPerson->getName()));
         return $this->redirectToRoute('person_index');
     }
 
@@ -80,11 +80,6 @@ final class PersonComponent extends AbstractController
     public function wastePerson(): RedirectResponse
     {
         $this->entityManager->remove($this->person);
-
-        foreach ($this->person->getVideoFaces() as $videoFace) {
-            $videoFace->setPerson(null);
-            $this->entityManager->persist($videoFace);
-        }
         $this->entityManager->flush();
 
         return $this->redirectToRoute('person_index');

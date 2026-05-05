@@ -19,8 +19,15 @@ class VideoFace
     private ?Video $video = null;
 
     #[ORM\ManyToOne(inversedBy: 'videoFaces')]
-    #[ORM\JoinColumn(nullable: false)] // Falls jedes Gesicht zwingend eine Person braucht
+    #[ORM\JoinColumn(nullable: false)]
     private ?Person $person = null;
+
+    /**
+     * NEU: Verknüpfung zur Szene
+     */
+    #[ORM\ManyToOne(targetEntity: VideoScene::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?VideoScene $videoScene = null;
 
     #[ORM\Column]
     private ?int $timestamp = null;
@@ -30,6 +37,9 @@ class VideoFace
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $faceImagePath = null;
+
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $boundingBox = null;
 
     #[ORM\Column(nullable: true)]
     private ?array $embedding = null;
@@ -76,7 +86,6 @@ class VideoFace
     public function setVideo(?Video $video): static
     {
         $this->video = $video;
-
         return $this;
     }
 
@@ -88,7 +97,23 @@ class VideoFace
     public function setPerson(?Person $person): static
     {
         $this->person = $person;
+        return $this;
+    }
 
+    /**
+     * Getter für VideoScene
+     */
+    public function getVideoScene(): ?VideoScene
+    {
+        return $this->videoScene;
+    }
+
+    /**
+     * Setter für VideoScene
+     */
+    public function setVideoScene(?VideoScene $videoScene): static
+    {
+        $this->videoScene = $videoScene;
         return $this;
     }
 
@@ -100,7 +125,6 @@ class VideoFace
     public function setTimestamp(int $timestamp): static
     {
         $this->timestamp = $timestamp;
-
         return $this;
     }
 
@@ -112,7 +136,6 @@ class VideoFace
     public function setFaceLabel(?string $faceLabel): static
     {
         $this->faceLabel = $faceLabel;
-
         return $this;
     }
 
@@ -124,20 +147,32 @@ class VideoFace
     public function setFaceImagePath(?string $faceImagePath): static
     {
         $this->faceImagePath = $faceImagePath;
-
         return $this;
     }
 
-    public function getEmbedding(): ?array
+    public function getBoundingBox(): ?array
     {
-        return $this->embedding;
+        return $this->boundingBox;
     }
 
-    public function setEmbedding(?array $embedding): static
+    public function setBoundingBox(?array $boundingBox): static
     {
-        $this->embedding = $embedding;
-
+        $this->boundingBox = $boundingBox;
         return $this;
+    }
+
+    public function getBoundingBoxStyles(): string
+    {
+        if (!$this->boundingBox) {
+            return '';
+        }
+        return sprintf(
+            'top: %f%%; left: %f%%; width: %f%%; height: %f%%;',
+            ($this->boundingBox['Top'] ?? 0) * 100,
+            ($this->boundingBox['Left'] ?? 0) * 100,
+            ($this->boundingBox['Width'] ?? 0) * 100,
+            ($this->boundingBox['Height'] ?? 0) * 100
+        );
     }
 
     public function getAge(): ?int
@@ -148,7 +183,6 @@ class VideoFace
     public function setAge(int $age): static
     {
         $this->age = $age;
-
         return $this;
     }
 
@@ -160,7 +194,6 @@ class VideoFace
     public function setGender(string $gender): static
     {
         $this->gender = $gender;
-
         return $this;
     }
 
@@ -172,19 +205,6 @@ class VideoFace
     public function setEmotion(string $emotion): static
     {
         $this->emotion = $emotion;
-
-        return $this;
-    }
-
-    public function getDetection(): ?Person
-    {
-        return $this->detection;
-    }
-
-    public function setDetection(?Person $detection): static
-    {
-        $this->detection = $detection;
-
         return $this;
     }
 
@@ -196,37 +216,6 @@ class VideoFace
     public function setMatchedBy(?self $matchedBy): static
     {
         $this->matchedBy = $matchedBy;
-
-        return $this;
-    }
-
-    /**
-     * @return Collection<int, self>
-     */
-    public function getMatchFor(): Collection
-    {
-        return $this->matchFor;
-    }
-
-    public function addMatchFor(self $matchFor): static
-    {
-        if (!$this->matchFor->contains($matchFor)) {
-            $this->matchFor->add($matchFor);
-            $matchFor->setMatchedBy($this);
-        }
-
-        return $this;
-    }
-
-    public function removeMatchFor(self $matchFor): static
-    {
-        if ($this->matchFor->removeElement($matchFor)) {
-            // set the owning side to null (unless already changed)
-            if ($matchFor->getMatchedBy() === $this) {
-                $matchFor->setMatchedBy(null);
-            }
-        }
-
         return $this;
     }
 
@@ -238,7 +227,33 @@ class VideoFace
     public function setMatchSimilarity(?float $matchSimilarity): static
     {
         $this->matchSimilarity = $matchSimilarity;
-
         return $this;
+    }
+
+    public function getEmbedding(): ?array
+    {
+        return $this->embedding;
+    }
+
+    public function setEmbedding(?array $embedding): self
+    {
+        $this->embedding = $embedding;
+        return $this;
+    }
+
+    public function getDetection(): ?Person
+    {
+        return $this->detection;
+    }
+
+    public function setDetection(?Person $detection): self
+    {
+        $this->detection = $detection;
+        return $this;
+    }
+
+    public function getMatchFor(): Collection
+    {
+        return $this->matchFor;
     }
 }

@@ -2,6 +2,7 @@
 namespace App\Controller;
 
 use App\Entity\Person;
+use App\Enum\PersonStatus;
 use App\Repository\PersonRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -27,7 +28,15 @@ class PersonController extends AbstractController
     public function index(PersonRepository $personRepository): Response
     {
         // Fetch all persons from the database
-        $persons = $personRepository->findAll();
+        $persons = $personRepository->createQueryBuilder('p')
+            ->leftJoin('p.videoFaces', 'f')
+            ->where('p.status != :unknown')
+            ->setParameter('unknown', PersonStatus::UNKNOWN)
+            // Nur Personen mit Namen oder Faces anzeigen (optional)
+            ->groupBy('p.id')
+            ->orderBy('COUNT(f.id)', 'DESC')
+            ->getQuery()
+            ->getResult();
 
         // Render the listing template
         return $this->render('person/index.html.twig', [

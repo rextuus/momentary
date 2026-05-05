@@ -1,3 +1,26 @@
 body {
   background-color: #f8f9fa;
 }
+
+
+// Modal logic person detail
+//
+/* Versteckt den Profil-Button standardmäßig */
+.appearance-card .set-profile-btn {
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+/* Zeigt den Button beim Hover über die Karte an */
+.appearance-card:hover .set-profile-btn {
+  opacity: 1;
+}
+
+/* Optional: Verkleinert das Bild beim Hover leicht für Feedback */
+.appearance-card img {
+  transition: transform 0.2s ease;
+}
+
+.appearance-card:hover img {
+  transform: scale(1.05);
+}

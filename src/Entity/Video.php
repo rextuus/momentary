@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Enum\VideoStatus;
 use App\Repository\VideoRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -29,6 +30,13 @@ class Video
      */
     #[ORM\OneToMany(targetEntity: VideoFace::class, mappedBy: 'video')]
     private Collection $videoFaces;
+
+    #[ORM\Column(type: 'string', length: 32, enumType: VideoStatus::class)]
+    private VideoStatus $status = VideoStatus::PENDING;
+
+    // Pfad zur lokalen Datei nach dem Download
+    #[ORM\Column(length: 1000, nullable: true)]
+    private ?string $localPath = null;
 
     public function __construct()
     {
@@ -103,6 +111,28 @@ class Video
             }
         }
 
+        return $this;
+    }
+
+    public function getStatus(): VideoStatus
+    {
+        return $this->status;
+    }
+
+    public function setStatus(VideoStatus $status): self
+    {
+        $this->status = $status;
+        return $this;
+    }
+
+    public function getLocalPath(): ?string
+    {
+        return $this->localPath;
+    }
+
+    public function setLocalPath(?string $localPath): self
+    {
+        $this->localPath = $localPath;
         return $this;
     }
 }
