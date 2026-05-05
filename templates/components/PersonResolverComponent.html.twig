@@ -1,7 +1,7 @@
 <div {{ attributes }}>
     {% for label, messages in app.flashes %}
         {% for message in messages %}
-            <div class="alert alert-danger alert-dismissible fade show">
+            <div class="alert alert-danger alert-dismissible fade show shadow-sm mx-auto" style="max-width: 90%;">
                 {{ message }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
@@ -13,64 +13,110 @@
     {% if person %}
         <div class="row justify-content-center">
             <div class="col-md-11">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h2>Identitäten klären <span class="badge bg-primary ms-2">{{ this.remainingCount }} übrig</span></h2>
-
-                    {# ABSOLUT SICHERE VARIANTE FÜR SKIP #}
-                    <button type="button"
-                            class="btn btn-outline-secondary btn-sm"
-                            data-action="live#action"
-                            data-live-action-param="skip">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 class="h4 mb-0 text-secondary">Identität klären
+                        <span class="badge rounded-pill bg-primary ms-2" style="font-size: 0.5em;">
+                            {{ this.remainingCount }} verbleibend
+                        </span>
+                    </h2>
+                    <button type="button" class="btn btn-sm btn-outline-secondary shadow-sm" data-action="live#action" data-live-action-param="skip">
                         Überspringen
                     </button>
                 </div>
 
-                {{ form_start(form) }}
-                <div class="card shadow-sm mb-4">
-                    <div class="card-body">
-                        <div class="d-flex flex-wrap gap-2 mb-4">
-                            {% for face in person.videoFaces %}
-                                <img src="{{ asset('uploads/faces/' ~ face.faceImagePath) }}"
-                                     class="rounded img-thumbnail"
-                                     style="width: 120px; height: 120px; object-fit: cover;">
-                            {% endfor %}
-                        </div>
+                <div class="card shadow border-0 overflow-hidden">
+                    <div class="card-body p-0">
+                        <div class="row g-0">
 
-                        <div class="row g-3 p-3 bg-light rounded border">
-                            {# ID am Wrapper für TomSelect Re-Init #}
-                            <div class="col-md-6 border-end" id="wrapper-search-{{ person.id }}">
-                                <label class="form-label fw-bold text-primary">1. Bestehende Person finden</label>
-                                {{ form_widget(form.targetPerson) }}
+                            {# LINKE SEITE: Visualisierung #}
+                            <div class="col-lg-7 bg-dark p-4 d-flex flex-column align-items-center justify-content-center" style="min-height: 600px;">
+
+                                {% set mainFace = person.videoFaces|first %}
+
+                                {# 1. OBEN: MAXIMALER ÜBERBLICK & HOCHGESETZTER FOKUS #}
+                                <div class="text-center w-100 mb-4">
+                                    <small class="text-light opacity-50 d-block mb-2 text-uppercase fw-bold">Gesichts-Zoom</small>
+
+                                    <div class="d-inline-block shadow-lg border border-4 border-white rounded overflow-hidden bg-black"
+                                         style="width: 300px; height: 300px; position: relative;">
+
+                                        {% if mainFace.boundingBox %}
+                                            {% set box = mainFace.boundingBox %}
+                                            {# Zoom noch weiter reduziert (0.2) für mehr Umfeld #}
+                                            {% set scale = (1 / (box.Width ?: 0.1)) * 0.2 %}
+
+                                            {# Fokus auf die Oberkante der Box gesetzt, um das Gesicht zu erzwingen #}
+                                            {% set centerX = (box.Left + (box.Width / 2)) * 100 %}
+                                            {% set centerY = (box.Top) * 100 %}
+
+                                            <img src="{{ asset('uploads/faces/' ~ mainFace.faceImagePath) }}"
+                                                 style="position: absolute;
+                                                         width: 100%;
+                                                         top: 50%;
+                                                         left: 50%;
+                                                         transform: translate(-{{ centerX }}%, -{{ centerY }}%) scale({{ scale }});
+                                                         transform-origin: center;
+                                                         display: block;">
+                                        {% else %}
+                                            <img src="{{ asset('uploads/faces/' ~ mainFace.faceImagePath) }}" class="img-fluid">
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                {# 2. UNTEN: KONTEXT #}
+                                <div class="text-center w-100">
+                                    <small class="text-light opacity-50 d-block mb-2 text-uppercase fw-bold">Kontext im Video</small>
+
+                                    <div class="position-relative d-inline-block shadow border border-1 border-secondary rounded overflow-hidden bg-black" style="max-width: 500px;">
+                                        <img src="{{ asset('uploads/faces/' ~ mainFace.faceImagePath) }}"
+                                             class="img-fluid"
+                                             style="width: 100%; opacity: 0.4; display: block;"
+                                             alt="Context">
+
+                                        {% if mainFace.boundingBoxStyles %}
+                                            <div style="position: absolute;
+                                                        border: 2px solid #ff0000;
+                                                        box-shadow: 0 0-12px rgba(255,0,0,0.9);
+                                                        pointer-events: none;
+                                                        {{ mainFace.boundingBoxStyles|raw }}">
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
                             </div>
 
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold text-success">2. Oder neu anlegen</label>
-                                <input type="text"
-                                       data-model="newName"
-                                       class="form-control"
-                                       placeholder="Name eingeben..."
-                                       autocomplete="off">
-                            </div>
-
-                            <div class="col-12 text-center mt-4">
-                                <button type="button"
-                                        class="btn btn-primary btn-lg px-5"
-                                        data-action="live#action"
-                                        data-live-action-param="prevent|processIdentification">
-                                    Bestätigen & Weiter
-                                </button>
+                            {# RECHTE SEITE: Formular #}
+                            <div class="col-lg-5 p-4 bg-white d-flex flex-column border-start">
+                                {{ form_start(form) }}
+                                <h5 class="fw-bold mb-4">Zuweisung</h5>
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold text-primary small">Bestehende Person finden</label>
+                                    {{ form_widget(form.targetPerson) }}
+                                </div>
+                                <div class="text-center position-relative mb-4">
+                                    <hr><span class="position-absolute top-50 start-50 translate-middle bg-white px-2 text-muted small">ODER</span>
+                                </div>
+                                <div class="mb-5">
+                                    <label class="form-label fw-bold text-success small">Neue Identität erstellen</label>
+                                    <input type="text" data-model="newName" class="form-control form-control-lg border-success" placeholder="Name eingeben...">
+                                </div>
+                                <div class="mt-auto">
+                                    <button type="button" class="btn btn-primary w-100 btn-lg py-3 shadow fw-bold" data-action="live#action" data-live-action-param="prevent|processIdentification">
+                                        Speichern & Nächste
+                                    </button>
+                                </div>
+                                {{ form_rest(form) }}
+                                {{ form_end(form, {'render_rest': false}) }}
                             </div>
                         </div>
                     </div>
                 </div>
-                {{ form_rest(form) }}
-                {{ form_end(form, {'render_rest': false}) }}
             </div>
         </div>
     {% else %}
         <div class="text-center py-5">
-            <h3 class="text-muted">Keine unidentifizierten Personen mehr gefunden.</h3>
-            <a href="/" class="btn btn-primary mt-3">Zum Dashboard</a>
+            <h3 class="text-muted fw-light">Alles erledigt!</h3>
+            <a href="/" class="btn btn-primary mt-3 px-5">Dashboard</a>
         </div>
     {% endif %}
 </div>

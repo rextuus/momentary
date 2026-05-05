@@ -54,10 +54,8 @@ class PersonResolverComponent extends AbstractController
             ->where('p.identified = :identified')
             ->setParameter('identified', false);
 
-        // Falls wir gerade jemanden überspringen, schlagen wir eine andere ID vor
         if ($this->currentPersonId) {
-            $qb->andWhere('p.id != :currentId')
-                ->setParameter('currentId', $this->currentPersonId);
+            $qb->andWhere('p.id != :cid')->setParameter('cid', $this->currentPersonId);
         }
 
         $qb->groupBy('p.id')
@@ -66,8 +64,6 @@ class PersonResolverComponent extends AbstractController
 
         $result = $qb->getQuery()->getOneOrNullResult();
 
-        // Falls nichts anderes gefunden wurde (nur noch eine Person übrig),
-        // nehmen wir doch wieder die aktuelle
         if (!$result && $this->currentPersonId) {
             $this->currentPersonId = $this->currentPersonId;
         } else {
@@ -96,12 +92,10 @@ class PersonResolverComponent extends AbstractController
         elseif (!empty(trim($this->newName))) {
             $trimmedName = trim($this->newName);
             $existingPerson = $this->personRepository->findOneBy(['name' => $trimmedName]);
-
             if ($existingPerson) {
                 $this->addFlash('error', sprintf('Die Person "%s" existiert bereits.', $trimmedName));
                 return;
             }
-
             $currentPerson->setName($trimmedName);
             $currentPerson->setIdentified(true);
         } else {
