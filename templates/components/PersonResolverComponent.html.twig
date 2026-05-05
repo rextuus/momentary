@@ -1,0 +1,75 @@
+<div {{ attributes }}>
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="alert alert-{{ label == 'error' ? 'danger' : label }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    {% set person = this.unidentifiedPerson %}
+
+    {% if person %}
+        {{ form_start(form) }}
+        <div class="row justify-content-center">
+            <div class="col-md-11">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Identitäten klären <span class="badge bg-primary ms-2">{{ this.remainingCount }} übrig</span></h2>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-action="live#action" data-live-action-param="skip">
+                        Überspringen
+                    </button>
+                </div>
+
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <!-- Vorschau der aktuellen Person (Faces) -->
+                        <div class="d-flex flex-wrap gap-2 mb-4">
+                            {% for face in person.videoFaces %}
+                                <img src="{{ asset('uploads/faces/' ~ face.faceImagePath) }}"
+                                     class="rounded img-thumbnail"
+                                     style="width: 120px; height: 120px; object-fit: cover;">
+                            {% endfor %}
+                        </div>
+
+                        <div class="row g-3 p-3 bg-light rounded border">
+                            {# Der Wrapper mit dynamischer ID ist die Lösung für das TomSelect-Problem #}
+                            <div class="col-md-6 border-end" id="autocomplete-container-{{ person.id }}">
+                                <label class="form-label fw-bold text-primary">1. Bestehende Person finden</label>
+                                {{ form_widget(form.targetPerson) }}
+                                <div class="form-text">Wähle jemanden aus, um die Fotos dorthin zu verschieben.</div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-success">2. Oder neu anlegen</label>
+                                <input type="text"
+                                       data-model="newName"
+                                       class="form-control"
+                                       placeholder="Name eingeben..."
+                                       autocomplete="off">
+                                <div class="form-text">Nur ausfüllen, wenn die Person oben nicht existiert.</div>
+                            </div>
+
+                            <div class="col-12 text-center mt-4">
+                                <button type="button"
+                                        class="btn btn-primary btn-lg px-5"
+                                        data-action="live#action"
+                                        data-live-action-param="prevent|processIdentification">
+                                    Bestätigen & Weiter
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {# Wir rendern den Rest des Formulars (hidden CSRF etc.) #}
+        {{ form_rest(form) }}
+        {{ form_end(form, {'render_rest': false}) }}
+    {% else %}
+        <div class="text-center py-5">
+            <h3 class="text-muted">Keine unidentifizierten Personen mehr gefunden.</h3>
+            <a href="/" class="btn btn-primary mt-3">Zum Dashboard</a>
+        </div>
+    {% endif %}
+</div>
