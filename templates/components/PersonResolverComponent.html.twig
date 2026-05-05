@@ -1,7 +1,8 @@
 <div {{ attributes }}>
+    {# Flash-Messages für Fehlermeldungen #}
     {% for label, messages in app.flashes %}
         {% for message in messages %}
-            <div class="alert alert-danger alert-dismissible fade show shadow-sm mx-auto" style="max-width: 90%;">
+            <div class="alert alert-danger alert-dismissible fade show shadow-sm mx-auto mb-3" style="max-width: 90%;">
                 {{ message }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
@@ -11,6 +12,9 @@
     {% set person = this.unidentifiedPerson %}
 
     {% if person %}
+        {# Wir holen uns das spezifisch ausgewählte Gesicht über die PHP-Getter-Logik #}
+        {% set mainFace = this.activeFace %}
+
         <div class="row justify-content-center">
             <div class="col-md-11">
                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -28,59 +32,74 @@
                     <div class="card-body p-0">
                         <div class="row g-0">
 
-                            {# LINKE SEITE: Visualisierung #}
-                            <div class="col-lg-7 bg-dark p-4 d-flex flex-column align-items-center justify-content-center" style="min-height: 600px;">
+                            {# LINKE SEITE: Visualisierung & Galerie #}
+                            <div class="col-lg-7 bg-dark p-4 d-flex flex-column align-items-center" style="min-height: 750px;">
 
-                                {% set mainFace = person.videoFaces|first %}
-
-                                {# 1. OBEN: MAXIMALER ÜBERBLICK & HOCHGESETZTER FOKUS #}
+                                {# 1. OBEN: ZOOM #}
                                 <div class="text-center w-100 mb-4">
                                     <small class="text-light opacity-50 d-block mb-2 text-uppercase fw-bold">Gesichts-Zoom</small>
-
                                     <div class="d-inline-block shadow-lg border border-4 border-white rounded overflow-hidden bg-black"
                                          style="width: 300px; height: 300px; position: relative;">
 
-                                        {% if mainFace.boundingBox %}
+                                        {% if mainFace and mainFace.boundingBox %}
                                             {% set box = mainFace.boundingBox %}
-                                            {# Zoom noch weiter reduziert (0.2) für mehr Umfeld #}
+                                            {# Zoom-Level 0.2 wie besprochen #}
                                             {% set scale = (1 / (box.Width ?: 0.1)) * 0.2 %}
 
-                                            {# Fokus auf die Oberkante der Box gesetzt, um das Gesicht zu erzwingen #}
+                                            {# Fokus auf Oberkante der Box #}
                                             {% set centerX = (box.Left + (box.Width / 2)) * 100 %}
                                             {% set centerY = (box.Top) * 100 %}
 
                                             <img src="{{ asset('uploads/faces/' ~ mainFace.faceImagePath) }}"
-                                                 style="position: absolute;
-                                                         width: 100%;
-                                                         top: 50%;
-                                                         left: 50%;
+                                                 style="position: absolute; width: 100%; top: 50%; left: 50%;
                                                          transform: translate(-{{ centerX }}%, -{{ centerY }}%) scale({{ scale }});
-                                                         transform-origin: center;
-                                                         display: block;">
+                                                         transform-origin: center; display: block;">
                                         {% else %}
-                                            <img src="{{ asset('uploads/faces/' ~ mainFace.faceImagePath) }}" class="img-fluid">
+                                            <div class="text-white p-5">Vorschau nicht verfügbar</div>
                                         {% endif %}
                                     </div>
                                 </div>
 
-                                {# 2. UNTEN: KONTEXT #}
-                                <div class="text-center w-100">
+                                {# 2. MITTE: KONTEXT (MIT BOX) #}
+                                <div class="text-center w-100 mb-4">
                                     <small class="text-light opacity-50 d-block mb-2 text-uppercase fw-bold">Kontext im Video</small>
+                                    <div class="position-relative d-inline-block shadow border border-1 border-secondary rounded overflow-hidden bg-black" style="max-width: 450px;">
+                                        {% if mainFace %}
+                                            <img src="{{ asset('uploads/faces/' ~ mainFace.faceImagePath) }}"
+                                                 class="img-fluid"
+                                                 style="width: 100%; opacity: 0.4; display: block;"
+                                                 alt="Context">
 
-                                    <div class="position-relative d-inline-block shadow border border-1 border-secondary rounded overflow-hidden bg-black" style="max-width: 500px;">
-                                        <img src="{{ asset('uploads/faces/' ~ mainFace.faceImagePath) }}"
-                                             class="img-fluid"
-                                             style="width: 100%; opacity: 0.4; display: block;"
-                                             alt="Context">
-
-                                        {% if mainFace.boundingBoxStyles %}
-                                            <div style="position: absolute;
-                                                        border: 2px solid #ff0000;
-                                                        box-shadow: 0 0-12px rgba(255,0,0,0.9);
-                                                        pointer-events: none;
-                                                        {{ mainFace.boundingBoxStyles|raw }}">
-                                            </div>
+                                            {% if mainFace.boundingBoxStyles %}
+                                                <div style="position: absolute; border: 2px solid #ff0000;
+                                                            box-shadow: 0 0 12px rgba(255,0,0,0.9); pointer-events: none;
+                                                            {{ mainFace.boundingBoxStyles|raw }}"></div>
+                                            {% endif %}
                                         {% endif %}
+                                    </div>
+                                </div>
+
+                                {# 3. UNTEN: GALERIE (Klickbare Thumbnails) #}
+                                <div class="w-100 mt-auto pt-3 border-top border-secondary">
+                                    <small class="text-light opacity-50 d-block mb-2 text-uppercase fw-bold text-center">Aufnahmen dieser Person</small>
+                                    <div class="d-flex flex-wrap justify-content-center gap-2 overflow-auto py-2" style="max-height: 160px;">
+                                        {% for face in person.videoFaces %}
+                                            <div class="position-relative"
+                                                 style="cursor: pointer;"
+                                                 data-action="click->live#action"
+                                                 data-live-action-param="selectFace"
+                                                 data-live-face-id-param="{{ face.id }}">
+
+                                                <img src="{{ asset('uploads/faces/' ~ face.faceImagePath) }}"
+                                                     class="rounded border {{ (mainFace and face.id == mainFace.id) ? 'border-primary border-4 shadow' : 'border-secondary opacity-50' }}"
+                                                     style="width: 70px; height: 70px; object-fit: cover; transition: all 0.2s;"
+                                                     alt="Thumbnail">
+
+                                                {% if mainFace and face.id == mainFace.id %}
+                                                    <span class="position-absolute top-0 start-50 translate-middle badge rounded-pill bg-primary" style="font-size: 0.6em; z-index: 10;">AKTIV</span>
+                                                {% endif %}
+                                            </div>
+                                        {% endfor %}
                                     </div>
                                 </div>
                             </div>
@@ -89,25 +108,38 @@
                             <div class="col-lg-5 p-4 bg-white d-flex flex-column border-start">
                                 {{ form_start(form) }}
                                 <h5 class="fw-bold mb-4">Zuweisung</h5>
+
                                 <div class="mb-4">
                                     <label class="form-label fw-bold text-primary small">Bestehende Person finden</label>
                                     {{ form_widget(form.targetPerson) }}
                                 </div>
+
                                 <div class="text-center position-relative mb-4">
                                     <hr><span class="position-absolute top-50 start-50 translate-middle bg-white px-2 text-muted small">ODER</span>
                                 </div>
+
                                 <div class="mb-5">
                                     <label class="form-label fw-bold text-success small">Neue Identität erstellen</label>
-                                    <input type="text" data-model="newName" class="form-control form-control-lg border-success" placeholder="Name eingeben...">
+                                    <input type="text"
+                                           data-model="newName"
+                                           class="form-control form-control-lg border-success shadow-sm"
+                                           placeholder="Name eingeben..."
+                                           autocomplete="off">
                                 </div>
+
                                 <div class="mt-auto">
-                                    <button type="button" class="btn btn-primary w-100 btn-lg py-3 shadow fw-bold" data-action="live#action" data-live-action-param="prevent|processIdentification">
+                                    <button type="button"
+                                            class="btn btn-primary w-100 btn-lg py-3 shadow fw-bold"
+                                            data-action="live#action"
+                                            data-live-action-param="prevent|processIdentification">
                                         Speichern & Nächste
                                     </button>
                                 </div>
+                                {# Verhindert doppeltes Rendern von Feldern #}
                                 {{ form_rest(form) }}
                                 {{ form_end(form, {'render_rest': false}) }}
                             </div>
+
                         </div>
                     </div>
                 </div>
@@ -115,8 +147,10 @@
         </div>
     {% else %}
         <div class="text-center py-5">
+            <div class="display-1 text-muted mb-4"><i class="bi bi-check2-circle"></i></div>
             <h3 class="text-muted fw-light">Alles erledigt!</h3>
-            <a href="/" class="btn btn-primary mt-3 px-5">Dashboard</a>
+            <p class="text-secondary">Alle Personen wurden erfolgreich identifiziert.</p>
+            <a href="/" class="btn btn-primary mt-3 px-5 shadow-sm">Zum Dashboard</a>
         </div>
     {% endif %}
 </div>

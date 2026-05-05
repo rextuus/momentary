@@ -10,6 +10,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormInterface;
 use Symfony\UX\LiveComponent\Attribute\AsLiveComponent;
 use Symfony\UX\LiveComponent\Attribute\LiveAction;
+use Symfony\UX\LiveComponent\Attribute\LiveArg;
 use Symfony\UX\LiveComponent\Attribute\LiveProp;
 use Symfony\UX\LiveComponent\ComponentWithFormTrait;
 use Symfony\UX\LiveComponent\DefaultActionTrait;
@@ -25,6 +26,9 @@ class PersonResolverComponent extends AbstractController
 
     #[LiveProp(writable: true)]
     public string $newName = '';
+
+    #[LiveProp]
+    public ?int $activeFaceId = null;
 
     public function __construct(
         private PersonRepository $personRepository,
@@ -65,12 +69,36 @@ class PersonResolverComponent extends AbstractController
         $result = $qb->getQuery()->getOneOrNullResult();
 
         if (!$result && $this->currentPersonId) {
-            $this->currentPersonId = $this->currentPersonId;
+            // behalte aktuelle
         } else {
             $this->currentPersonId = $result ? (int) $result['id'] : null;
+            // WICHTIG: Setze das aktive Face auf null, damit das erste der neuen Person genommen wird
+            $this->activeFaceId = null;
+        }
+        $this->newName = '';
+    }
+
+    public function getActiveFace()
+    {
+        $person = $this->getUnidentifiedPerson();
+        if (!$person) return null;
+
+        $faces = $person->getVideoFaces();
+        if ($faces->isEmpty()) return null;
+
+        if ($this->activeFaceId) {
+            foreach ($faces as $face) {
+                if ($face->getId() === $this->activeFaceId) return $face;
+            }
         }
 
-        $this->newName = '';
+        return $faces->first();
+    }
+
+    #[LiveAction]
+    public function selectFace(#[LiveArg('faceId')] int $id): void
+    {
+        $this->activeFaceId = $id;
     }
 
     #[LiveAction]
