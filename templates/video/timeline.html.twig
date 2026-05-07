@@ -4,126 +4,50 @@
 
 {% block body %}
     <div class="container mt-5 pb-5">
-        <!-- Header Bereich -->
         <div class="d-flex justify-content-between align-items-start mb-5">
             <div>
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb small">
-                        <li class="breadcrumb-item"><a href="{{ path('app_dashboard') }}" class="text-decoration-none">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="{{ path('app_dashboard') }}">Dashboard</a></li>
                         <li class="breadcrumb-item active">Timeline</li>
                     </ol>
                 </nav>
                 <h1 class="fw-bold mb-1">{{ video.title }}</h1>
                 <p class="text-muted small">
-                    <i class="fas fa-video me-2"></i>Video-Analyse Timeline
-                    <span class="mx-2">|</span>
-                    <i class="fas fa-clock me-1"></i> {{ video.videoFaces|length }} Detektionen
+                    <i class="fas fa-video me-2"></i>Video-Analyse Timeline | {{ video.videoFaces|length }} Detektionen
                 </p>
             </div>
             <div class="d-flex gap-2">
                 <button class="btn btn-sm btn-light border shadow-sm" onclick="toggleUnknowns()">
                     <i class="fas fa-eye-slash me-1"></i> Filter Unbekannt
                 </button>
-                <a href="{{ video.youtubeUrl }}" target="_blank" class="btn btn-sm btn-outline-danger shadow-sm">
-                    <i class="fab fa-youtube me-2"></i>YouTube
-                </a>
             </div>
         </div>
 
         <div class="modern-timeline">
             {% set lastTimestamp = null %}
-
             {% for key, facesAtTime in map.getTimeStamps %}
-                {# Sicherheitscheck: Nur verarbeiten, wenn wirklich Gesichter da sind #}
                 {% if facesAtTime is not empty %}
-                    {% set firstEntry = facesAtTime|first %}
-                    {% set currentTimestamp = firstEntry.timestamp %}
+                    {% set currentTimestamp = (facesAtTime|first).timestamp %}
 
-                    <!-- Zeitlücken-Logik -->
-                    {% if lastTimestamp is not null %}
-                        {% set gap = currentTimestamp - lastTimestamp %}
-                        {% if gap > 30 %}
-                            <div class="timeline-gap my-4 d-flex align-items-center">
-                                <div class="gap-line flex-grow-1"></div>
-                                <span class="gap-label mx-3 small text-muted text-uppercase fw-bold">
-                                    <i class="far fa-clock me-1"></i>
-                                    {% if gap > 60 %}
-                                        {{ (gap / 60)|round(0, 'floor') }} min {{ gap % 60 }}s Pause
-                                    {% else %}
-                                        {{ gap }}s Pause
-                                    {% endif %}
-                                </span>
-                                <div class="gap-line flex-grow-1"></div>
-                            </div>
-                        {% endif %}
+                    {# Gap Logik #}
+                    {% if lastTimestamp is not null and (currentTimestamp - lastTimestamp) > 30 %}
+                        <div class="timeline-gap my-4 d-flex align-items-center justify-content-center">
+                            <span class="badge rounded-pill bg-light text-muted border px-3 italic">
+                                Pause: {{ (currentTimestamp - lastTimestamp)|round }}s
+                            </span>
+                        </div>
                     {% endif %}
                     {% set lastTimestamp = currentTimestamp %}
 
-                    <div class="timeline-block mb-5">
-                        <div class="timeline-marker"></div>
-                        <div class="timeline-time mb-3">
-                            <span class="badge bg-dark fs-6 shadow-sm fw-normal">{{ key | date('H:i:s') }}</span>
-                        </div>
+                    <div class="timeline-block mb-5 border-left ps-4 position-relative">
+                        <div class="timeline-marker shadow-sm"></div>
+                        <div class="mb-3"><span class="badge bg-dark fw-normal">{{ key | date('H:i:s') }}</span></div>
 
-                        <div class="timeline-cards-grid">
+                        <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-6 g-3">
                             {% for videoFace in facesAtTime %}
-                                {% set isUnknown = not videoFace.person or videoFace.person.status.value == 'unknown' %}
-
-                                <div class="face-card shadow-sm border-0 {{ isUnknown ? 'is-unknown' : 'is-identified' }}">
-                                    <div class="face-card-header position-relative overflow-hidden bg-dark" style="height: 150px;">
-
-                                        <div class="face-thumb img-clickable w-100 h-100"
-                                             style="cursor: zoom-in; {{ face_zoom_style(asset('uploads/faces/' ~ videoFace.faceImagePath), videoFace.boundingBox, 0.5) }}"
-                                             data-bs-toggle="modal"
-                                             data-bs-target="#imageModal"
-                                             data-bs-img="{{ asset('uploads/faces/' ~ videoFace.faceImagePath) }}"
-                                             data-bs-box="{{ videoFace.boundingBoxStyles }}"
-                                             data-bs-caption="Gesichtet um {{ videoFace.timestamp }}s - {{ videoFace.person ? videoFace.person.name : 'Unbekannt' }}">
-                                        </div>
-
-                                        {% if videoFace.person %}
-                                            {% set profileFace = videoFace.person.profileFace ?: videoFace.person.videoFaces|first %}
-                                            <a href="{{ path('person_detail', {id: videoFace.person.id}) }}"
-                                               class="position-absolute top-0 end-0 m-2 rounded-circle border border-2 border-white shadow-sm overflow-hidden bg-white hover-scale d-flex align-items-center justify-content-center"
-                                               style="width: 38px; height: 38px; z-index: 10;"
-                                               title="{{ isUnknown ? 'Unbekannt verwalten' : videoFace.person.name }}">
-
-                                                {% if not isUnknown %}
-                                                    <div class="w-100 h-100" style="{{ face_zoom_style(asset('uploads/faces/' ~ profileFace.faceImagePath), profileFace.boundingBox, 0.1) }}"></div>
-                                                {% else %}
-                                                    <i class="fas fa-user-secret text-muted"></i>
-                                                {% endif %}
-                                            </a>
-                                        {% endif %}
-
-                                        <div class="gender-badge" style="z-index: 5;">
-                                            {% if videoFace.gender|lower == 'female' %}
-                                                <i class="fas fa-venus text-white"></i>
-                                            {% elseif videoFace.gender|lower == 'male' %}
-                                                <i class="fas fa-mars text-white"></i>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-
-                                    <div class="face-card-body p-3 text-center">
-                                        {% if not isUnknown %}
-                                            <h6 class="fw-bold mb-1 text-truncate">
-                                                <a href="{{ path('person_detail', {id: videoFace.person.id}) }}" class="text-decoration-none text-primary">
-                                                    {{ videoFace.person.name }}
-                                                </a>
-                                            </h6>
-                                        {% else %}
-                                            <h6 class="fw-normal mb-1 text-muted italic small">Unbekannt</h6>
-                                        {% endif %}
-
-                                        <div class="d-flex justify-content-center align-items-center gap-3 small mt-2 opacity-75">
-                                            <span><i class="fas fa-child me-1 small"></i>{{ videoFace.age }}</span>
-                                            <span>
-                                                {% set emotions = {'HAPPY': '😊', 'SAD': '😢', 'ANGRY': '😠', 'CONFUSED': '😕', 'SURPRISED': '😲', 'CALM': '😐'} %}
-                                                {{ emotions[videoFace.emotion] ?? '😐' }}
-                                            </span>
-                                        </div>
-                                    </div>
+                                <div class="col face-item-wrapper">
+                                    {{ component('FaceCardComponent', { videoFace: videoFace }) }}
                                 </div>
                             {% endfor %}
                         </div>
@@ -133,70 +57,25 @@
         </div>
     </div>
 
-    <!-- Modal -->
-    <div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content bg-dark border-0 shadow-lg">
-                <div class="modal-header border-0 pb-0">
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body text-center p-0 pb-5">
-                    <div class="position-relative d-inline-block">
-                        <img src="" id="modalImage" class="img-fluid rounded" alt="Detail">
-                        <div id="modalBox" class="position-absolute border border-primary border-4 shadow" style="display: none; pointer-events: none;"></div>
-                    </div>
-                    <div id="modalCaption" class="text-white mt-3 opacity-75 small"></div>
-                </div>
-            </div>
-        </div>
-    </div>
+    {% include '_partials/_image_modal.html.twig' %}
 
     <style>
-        .modern-timeline { position: relative; padding-left: 3rem; border-left: 2px solid #dee2e6; }
-        .timeline-block { position: relative; }
-        .timeline-marker { position: absolute; left: -3.35rem; top: 8px; width: 14px; height: 14px; background: #212529; border: 3px solid #fff; border-radius: 50%; z-index: 2; transition: transform 0.2s; }
-        .timeline-block:hover .timeline-marker { transform: scale(1.4); background: #0d6efd; }
-        .timeline-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 1.25rem; }
-        .face-card { background: white; border-radius: 12px; overflow: hidden; transition: all 0.2s ease-in-out; }
-        .timeline-gap { position: relative; left: -1.5rem; opacity: 0.8; }
-        .gap-line { height: 1px; background: repeating-linear-gradient(to right, #dee2e6, #dee2e6 4px, transparent 4px, transparent 8px); flex-grow: 1; }
-        .gap-label { background: #f8f9fa; padding: 4px 12px; border-radius: 20px; border: 1px solid #eee; white-space: nowrap; font-size: 0.7rem; letter-spacing: 0.5px; }
-        .face-card.is-unknown { filter: grayscale(100%); opacity: 0.6; background: #f8f9fa; }
-        .face-card.is-unknown:hover { filter: grayscale(30%); opacity: 0.9; }
-        .face-card.is-identified:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
-        .hover-scale { transition: transform 0.15s ease-in-out; }
-        .hover-scale:hover { transform: scale(1.15); border-color: #0d6efd !important; }
-        .gender-badge { position: absolute; bottom: 8px; left: 8px; background: rgba(0,0,0,0.4); width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 5px; font-size: 0.75rem; backdrop-filter: blur(2px); }
-        .img-clickable { transition: opacity 0.2s; }
-        .text-truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .modern-timeline { border-left: 2px solid #dee2e6; margin-left: 1rem; }
+        .timeline-marker {
+            position: absolute; left: -11px; top: 5px;
+            width: 20px; height: 20px; background: #212529;
+            border: 4px solid #fff; border-radius: 50%; z-index: 2;
+        }
+        .hover-scale:hover { transform: scale(1.1); }
     </style>
 
     <script>
         function toggleUnknowns() {
-            const unknowns = document.querySelectorAll('.face-card.is-unknown');
-            unknowns.forEach(card => {
-                const parent = card.closest('.face-card');
-                parent.style.display = (parent.style.display === 'none') ? 'block' : 'none';
-            });
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const imageModal = document.getElementById('imageModal');
-            imageModal.addEventListener('show.bs.modal', function (event) {
-                const button = event.relatedTarget;
-                const modalImg = imageModal.querySelector('#modalImage');
-                const modalTitle = imageModal.querySelector('#modalCaption');
-                const modalBox = imageModal.querySelector('#modalBox');
-                modalImg.src = button.getAttribute('data-bs-img');
-                modalTitle.textContent = button.getAttribute('data-bs-caption');
-                const boxStyles = button.getAttribute('data-bs-box');
-                if (boxStyles) {
-                    modalBox.style.cssText = boxStyles;
-                    modalBox.style.display = 'block';
-                } else {
-                    modalBox.style.display = 'none';
+            document.querySelectorAll('.face-item-wrapper').forEach(wrapper => {
+                if (wrapper.querySelector('.is-unknown-card')) { // Falls du die Klasse in der Komponente setzt
+                    wrapper.classList.toggle('d-none');
                 }
             });
-        });
+        }
     </script>
 {% endblock %}

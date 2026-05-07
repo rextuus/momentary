@@ -13,7 +13,7 @@ class VideoScene
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(inversedBy: 'scenes')]
+    #[ORM\ManyToOne(targetEntity: Video::class, inversedBy: 'scenes')]
     #[ORM\JoinColumn(nullable: false)]
     private ?Video $video = null;
 

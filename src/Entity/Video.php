@@ -38,9 +38,17 @@ class Video
     #[ORM\Column(length: 1000, nullable: true)]
     private ?string $localPath = null;
 
+    /**
+     * @var Collection<int, VideoScene>
+     */
+    #[ORM\OneToMany(targetEntity: VideoScene::class, mappedBy: 'video', cascade: ['remove'], orphanRemoval: true)]
+    #[ORM\OrderBy(['sceneNumber' => 'ASC'])]
+    private Collection $scenes;
+
     public function __construct()
     {
         $this->videoFaces = new ArrayCollection();
+        $this->scenes = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -133,6 +141,33 @@ class Video
     public function setLocalPath(?string $localPath): self
     {
         $this->localPath = $localPath;
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, VideoScene>
+     */
+    public function getScenes(): Collection
+    {
+        return $this->scenes;
+    }
+
+    public function addScene(VideoScene $scene): static
+    {
+        if (!$this->scenes->contains($scene)) {
+            $this->scenes->add($scene);
+            $scene->setVideo($this);
+        }
+        return $this;
+    }
+
+    public function removeScene(VideoScene $scene): static
+    {
+        if ($this->scenes->removeElement($scene)) {
+            if ($scene->getVideo() === $this) {
+                $scene->setVideo(null);
+            }
+        }
         return $this;
     }
 }

@@ -1,0 +1,66 @@
+<div {{ attributes.defaults({ class: 'face-card-container' }) }}>
+    <div class="card shadow-sm border-0 {{ this.isUnknown ? 'is-unknown' : 'is-identified' }}"
+         style="background: white; border-radius: 12px; overflow: hidden; position: relative;">
+
+        <div class="face-card-header position-relative bg-dark" style="height: 150px; overflow: hidden !important;">
+            <div class="face-thumb w-100 h-100"
+                 style="cursor: zoom-in; border-radius: 0 !important; {{ face_zoom_style(asset('uploads/faces/' ~ videoFace.faceImagePath), videoFace.boundingBox, 0.5) }}"
+                 data-bs-toggle="modal"
+                 data-bs-target="#imageModal"
+                 data-bs-img="{{ asset('uploads/faces/' ~ videoFace.faceImagePath) }}"
+                 data-bs-box="{{ videoFace.boundingBoxStyles }}"
+                 data-bs-caption="Zeitpunkt: {{ videoFace.timestamp }}s">
+            </div>
+
+            {% if videoFace.person and not this.isUnknown %}
+                {% set person = videoFace.person %}
+                {% set profileFace = person.profileFace ?: person.videoFaces|first %}
+
+                <a href="{{ path('person_detail', {id: person.id}) }}"
+                   class="person-mini-overlay shadow-sm hover-scale"
+                   title="Profil von {{ person.name }} öffnen"
+                   style="z-index: 20; position: absolute; top: 8px; right: 8px; width: 36px; height: 36px; border: 2px solid white; border-radius: 50% !important; background: white; overflow: hidden; display: block;">
+
+                    <div class="w-100 h-100"
+                         style="border-radius: 50% !important; {{ face_zoom_style(asset('uploads/faces/' ~ profileFace.faceImagePath), profileFace.boundingBox, 0.1) }}">
+                    </div>
+                </a>
+            {% endif %}
+
+            <div class="position-absolute bottom-0 start-0 m-2" style="z-index: 5;">
+                <span class="badge bg-dark bg-opacity-75" style="font-size: 0.65rem;">{{ videoFace.timestamp|round(1) }}s</span>
+            </div>
+        </div>
+
+        <div class="card-body p-2 text-center bg-white border-top">
+            <div class="fw-bold text-truncate small mb-1">
+                {% if not this.isUnknown %}
+                    <a href="{{ path('person_detail', {id: videoFace.person.id}) }}" class="text-decoration-none text-primary">
+                        {{ videoFace.person.name }}
+                    </a>
+                {% else %}
+                    <span class="text-muted italic small">Unbekannt</span>
+                {% endif %}
+            </div>
+            <div class="d-flex justify-content-center align-items-center gap-2 text-muted" style="font-size: 0.7rem;">
+                <span><i class="fas fa-child me-1"></i>{{ videoFace.age }}</span>
+                <span>{{ this.emotionEmoji }}</span>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .face-card-container .face-thumb {
+            border-radius: 0 !important;
+            clip-path: none !important;
+        }
+        .hover-scale {
+            transition: transform 0.2s ease-in-out;
+        }
+        .hover-scale:hover {
+            transform: scale(1.15);
+            border-color: #0d6efd !important;
+        }
+        .is-unknown { filter: grayscale(100%); opacity: 0.6; }
+    </style>
+</div>

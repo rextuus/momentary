@@ -30,7 +30,8 @@ readonly class VideoAnalyzer
         private string $projectDir,
         #[Autowire('%env(PYTHON_BINARY)%')]
         private string $pythonBinary = '/usr/bin/python3'
-    ) {}
+    ) {
+    }
 
     private function updateStatus(int $videoId, VideoStatus $status, ?string $localPath = null): void
     {
@@ -82,6 +83,11 @@ readonly class VideoAnalyzer
 
     public function detectScenes(string $videoPath, int $videoId): array
     {
+        $video = $this->entityManager->find(Video::class, $videoId);
+
+        // FIX: Alte Szenen löschen, bevor wir neue erkennen
+        $this->clearOldScenes($video);
+
         $this->updateStatus($videoId, VideoStatus::SCENE_DETECTION);
 
         $process = new Process([
@@ -104,7 +110,9 @@ readonly class VideoAnalyzer
     public function storeScenes(int $videoId, array $scenes): void
     {
         $video = $this->videoRepository->find($videoId);
-        if (!$video) throw new \RuntimeException("Video $videoId nicht gefunden.");
+        if (!$video) {
+            throw new \RuntimeException("Video $videoId nicht gefunden.");
+        }
 
         foreach ($scenes as $data) {
             $scene = new VideoScene();
@@ -139,12 +147,14 @@ readonly class VideoAnalyzer
 
             $frameList = json_decode($process->getOutput(), true);
             foreach ($frameList as $index => $frame) {
-                $this->bus->dispatch(new FrameAnalyzerMessage(
-                    $videoId,
-                    $frame['path'],
-                    (int) $frame['timestamp'],
-                    $index === array_key_last($frameList) // Letztes Frame markieren
-                ));
+                $this->bus->dispatch(
+                    new FrameAnalyzerMessage(
+                        $videoId,
+                        $frame['path'],
+                        (int) $frame['timestamp'],
+                        $index === array_key_last($frameList) // Letztes Frame markieren
+                    )
+                );
             }
 
             return true;
@@ -154,13 +164,35 @@ readonly class VideoAnalyzer
         }
     }
 
+    private function clearOldScenes(Video $video): void
+    {
+        $connection = $this->entityManager->getConnection();
+
+        // 1. Alle Faces löschen, die an Szenen dieses Videos hängen
+        // (Falls deine Relationen kein cascade-delete haben)
+        $connection->executeStatement(
+            'DELETE FROM video_face WHERE video_id = ?',
+            [$video->getId()]
+        );
+
+        // 2. Alle Szenen des Videos löschen
+        $connection->executeStatement(
+            'DELETE FROM video_scene WHERE video_id = ?',
+            [$video->getId()]
+        );
+
+        $this->entityManager->refresh($video);
+    }
+
     public function analyzeFrame(int $videoId, string $framePath, int $timestamp, bool $isLastFrame): void
     {
         // Wir setzen den Status nur beim ersten Frame auf "Analyzing"
         $this->updateStatus($videoId, VideoStatus::ANALYZING_FACES);
 
         $video = $this->videoRepository->find($videoId);
-        if (!$video) return;
+        if (!$video) {
+            return;
+        }
 
         $currentScene = $this->entityManager->getRepository(VideoScene::class)
             ->createQueryBuilder('s')
@@ -169,6 +201,7 @@ readonly class VideoAnalyzer
             ->andWhere(':ts < s.endSeconds')
             ->setParameter('video', $video)
             ->setParameter('ts', (float) $timestamp)
+            ->setMaxResults(1) // Absolute Sicherheit
             ->getQuery()
             ->getOneOrNullResult();
 
@@ -193,42 +226,46 @@ readonly class VideoAnalyzer
 
     private function saveFaceData($video, $faceData, $timestamp, $storagePath, $currentScene): void
     {
-        $this->entityManager->wrapInTransaction(function() use ($video, $faceData, $timestamp, $storagePath, $currentScene) {
-            $person = null;
-            $matchedFace = null;
+        $this->entityManager->wrapInTransaction(
+            function () use ($video, $faceData, $timestamp, $storagePath, $currentScene) {
+                $person = null;
+                $matchedFace = null;
 
-            if (!empty($faceData['matchedFaceId'])) {
-                $matchedFace = $this->entityManager->getRepository(VideoFace::class)
-                    ->findOneBy(['faceLabel' => $faceData['matchedFaceId']]);
-                $person = $matchedFace?->getPerson();
+                if (!empty($faceData['matchedFaceId'])) {
+                    $matchedFace = $this->entityManager->getRepository(VideoFace::class)
+                        ->findOneBy(['faceLabel' => $faceData['matchedFaceId']]);
+                    $person = $matchedFace?->getPerson();
+                }
+
+                if ($person === null) {
+                    $person = new Person();
+                    $person->setName('unknown_' . substr($faceData['faceId'], 0, 8));
+                    $person->setIdentified(false);
+                    $this->entityManager->persist($person);
+                    $this->entityManager->flush();
+                }
+
+                $videoFace = new VideoFace();
+                $videoFace->setVideo($video);
+                $videoFace->setPerson($person);
+                $videoFace->setTimestamp($timestamp);
+                $videoFace->setFaceImagePath($storagePath);
+                $videoFace->setFaceLabel($faceData['faceId']);
+                $videoFace->setAge((int) $faceData['age']);
+                $videoFace->setGender((string) $faceData['gender']);
+                $videoFace->setEmotion((string) $faceData['emotion']);
+                $videoFace->setBoundingBox($faceData['boundingBox']);
+
+                if ($currentScene) {
+                    $videoFace->setVideoScene($currentScene);
+                }
+                if ($matchedFace) {
+                    $videoFace->setMatchedBy($matchedFace);
+                    $videoFace->setMatchSimilarity((float) $faceData['similarity']);
+                }
+
+                $this->entityManager->persist($videoFace);
             }
-
-            if ($person === null) {
-                $person = new Person();
-                $person->setName('unknown_' . substr($faceData['faceId'], 0, 8));
-                $person->setIdentified(false);
-                $this->entityManager->persist($person);
-                $this->entityManager->flush();
-            }
-
-            $videoFace = new VideoFace();
-            $videoFace->setVideo($video);
-            $videoFace->setPerson($person);
-            $videoFace->setTimestamp($timestamp);
-            $videoFace->setFaceImagePath($storagePath);
-            $videoFace->setFaceLabel($faceData['faceId']);
-            $videoFace->setAge((int)$faceData['age']);
-            $videoFace->setGender((string)$faceData['gender']);
-            $videoFace->setEmotion((string)$faceData['emotion']);
-            $videoFace->setBoundingBox($faceData['boundingBox']);
-
-            if ($currentScene) $videoFace->setVideoScene($currentScene);
-            if ($matchedFace) {
-                $videoFace->setMatchedBy($matchedFace);
-                $videoFace->setMatchSimilarity((float)$faceData['similarity']);
-            }
-
-            $this->entityManager->persist($videoFace);
-        });
+        );
     }
 }

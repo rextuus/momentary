@@ -1,0 +1,50 @@
+{# templates/_partials/_image_modal.html.twig #}
+<div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content bg-dark border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center p-0 pb-5">
+                <div class="position-relative d-inline-block">
+                    <img src="" id="modalImage" class="img-fluid rounded" alt="Detailansicht">
+
+                    <div id="modalBox" class="position-absolute border border-primary border-4 shadow"
+                         style="display: none; pointer-events: none; z-index: 100;"></div>
+                </div>
+                <div id="modalCaption" class="text-white mt-3 opacity-75 small"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const imageModal = document.getElementById('imageModal');
+        if (imageModal) {
+            imageModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget; // Das Element, das das Modal geöffnet hat
+
+                const modalImg = imageModal.querySelector('#modalImage');
+                const modalTitle = imageModal.querySelector('#modalCaption');
+                const modalBox = imageModal.querySelector('#modalBox');
+
+                // Daten aus den Attributen ziehen
+                const imgSrc = button.getAttribute('data-bs-img');
+                const caption = button.getAttribute('data-bs-caption');
+                const boxStyles = button.getAttribute('data-bs-box');
+
+                // Modal befüllen
+                modalImg.src = imgSrc;
+                modalTitle.textContent = caption;
+
+                if (boxStyles) {
+                    modalBox.style.cssText = boxStyles;
+                    modalBox.style.display = 'block';
+                } else {
+                    modalBox.style.display = 'none';
+                }
+            });
+        }
+    });
+</script>
