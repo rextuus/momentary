@@ -1,0 +1,86 @@
+<div {{ attributes.defaults({ class: 'scene-section mb-4' }) }}>
+    <div class="card border-0 shadow-sm overflow-hidden" style="border-radius: 12px;">
+        {# Header Bereich - Klickbar zum einklappen #}
+        <div class="card-header bg-white p-3 d-flex justify-content-between align-items-center"
+             data-bs-toggle="collapse"
+             data-bs-target="#scene-collapse-{{ scene.id }}"
+             role="button"
+             aria-expanded="true"
+             style="cursor: pointer; transition: background-color 0.2s;">
+
+            <div class="d-flex align-items-center">
+                <div class="scene-badge me-3 shadow-sm">{{ sceneNumber }}</div>
+                <div>
+                    <h5 class="mb-0 h6 fw-bold">Szene {{ sceneNumber }}</h5>
+                    <small class="text-muted font-monospace" style="font-size: 0.75rem;">
+                        <i class="far fa-clock me-1"></i>{{ scene.startSeconds|round(1) }}s - {{ scene.endSeconds|round(1) }}s
+                        <span class="ms-1 text-primary">({{ this.duration }}s)</span>
+                    </small>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+                {% set faceCount = faces|length %}
+                <span class="badge rounded-pill {{ faceCount > 0 ? 'bg-primary' : 'bg-light text-muted' }} border">
+                    {{ faceCount }} {{ faceCount == 1 ? 'Gesicht' : 'Gesichter' }}
+                </span>
+                <i class="fas fa-chevron-down text-muted transition-icon"></i>
+            </div>
+        </div>
+
+        {# Einklappbarer Content #}
+        <div class="collapse show" id="scene-collapse-{{ scene.id }}">
+            <div class="card-body bg-light border-top p-3">
+                {% if faceCount > 0 %}
+                    {# Das Grid verhindert das Stretching der FaceCards #}
+                    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-6 g-3">
+                        {% for videoFace in faces %}
+                            <div class="col face-item-wrapper">
+                                {{ component('FaceCardComponent', { videoFace: videoFace }) }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-3">
+                        <p class="text-muted small mb-0 italic">
+                            <i class="fas fa-user-slash me-2 opacity-50"></i>Keine Gesichter in dieser Szene detektiert.
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .scene-section .scene-badge {
+            width: 38px;
+            height: 38px;
+            background: #212529;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            font-weight: 800;
+            font-size: 0.9rem;
+        }
+
+        .scene-section .card-header:hover {
+            background-color: #f8f9fa !important;
+        }
+
+        .scene-section .transition-icon {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Dreht das Icon wenn eingeklappt */
+        .scene-section .card-header.collapsed .transition-icon {
+            transform: rotate(-90deg);
+        }
+
+        /* Fix für das Grid in der Szene */
+        .face-item-wrapper {
+            display: flex;
+        }
+    </style>
+</div>

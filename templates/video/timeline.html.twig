@@ -8,16 +8,21 @@
             <div>
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb small">
-                        <li class="breadcrumb-item"><a href="{{ path('app_dashboard') }}">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="{{ path('app_dashboard') }}" class="text-decoration-none">Dashboard</a></li>
                         <li class="breadcrumb-item active">Timeline</li>
                     </ol>
                 </nav>
                 <h1 class="fw-bold mb-1">{{ video.title }}</h1>
                 <p class="text-muted small">
-                    <i class="fas fa-video me-2"></i>Video-Analyse Timeline | {{ video.videoFaces|length }} Detektionen
+                    <i class="fas fa-video me-2"></i>Video-Analyse Timeline
+                    <span class="mx-2">|</span>
+                    <i class="fas fa-film me-1"></i> {{ video.scenes|length }} Szenen
                 </p>
             </div>
             <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-light border shadow-sm" onclick="expandAll()">
+                    <i class="fas fa-expand-arrows-alt me-1"></i> Alle öffnen
+                </button>
                 <button class="btn btn-sm btn-light border shadow-sm" onclick="toggleUnknowns()">
                     <i class="fas fa-eye-slash me-1"></i> Filter Unbekannt
                 </button>
@@ -25,34 +30,23 @@
         </div>
 
         <div class="modern-timeline">
-            {% set lastTimestamp = null %}
-            {% for key, facesAtTime in map.getTimeStamps %}
-                {% if facesAtTime is not empty %}
-                    {% set currentTimestamp = (facesAtTime|first).timestamp %}
+            {# Wir loopen nun primär über die Szenen #}
+            {% for scene in video.scenes %}
 
-                    {# Gap Logik #}
-                    {% if lastTimestamp is not null and (currentTimestamp - lastTimestamp) > 30 %}
-                        <div class="timeline-gap my-4 d-flex align-items-center justify-content-center">
-                            <span class="badge rounded-pill bg-light text-muted border px-3 italic">
-                                Pause: {{ (currentTimestamp - lastTimestamp)|round }}s
-                            </span>
-                        </div>
-                    {% endif %}
-                    {% set lastTimestamp = currentTimestamp %}
+                {# Filtere die Gesichter für diese Szene aus der Map oder direkt aus video.videoFaces #}
+                {% set sceneFaces = []|merge(video.videoFaces|filter(f => f.timestamp >= scene.startSeconds and f.timestamp <= scene.endSeconds)) %}
 
-                    <div class="timeline-block mb-5 border-left ps-4 position-relative">
-                        <div class="timeline-marker shadow-sm"></div>
-                        <div class="mb-3"><span class="badge bg-dark fw-normal">{{ key | date('H:i:s') }}</span></div>
+                {{ component('SceneSectionComponent', {
+                    scene: scene,
+                    faces: sceneFaces,
+                    sceneNumber: loop.index
+                }) }}
 
-                        <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-6 g-3">
-                            {% for videoFace in facesAtTime %}
-                                <div class="col face-item-wrapper">
-                                    {{ component('FaceCardComponent', { videoFace: videoFace }) }}
-                                </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-ghost fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">Keine Szenen für dieses Video definiert.</p>
+                </div>
             {% endfor %}
         </div>
     </div>
@@ -60,21 +54,34 @@
     {% include '_partials/_image_modal.html.twig' %}
 
     <style>
-        .modern-timeline { border-left: 2px solid #dee2e6; margin-left: 1rem; }
-        .timeline-marker {
-            position: absolute; left: -11px; top: 5px;
-            width: 20px; height: 20px; background: #212529;
-            border: 4px solid #fff; border-radius: 50%; z-index: 2;
+        /* Die Timeline-Linie verläuft jetzt hinter den Szenen-Komponenten */
+        .modern-timeline {
+            position: relative;
+            padding-left: 1rem;
+            border-left: 2px solid #e9ecef;
+            margin-left: 1.5rem;
         }
-        .hover-scale:hover { transform: scale(1.1); }
+
+        /* Verhindert, dass die Karten in der Szene zu groß werden */
+        .scene-wrapper {
+            transition: all 0.3s ease;
+        }
     </style>
 
     <script>
         function toggleUnknowns() {
-            document.querySelectorAll('.face-item-wrapper').forEach(wrapper => {
-                if (wrapper.querySelector('.is-unknown-card')) { // Falls du die Klasse in der Komponente setzt
-                    wrapper.classList.toggle('d-none');
+            // Sucht in den Komponenten nach Karten, die als "unknown" markiert sind
+            document.querySelectorAll('.face-card-container').forEach(container => {
+                if (container.querySelector('.is-unknown-card') || container.querySelector('.is-unknown')) {
+                    container.closest('.col').classList.toggle('d-none');
                 }
+            });
+        }
+
+        function expandAll() {
+            document.querySelectorAll('.collapse').forEach(el => {
+                const bsCollapse = bootstrap.Collapse.getOrCreateInstance(el);
+                bsCollapse.show();
             });
         }
     </script>

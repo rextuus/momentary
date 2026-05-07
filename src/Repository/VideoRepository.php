@@ -40,4 +40,21 @@ class VideoRepository extends ServiceEntityRepository
     //            ->getOneOrNullResult()
     //        ;
     //    }
+
+    public function findFullVideo(int $id): ?Video
+    {
+        return $this->createQueryBuilder('v')
+            ->leftJoin('v.scenes', 's')
+            ->addSelect('s')
+            ->leftJoin('v.videoFaces', 'vf')
+            ->addSelect('vf')
+            ->leftJoin('vf.person', 'p') // Optional: Personen auch direkt laden
+            ->addSelect('p')
+            ->where('v.id = :id')
+            ->setParameter('id', $id)
+            ->orderBy('s.startSeconds', 'ASC')
+            ->addOrderBy('vf.timestamp', 'ASC')
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 }

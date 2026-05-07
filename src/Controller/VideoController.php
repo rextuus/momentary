@@ -89,11 +89,18 @@ final class VideoController extends AbstractController
      * Timeline Ansicht
      */
     #[Route('/{id}/timeline', name: 'video_timeline', methods: ['GET'])]
-    public function timeline(Video $video): Response
+    public function timeline(int $id): Response // Wir nehmen die ID statt des Objekts
     {
-        $videoFaces = $video->getVideoFaces()->toArray();
+        $video = $this->videoRepository->findFullVideo($id);
+
+        if (!$video) {
+            throw $this->createNotFoundException('Video nicht gefunden');
+        }
+
+        // Die Map brauchen wir nur noch, wenn du sie für andere Logik nutzt.
+        // Für die Szenen-Darstellung filtern wir direkt im Video-Objekt.
         $map = new VideoFaceMap();
-        foreach ($videoFaces as $videoFace) {
+        foreach ($video->getVideoFaces() as $videoFace) {
             $map->addFace($videoFace);
         }
 

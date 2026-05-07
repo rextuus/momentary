@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\Person;
+use App\Entity\Video;
 use App\Entity\VideoFace;
 use App\Entity\VideoScene;
 use App\Enum\VideoStatus;
