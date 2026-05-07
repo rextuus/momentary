@@ -127,7 +127,7 @@ readonly class VideoAnalyzer
         $this->entityManager->flush();
     }
 
-    public function extractFrames(int $videoId, string $videoPath): bool
+    public function extractFrames(int $videoId, string $videoPath, float $fps = 0.2): bool
     {
         $this->updateStatus($videoId, VideoStatus::SPLITTING);
 
@@ -135,7 +135,8 @@ readonly class VideoAnalyzer
             $process = new Process([
                 $this->pythonBinary,
                 $this->projectDir . '/video-analyzer/python/extract_frames.py',
-                $videoPath
+                $videoPath,
+                (string)$fps
             ]);
 
             $process->setTimeout(600);

@@ -13,16 +13,18 @@ def extract_timestamp_from_filename(filename: str, fps: float) -> int:
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: extract_frames.py <video_path>", file=sys.stderr)
+        print("Usage: extract_frames.py <video_path> [fps]", file=sys.stderr)
         sys.exit(1)
 
     video_path = Path(sys.argv[1])
-    fps = 0.2
+
+    # NEU: FPS vom Argument lesen (Standard: 0.2)
+    fps = float(sys.argv[2]) if len(sys.argv) > 2 else 0.2
 
     frame_dir = video_path.parent / "frames"
     frame_dir.mkdir(parents=True, exist_ok=True)
 
-    # FFmpeg Extraktion
+    # FFmpeg Extraktion mit dynamischer FPS
     subprocess.run([
         "ffmpeg", "-loglevel", "error", "-y",
         "-i", str(video_path),
