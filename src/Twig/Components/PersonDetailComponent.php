@@ -38,4 +38,36 @@ class PersonDetailComponent extends AbstractController
             $this->addFlash('success', 'Profilbild wurde aktualisiert.');
         }
     }
+
+    #[LiveAction]
+    public function splitToNewPerson(#[LiveArg] int $faceId): void
+    {
+        $face = $this->videoFaceRepository->find($faceId);
+
+        // Sicherheitscheck: Existiert das Gesicht und gehört es aktuell zu dieser Person?
+        if (!$face || $face->getPerson() !== $this->person) {
+            return;
+        }
+
+        // 1. Neue unbekannte Person anlegen
+        $newPerson = new Person();
+        $uniqueId = substr(md5((string)hrtime(true)), 0, 8);
+        $newPerson->setName('unknown_' . $uniqueId);
+        $newPerson->setIdentified(false);
+        $newPerson->setStatus(\App\Enum\PersonStatus::NEW);
+
+        $this->entityManager->persist($newPerson);
+
+        // 2. Das Gesicht der neuen Person zuweisen
+        $face->setPerson($newPerson);
+
+        // 3. Falls das Gesicht das Profilbild der alten Person war, dieses leeren
+        if ($this->person->getProfileFace() === $face) {
+            $this->person->setProfileFace(null);
+        }
+
+        $this->entityManager->flush();
+
+        $this->addFlash('success', 'Gesicht wurde erfolgreich in eine neue Person ausgelagert.');
+    }
 }
