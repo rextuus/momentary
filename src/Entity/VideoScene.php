@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\VideoSceneRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: VideoSceneRepository::class)]
@@ -25,6 +27,44 @@ class VideoScene
 
     #[ORM\Column]
     private float $endSeconds;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $title = null;
+
+    /**
+     * @var Collection<int, VideoFace>
+     */
+    #[ORM\OneToMany(targetEntity: VideoFace::class, mappedBy: 'videoScene')]
+    private Collection $videoFaces;
+
+    public function __construct()
+    {
+        $this->videoFaces = new ArrayCollection();
+    }
+
+    public function getVideoFaces(): Collection
+    {
+        return $this->videoFaces;
+    }
+
+    public function setVideoFaces(Collection $videoFaces): self
+    {
+        $this->videoFaces = $videoFaces;
+        return $this;
+    }
+
+
+
+    public function getTitle(): ?string
+    {
+        return $this->title;
+    }
+
+    public function setTitle(?string $title): self
+    {
+        $this->title = $title;
+        return $this;
+    }
 
     public function getId(): ?int
     {

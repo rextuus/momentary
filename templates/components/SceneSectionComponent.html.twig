@@ -1,17 +1,19 @@
 <div {{ attributes.defaults({ class: 'scene-section mb-4' }) }}>
     <div class="card border-0 shadow-sm overflow-hidden" style="border-radius: 12px;">
-        {# Header Bereich - Klickbar zum einklappen #}
-        <div class="card-header bg-white p-3 d-flex justify-content-between align-items-center"
-             data-bs-toggle="collapse"
-             data-bs-target="#scene-collapse-{{ scene.id }}"
-             role="button"
-             aria-expanded="true"
-             style="cursor: pointer; transition: background-color 0.2s;">
+        <div class="card-header bg-white p-3 d-flex justify-content-between align-items-center">
 
-            <div class="d-flex align-items-center">
+            <div class="d-flex align-items-center flex-grow-1">
                 <div class="scene-badge me-3 shadow-sm">{{ sceneNumber }}</div>
-                <div>
-                    <h5 class="mb-0 h6 fw-bold">Szene {{ sceneNumber }}</h5>
+                <div class="flex-grow-1">
+                    {# INPUT FÜR DEN TITEL #}
+                    <input type="text"
+                           class="form-control form-control-sm border-0 fw-bold p-0 bg-transparent mb-0"
+                           style="box-shadow: none; font-size: 1rem;"
+                           placeholder="Szene {{ sceneNumber }} benennen..."
+                           data-model="scene.title"
+                           data-action="blur->live#action"
+                           data-live-action-param="updateTitle">
+
                     <small class="text-muted font-monospace" style="font-size: 0.75rem;">
                         <i class="far fa-clock me-1"></i>{{ scene.startSeconds|round(1) }}s - {{ scene.endSeconds|round(1) }}s
                         <span class="ms-1 text-primary">({{ this.duration }}s)</span>
@@ -19,22 +21,31 @@
                 </div>
             </div>
 
-            <div class="d-flex align-items-center gap-3">
-                {% set faceCount = faces|length %}
-                <span class="badge rounded-pill {{ faceCount > 0 ? 'bg-primary' : 'bg-light text-muted' }} border">
-                    {{ faceCount }} {{ faceCount == 1 ? 'Gesicht' : 'Gesichter' }}
+            <div class="d-flex align-items-center gap-2">
+                {# MERGE BUTTON #}
+                <button class="btn btn-link text-muted p-1"
+                        title="Mit nächster Szene zusammenfassen"
+                        data-action="live#action"
+                        data-live-action-param="mergeWithNext"
+                        onclick="return confirm('Diese Szene mit der nächsten verschmelzen?')">
+                    <i class="fas fa-object-group"></i>
+                </button>
+
+                <span class="badge rounded-pill {{ this.faces|length > 0 ? 'bg-primary' : 'bg-light text-muted' }} border"
+                      data-bs-toggle="collapse"
+                      data-bs-target="#scene-collapse-{{ scene.id }}"
+                      style="cursor: pointer;">
+                    {{ this.faces|length }} Gesichter
                 </span>
-                <i class="fas fa-chevron-down text-muted transition-icon"></i>
+                <i class="fas fa-chevron-down text-muted transition-icon" data-bs-toggle="collapse" data-bs-target="#scene-collapse-{{ scene.id }}"></i>
             </div>
         </div>
 
-        {# Einklappbarer Content #}
         <div class="collapse show" id="scene-collapse-{{ scene.id }}">
             <div class="card-body bg-light border-top p-3">
-                {% if faceCount > 0 %}
-                    {# Das Grid verhindert das Stretching der FaceCards #}
+                {% if this.faces|length > 0 %}
                     <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-6 g-3">
-                        {% for videoFace in faces %}
+                        {% for videoFace in this.faces %}
                             <div class="col face-item-wrapper">
                                 {{ component('FaceCardComponent', { videoFace: videoFace }) }}
                             </div>
@@ -42,45 +53,10 @@
                     </div>
                 {% else %}
                     <div class="text-center py-3">
-                        <p class="text-muted small mb-0 italic">
-                            <i class="fas fa-user-slash me-2 opacity-50"></i>Keine Gesichter in dieser Szene detektiert.
-                        </p>
+                        <p class="text-muted small mb-0 italic">Keine Gesichter in dieser Szene.</p>
                     </div>
                 {% endif %}
             </div>
         </div>
     </div>
-
-    <style>
-        .scene-section .scene-badge {
-            width: 38px;
-            height: 38px;
-            background: #212529;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 10px;
-            font-weight: 800;
-            font-size: 0.9rem;
-        }
-
-        .scene-section .card-header:hover {
-            background-color: #f8f9fa !important;
-        }
-
-        .scene-section .transition-icon {
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        /* Dreht das Icon wenn eingeklappt */
-        .scene-section .card-header.collapsed .transition-icon {
-            transform: rotate(-90deg);
-        }
-
-        /* Fix für das Grid in der Szene */
-        .face-item-wrapper {
-            display: flex;
-        }
-    </style>
 </div>
