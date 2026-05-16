@@ -82,7 +82,7 @@ readonly class VideoAnalyzer
         return $path;
     }
 
-    public function detectScenes(string $videoPath, int $videoId): array
+    public function detectScenes(string $videoPath, int $videoId, float $threshold = 27.0, string $detector = 'content'): array
     {
         $video = $this->entityManager->find(Video::class, $videoId);
 
@@ -94,7 +94,11 @@ readonly class VideoAnalyzer
         $process = new Process([
             $this->pythonBinary,
             $this->projectDir . '/video-analyzer/python/detect_scenes.py',
-            $videoPath
+            $videoPath,
+            '--threshold',
+            (string)$threshold,
+            '--detector',
+            $detector
         ]);
 
         $process->setTimeout(900);
@@ -105,7 +109,48 @@ readonly class VideoAnalyzer
             throw new \RuntimeException('Scene detection failed: ' . $process->getErrorOutput());
         }
 
-        return json_decode($process->getOutput(), true);
+        $output = $process->getOutput();
+        // Wir suchen das letzte Vorkommen von '[', um nur das JSON-Array zu extrahieren,
+        // falls davor Müll auf STDOUT gelandet ist.
+        $startPos = strrpos($output, '[');
+        if ($startPos !== false) {
+            $output = substr($output, $startPos);
+        }
+
+        $data = json_decode($output, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new \RuntimeException('Failed to decode scene detection output: ' . json_last_error_msg() . ' | Raw output: ' . $output);
+        }
+
+        // Falls Warnungen im JSON enthalten sind, diese loggen/ausgeben
+        if (count($data) === 1 && isset($data[0]['warning'])) {
+            // Wenn nur eine Szene mit Warnung zurückkommt, deutet das auf technische Probleme hin
+            // (z.B. Interlaced MPG). In diesem Fall versuchen wir eine automatische Konvertierung
+            // und starten den Prozess erneut, falls es noch nicht die konvertierte Version war.
+            if (!str_contains($videoPath, 'video_analyze_')) {
+                 $tempMp4 = sys_get_temp_dir() . '/video_analyze_' . $videoId . '.mp4';
+                 
+                 // Konvertierung
+                 $convProcess = new Process([
+                     'ffmpeg', '-y', '-i', $videoPath, 
+                     '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23', 
+                     '-c:a', 'aac', $tempMp4
+                 ]);
+                 $convProcess->setTimeout(1800);
+                 $convProcess->run();
+
+                 if ($convProcess->isSuccessful()) {
+                     // Wir nutzen den konvertierten Pfad für den Rest der Pipeline
+                     $video->setLocalPath($tempMp4);
+                     $this->entityManager->flush();
+
+                     $retryData = $this->detectScenes($tempMp4, $videoId, $threshold, $detector);
+                     return $retryData;
+                 }
+            }
+        }
+
+        return $data;
     }
 
     public function storeScenes(int $videoId, array $scenes): void
@@ -223,6 +268,31 @@ readonly class VideoAnalyzer
         // Wenn es das letzte Frame war: FINALE!
         if ($isLastFrame) {
             $this->updateStatus($videoId, VideoStatus::COMPLETED);
+            $this->cleanupLocalFile($videoId);
+        }
+    }
+
+    public function cleanupLocalFile(int $videoId): void
+    {
+        $video = $this->videoRepository->find($videoId);
+        if (!$video) {
+            return;
+        }
+
+        // Wir löschen die Datei nur, wenn:
+        // 1. Eine YouTube-URL vorhanden ist (Sicherheit, dass es online ist)
+        // 2. Ein lokaler Pfad gesetzt ist
+        if ($video->getYoutubeUrl() && $video->getLocalPath()) {
+            $path = $video->getLocalPath();
+            if (file_exists($path)) {
+                // Zusätzliche Sicherheit: Nur löschen, wenn es im Import-Ordner ODER im Temp-Ordner liegt
+                $isImport = str_contains($path, '/uploads/import/');
+                $isTemp = str_contains($path, sys_get_temp_dir());
+
+                if ($isImport || $isTemp) {
+                    unlink($path);
+                }
+            }
         }
     }
 

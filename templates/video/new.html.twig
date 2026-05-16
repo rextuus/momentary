@@ -18,6 +18,17 @@
         </div>
 
         <div class="mb-3">
+            {{ form_label(form.sourceFile) }}
+            {{ form_widget(form.sourceFile) }}
+            {{ form_errors(form.sourceFile) }}
+            <small class="text-muted">Lade die Datei zuerst per FTP in das Verzeichnis <code>public/uploads/import</code> hoch.</small>
+        </div>
+
+        <div class="text-center my-3">
+            <span class="badge bg-secondary">ODER</span>
+        </div>
+
+        <div class="mb-3">
             {{ form_label(form.youtubeUrl) }}
             {{ form_widget(form.youtubeUrl) }}
             {{ form_errors(form.youtubeUrl) }}

@@ -44,12 +44,28 @@
                                         </span>
                                         </div>
                                         <p class="card-text small text-muted mb-2">
-                                            <i class="fab fa-youtube me-1"></i> {{ video.youtubeUrl }}
+                                            {% if video.youtubeUrl %}
+                                                <i class="fab fa-youtube me-1 text-danger"></i> {{ video.youtubeUrl }}
+                                            {% else %}
+                                                <span class="text-warning"><i class="fas fa-exclamation-circle me-1"></i> YouTube-Link fehlt</span>
+                                            {% endif %}
                                         </p>
                                         {% if video.localPath %}
-                                            <div class="d-flex align-items-center text-truncate" style="max-width: 400px;">
-                                                <i class="fas fa-folder-open small me-2 text-muted"></i>
-                                                <code class="small text-pink" style="font-size: 0.75rem;">{{ video.localPath }}</code>
+                                            <div class="d-flex align-items-center text-truncate mb-2" style="max-width: 400px;">
+                                                <i class="fas fa-file-video small me-2 text-muted"></i>
+                                                <code class="small text-pink" style="font-size: 0.75rem;">{{ video.localPath|split('/')|last }}</code>
+                                            </div>
+                                        {% endif %}
+
+                                        {% if not video.youtubeUrl %}
+                                            <div class="mt-2">
+                                                <a href="https://studio.youtube.com/" target="_blank" class="btn btn-sm btn-danger shadow-sm mb-2">
+                                                    <i class="fab fa-youtube me-1"></i> Video jetzt auf YouTube hochladen
+                                                </a>
+                                                <form action="{{ path('video_set_youtube_url', {id: video.id}) }}" method="POST" class="d-flex gap-2">
+                                                    <input type="url" name="youtube_url" class="form-control form-control-sm" placeholder="Kopierte URL hier einfügen" required>
+                                                    <button type="submit" class="btn btn-sm btn-success">Speichern</button>
+                                                </form>
                                             </div>
                                         {% endif %}
                                     </div>

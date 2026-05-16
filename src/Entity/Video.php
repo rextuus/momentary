@@ -19,8 +19,11 @@ class Video
     #[ORM\Column(length: 255)]
     private ?string $title = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $youtubeUrl = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $sourceFile = null;
 
     #[ORM\Column]
     private ?\DateTimeImmutable $createdAt = null;
@@ -73,10 +76,21 @@ class Video
         return $this->youtubeUrl;
     }
 
-    public function setYoutubeUrl(string $youtubeUrl): static
+    public function setYoutubeUrl(?string $youtubeUrl): static
     {
         $this->youtubeUrl = $youtubeUrl;
 
+        return $this;
+    }
+
+    public function getSourceFile(): ?string
+    {
+        return $this->sourceFile;
+    }
+
+    public function setSourceFile(?string $sourceFile): self
+    {
+        $this->sourceFile = $sourceFile;
         return $this;
     }
 

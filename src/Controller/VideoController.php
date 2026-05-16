@@ -9,11 +9,15 @@ use App\Message\DownloadVideoMessage;
 use App\Message\SplitVideoIntoFramesMessage;
 use App\Repository\VideoRepository;
 use App\Service\Video\VideoFaceMap;
+use App\Service\VideoAnalyzer;
+use App\Enum\VideoStatus;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\Routing\Annotation\Route;
 
 #[Route('/video')]
@@ -22,7 +26,9 @@ final class VideoController extends AbstractController
     public function __construct(
         private MessageBusInterface $messageBus,
         private VideoRepository $videoRepository,
-        private EntityManagerInterface $entityManager
+        private EntityManagerInterface $entityManager,
+        #[Autowire('%kernel.project_dir%/public/uploads/import')]
+        private string $importDir
     ) {}
 
     /**
@@ -49,18 +55,46 @@ final class VideoController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             $video->setCreatedAt(new \DateTimeImmutable());
 
+            if ($video->getSourceFile()) {
+                $video->setLocalPath($this->importDir . '/' . $video->getSourceFile());
+            }
+
             $this->entityManager->persist($video);
             $this->entityManager->flush();
 
-            $this->messageBus->dispatch(new DownloadVideoMessage($video->getId()));
+            if ($video->getYoutubeUrl()) {
+                $this->messageBus->dispatch(new DownloadVideoMessage($video->getId()));
+                $this->addFlash('success', 'Video hinzugefügt und Download gestartet!');
+            } elseif ($video->getLocalPath()) {
+                $this->messageBus->dispatch(new DetectVideoScenesMessage($video->getId(), $video->getLocalPath()));
+                $this->addFlash('success', 'Lokales Video hinzugefügt und Analyse gestartet!');
+            }
 
-            $this->addFlash('success', 'Video hinzugefügt und Download gestartet!');
             return $this->redirectToRoute('app_video_index');
         }
 
         return $this->render('video/new.html.twig', [
             'form' => $form->createView(),
         ]);
+    }
+
+    #[Route('/{id}/set-youtube-url', name: 'video_set_youtube_url', methods: ['POST'])]
+    public function setYoutubeUrl(Video $video, Request $request, VideoAnalyzer $videoAnalyzer): RedirectResponse
+    {
+        $url = $request->request->get('youtube_url');
+        if ($url) {
+            $video->setYoutubeUrl($url);
+            $this->entityManager->flush();
+
+            // Trigger cleanup if completed
+            if ($video->getStatus() === VideoStatus::COMPLETED) {
+                $videoAnalyzer->cleanupLocalFile($video->getId());
+            }
+
+            $this->addFlash('success', 'YouTube-Link wurde gespeichert.');
+        }
+
+        return $this->redirectToRoute('app_video_index');
     }
 
     /**
