@@ -2,17 +2,141 @@
 <html>
     <head>
         <meta charset="UTF-8">
-        <title>{% block title %}Welcome!{% endblock %}</title>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚫️</text><text y=%221.3em%22 x=%220.2em%22 font-size=%2276%22 fill=%22%23fff%22>sf</text></svg>">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>{% block title %}Momentary - Video AI{% endblock %}</title>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>🎬</text></svg>">
+        
+        <!-- Fonts & Icons -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
         {% block stylesheets %}
             {{ encore_entry_link_tags('app') }}
+            <!-- Fallback Bootstrap if encore not built or minimal -->
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+            <style>
+                :root {
+                    --primary-color: #4f46e5;
+                    --secondary-color: #64748b;
+                    --success-color: #10b981;
+                    --warning-color: #f59e0b;
+                    --danger-color: #ef4444;
+                    --bg-light: #f8fafc;
+                }
+                body {
+                    font-family: 'Inter', sans-serif;
+                    background-color: var(--bg-light);
+                    color: #1e293b;
+                }
+                .navbar {
+                    background: rgba(255, 255, 255, 0.8);
+                    backdrop-filter: blur(10px);
+                    border-bottom: 1px solid #e2e8f0;
+                }
+                .navbar-brand {
+                    font-weight: 700;
+                    letter-spacing: -0.5px;
+                    color: var(--primary-color) !important;
+                }
+                .nav-link {
+                    font-weight: 500;
+                    color: var(--secondary-color);
+                    transition: color 0.2s;
+                }
+                .nav-link:hover, .nav-link.active {
+                    color: var(--primary-color);
+                }
+                .btn-primary {
+                    background-color: var(--primary-color);
+                    border-color: var(--primary-color);
+                }
+                .btn-primary:hover {
+                    background-color: #4338ca;
+                    border-color: #4338ca;
+                }
+                .card {
+                    border: none;
+                    border-radius: 12px;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                }
+                .hover-card:hover {
+                    transform: translateY(-4px);
+                    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+                }
+                footer {
+                    background-color: #fff;
+                    border-top: 1px solid #e2e8f0;
+                    padding: 2rem 0;
+                    margin-top: 4rem;
+                }
+            </style>
         {% endblock %}
 
         {% block javascripts %}
             {{ encore_entry_script_tags('app') }}
+            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
         {% endblock %}
     </head>
     <body>
-        {% block body %}{% endblock %}
+        <nav class="navbar navbar-expand-lg sticky-top mb-4">
+            <div class="container">
+                <a class="navbar-brand d-flex align-items-center" href="{{ path('app_dashboard') }}">
+                    <i class="fas fa-film me-2"></i>
+                    Momentary
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item">
+                            <a class="nav-link {{ app.request.attributes.get('_route') == 'app_dashboard' ? 'active' }}" href="{{ path('app_dashboard') }}">
+                                <i class="fas fa-home me-1"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ app.request.attributes.get('_route') starts with 'app_video' or app.request.attributes.get('_route') starts with 'video_' ? 'active' }}" href="{{ path('app_video_index') }}">
+                                <i class="fas fa-video me-1"></i> Videos
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ app.request.attributes.get('_route') starts with 'person_' ? 'active' }}" href="{{ path('person_index') }}">
+                                <i class="fas fa-users me-1"></i> Personen
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ app.request.attributes.get('_route') == 'app_identity_resolve' ? 'active' }}" href="{{ path('app_identity_resolve') }}">
+                                <i class="fas fa-wand-magic-sparkles me-1"></i> Resolve
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <main>
+            {% for label, messages in app.flashes %}
+                <div class="container mt-3">
+                    {% for message in messages %}
+                        <div class="alert alert-{{ label }} alert-dismissible fade show shadow-sm border-0" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+
+            {% block body %}{% endblock %}
+        </main>
+
+        <footer>
+            <div class="container text-center">
+                <p class="text-muted mb-0 small">&copy; {{ "now"|date("Y") }} Momentary - Video Intelligence Platform</p>
+                <p class="text-muted small">Automatische Personenerkennung & Video-Archivierung</p>
+            </div>
+        </footer>
     </body>
 </html>

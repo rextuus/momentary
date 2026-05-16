@@ -1,23 +1,17 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Identify Persons - Family Archive{% endblock %}
+{% block title %}Resolve Identities - Momentary{% endblock %}
 
 {% block body %}
-    <div class="container mt-5">
-        {# Header-Bereich für den Kontext #}
-        <div class="row justify-content-center mb-4">
-            <div class="col-md-10">
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb">
-{#                        <li class="breadcrumb-item"><a href="{{ path('video_index') }}">Dashboard</a></li>#}
-                        <li class="breadcrumb-item active">Identity Resolver</li>
-                    </ol>
-                </nav>
-                <hr>
-            </div>
+    <div class="container pb-5">
+        <div class="mb-4">
+            <h1 class="fw-bold mb-0">Identity Resolver</h1>
+            <p class="text-muted">Ordne erkannte Gesichter bekannten Personen zu oder erstelle neue Profile.</p>
         </div>
 
-        {# Die Live-Komponente #}
-        {{ component('PersonResolverComponent') }}
+        <div class="card p-4 shadow-sm border-0 bg-white">
+            {# Die Live-Komponente #}
+            {{ component('PersonResolverComponent') }}
+        </div>
     </div>
 {% endblock %}

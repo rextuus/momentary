@@ -3,22 +3,22 @@
 {% block title %}Dashboard - Momentary{% endblock %}
 
 {% block body %}
-    <div class="container mt-5 pb-5">
+    <div class="container pb-5">
         <!-- Header -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h1 class="fw-bold mb-0 text-primary">Momentary</h1>
+                <h1 class="fw-bold mb-0">Dashboard</h1>
                 <p class="text-muted">Video-Intelligence & Pipeline Control</p>
             </div>
             <a href="{{ path('video_new') }}" class="btn btn-primary shadow-sm rounded-pill px-4">
-                <i class="fas fa-plus me-2"></i>Neues Video scanen
+                <i class="fas fa-plus me-2"></i>Neues Video scannen
             </a>
         </div>
 
         <!-- Kompakt-Stats -->
         <div class="row g-3 mb-4">
             <div class="col-6 col-md-3">
-                <div class="card border-0 shadow-sm h-100 bg-white">
+                <div class="card h-100 bg-white">
                     <div class="card-body py-3">
                         <div class="text-muted small fw-bold text-uppercase">Videos</div>
                         <div class="h4 mb-0 fw-bold">{{ stats.videos }}</div>
@@ -26,7 +26,7 @@
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="card border-0 shadow-sm h-100 bg-white">
+                <div class="card h-100 bg-white">
                     <div class="card-body py-3">
                         <div class="text-muted small fw-bold text-uppercase">Personen</div>
                         <div class="h4 mb-0 fw-bold">{{ stats.persons }}</div>
@@ -34,7 +34,7 @@
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="card border-0 shadow-sm h-100 bg-white">
+                <div class="card h-100 bg-white">
                     <div class="card-body py-3">
                         <div class="text-muted small fw-bold text-uppercase">Identifiziert</div>
                         <div class="h4 mb-0 fw-bold text-success">{{ stats.identified }}</div>
@@ -42,7 +42,7 @@
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="card border-0 shadow-sm h-100 bg-primary text-white">
+                <div class="card h-100 bg-primary text-white">
                     <div class="card-body py-3 text-center">
                         <div class="small fw-bold text-uppercase opacity-75">Status</div>
                         <div class="small mb-0 fw-bold"><i class="fas fa-circle text-success me-1"></i> Online</div>
@@ -54,14 +54,14 @@
         <div class="row g-4">
             <!-- HAUPTSPALTEN: VIDEO PIPELINE -->
             <div class="col-lg-8">
-                <div class="card border-0 shadow-sm h-100">
+                <div class="card h-100">
                     <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
-                        <h5 class="fw-bold mb-0"><i class="fas fa-microchip me-2 text-primary"></i>Aktuelle Video-Pipeline</h5>
+                        <h5 class="fw-bold mb-0"><i class="fas fa-microchip me-2 text-primary"></i>Aktuelle Pipeline</h5>
                         <a href="{{ path('app_video_index') }}" class="btn btn-sm btn-outline-primary rounded-pill px-3">Alle Videos</a>
                     </div>
                     <div class="card-body px-4">
                         <div class="table-responsive">
-                            <table class="table table-hover align-middle custom-table">
+                            <table class="table table-hover align-middle">
                                 <thead class="text-muted small text-uppercase">
                                 <tr>
                                     <th>Video</th>
@@ -74,7 +74,13 @@
                                     <tr>
                                         <td>
                                             <div class="fw-bold text-dark text-truncate" style="max-width: 250px;">{{ video.title }}</div>
-                                            <div class="text-muted" style="font-size: 0.75rem;">{{ video.youtubeUrl|slice(0, 40) }}...</div>
+                                            <div class="text-muted small">
+                                                {% if video.youtubeUrl %}
+                                                    {{ video.youtubeUrl|slice(0, 40) }}...
+                                                {% else %}
+                                                    <span class="text-warning">YouTube-Link fehlt</span>
+                                                {% endif %}
+                                            </div>
                                         </td>
                                         <td>
                                             {% set statusInfo = {
@@ -88,8 +94,8 @@
                                             }[video.status.value] ?? {'color': 'secondary', 'icon': 'question'} %}
 
                                             <span class="badge rounded-pill bg-{{ statusInfo.color }} bg-opacity-10 text-{{ statusInfo.color }} border border-{{ statusInfo.color }} px-2 py-1">
-                                                    <i class="fas fa-{{ statusInfo.icon }} me-1"></i> {{ video.status.value|upper }}
-                                                </span>
+                                                <i class="fas fa-{{ statusInfo.icon }} me-1"></i> {{ video.status.value|upper }}
+                                            </span>
                                         </td>
                                         <td class="text-end">
                                             <div class="btn-group shadow-sm rounded">
@@ -117,13 +123,13 @@
                 <!-- Schnellzugriff -->
                 <div class="row g-2 mb-4">
                     <div class="col-6">
-                        <a href="{{ path('person_index') }}" class="btn btn-light border shadow-sm w-100 py-3 hover-lift">
+                        <a href="{{ path('person_index') }}" class="btn btn-light border shadow-sm w-100 py-3 hover-card">
                             <i class="fas fa-users d-block mb-2 text-primary"></i>
                             <span class="small fw-bold">Personen</span>
                         </a>
                     </div>
                     <div class="col-6">
-                        <a href="{{ path('app_identity_resolve') }}" class="btn btn-light border shadow-sm w-100 py-3 hover-lift">
+                        <a href="{{ path('app_identity_resolve') }}" class="btn btn-light border shadow-sm w-100 py-3 hover-card">
                             <i class="fas fa-wand-magic-sparkles d-block mb-2 text-warning"></i>
                             <span class="small fw-bold">Resolve</span>
                         </a>
@@ -131,7 +137,7 @@
                 </div>
 
                 <!-- Zuletzt identifiziert -->
-                <div class="card border-0 shadow-sm">
+                <div class="card">
                     <div class="card-header bg-white border-0 pt-4 px-4">
                         <h6 class="fw-bold mb-0">Zuletzt identifiziert</h6>
                     </div>
@@ -161,13 +167,10 @@
     </div>
 
     <style>
-        .hover-lift { transition: all 0.25s ease; }
-        .hover-lift:hover { transform: translateY(-3px); box-shadow: 0 5px 10px rgba(0,0,0,0.05) !important; }
-        .custom-table th { border: none; font-weight: 700; padding-bottom: 1rem; }
-        .custom-table td { border-color: #f8f9fa; padding: 1rem 0.5rem; }
         .btn-white { background: #fff; border: 1px solid #dee2e6; }
         .btn-white:hover { background: #f8f9fa; }
         .badge { font-weight: 600; letter-spacing: 0.3px; }
-        .list-group-item-action:hover { background: #f8f9fa !important; border-radius: 8px !important; }
+        .list-group-item-action { transition: background 0.2s; }
+        .list-group-item-action:hover { background: #f1f5f9 !important; border-radius: 8px !important; }
     </style>
 {% endblock %}

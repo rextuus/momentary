@@ -3,13 +3,13 @@
 {% block title %}{{ video.title }} - Timeline{% endblock %}
 
 {% block body %}
-    <div class="container mt-5 pb-5">
-        <div class="d-flex justify-content-between align-items-start mb-5">
+    <div class="container pb-5">
+        <div class="d-flex justify-content-between align-items-start mb-4">
             <div>
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb small">
-                        <li class="breadcrumb-item"><a href="{{ path('app_dashboard') }}" class="text-decoration-none">Dashboard</a></li>
-                        <li class="breadcrumb-item active">Timeline</li>
+                        <li class="breadcrumb-item"><a href="{{ path('app_video_index') }}" class="text-decoration-none">Videos</a></li>
+                        <li class="breadcrumb-item active">{{ video.title }}</li>
                     </ol>
                 </nav>
                 <h1 class="fw-bold mb-1">{{ video.title }}</h1>
@@ -20,10 +20,10 @@
                 </p>
             </div>
             <div class="d-flex gap-2">
-                <button class="btn btn-sm btn-light border shadow-sm" onclick="expandAll()">
+                <button class="btn btn-sm btn-white border shadow-sm" onclick="expandAll()">
                     <i class="fas fa-expand-arrows-alt me-1"></i> Alle öffnen
                 </button>
-                <button class="btn btn-sm btn-light border shadow-sm" onclick="toggleUnknowns()">
+                <button class="btn btn-sm btn-white border shadow-sm" onclick="toggleUnknowns()">
                     <i class="fas fa-eye-slash me-1"></i> Filter Unbekannt
                 </button>
             </div>
@@ -32,19 +32,14 @@
         <div class="modern-timeline">
             {# Wir loopen nun primär über die Szenen #}
             {% for scene in video.scenes %}
-
-                {# Filtere die Gesichter für diese Szene aus der Map oder direkt aus video.videoFaces #}
-                {% set sceneFaces = []|merge(video.videoFaces|filter(f => f.timestamp >= scene.startSeconds and f.timestamp <= scene.endSeconds)) %}
-
                 {{ component('SceneSectionComponent', {
                     scene: scene,
                     sceneNumber: loop.index
                 }) }}
-
             {% else %}
-                <div class="text-center py-5">
+                <div class="card p-5 text-center">
                     <i class="fas fa-ghost fa-3x text-muted mb-3"></i>
-                    <p class="text-muted">Keine Szenen für dieses Video definiert.</p>
+                    <p class="text-muted mb-0">Keine Szenen für dieses Video definiert.</p>
                 </div>
             {% endfor %}
         </div>
@@ -53,15 +48,16 @@
     {% include '_partials/_image_modal.html.twig' %}
 
     <style>
-        /* Die Timeline-Linie verläuft jetzt hinter den Szenen-Komponenten */
+        .btn-white { background: #fff; }
+        .btn-white:hover { background: #f8f9fa; }
+        
         .modern-timeline {
             position: relative;
             padding-left: 1rem;
-            border-left: 2px solid #e9ecef;
+            border-left: 2px solid #e2e8f0;
             margin-left: 1.5rem;
         }
 
-        /* Verhindert, dass die Karten in der Szene zu groß werden */
         .scene-wrapper {
             transition: all 0.3s ease;
         }
@@ -69,7 +65,6 @@
 
     <script>
         function toggleUnknowns() {
-            // Sucht in den Komponenten nach Karten, die als "unknown" markiert sind
             document.querySelectorAll('.face-card-container').forEach(container => {
                 if (container.querySelector('.is-unknown-card') || container.querySelector('.is-unknown')) {
                     container.closest('.col').classList.toggle('d-none');
