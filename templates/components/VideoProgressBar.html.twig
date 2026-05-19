@@ -1,0 +1,35 @@
+<div {{ attributes }} {% if this.isProcessing %}data-poll="delay(1000)|$render"{% endif %}>
+    {% set video = this.video %}
+    {% set percentage = this.percentage %}
+
+    <div class="mb-1 d-flex justify-content-between align-items-center">
+        <small class="text-muted">
+            {{ video.status.value }}
+            {% if video.totalFrames > 0 and video.status.value == 'analyzing_faces' %}
+                ({{ video.processedFrames }}/{{ video.totalFrames }} Frames)
+            {% endif %}
+
+            {% set est = null %}
+            {% if video.status.value == 'converting' %}{% set est = video.estimatedConversionDuration %}
+            {% elseif video.status.value == 'scene_detection' %}{% set est = video.estimatedSceneDetectionDuration %}
+            {% elseif video.status.value == 'splitting' %}{% set est = video.estimatedFrameExtractionDuration %}
+            {% elseif video.status.value == 'analyzing_faces' %}{% set est = video.estimatedFaceAnalysisDuration %}
+            {% endif %}
+
+            {% if est %}
+                <span class="ms-1">(~{{ (est / 60)|round(0, 'floor') }}:{{ (est % 60)|format('%02d') }} min)</span>
+            {% endif %}
+        </small>
+        <small class="fw-bold">{{ percentage }}%</small>
+    </div>
+    
+    <div class="progress" style="height: 10px;">
+        <div class="progress-bar progress-bar-striped {% if this.isProcessing %}progress-bar-animated{% endif %}" 
+             role="progressbar" 
+             style="width: {{ percentage }}%;" 
+             aria-valuenow="{{ percentage }}" 
+             aria-valuemin="0" 
+             aria-valuemax="100">
+        </div>
+    </div>
+</div>

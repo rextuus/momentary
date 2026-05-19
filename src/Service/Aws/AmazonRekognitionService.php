@@ -10,11 +10,21 @@ class AmazonRekognitionService
     private RekognitionClient $client;
     private string $collectionId = 'family-archive-collection';
 
+    private float $faceMatchThreshold;
+    private int $maxFaces;
+    private string $qualityFilter;
+
     public function __construct(
         #[Autowire(env: 'AWS_ACCESS_KEY')] string $awsKey,
         #[Autowire(env: 'AWS_SECRET_KEY')] string $awsSecret,
-        #[Autowire(env: 'AWS_REGION')] string $region
+        #[Autowire(env: 'AWS_REGION')] string $region,
+        #[Autowire(env: 'AWS_FACE_MATCH_THRESHOLD')] float $faceMatchThreshold = 80.0,
+        #[Autowire(env: 'AWS_MAX_FACES')] int $maxFaces = 15,
+        #[Autowire(env: 'AWS_QUALITY_FILTER')] string $qualityFilter = 'AUTO'
     ) {
+        $this->faceMatchThreshold = $faceMatchThreshold;
+        $this->maxFaces = $maxFaces;
+        $this->qualityFilter = $qualityFilter;
         $this->client = new RekognitionClient([
             'region' => $region,
             'version' => 'latest',
@@ -35,12 +45,13 @@ class AmazonRekognitionService
         $results = [];
 
         // 1. Alle Gesichter im Bild indizieren
-        // Wir setzen MaxFaces auf 15, um sicherzustellen, dass niemand übersehen wird.
+        // Wir setzen MaxFaces auf den konfigurierten Wert.
         $indexResponse = $this->client->indexFaces([
             'CollectionId' => $this->collectionId,
             'Image' => ['Bytes' => $imageContent],
             'DetectionAttributes' => ['ALL'], // Extrahiert Alter, Emotionen, Gender
-            'MaxFaces' => 15,
+            'MaxFaces' => $this->maxFaces,
+            'QualityFilter' => $this->qualityFilter,
         ]);
 
         if (empty($indexResponse['FaceRecords'])) {
@@ -56,7 +67,7 @@ class AmazonRekognitionService
             $searchResponse = $this->client->searchFaces([
                 'CollectionId' => $this->collectionId,
                 'FaceId' => $faceId,
-                'FaceMatchThreshold' => 90.0,
+                'FaceMatchThreshold' => $this->faceMatchThreshold,
                 'MaxFaces' => 1,
             ]);
 

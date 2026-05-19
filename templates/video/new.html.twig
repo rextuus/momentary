@@ -26,25 +26,63 @@
                                 Lade die Datei zuerst per FTP in das Verzeichnis <code>public/uploads/import</code> hoch.
                             </div>
                         </div>
+
+                        <div class="text-center my-3 position-relative">
+                            <hr>
+                            <span class="position-absolute top-50 start-50 translate-middle badge bg-light text-muted border px-3">ODER</span>
+                        </div>
+
+                        <div class="mb-0">
+                            {{ form_label(form.youtubeUrl, 'YouTube URL (direkte Analyse)', {'label_attr': {'class': 'form-label fw-bold small text-uppercase text-muted'}}) }}
+                            {{ form_widget(form.youtubeUrl, {'attr': {'class': 'form-control shadow-sm', 'placeholder': 'https://www.youtube.com/watch?v=...'}}) }}
+                            {{ form_errors(form.youtubeUrl) }}
+                        </div>
                     </div>
 
-                    <div class="text-center my-4 position-relative">
-                        <hr>
-                        <span class="position-absolute top-50 start-50 translate-middle badge bg-white text-muted border px-3">ODER</span>
+                    <div class="accordion mb-4 shadow-sm" id="advancedOptions">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed py-2 text-muted fw-bold small text-uppercase" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAdvanced">
+                                    <i class="fas fa-cog me-2"></i> Erweiterte Analyse-Optionen
+                                </button>
+                            </h2>
+                            <div id="collapseAdvanced" class="accordion-collapse collapse" data-bs-parent="#advancedOptions">
+                                <div class="accordion-body bg-light">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            {{ form_label(form.analysisFps, 'Standard-FPS', {'label_attr': {'class': 'form-label small fw-bold'}}) }}
+                                            {{ form_widget(form.analysisFps) }}
+                                            <div class="form-text small">Analyse alle X Sekunden.</div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            {{ form_label(form.refinedAnalysisFps, 'Verfeinerungs-FPS', {'label_attr': {'class': 'form-label small fw-bold'}}) }}
+                                            {{ form_widget(form.refinedAnalysisFps) }}
+                                            <div class="form-text small">Für den 2. Durchgang.</div>
+                                        </div>
+                                        <div class="col-12">
+                                            {{ form_label(form.minSceneLengthForRefinement, 'Min. Szenenlänge für Verfeinerung', {'label_attr': {'class': 'form-label small fw-bold'}}) }}
+                                            {{ form_widget(form.minSceneLengthForRefinement) }}
+                                            <div class="form-text small">Szenen unter dieser Dauer werden nicht verfeinert.</div>
+                                        </div>
+                                        <div class="col-12 border-top pt-3">
+                                            <div class="form-check form-switch">
+                                                {{ form_widget(form.mergeEmptyScenesWithLastPersonScene, {'attr': {'class': 'form-check-input'}}) }}
+                                                {{ form_label(form.mergeEmptyScenesWithLastPersonScene, null, {'label_attr': {'class': 'form-check-label small'}}) }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="mb-4">
-                        {{ form_label(form.youtubeUrl, 'YouTube URL (direkte Analyse)', {'label_attr': {'class': 'form-label fw-bold small text-uppercase text-muted'}}) }}
-                        {{ form_widget(form.youtubeUrl, {'attr': {'class': 'form-control shadow-sm', 'placeholder': 'https://www.youtube.com/watch?v=...'}}) }}
-                        {{ form_errors(form.youtubeUrl) }}
-                    </div>
-
-                    <div class="d-grid gap-2 mt-5">
+                    <div class="d-grid gap-2 mt-4">
                         <button type="submit" class="btn btn-primary btn-lg shadow-sm">
-                            <i class="fas fa-save me-2"></i>Video hinzufügen & Pipeline starten
+                            <i class="fas fa-magic me-2"></i>Video hinzufügen & Analysieren
                         </button>
                         <a href="{{ path('app_video_index') }}" class="btn btn-link text-muted">Abbrechen</a>
                     </div>
+                    {{ form_rest(form) }}
                     {{ form_end(form) }}
                 </div>
             </div>

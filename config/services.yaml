@@ -4,6 +4,12 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    app.frame_analysis_fps: 0.2
+    app.min_scene_length_for_refinement: 2.0
+    app.refined_frame_analysis_fps: 1.0
+    app.aws_face_match_threshold: 80.0
+    app.aws_max_faces: 15
+    app.aws_quality_filter: AUTO
 
 services:
     # default configuration for services in *this* file

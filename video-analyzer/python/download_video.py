@@ -43,7 +43,23 @@ def main():
             print(json.dumps({"error": "File not found after download"}))
             sys.exit(1)
 
-        print(json.dumps({"video_path": str(actual_path)}))
+        # Get video duration using ffprobe
+        probe_result = subprocess.run([
+            "ffprobe", "-v", "error", "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1", str(actual_path)
+        ], capture_output=True, text=True)
+
+        duration = None
+        if probe_result.returncode == 0:
+            try:
+                duration = float(probe_result.stdout.strip())
+            except ValueError:
+                pass
+
+        print(json.dumps({
+            "video_path": str(actual_path),
+            "duration": duration
+        }))
 
     except Exception as e:
         print(json.dumps({"error": str(e)}))

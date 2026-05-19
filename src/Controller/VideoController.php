@@ -18,7 +18,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
-use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/video')]
 final class VideoController extends AbstractController
@@ -101,18 +101,70 @@ final class VideoController extends AbstractController
      * Die fehlende Trigger-Route für die Buttons im Template
      */
     #[Route('/{id}/trigger/{step}', name: 'app_video_trigger', methods: ['GET'])]
-    public function trigger(Video $video, string $step): Response
+    public function trigger(Video $video, string $step, VideoAnalyzer $videoAnalyzer): Response
     {
         try {
+            // Reset error when re-triggering
+            $video->setErrorMessage(null);
+
             match ($step) {
-                'download' => $this->messageBus->dispatch(new DownloadVideoMessage($video->getId())),
-                'scenes'   => $this->messageBus->dispatch(new DetectVideoScenesMessage($video->getId(), (string)$video->getLocalPath())),
-                'split'    => $this->messageBus->dispatch(new SplitVideoIntoFramesMessage($video->getId(), (string)$video->getLocalPath())),
+                'scenes'   => [
+                    $video->setStatus(VideoStatus::SCENE_DETECTION),
+                    $video->setConvertedAt($video->getConvertedAt() ?? new \DateTimeImmutable()), // Mark conversion done if skipping to here
+                    $video->setScenesDetectedAt(null),
+                    $video->setFramesExtractedAt(null),
+                    $video->setFacesAnalyzedAt(null),
+                    $video->setRefinedAt(null),
+                    $video->setCompletedAt(null),
+                    (function() use ($video) { $this->messageBus->dispatch(new DetectVideoScenesMessage($video->getId(), (string)$video->getLocalPath())); })()
+                ],
+                'split'    => [
+                    $video->setStatus(VideoStatus::SPLITTING),
+                    $video->setFramesExtractedAt(null),
+                    $video->setFacesAnalyzedAt(null),
+                    $video->setRefinedAt(null),
+                    $video->setCompletedAt(null),
+                    (function() use ($video) { $this->messageBus->dispatch(new SplitVideoIntoFramesMessage($video->getId(), (string)$video->getLocalPath())); })()
+                ],
+                'refine'   => [
+                    $video->setStatus(VideoStatus::REFINING_EXTRACTION),
+                    $video->setRefinedAt(null),
+                    $video->setRefiningExtractionFinishedAt(null),
+                    $video->setRefiningAnalysisFinishedAt(null),
+                    $video->setCompletedAt(null),
+                    $videoAnalyzer->refineSceneAnalysis($video)
+                ],
+                'reset'    => [
+                    $video->setStatus(VideoStatus::PENDING),
+                    $video->setDownloadedAt(null),
+                    $video->setConvertedAt(null),
+                    $video->setScenesDetectedAt(null),
+                    $video->setFramesExtractedAt(null),
+                    $video->setFacesAnalyzedAt(null),
+                    $video->setRefiningExtractionFinishedAt(null),
+                    $video->setRefiningAnalysisFinishedAt(null),
+                    $video->setRefinedAt(null),
+                    $video->setCompletedAt(null),
+                    $video->setDownloadDuration(null),
+                    $video->setConversionDuration(null),
+                    $video->setSceneDetectionDuration(null),
+                    $video->setFrameExtractionDuration(null),
+                    $video->setFaceAnalysisDuration(null),
+                    $video->setRefiningExtractionDuration(null),
+                    $video->setRefiningAnalysisDuration(null),
+                    $video->setRefinementDuration(null),
+                    (function() use ($videoAnalyzer, $video) { $videoAnalyzer->clearOldScenes($video); })()
+                ],
+                'delete'   => (function() use ($videoAnalyzer, $video) { $videoAnalyzer->cleanupLocalFile($video->getId()); })(),
                 default    => throw new \InvalidArgumentException("Ungültiger Schritt"),
             };
 
+            $this->entityManager->flush();
             $this->addFlash('success', "Schritt '$step' wurde für '{$video->getTitle()}' manuell getriggert.");
         } catch (\Exception $e) {
+            $video->setStatus(VideoStatus::ERROR);
+            $video->setErrorMessage($e->getMessage());
+            $this->entityManager->flush();
             $this->addFlash('error', "Fehler beim Triggern: " . $e->getMessage());
         }
 
@@ -141,6 +193,17 @@ final class VideoController extends AbstractController
         return $this->render('video/timeline.html.twig', [
             'video' => $video,
             'map' => $map,
+        ]);
+    }
+
+    /**
+     * Detail Ansicht
+     */
+    #[Route('/{id}', name: 'app_video_show', methods: ['GET'])]
+    public function show(Video $video): Response
+    {
+        return $this->render('video/show.html.twig', [
+            'video' => $video,
         ]);
     }
 }

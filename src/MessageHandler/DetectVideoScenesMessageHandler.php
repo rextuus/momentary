@@ -29,12 +29,16 @@ final class DetectVideoScenesMessageHandler
         // Szenen speichern
         $this->videoAnalyzer->storeScenes($message->getVideoId(), $scenes);
 
+        // Wir laden das Video neu, falls sich der localPath während der Szenenerkennung geändert hat (Konvertierung)
+        $video = $this->videoAnalyzer->getVideoRepository()->find($message->getVideoId());
+        $currentVideoPath = $video?->getLocalPath() ?? $message->getVideoPath();
+
         fwrite(STDOUT, count($scenes) . " Szenen in DB verewigt." . PHP_EOL);
 
         // Weiter zum Splitting
         $this->bus->dispatch(new SplitVideoIntoFramesMessage(
             $message->getVideoId(),
-            $message->getVideoPath()
+            $currentVideoPath
         ));
     }
 }

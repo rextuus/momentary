@@ -1,0 +1,185 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Video Details: {{ video.title }}{% endblock %}
+
+{% block body %}
+<div class="container pb-5">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ path('app_video_index') }}">Videos</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ video.title }}</li>
+        </ol>
+    </nav>
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-4">
+                        <div>
+                            <h1 class="fw-bold h2 mb-1">{{ video.title }}</h1>
+                            <p class="text-muted mb-0">Erstellt am {{ video.createdAt|date('d.m.Y H:i') }}</p>
+                        </div>
+                        <span class="badge rounded-pill bg-primary bg-opacity-10 text-primary border border-primary px-3 py-2">
+                            {{ video.status.value|upper }}
+                        </span>
+                    </div>
+
+                    {% if video.youtubeUrl %}
+                        <div class="mb-4">
+                            <label class="small text-muted fw-bold text-uppercase mb-2">YouTube Link</label>
+                            <div class="d-flex align-items-center bg-light p-3 rounded-3 border">
+                                <i class="fab fa-youtube text-danger me-3 fa-lg"></i>
+                                <a href="{{ video.youtubeUrl }}" target="_blank" class="text-decoration-none text-dark fw-medium">{{ video.youtubeUrl }}</a>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <div class="mb-4">
+                        <label class="small text-muted fw-bold text-uppercase mb-2">Analyse Fortschritt</label>
+                        <div class="bg-light p-4 rounded-3 border">
+                            {{ component('VideoProgressBar', { video: video }) }}
+                        </div>
+                    </div>
+
+                    {% if video.errorMessage %}
+                        <div class="alert alert-danger border-0 shadow-sm d-flex align-items-start p-4">
+                            <i class="fas fa-exclamation-triangle mt-1 me-3 fa-lg"></i>
+                            <div>
+                                <h5 class="alert-heading fw-bold mb-1">Analyse fehlgeschlagen</h5>
+                                <p class="mb-0 font-monospace small">{{ video.errorMessage }}</p>
+                                <hr>
+                                <div class="d-flex gap-2 mt-3">
+                                    <a href="{{ path('app_video_trigger', {id: video.id, step: 'reset'}) }}" class="btn btn-sm btn-outline-danger">Analyse zurücksetzen</a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-transparent border-bottom p-4">
+                    <h5 class="fw-bold mb-0">Pipeline Schritte</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% set steps = [
+                            {'id': 'download', 'name': 'Video Download', 'ts': video.downloadedAt, 'dur': video.downloadDuration, 'est': null, 'icon': 'download', 'status': video.downloadedAt ? 'done' : (video.status.value == 'downloading' ? 'active' : 'pending')},
+                            {'id': 'convert', 'name': 'Konvertierung', 'ts': video.convertedAt, 'dur': video.conversionDuration, 'est': video.estimatedConversionDuration, 'icon': 'sync', 'status': video.convertedAt ? 'done' : (video.status.value == 'converting' ? 'active' : 'pending')},
+                            {'id': 'scenes', 'name': 'Szenenerkennung', 'ts': video.scenesDetectedAt, 'dur': video.sceneDetectionDuration, 'est': video.estimatedSceneDetectionDuration, 'icon': 'cut', 'status': video.scenesDetectedAt ? 'done' : (video.status.value == 'scene_detection' ? 'active' : 'pending')},
+                            {'id': 'splitting', 'name': 'Frame Extraktion', 'ts': video.framesExtractedAt, 'dur': video.frameExtractionDuration, 'est': video.estimatedFrameExtractionDuration, 'icon': 'film', 'status': video.framesExtractedAt ? 'done' : (video.status.value == 'splitting' ? 'active' : 'pending')},
+                            {'id': 'analysis', 'name': 'Gesichtsanalyse', 'ts': video.facesAnalyzedAt, 'dur': video.faceAnalysisDuration, 'est': video.estimatedFaceAnalysisDuration, 'icon': 'user-search', 'status': video.facesAnalyzedAt ? 'done' : (video.status.value == 'analyzing_faces' ? 'active' : 'pending')},
+                            {'id': 'refine_extract', 'name': 'Verfeinerung: Extraktion', 'ts': video.refiningExtractionFinishedAt, 'dur': video.refiningExtractionDuration, 'est': null, 'icon': 'search-plus', 'status': video.refiningExtractionFinishedAt ? 'done' : (video.status.value == 'refining_extraction' ? 'active' : 'pending')},
+                            {'id': 'refine_analyze', 'name': 'Verfeinerung: Analyse', 'ts': video.refiningAnalysisFinishedAt, 'dur': video.refiningAnalysisDuration, 'est': null, 'icon': 'microscope', 'status': video.refiningAnalysisFinishedAt ? 'done' : (video.status.value == 'refining_analysis' ? 'active' : 'pending')},
+                            {'id': 'merge_scenes', 'name': 'Szenen Zusammenführen', 'ts': video.mergingScenesAt, 'dur': video.mergingScenesDuration, 'est': null, 'icon': 'object-group', 'status': video.mergingScenesAt ? 'done' : (video.status.value == 'merging_scenes' ? 'active' : 'pending')},
+                            {'id': 'complete', 'name': 'Abschluss', 'ts': video.completedAt, 'dur': null, 'est': null, 'icon': 'check-double', 'status': video.completedAt ? 'done' : 'pending'}
+                        ] %}
+
+                        {% for step in steps %}
+                            <div class="list-group-item p-4 d-flex align-items-center justify-content-between {% if step.status == 'active' %}bg-primary bg-opacity-10{% endif %}">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-4 d-flex align-items-center justify-content-center rounded-circle 
+                                        {% if step.status == 'done' %}bg-success text-white
+                                        {% elseif step.status == 'active' %}bg-primary text-white
+                                        {% else %}bg-light text-muted{% endif %}" 
+                                        style="width: 48px; height: 48px;">
+                                        {% if step.status == 'done' %}
+                                            <i class="fas fa-check"></i>
+                                        {% else %}
+                                            <i class="fas fa-{{ step.icon }}"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <h6 class="fw-bold mb-1">{{ step.name }}</h6>
+                                        <p class="small text-muted mb-0">
+                                            {% if step.status == 'done' %}
+                                                Abgeschlossen am {{ step.ts|date('H:i:s') }}
+                                                {% if step.dur %} (Dauer: {{ step.dur }}s){% endif %}
+                                            {% elseif step.status == 'active' %}
+                                                In Bearbeitung... 
+                                                {% if step.est %} (~{{ (step.est / 60)|round(0, 'floor') }}:{{ (step.est % 60)|format('%02d') }} min geschätzt){% endif %}
+                                            {% else %}
+                                                Wartet auf Start
+                                                {% if step.est %} (Geschätzt: ~{{ (step.est / 60)|round(0, 'floor') }}:{{ (step.est % 60)|format('%02d') }} min){% endif %}
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                </div>
+                                {% if step.status == 'active' %}
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-transparent border-bottom p-4">
+                    <h5 class="fw-bold mb-0">Aktionen</h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="d-grid gap-2">
+                        <a href="{{ path('video_timeline', {id: video.id}) }}" class="btn btn-outline-primary rounded-pill mb-2">
+                            <i class="fas fa-chart-line me-2"></i> Timeline anzeigen
+                        </a>
+                        <hr>
+                        <h6 class="small text-muted fw-bold text-uppercase mb-3">Manueller Trigger</h6>
+                        <a href="{{ path('app_video_trigger', {id: video.id, step: 'scenes'}) }}"
+                           class="btn btn-sm btn-light border d-flex justify-content-between align-items-center {{ not video.localPath ? 'disabled' }}">
+                            <span><i class="fas fa-cut me-2"></i> Szenenerkennung</span>
+                            <i class="fas fa-chevron-right small opacity-50"></i>
+                        </a>
+                        <a href="{{ path('app_video_trigger', {id: video.id, step: 'split'}) }}"
+                           class="btn btn-sm btn-light border d-flex justify-content-between align-items-center {{ not video.localPath ? 'disabled' }}">
+                            <span><i class="fas fa-microchip me-2"></i> Standard Analyse</span>
+                            <i class="fas fa-chevron-right small opacity-50"></i>
+                        </a>
+                        <a href="{{ path('app_video_trigger', {id: video.id, step: 'refine'}) }}"
+                           class="btn btn-sm btn-light border d-flex justify-content-between align-items-center {{ not video.localPath ? 'disabled' }}">
+                            <span><i class="fas fa-search-plus me-2"></i> Verfeinerung</span>
+                            <i class="fas fa-chevron-right small opacity-50"></i>
+                        </a>
+                        <a href="{{ path('app_video_trigger', {id: video.id, step: 'reset'}) }}"
+                           class="btn btn-sm btn-light border text-danger d-flex justify-content-between align-items-center"
+                           onclick="return confirm('Möchtest du wirklich alle erkannten Szenen und Personen für dieses Video löschen?')">
+                            <span><i class="fas fa-undo me-2"></i> Analyse zurücksetzen</span>
+                            <i class="fas fa-chevron-right small opacity-50"></i>
+                        </a>
+                        <hr>
+                        <a href="{{ path('app_video_trigger', {id: video.id, step: 'delete'}) }}"
+                           class="btn btn-sm btn-outline-danger d-flex justify-content-between align-items-center"
+                           onclick="return confirm('Möchtest du wirklich die lokale Videodatei und alle temporären Frames löschen? Die Analyseergebnisse bleiben erhalten.')">
+                            <span><i class="fas fa-trash-alt me-2"></i> Lokale Dateien löschen</span>
+                            <i class="fas fa-chevron-right small opacity-50"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            {% if video.localPath %}
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-transparent border-bottom p-4">
+                        <h5 class="fw-bold mb-0">Datei-Info</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="mb-3">
+                            <label class="small text-muted fw-bold text-uppercase mb-1">Dateiname</label>
+                            <div class="small text-truncate" title="{{ video.localPath }}">{{ video.localPath|split('/')|last }}</div>
+                        </div>
+                        <div>
+                            <label class="small text-muted fw-bold text-uppercase mb-1">Pfad</label>
+                            <code class="d-block bg-light p-2 rounded small text-break" style="font-size: 0.7rem;">{{ video.localPath }}</code>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

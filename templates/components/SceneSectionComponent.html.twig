@@ -22,6 +22,17 @@
             </div>
 
             <div class="d-flex align-items-center gap-2">
+                {# MERGE BACKWARDS BUTTON #}
+                {% if this.canMergeBackwards %}
+                    <button class="btn btn-sm btn-outline-secondary py-0 px-2"
+                            title="Alle leeren Szenen davor in die letzte Personen-Szene mergen"
+                            data-action="live#action"
+                            data-live-action-param="mergeEmptyBackwards"
+                            onclick="return confirm('Alle leeren Szenen seit der letzten Personen-Szene mit dieser verschmelzen?')">
+                        <i class="fas fa-level-up-alt fa-rotate-270 me-1"></i> Merge Up
+                    </button>
+                {% endif %}
+
                 {# MERGE BUTTON #}
                 <button class="btn btn-link text-muted p-1"
                         title="Mit nächster Szene zusammenfassen"

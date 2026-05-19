@@ -22,25 +22,8 @@ readonly final class FrameAnalyzerMessageHandler
             $message->getVideoId(),
             $message->getFramePath(),
             $message->getTimestamp(),
-            $message->isLast()
+            $message->isLast(),
+            $message->isRefinement()
         );
-
-        // Cleanup nach dem letzten Frame
-        if ($message->isLast()) {
-            $this->cleanup($message->getFramePath());
-        }
-    }
-
-    private function cleanup(string $path): void
-    {
-        $frameDirectory = dirname($path);
-        $filesystem = new Filesystem();
-
-        if ($filesystem->exists($frameDirectory)) {
-            // Kleiner Safety-Check: Nur löschen, wenn es wirklich im temp-Ordner liegt
-            // oder sichergestellt ist, dass wir nicht versehentlich zu viel löschen.
-            $filesystem->remove($frameDirectory);
-            fwrite(STDOUT, "Cleanup: Temporäre Frames gelöscht." . PHP_EOL);
-        }
     }
 }

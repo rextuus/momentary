@@ -41,34 +41,120 @@ class SceneSectionComponent
     public function mergeWithNext(): void
     {
         $video = $this->scene->getVideo();
-        $nextScene = null;
-
-        // Suche die Szene, die direkt nach dieser kommt
-        foreach ($video->getScenes() as $s) {
-            if ($s->getSceneNumber() === ($this->scene->getSceneNumber() + 1)) {
-                $nextScene = $s;
-                break;
-            }
-        }
+        $nextScene = $this->findSceneByNumber($this->scene->getSceneNumber() + 1);
 
         if ($nextScene) {
-            // 1. Endzeit der aktuellen Szene erweitern
-            $this->scene->setEndSeconds($nextScene->getEndSeconds());
+            $this->performMerge($this->scene, $nextScene);
+        }
+    }
 
-            // 2. Alle Gesichter der nächsten Szene auf die aktuelle umbiegen
-            foreach ($nextScene->getVideoFaces() as $face) {
-                $face->setVideoScene($this->scene);
+    #[LiveAction]
+    public function mergeEmptyBackwards(): void
+    {
+        $targetScene = $this->getTargetSceneForBackwardsMerge();
+        if (!$targetScene) {
+            return;
+        }
+
+        $video = $this->scene->getVideo();
+        $scenesToDelete = [];
+        $maxEndSeconds = $this->scene->getEndSeconds();
+
+        // Alle Szenen zwischen targetScene und der aktuellen (inklusive) finden
+        foreach ($video->getScenes() as $s) {
+            if ($s->getSceneNumber() > $targetScene->getSceneNumber() && $s->getSceneNumber() <= $this->scene->getSceneNumber()) {
+                $scenesToDelete[] = $s;
+            }
+        }
+
+        foreach ($scenesToDelete as $s) {
+            // Sicherheitshalber Gesichter umhängen, falls doch welche da sind
+            foreach ($s->getVideoFaces() as $face) {
+                $face->setVideoScene($targetScene);
+            }
+            $this->entityManager->remove($s);
+        }
+
+        $targetScene->setEndSeconds($maxEndSeconds);
+        $this->entityManager->flush();
+
+        $this->renumberScenes();
+
+        header("Refresh:0");
+        exit;
+    }
+
+    public function canMergeBackwards(): bool
+    {
+        // Aktuelle Szene muss leer sein
+        if ($this->scene->getVideoFaces()->count() > 0) {
+            return false;
+        }
+
+        return $this->getTargetSceneForBackwardsMerge() !== null;
+    }
+
+    private function getTargetSceneForBackwardsMerge(): ?VideoScene
+    {
+        $video = $this->scene->getVideo();
+        $scenes = $video->getScenes()->toArray();
+        
+        // Sortieren nach Szenennummer absteigend, startend vor der aktuellen Szene
+        usort($scenes, fn($a, $b) => $b->getSceneNumber() <=> $a->getSceneNumber());
+
+        foreach ($scenes as $s) {
+            if ($s->getSceneNumber() >= $this->scene->getSceneNumber()) {
+                continue;
             }
 
-            // 3. Die nächste Szene löschen
-            $this->entityManager->remove($nextScene);
-            $this->entityManager->flush();
-
-            // Da sich die Struktur der Timeline geändert hat (eine Szene weniger),
-            // laden wir die Seite einmal neu, damit die Liste aktuell ist.
-            header("Refresh:0");
-            exit;
+            if ($s->getVideoFaces()->count() > 0) {
+                return $s;
+            }
         }
+
+        return null;
+    }
+
+    private function findSceneByNumber(int $number): ?VideoScene
+    {
+        foreach ($this->scene->getVideo()->getScenes() as $s) {
+            if ($s->getSceneNumber() === $number) {
+                return $s;
+            }
+        }
+        return null;
+    }
+
+    private function performMerge(VideoScene $keep, VideoScene $remove): void
+    {
+        $keep->setEndSeconds($remove->getEndSeconds());
+
+        foreach ($remove->getVideoFaces() as $face) {
+            $face->setVideoScene($keep);
+        }
+
+        $this->entityManager->remove($remove);
+        $this->entityManager->flush();
+
+        $this->renumberScenes();
+
+        header("Refresh:0");
+        exit;
+    }
+
+    private function renumberScenes(): void
+    {
+        $video = $this->scene->getVideo();
+        $this->entityManager->refresh($video);
+        
+        $scenes = $video->getScenes()->toArray();
+        usort($scenes, fn($a, $b) => $a->getStartSeconds() <=> $b->getStartSeconds());
+
+        foreach ($scenes as $index => $s) {
+            $s->setSceneNumber($index + 1);
+        }
+
+        $this->entityManager->flush();
     }
 
     public function getDuration(): float

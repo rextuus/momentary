@@ -37,9 +37,27 @@ class Video
     #[ORM\Column(type: 'string', length: 32, enumType: VideoStatus::class)]
     private VideoStatus $status = VideoStatus::PENDING;
 
+    #[ORM\Column(nullable: true)]
+    private ?float $analysisFps = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?float $minSceneLengthForRefinement = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?float $refinedAnalysisFps = null;
+
+    #[ORM\Column(options: ['default' => false])]
+    private bool $mergeEmptyScenesWithLastPersonScene = false;
+
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $errorMessage = null;
+
     // Pfad zur lokalen Datei nach dem Download
     #[ORM\Column(length: 1000, nullable: true)]
     private ?string $localPath = null;
+
+    #[ORM\Column(length: 1000, nullable: true)]
+    private ?string $convertedVideoPath = null;
 
     /**
      * @var Collection<int, VideoScene>
@@ -47,6 +65,90 @@ class Video
     #[ORM\OneToMany(targetEntity: VideoScene::class, mappedBy: 'video', cascade: ['remove'], orphanRemoval: true)]
     #[ORM\OrderBy(['sceneNumber' => 'ASC'])]
     private Collection $scenes;
+
+    #[ORM\Column(options: ['default' => 0])]
+    private int $totalFrames = 0;
+
+    #[ORM\Column(options: ['default' => 0])]
+    private int $processedFrames = 0;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $downloadedAt = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $convertedAt = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $scenesDetectedAt = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $framesExtractedAt = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $facesAnalyzedAt = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $refiningExtractionFinishedAt = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $refiningAnalysisFinishedAt = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $mergingScenesAt = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $refinedAt = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $completedAt = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?float $duration = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $downloadDuration = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $conversionDuration = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $sceneDetectionDuration = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $frameExtractionDuration = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $faceAnalysisDuration = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $refiningExtractionDuration = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $refiningAnalysisDuration = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $mergingScenesDuration = null;
+
+    #[ORM\Column(length: 500, nullable: true)]
+    private ?string $currentFrameDirectory = null;
+
+    #[ORM\Column(length: 500, nullable: true)]
+    private ?string $currentRefinementFrameDirectory = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $refinementDuration = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $estimatedConversionDuration = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $estimatedSceneDetectionDuration = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $estimatedFrameExtractionDuration = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $estimatedFaceAnalysisDuration = null;
 
     public function __construct()
     {
@@ -147,6 +249,83 @@ class Video
         return $this;
     }
 
+    public function getConvertedVideoPath(): ?string
+    {
+        return $this->convertedVideoPath;
+    }
+
+    public function setConvertedVideoPath(?string $convertedVideoPath): self
+    {
+        $this->convertedVideoPath = $convertedVideoPath;
+        return $this;
+    }
+
+    public function getRefiningExtractionFinishedAt(): ?\DateTimeImmutable
+    {
+        return $this->refiningExtractionFinishedAt;
+    }
+
+    public function setRefiningExtractionFinishedAt(?\DateTimeImmutable $refiningExtractionFinishedAt): self
+    {
+        $this->refiningExtractionFinishedAt = $refiningExtractionFinishedAt;
+        return $this;
+    }
+
+    public function getRefiningAnalysisFinishedAt(): ?\DateTimeImmutable
+    {
+        return $this->refiningAnalysisFinishedAt;
+    }
+
+    public function setRefiningAnalysisFinishedAt(?\DateTimeImmutable $refiningAnalysisFinishedAt): self
+    {
+        $this->refiningAnalysisFinishedAt = $refiningAnalysisFinishedAt;
+        return $this;
+    }
+
+    public function getRefiningExtractionDuration(): ?int
+    {
+        return $this->refiningExtractionDuration;
+    }
+
+    public function setRefiningExtractionDuration(?int $refiningExtractionDuration): self
+    {
+        $this->refiningExtractionDuration = $refiningExtractionDuration;
+        return $this;
+    }
+
+    public function getRefiningAnalysisDuration(): ?int
+    {
+        return $this->refiningAnalysisDuration;
+    }
+
+    public function setRefiningAnalysisDuration(?int $refiningAnalysisDuration): self
+    {
+        $this->refiningAnalysisDuration = $refiningAnalysisDuration;
+        return $this;
+    }
+
+    public function getMergingScenesAt(): ?\DateTimeImmutable
+    {
+        return $this->mergingScenesAt;
+    }
+
+    public function setMergingScenesAt(?\DateTimeImmutable $mergingScenesAt): self
+    {
+        $this->mergingScenesAt = $mergingScenesAt;
+        return $this;
+    }
+
+    public function getMergingScenesDuration(): ?int
+    {
+        return $this->mergingScenesDuration;
+    }
+
+    public function setMergingScenesDuration(?int $mergingScenesDuration): self
+    {
+        $this->mergingScenesDuration = $mergingScenesDuration;
+        return $this;
+    }
+
     public function getLocalPath(): ?string
     {
         return $this->localPath;
@@ -155,6 +334,303 @@ class Video
     public function setLocalPath(?string $localPath): self
     {
         $this->localPath = $localPath;
+        return $this;
+    }
+
+    public function getAnalysisFps(): ?float
+    {
+        return $this->analysisFps;
+    }
+
+    public function setAnalysisFps(?float $analysisFps): self
+    {
+        $this->analysisFps = $analysisFps;
+        return $this;
+    }
+
+    public function getMinSceneLengthForRefinement(): ?float
+    {
+        return $this->minSceneLengthForRefinement;
+    }
+
+    public function setMinSceneLengthForRefinement(?float $minSceneLengthForRefinement): self
+    {
+        $this->minSceneLengthForRefinement = $minSceneLengthForRefinement;
+        return $this;
+    }
+
+    public function getRefinedAnalysisFps(): ?float
+    {
+        return $this->refinedAnalysisFps;
+    }
+
+    public function setRefinedAnalysisFps(?float $refinedAnalysisFps): self
+    {
+        $this->refinedAnalysisFps = $refinedAnalysisFps;
+        return $this;
+    }
+
+    public function isMergeEmptyScenesWithLastPersonScene(): bool
+    {
+        return $this->mergeEmptyScenesWithLastPersonScene;
+    }
+
+    public function setMergeEmptyScenesWithLastPersonScene(bool $mergeEmptyScenesWithLastPersonScene): self
+    {
+        $this->mergeEmptyScenesWithLastPersonScene = $mergeEmptyScenesWithLastPersonScene;
+        return $this;
+    }
+
+    public function getErrorMessage(): ?string
+    {
+        return $this->errorMessage;
+    }
+
+    public function setErrorMessage(?string $errorMessage): self
+    {
+        $this->errorMessage = $errorMessage;
+        return $this;
+    }
+
+    public function getTotalFrames(): int
+    {
+        return $this->totalFrames;
+    }
+
+    public function setTotalFrames(int $totalFrames): self
+    {
+        $this->totalFrames = $totalFrames;
+        return $this;
+    }
+
+    public function getProcessedFrames(): int
+    {
+        return $this->processedFrames;
+    }
+
+    public function setProcessedFrames(int $processedFrames): self
+    {
+        $this->processedFrames = $processedFrames;
+        return $this;
+    }
+
+    public function getDownloadedAt(): ?\DateTimeImmutable
+    {
+        return $this->downloadedAt;
+    }
+
+    public function setDownloadedAt(?\DateTimeImmutable $downloadedAt): self
+    {
+        $this->downloadedAt = $downloadedAt;
+        return $this;
+    }
+
+    public function getScenesDetectedAt(): ?\DateTimeImmutable
+    {
+        return $this->scenesDetectedAt;
+    }
+
+    public function setScenesDetectedAt(?\DateTimeImmutable $scenesDetectedAt): self
+    {
+        $this->scenesDetectedAt = $scenesDetectedAt;
+        return $this;
+    }
+
+    public function getFramesExtractedAt(): ?\DateTimeImmutable
+    {
+        return $this->framesExtractedAt;
+    }
+
+    public function setFramesExtractedAt(?\DateTimeImmutable $framesExtractedAt): self
+    {
+        $this->framesExtractedAt = $framesExtractedAt;
+        return $this;
+    }
+
+    public function getFacesAnalyzedAt(): ?\DateTimeImmutable
+    {
+        return $this->facesAnalyzedAt;
+    }
+
+    public function setFacesAnalyzedAt(?\DateTimeImmutable $facesAnalyzedAt): self
+    {
+        $this->facesAnalyzedAt = $facesAnalyzedAt;
+        return $this;
+    }
+
+    public function getRefinedAt(): ?\DateTimeImmutable
+    {
+        return $this->refinedAt;
+    }
+
+    public function setRefinedAt(?\DateTimeImmutable $refinedAt): self
+    {
+        $this->refinedAt = $refinedAt;
+        return $this;
+    }
+
+    public function getCompletedAt(): ?\DateTimeImmutable
+    {
+        return $this->completedAt;
+    }
+
+    public function setCompletedAt(?\DateTimeImmutable $completedAt): self
+    {
+        $this->completedAt = $completedAt;
+        return $this;
+    }
+
+    public function getConvertedAt(): ?\DateTimeImmutable
+    {
+        return $this->convertedAt;
+    }
+
+    public function setConvertedAt(?\DateTimeImmutable $convertedAt): self
+    {
+        $this->convertedAt = $convertedAt;
+        return $this;
+    }
+
+    public function getDuration(): ?float
+    {
+        return $this->duration;
+    }
+
+    public function setDuration(?float $duration): self
+    {
+        $this->duration = $duration;
+        return $this;
+    }
+
+    public function getDownloadDuration(): ?int
+    {
+        return $this->downloadDuration;
+    }
+
+    public function setDownloadDuration(?int $downloadDuration): self
+    {
+        $this->downloadDuration = $downloadDuration;
+        return $this;
+    }
+
+    public function getConversionDuration(): ?int
+    {
+        return $this->conversionDuration;
+    }
+
+    public function setConversionDuration(?int $conversionDuration): self
+    {
+        $this->conversionDuration = $conversionDuration;
+        return $this;
+    }
+
+    public function getSceneDetectionDuration(): ?int
+    {
+        return $this->sceneDetectionDuration;
+    }
+
+    public function setSceneDetectionDuration(?int $sceneDetectionDuration): self
+    {
+        $this->sceneDetectionDuration = $sceneDetectionDuration;
+        return $this;
+    }
+
+    public function getFrameExtractionDuration(): ?int
+    {
+        return $this->frameExtractionDuration;
+    }
+
+    public function setFrameExtractionDuration(?int $frameExtractionDuration): self
+    {
+        $this->frameExtractionDuration = $frameExtractionDuration;
+        return $this;
+    }
+
+    public function getFaceAnalysisDuration(): ?int
+    {
+        return $this->faceAnalysisDuration;
+    }
+
+    public function setFaceAnalysisDuration(?int $faceAnalysisDuration): self
+    {
+        $this->faceAnalysisDuration = $faceAnalysisDuration;
+        return $this;
+    }
+
+    public function getRefinementDuration(): ?int
+    {
+        return $this->refinementDuration;
+    }
+
+    public function setRefinementDuration(?int $refinementDuration): self
+    {
+        $this->refinementDuration = $refinementDuration;
+        return $this;
+    }
+
+    public function getCurrentFrameDirectory(): ?string
+    {
+        return $this->currentFrameDirectory;
+    }
+
+    public function setCurrentFrameDirectory(?string $currentFrameDirectory): self
+    {
+        $this->currentFrameDirectory = $currentFrameDirectory;
+        return $this;
+    }
+
+    public function getCurrentRefinementFrameDirectory(): ?string
+    {
+        return $this->currentRefinementFrameDirectory;
+    }
+
+    public function setCurrentRefinementFrameDirectory(?string $currentRefinementFrameDirectory): self
+    {
+        $this->currentRefinementFrameDirectory = $currentRefinementFrameDirectory;
+        return $this;
+    }
+
+    public function getEstimatedConversionDuration(): ?int
+    {
+        return $this->estimatedConversionDuration;
+    }
+
+    public function setEstimatedConversionDuration(?int $estimatedConversionDuration): self
+    {
+        $this->estimatedConversionDuration = $estimatedConversionDuration;
+        return $this;
+    }
+
+    public function getEstimatedSceneDetectionDuration(): ?int
+    {
+        return $this->estimatedSceneDetectionDuration;
+    }
+
+    public function setEstimatedSceneDetectionDuration(?int $estimatedSceneDetectionDuration): self
+    {
+        $this->estimatedSceneDetectionDuration = $estimatedSceneDetectionDuration;
+        return $this;
+    }
+
+    public function getEstimatedFrameExtractionDuration(): ?int
+    {
+        return $this->estimatedFrameExtractionDuration;
+    }
+
+    public function setEstimatedFrameExtractionDuration(?int $estimatedFrameExtractionDuration): self
+    {
+        $this->estimatedFrameExtractionDuration = $estimatedFrameExtractionDuration;
+        return $this;
+    }
+
+    public function getEstimatedFaceAnalysisDuration(): ?int
+    {
+        return $this->estimatedFaceAnalysisDuration;
+    }
+
+    public function setEstimatedFaceAnalysisDuration(?int $estimatedFaceAnalysisDuration): self
+    {
+        $this->estimatedFaceAnalysisDuration = $estimatedFaceAnalysisDuration;
         return $this;
     }
 
