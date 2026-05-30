@@ -11,4 +11,6 @@ enum PersonStatus: string
     case UNKNOWN = 'unknown';         // Markiert als "nicht identifizierbar" (Fremde)
     case WASTED = 'wasted';           // Markiert als unwichtig/Hintergrundrauschen
     case ARCHIVED = 'archived';       // Optional: Für späteres Aussortieren
+    case MERGED = 'merged';           // Person wurde mit einer anderen zusammengeführt
+    case TO_REASSIGN = 'to_reassign'; // Person/Gesichter müssen manuell neu zugeordnet werden
 }

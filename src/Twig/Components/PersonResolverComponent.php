@@ -28,6 +28,21 @@ class PersonResolverComponent extends AbstractController
     #[LiveProp(writable: true)]
     public string $newName = '';
 
+    #[LiveProp(writable: true)]
+    public string $newFullName = '';
+
+    #[LiveProp(writable: true)]
+    public ?int $newAge = null;
+
+    #[LiveProp(writable: true)]
+    public ?string $newGender = null;
+
+    #[LiveProp(writable: true)]
+    public ?string $newRelation = null;
+
+    #[LiveProp(writable: true)]
+    public ?string $newCharacteristics = null;
+
     #[LiveProp]
     public ?int $activeFaceId = null;
 
@@ -110,6 +125,10 @@ class PersonResolverComponent extends AbstractController
             $this->currentPersonId = null;
         }
         $this->newName = '';
+        $this->newAge = null;
+        $this->newGender = null;
+        $this->newRelation = null;
+        $this->newCharacteristics = null;
     }
 
     public function getActiveFace()
@@ -179,7 +198,8 @@ class PersonResolverComponent extends AbstractController
                     $face->setPerson($targetPerson);
                 }
                 if ($p !== $targetPerson) {
-                    $p->setStatus(PersonStatus::IDENTIFIED);
+                    $p->setStatus(PersonStatus::MERGED);
+                    $p->setMergedInto($targetPerson);
                     $p->setIdentified(true);
                     if ($p->getName() === null || $p->getName() === '') {
                         $p->setName($targetPerson->getName() . ' (merged)');
@@ -198,6 +218,11 @@ class PersonResolverComponent extends AbstractController
             }
 
             $currentPerson->setName($trimmedName);
+            $currentPerson->setFullName(trim($this->newFullName));
+            $currentPerson->setAge($this->newAge);
+            $currentPerson->setGender($this->newGender);
+            $currentPerson->setRelation($this->newRelation);
+            $currentPerson->setCharacteristics($this->newCharacteristics);
             $currentPerson->setStatus(PersonStatus::IDENTIFIED);
             $currentPerson->setIdentified(true); // Kompatibilität
 
@@ -206,7 +231,8 @@ class PersonResolverComponent extends AbstractController
                 foreach ($p->getVideoFaces() as $face) {
                     $face->setPerson($currentPerson);
                 }
-                $p->setStatus(PersonStatus::IDENTIFIED);
+                $p->setStatus(PersonStatus::MERGED);
+                $p->setMergedInto($currentPerson);
                 $p->setIdentified(true);
             }
         } else {
@@ -243,6 +269,28 @@ class PersonResolverComponent extends AbstractController
 
         $this->resetForm();
         $this->loadNextBestPerson();
+    }
+
+    #[LiveAction]
+    public function markForReassignment()
+    {
+        $person = $this->getUnidentifiedPerson();
+        if (!$person) {
+            return null;
+        }
+
+        $person->setStatus(PersonStatus::TO_REASSIGN);
+        $this->entityManager->flush();
+
+        if ($this->fromQuickResolve) {
+            return $this->redirectToRoute('app_identity_quick_resolve');
+        }
+        if ($this->fromTinder) {
+            return $this->redirectToRoute('app_identity_tinder_resolve');
+        }
+
+        $this->loadNextBestPerson();
+        return null;
     }
 
     /**
@@ -332,7 +380,8 @@ class PersonResolverComponent extends AbstractController
                 $face->setPerson($targetPerson);
             }
             if ($p !== $targetPerson) {
-                $p->setStatus(PersonStatus::IDENTIFIED);
+                $p->setStatus(PersonStatus::MERGED);
+                $p->setMergedInto($targetPerson);
                 $p->setIdentified(true);
                 if ($p->getName() === null || $p->getName() === '') {
                     $p->setName($targetPerson->getName() . ' (merged)');

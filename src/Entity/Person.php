@@ -47,8 +47,27 @@ class Person
     #[ORM\Column(options: ['default' => 0])]
     private int $showCount = 0;
 
+    #[ORM\ManyToOne(targetEntity: self::class)]
+    #[ORM\JoinColumn(name: 'merged_into_id', referencedColumnName: 'id', nullable: true, onDelete: 'SET NULL')]
+    private ?Person $mergedInto = null;
+
     #[ORM\ManyToOne(targetEntity: VideoFace::class)]
     private ?VideoFace $profileFace = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $age = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $gender = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $characteristics = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $fullName = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $relation = null;
 
     public function __construct()
     {
@@ -69,6 +88,62 @@ class Person
     public function setProfileFace(?VideoFace $face): self
     {
         $this->profileFace = $face;
+        return $this;
+    }
+
+    public function getAge(): ?int
+    {
+        return $this->age;
+    }
+
+    public function setAge(?int $age): self
+    {
+        $this->age = $age;
+        return $this;
+    }
+
+    public function getGender(): ?string
+    {
+        return $this->gender;
+    }
+
+    public function setGender(?string $gender): self
+    {
+        $this->gender = $gender;
+        return $this;
+    }
+
+    public function getCharacteristics(): ?string
+    {
+        return $this->characteristics;
+    }
+
+    public function setCharacteristics(?string $characteristics): self
+    {
+        $this->characteristics = $characteristics;
+        return $this;
+    }
+
+    public function getFullName(): ?string
+    {
+        return $this->fullName;
+    }
+
+    public function setFullName(?string $fullName): self
+    {
+        $this->fullName = $fullName;
+
+        return $this;
+    }
+
+    public function getRelation(): ?string
+    {
+        return $this->relation;
+    }
+
+    public function setRelation(?string $relation): self
+    {
+        $this->relation = $relation;
         return $this;
     }
 
@@ -277,6 +352,15 @@ class Person
     public function setShowCount(int $showCount): self
     {
         $this->showCount = $showCount;
+        return $this;
+    }
+    public function getMergedInto(): ?Person
+    {
+        return $this->mergedInto;
+    }
+    public function setMergedInto(?Person $mergedInto): self
+    {
+        $this->mergedInto = $mergedInto;
         return $this;
     }
 }

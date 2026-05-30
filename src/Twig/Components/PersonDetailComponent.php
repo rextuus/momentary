@@ -26,7 +26,7 @@ class PersonDetailComponent extends AbstractController
     #[LiveProp(writable: true)]
     public ?PersonCombineData $initialFormData = null;
 
-    #[LiveProp]
+    #[LiveProp(writable: ['name', 'fullName', 'age', 'gender', 'characteristics', 'relation', 'description'])]
     public Person $person;
 
     public function __construct(
@@ -41,6 +41,15 @@ class PersonDetailComponent extends AbstractController
             $this->initialFormData,
             ['source' => $this->person]
         );
+    }
+
+    #[LiveAction]
+    public function save(): void
+    {
+        $this->entityManager->persist($this->person);
+        $this->entityManager->flush();
+
+        $this->addFlash('success', 'Änderungen gespeichert.');
     }
 
     #[LiveAction]
@@ -68,8 +77,10 @@ class PersonDetailComponent extends AbstractController
 
         $this->entityManager->flush();
 
-        // Jetzt die alte Person löschen
-        $this->entityManager->remove($this->person);
+        // Jetzt die alte Person als gemergt markieren
+        $this->person->setStatus(\App\Enum\PersonStatus::MERGED);
+        $this->person->setMergedInto($targetPerson);
+        $this->entityManager->persist($this->person);
         $this->entityManager->flush();
 
         $this->addFlash('success', sprintf('Merged into %s', $targetPerson->getName()));
@@ -91,7 +102,7 @@ class PersonDetailComponent extends AbstractController
     }
 
     #[LiveAction]
-    public function splitToNewPerson(#[LiveArg] int $faceId): void
+    public function reassignFace(#[LiveArg] int $faceId): void
     {
         $face = $this->videoFaceRepository->find($faceId);
 
@@ -100,12 +111,12 @@ class PersonDetailComponent extends AbstractController
             return;
         }
 
-        // 1. Neue unbekannte Person anlegen
+        // 1. Neue temporäre Person anlegen, die nur für das Reassignment dient
         $newPerson = new Person();
         $uniqueId = substr(md5((string)hrtime(true)), 0, 8);
-        $newPerson->setName('unknown_' . $uniqueId);
+        $newPerson->setName('split_' . $uniqueId);
         $newPerson->setIdentified(false);
-        $newPerson->setStatus(\App\Enum\PersonStatus::NEW);
+        $newPerson->setStatus(\App\Enum\PersonStatus::TO_REASSIGN);
 
         $this->entityManager->persist($newPerson);
 
@@ -119,6 +130,6 @@ class PersonDetailComponent extends AbstractController
 
         $this->entityManager->flush();
 
-        $this->addFlash('success', 'Gesicht wurde erfolgreich in eine neue Person ausgelagert.');
+        $this->addFlash('success', 'Gesicht wurde entfernt und kann nun unter "Auftrennen" neu zugeordnet werden.');
     }
 }

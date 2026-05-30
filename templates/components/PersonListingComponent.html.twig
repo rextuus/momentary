@@ -1,0 +1,73 @@
+<div {{ attributes }}>
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+            <form method="get" action="{{ path('person_index') }}" class="row g-3 align-items-center">
+                <div class="col-12 col-md-3">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0">
+                            <i class="fas fa-search text-muted"></i>
+                        </span>
+                        <input type="search" 
+                               name="search"
+                               value="{{ search }}"
+                               class="form-control border-start-0 ps-0" 
+                               placeholder="Name suchen...">
+                    </div>
+                </div>
+                <div class="col-12 col-md-7">
+                    <div class="d-flex flex-wrap gap-3 align-items-center h-100">
+                        <span class="text-muted small me-1"><i class="fas fa-filter me-1"></i> Status:</span>
+                        <div class="form-check form-check-inline mb-0">
+                            <input class="form-check-input" type="checkbox" name="statuses[]" value="identified" id="status_identified" {{ 'identified' in statuses ? 'checked' : '' }}>
+                            <label class="form-check-label small" for="status_identified">Identifiziert</label>
+                        </div>
+                        <div class="form-check form-check-inline mb-0">
+                            <input class="form-check-input" type="checkbox" name="statuses[]" value="new" id="status_new" {{ 'new' in statuses ? 'checked' : '' }}>
+                            <label class="form-check-label small" for="status_new">Neu</label>
+                        </div>
+                        <div class="form-check form-check-inline mb-0">
+                            <input class="form-check-input" type="checkbox" name="statuses[]" value="wasted" id="status_wasted" {{ 'wasted' in statuses ? 'checked' : '' }}>
+                            <label class="form-check-label small" for="status_wasted">Ausgeblendet</label>
+                        </div>
+                        <div class="form-check form-check-inline mb-0">
+                            <input class="form-check-input" type="checkbox" name="statuses[]" value="unknown" id="status_unknown" {{ 'unknown' in statuses ? 'checked' : '' }}>
+                            <label class="form-check-label small" for="status_unknown">Unbekannt</label>
+                        </div>
+                        <div class="form-check form-check-inline mb-0">
+                            <input class="form-check-input" type="checkbox" name="statuses[]" value="merged" id="status_merged" {{ 'merged' in statuses ? 'checked' : '' }}>
+                            <label class="form-check-label small" for="status_merged">Gemergt</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-2 d-flex gap-2 justify-content-md-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        Filtern
+                    </button>
+                    <a href="{{ path('person_index') }}" class="btn btn-outline-secondary" title="Filter zurücksetzen">
+                        <i class="fas fa-undo"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row g-4" data-loading="opacity-50">
+        {% for person in this.persons %}
+            <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+                <div class="hover-card h-100">
+                    {{ component('PersonComponent', {
+                        person: person,
+                        key: 'person-' ~ person.id
+                    }) }}
+                </div>
+            </div>
+        {% else %}
+            <div class="col-12 text-center py-5">
+                <div class="text-muted mb-3">
+                    <i class="fas fa-users-slash fa-3x"></i>
+                </div>
+                <p class="text-muted">Keine Personen mit diesen Filtern gefunden.</p>
+            </div>
+        {% endfor %}
+    </div>
+</div>

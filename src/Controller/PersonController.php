@@ -25,8 +25,17 @@ class PersonController extends AbstractController
     }
 
     #[Route('/', name: 'person_index')]
-    public function index(): Response
+    public function index(\Symfony\Component\HttpFoundation\Request $request): Response
     {
-        return $this->render('person/index.html.twig');
+        $statuses = $request->query->all('statuses');
+        if (empty($statuses)) {
+            $statuses = ['identified'];
+        }
+        $search = $request->query->get('search', '');
+
+        return $this->render('person/index.html.twig', [
+            'statuses' => $statuses,
+            'search' => $search,
+        ]);
     }
 }

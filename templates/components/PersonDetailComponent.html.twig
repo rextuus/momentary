@@ -33,14 +33,58 @@
                         {% endif %}
                     </div>
 
-                    <div class="card-body text-center">
-                        <h4 class="fw-bold mb-1">{{ person.name }}</h4>
-                        <div class="d-flex justify-content-center gap-2 mt-2 mb-4">
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted mb-1">Rufname / Kurzname</label>
+                            <input type="text" data-model="person.name" class="form-control form-control-sm shadow-none" placeholder="z.B. Oma">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted mb-1">Voller Name</label>
+                            <input type="text" data-model="person.fullName" class="form-control form-control-sm shadow-none" placeholder="Vor- und Nachname">
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-muted mb-1">Alter</label>
+                                <input type="number" data-model="person.age" class="form-control form-control-sm shadow-none" placeholder="Alter">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-muted mb-1">Geschlecht</label>
+                                <select data-model="person.gender" class="form-select form-select-sm shadow-none">
+                                    <option value="">Unbekannt</option>
+                                    <option value="male">Männlich</option>
+                                    <option value="female">Weiblich</option>
+                                    <option value="other">Anderes</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted mb-1">Beziehung / Rolle</label>
+                            <input type="text" data-model="person.relation" class="form-control form-control-sm shadow-none" placeholder="z.B. Bräutigam, Gast...">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted mb-1">Merkmale</label>
+                            <textarea data-model="person.characteristics" class="form-control form-control-sm shadow-none" rows="2" placeholder="Brille, Bart, rotes Kleid..."></textarea>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold text-muted mb-1">Notizen</label>
+                            <textarea data-model="person.description" class="form-control form-control-sm shadow-none" rows="3" placeholder="Zusätzliche Infos..."></textarea>
+                        </div>
+
+                        <button data-action="live#action" data-live-action-param="save" class="btn btn-success btn-sm w-100 mb-3 shadow-sm">
+                            <i class="fas fa-save me-1"></i> Speichern
+                        </button>
+
+                        <div class="d-flex justify-content-center gap-2 mb-4">
                             <span class="badge {{ person.status.value == 'identified' ? 'bg-success' : 'bg-warning text-dark' }} px-2 py-1">
                                 {{ person.status.value|upper }}
                             </span>
                             <span class="badge bg-light text-dark border px-2 py-1">
-                                <i class="fas fa-venus-mars me-1 text-primary"></i> {{ person.getProbablyGender|capitalize }}
+                                <i class="fas fa-venus-mars me-1 text-primary"></i> {{ person.gender ?: person.getProbablyGender|capitalize }}
                             </span>
                         </div>
 
@@ -117,18 +161,18 @@
                                         <i class="fas fa-camera text-white" style="font-size: 0.7rem;"></i>
                                     </button>
 
-                                    {# In neue Person verschieben (Gelb mit Confirm) #}
+                                    {# Neu zuordnen (Gelb ohne Confirm) #}
                                     <button class="btn btn-warning btn-sm shadow-sm"
-                                            title="Falsche Zuordnung: In neue Person auslagern"
+                                            title="Falsche Zuordnung: Von dieser Person entfernen"
                                             type="button"
-                                            onclick="if (!confirm('Dieses Gesicht wirklich von {{ person.name }} trennen und eine neue unbekannte Person dafür anlegen?')) return;"
                                             data-action="live#action"
-                                            data-live-action-param="splitToNewPerson"
+                                            data-live-action-param="reassignFace"
                                             data-live-face-id-param="{{ face.id }}"
                                             style="width: 26px; height: 26px; padding: 0; display: flex; align-items: center; justify-content: center;">
-                                        <i class="fas fa-user-plus text-dark" style="font-size: 0.7rem;"></i>
+                                        <i class="fas fa-scissors text-dark" style="font-size: 0.7rem;"></i>
                                     </button>
                                 </div>
+
 
                                 {# Zeitstempel-Badge unten links #}
                                 <div class="position-absolute bottom-0 start-0 m-1 px-1 bg-black bg-opacity-50 text-white rounded small" style="font-size: 0.65rem; z-index: 2;">
@@ -142,21 +186,5 @@
         </div>
     </div>
 
-    {# Detail-Modal für Bilder #}
-    <div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content bg-dark border-0 shadow-lg">
-                <div class="modal-header border-0 pb-0">
-                    <h6 class="modal-title text-white opacity-75" id="modalCaption">Vorschau</h6>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body text-center p-0 pb-4">
-                    <div class="position-relative d-inline-block mt-2">
-                        <img src="" id="modalImage" class="img-fluid rounded" alt="Full view">
-                        <div id="modalBox" class="position-absolute border border-primary border-4 shadow" style="display: none; pointer-events: none;"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    {# Das Modal wurde in base.html.twig zentralisiert #}
 </div>

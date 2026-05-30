@@ -7,7 +7,7 @@
     <div class="card mb-4 shadow-sm border-0">
         <div class="card-body p-3">
             <h6 class="card-subtitle mb-2 text-muted small uppercase fw-bold">Status-Filter</h6>
-            <div class="d-flex flex-wrap gap-2">
+            <div class="d-flex flex-wrap gap-2 mb-3">
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="checkbox" id="status_new" value="new" data-model="statuses[]" {% if 'new' in statuses %}checked{% endif %}>
                     <label class="form-check-label small" for="status_new">Neu</label>
@@ -21,6 +21,7 @@
                     <label class="form-check-label small" for="status_unknown">Unbekannt</label>
                 </div>
             </div>
+
         </div>
     </div>
 
@@ -31,13 +32,19 @@
             <div class="col-6 col-md-4 col-lg-2-4"> {# 2.4 columns for 5 in a row on large, 2 on small #}
                 <div class="card h-100 shadow-sm border-0 person-card">
                     <a href="{{ path('app_identity_resolve', {currentPersonId: person.id, fromQuickResolve: 1}) }}" class="text-decoration-none">
-                        <div class="card-img-top overflow-hidden bg-light position-relative" style="aspect-ratio: 1/1;">
-                            <div class="position-absolute top-0 end-0 p-2" style="z-index: 10;">
+                        <div class="card-img-top overflow-hidden bg-light position-relative" style="aspect-ratio: 1/1;" 
+                             data-bs-toggle="modal"
+                             data-bs-target="#imageModal"
+                             data-bs-img="{{ asset('uploads/faces/' ~ displayFace.faceImagePath) }}"
+                             data-bs-box="{{ displayFace.boundingBoxStyles }}"
+                             data-bs-caption="Sichtung in {{ displayFace.video.title }}"
+                             onclick="event.preventDefault(); event.stopPropagation();">
+                            <div class="position-absolute top-0 end-0 p-2" style="z-index: 10;" onclick="event.stopPropagation();">
                                 <input class="form-check-input shadow-sm border-primary" type="checkbox" value="{{ person.id }}" data-model="selectedPersonIds[]" style="width: 1.5rem; height: 1.5rem;">
                             </div>
                             {% if displayFace %}
-                                <div class="position-absolute top-0 left-0 w-100 h-100" style="{{ face_zoom_style(asset('uploads/faces/' ~ displayFace.faceImagePath), displayFace.boundingBox, 0) }}"></div>
-                                <div class="position-absolute border border-danger border-2" style="{{ displayFace.boundingBoxStyles|raw }}; pointer-events: none;"></div>
+                                <div class="position-absolute top-0 left-0 w-100 h-100" style="{{ face_zoom_style(asset('uploads/faces/' ~ displayFace.faceImagePath), displayFace.boundingBox, 0.2) }}"></div>
+                                <div class="position-absolute border border-danger border-2" style="{{ displayFace.boundingBoxStyles|raw }}; pointer-events: none; z-index: 5;"></div>
                             {% else %}
                                 <div class="d-flex align-items-center justify-content-center h-100 text-muted">
                                     <i class="fas fa-user-slash fa-2x"></i>
@@ -129,4 +136,5 @@
         .person-card:hover { transform: translateY(-3px); box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15) !important; }
         .person-card a { display: block; }
     </style>
+
 </div>

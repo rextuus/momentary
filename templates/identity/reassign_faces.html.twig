@@ -1,0 +1,7 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Gesichter neu zuordnen{% endblock %}
+
+{% block body %}
+    {{ component('FaceReassignComponent', { activeFaceId: faceId }) }}
+{% endblock %}

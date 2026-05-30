@@ -28,22 +28,49 @@
             </a>
         </h5>
 
+        {% if person.fullName %}
+            <div class="small fw-bold text-muted mb-1">{{ person.fullName }}</div>
+        {% endif %}
+
         <div class="small text-muted mb-3">
-            <span class="badge {{ person.status.value == 'identified' ? 'bg-soft-success text-success' : 'bg-soft-warning text-warning' }} px-2">
-                {{ person.status.value|upper }}
-            </span>
+            {% if person.status.value == 'merged' %}
+                <span class="badge bg-soft-secondary text-secondary px-2">
+                    MERGED
+                </span>
+                {% if person.mergedInto %}
+                    <div class="mt-1 small">
+                        → <a href="{{ path('person_detail', { id: person.mergedInto.id }) }}" class="text-decoration-none">{{ person.mergedInto.name }}</a>
+                    </div>
+                {% endif %}
+            {% else %}
+                <span class="badge {{ person.status.value == 'identified' ? 'bg-soft-success text-success' : 'bg-soft-warning text-warning' }} px-2">
+                    {{ person.status.value|upper }}
+                </span>
+            {% endif %}
         </div>
     </div>
 
     <div class="card-body pt-0">
-        <div class="d-flex justify-content-center gap-2 mb-2">
-            <span class="badge rounded-pill bg-light text-dark border fw-normal">
-                <i class="fas fa-layer-group me-1 text-primary"></i> {{ person.videoFaces|length }}
+        {# Metadaten-Badges #}
+        <div class="d-flex flex-wrap justify-content-center gap-1 mb-3">
+            <span class="badge rounded-pill bg-light text-dark border fw-normal" title="Sichtungen">
+                <i class="fas fa-video me-1 text-primary"></i> {{ person.videoFaces|length }}
             </span>
-            <span class="badge rounded-pill bg-light text-dark border fw-normal">
-                <i class="fas fa-venus-mars me-1 text-info"></i> {{ person.probablyGender|slice(0,1)|upper }}
+            <span class="badge rounded-pill bg-light text-dark border fw-normal" title="Geschlecht">
+                <i class="fas fa-venus-mars me-1 text-info"></i> {{ (person.gender ?: person.probablyGender)|slice(0,1)|upper }}
             </span>
+            {% if person.age %}
+                <span class="badge rounded-pill bg-light text-dark border fw-normal" title="Alter">
+                    <i class="fas fa-birthday-cake me-1 text-danger"></i> {{ person.age }}
+                </span>
+            {% endif %}
+            {% if person.relation %}
+                <span class="badge rounded-pill bg-light text-dark border fw-normal" title="Beziehung">
+                    <i class="fas fa-user-tag me-1 text-success"></i> {{ person.relation|slice(0,10) }}{{ person.relation|length > 10 ? '..' : '' }}
+                </span>
+            {% endif %}
         </div>
+
         <div class="text-center">
             <a href="{{ path('person_detail', { id: person.id }) }}" class="btn btn-sm btn-outline-primary w-100 py-1" style="font-size: 0.75rem;">
                 Details & Merge

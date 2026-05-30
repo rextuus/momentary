@@ -21,6 +21,14 @@ class IdentityController extends AbstractController
         return $this->render('identity/tinder_resolve.html.twig');
     }
 
+    #[Route('/admin/reassign-faces/{faceId}', name: 'app_identity_reassign_faces', defaults: ['faceId' => null])]
+    public function reassignFaces(?int $faceId = null): Response
+    {
+        return $this->render('identity/reassign_faces.html.twig', [
+            'faceId' => $faceId,
+        ]);
+    }
+
     #[Route('/admin/resolve-identities/{currentPersonId}', name: 'app_identity_resolve', defaults: ['currentPersonId' => null])]
     public function resolve(
         ?int $currentPersonId = null,

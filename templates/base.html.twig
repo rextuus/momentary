@@ -134,5 +134,23 @@
                 <p class="text-muted small">Automatische Personenerkennung & Video-Archivierung</p>
             </div>
         </footer>
+
+        {# Zentrales Modal für Bild-Vergrößerungen (wird von assets/app.js gesteuert) #}
+        <div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content bg-dark border-0 shadow-lg">
+                    <div class="modal-header border-0 pb-0">
+                        <h6 class="modal-title text-white opacity-75" id="modalCaption">Vorschau</h6>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body text-center p-0 pb-4">
+                        <div class="position-relative d-inline-block mt-2">
+                            <img src="" id="modalImage" class="img-fluid rounded" alt="Full view">
+                            <div id="modalBox" class="position-absolute border border-primary border-4 shadow" style="display: none; pointer-events: none; z-index: 100;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </body>
 </html>

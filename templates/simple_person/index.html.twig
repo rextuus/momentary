@@ -1,0 +1,21 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Einfache Personen Liste{% endblock %}
+
+{% block body %}
+<div class="container mt-4">
+    <h1>Einfache Personen Liste</h1>
+    <p>Anzahl Personen: {{ persons|length }}</p>
+    
+    <ul class="list-group mt-3">
+        {% for person in persons %}
+            <li class="list-group-item">
+                {{ person.name ?: 'Unbekannte Person (ID: ' ~ person.id ~ ')' }} 
+                <span class="badge bg-secondary">{{ person.status.value }}</span>
+            </li>
+        {% else %}
+            <li class="list-group-item text-muted">Keine Personen gefunden.</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

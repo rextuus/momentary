@@ -42,10 +42,10 @@
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="card h-100 bg-white">
+                <div class="card h-100 bg-white border-left-warning shadow-sm">
                     <div class="card-body py-3">
-                        <div class="text-muted small fw-bold text-uppercase">Ausgeblendet</div>
-                        <div class="h4 mb-0 fw-bold text-muted">{{ stats.wasted }}</div>
+                        <div class="text-muted small fw-bold text-uppercase">Auftrennen</div>
+                        <div class="h4 mb-0 fw-bold text-warning">{{ stats.to_reassign }}</div>
                     </div>
                 </div>
             </div>
@@ -143,6 +143,12 @@
                         <a href="{{ path('app_identity_tinder_resolve') }}" class="btn btn-light border shadow-sm w-100 py-3 hover-card">
                             <i class="fas fa-fire d-block mb-2 text-danger"></i>
                             <span class="small fw-bold">Tinder</span>
+                        </a>
+                    </div>
+                    <div class="col-6 col-sm-3 col-lg-6">
+                        <a href="{{ path('app_identity_reassign_faces') }}" class="btn btn-light border shadow-sm w-100 py-3 hover-card">
+                            <i class="fas fa-scissors d-block mb-2 text-warning"></i>
+                            <span class="small fw-bold">Auftrennen</span>
                         </a>
                     </div>
                 </div>

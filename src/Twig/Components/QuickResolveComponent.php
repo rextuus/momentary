@@ -120,8 +120,10 @@ class QuickResolveComponent
             foreach ($person->getVideoFaces() as $face) {
                 $face->setPerson($detectedPerson);
             }
-            // Die alte (unidentifizierte) Person löschen
-            $this->entityManager->remove($person);
+            // Die alte (unidentifizierte) Person als gemergt markieren
+            $person->setStatus(PersonStatus::MERGED);
+            $person->setMergedInto($detectedPerson);
+            $this->entityManager->persist($person);
             $this->entityManager->flush();
         }
 

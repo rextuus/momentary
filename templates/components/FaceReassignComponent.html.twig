@@ -1,0 +1,164 @@
+<div {{ attributes }} class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12 mb-4">
+            <h1 class="h3 mb-0 text-gray-800">Gesichter neu zuordnen</h1>
+            <p class="text-muted">Hier werden alle Gesichter angezeigt, deren automatische Gruppierung fehlerhaft war.</p>
+        </div>
+    </div>
+
+    {% set faces = this.faces %}
+    {% set activeFace = this.activeFace %}
+
+    {% if faces|length > 0 and activeFace %}
+        <div class="row">
+            {# Linke Spalte: Galerie der zu bearbeitenden Gesichter #}
+            <div class="col-md-3">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-primary">Warteschlange ({{ faces|length }})</h6>
+                    </div>
+                    <div class="card-body p-0 overflow-auto" style="max-height: 70vh;">
+                        <div class="list-group list-group-flush">
+                            {% for face in faces %}
+                                <button type="button" 
+                                        class="list-group-item list-group-item-action {{ activeFace.id == face.id ? 'active' : '' }} p-2"
+                                        data-action="live#action"
+                                        data-live-action-param="selectFace"
+                                        data-live-id-param="{{ face.id }}">
+                                    <div class="d-flex align-items-center">
+                                        <div class="me-2 position-relative" style="width: 50px; height: 50px; overflow: hidden; border-radius: 4px;">
+                                            <div class="position-absolute top-0 left-0 w-100 h-100" style="{{ face_zoom_style(asset('uploads/faces/' ~ face.faceImagePath), face.boundingBox, 0) }}"></div>
+                                            <div class="position-absolute border border-danger border-1" style="{{ face.boundingBoxStyles|raw }}; pointer-events: none;"></div>
+                                        </div>
+                                        <div class="small text-truncate">
+                                            <span class="d-block fw-bold text-truncate">{{ face.person.name }}</span>
+                                            <span class="text-muted">{{ face.timestamp|date('H:i:s') }}</span>
+                                        </div>
+                                    </div>
+                                </button>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {# Mittlere Spalte: Fokus Ansicht #}
+            <div class="col-md-5">
+                <div class="card shadow mb-4 border-left-warning">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-warning">Aktuelles Gesicht</h6>
+                    </div>
+                    <div class="card-body text-center">
+                        <div class="mb-4 d-inline-block shadow border border-4 border-white rounded overflow-hidden position-relative" 
+                             style="width: 300px; height: 300px; cursor: zoom-in;"
+                             data-bs-toggle="modal"
+                             data-bs-target="#imageModal"
+                             data-bs-img="{{ asset('uploads/faces/' ~ activeFace.faceImagePath) }}"
+                             data-bs-box="{{ activeFace.boundingBoxStyles }}"
+                             data-bs-caption="Sichtung in {{ activeFace.video.title }}">
+                             {# Wir nutzen hier den face_zoom_style, falls vorhanden, sonst einfach img #}
+                             <div class="position-absolute top-0 left-0 w-100 h-100" style="{{ face_zoom_style(asset('uploads/faces/' ~ activeFace.faceImagePath), activeFace.boundingBox, 0.4) }}"></div>
+                             <div class="position-absolute border border-danger border-3" style="{{ activeFace.boundingBoxStyles|raw }}; pointer-events: none;"></div>
+                        </div>
+                        
+                        <div class="alert alert-info small mb-4">
+                            Gehört aktuell zu: <strong>{{ activeFace.person.name }}</strong>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-primary" data-action="live#action" data-live-action-param="assignToNewPerson">
+                                <i class="bi bi-person-plus me-2"></i> Als neue Person anlegen
+                            </button>
+                            <button type="button" class="btn btn-secondary" data-action="live#action" data-live-action-param="markAsUnknown">
+                                <i class="bi bi-question-circle me-2"></i> Als unbekannt markieren
+                            </button>
+                            <hr>
+                            <button type="button" class="btn btn-success btn-lg" data-action="live#action" data-live-action-param="finishPerson">
+                                <i class="bi bi-check-all me-2"></i> Restliche Faces dieser Person so lassen
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {# Rechte Spalte: Suche & Zuordnung zu existierenden Personen #}
+            <div class="col-md-4">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Bestehender Person zuordnen</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-muted small text-uppercase">Vorschläge</label>
+                            <div class="row row-cols-3 g-2">
+                                {% for sug in this.suggestions %}
+                                    {# Wir nehmen das erste Gesicht der Person als Profilbild #}
+                                    {% set sugFace = sug.profileFace ?: sug.videoFaces.first %}
+                                    <div class="col">
+                                        <button type="button"
+                                                class="btn btn-outline-light p-1 border shadow-sm w-100 d-flex flex-column align-items-center position-relative"
+                                                style="border-radius: 8px; transition: all 0.2s; min-height: 85px;"
+                                                data-action="live#action"
+                                                data-live-action-param="assignToPerson"
+                                                data-live-person-id-param="{{ sug.id }}"
+                                                title="{{ sug.name }}">
+                                            {% if sugFace %}
+                                                <img src="{{ asset('uploads/faces/' ~ sugFace.faceImagePath) }}"
+                                                     class="rounded-circle mb-1"
+                                                     style="width: 45px; height: 45px; object-fit: cover;">
+                                            {% endif %}
+                                            <span class="text-dark small fw-bold text-truncate w-100 px-1" style="font-size: 0.75rem;">{{ sug.name }}</span>
+                                        </button>
+                                    </div>
+                                {% else %}
+                                    <div class="col-12 text-muted text-center py-2 small">
+                                        Keine Vorschläge
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-primary small">Andere Person suchen</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   placeholder="Nach Namen suchen..." 
+                                   data-model="debounce(300)|search">
+                        </div>
+
+                                {% if search %}
+                                    <div class="list-group list-group-flush border rounded overflow-auto" style="max-height: 30vh;">
+                                        {% for suggestion in this.suggestions %}
+                                            <button type="button" 
+                                                    class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                                                    data-action="live#action"
+                                                    data-live-action-param="assignToPerson"
+                                                    data-live-person-id-param="{{ suggestion.id }}">
+                                                {{ suggestion.name }}
+                                                <i class="bi bi-chevron-right text-muted"></i>
+                                            </button>
+                                        {% else %}
+                                            <div class="list-group-item text-muted text-center py-4">
+                                                Keine passenden Personen gefunden
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="text-center py-5">
+            <div class="mb-4">
+                <i class="bi bi-check2-circle text-success" style="font-size: 5rem;"></i>
+            </div>
+            <h3>Alles aufgeräumt!</h3>
+            <p class="text-muted">Es gibt aktuell keine Gesichter, die neu zugeordnet werden müssen.</p>
+            <a href="{{ path('app_identity_resolve') }}" class="btn btn-primary mt-3">Zurück zum Resolver</a>
+        </div>
+    {% endif %}
+
+</div>
