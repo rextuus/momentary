@@ -30,6 +30,26 @@ class FaceCropExtension extends AbstractExtension
 
         $box = (object) $boundingBox;
 
+        // Falls zoomFactor 0 ist, zeigen wir das ganze Bild an
+        if ($zoomFactor <= 0) {
+            return sprintf(
+                'background-image: url("%s"); background-size: 100%% 100%%; background-repeat: no-repeat; background-position: center; width: 100%%; height: 100%%;',
+                $imagePath
+            );
+        }
+
+        // Falls zoomFactor exakt 1 ist, nutzen wir eine präzise mathematische Zentrierung (wird aktuell nicht genutzt, aber als Fallback)
+        if ($zoomFactor >= 1.0) {
+            return sprintf(
+                'background-image: url("%s"); background-size: %f%% %f%%; background-position: %f%% %f%%; width: 100%%; height: 100%%;',
+                $imagePath,
+                100 / max(0.01, $box->Width),
+                100 / max(0.01, $box->Height),
+                ($box->Left / max(0.01, 1 - $box->Width)) * -100,
+                ($box->Top / max(0.01, 1 - $box->Height)) * -100
+            );
+        }
+
         // Fokuspunkt berechnen
         $faceCenterX = ($box->Left + ($box->Width / 2)) * 100;
         $faceCenterY = ($box->Top + ($box->Height / 2)) * 100;
@@ -39,7 +59,7 @@ class FaceCropExtension extends AbstractExtension
         $posY = (50 * (1 - $zoomFactor)) + ($faceCenterY * $zoomFactor);
 
         return sprintf(
-            'background-image: url("%s"); background-size: cover; background-position: %f%% %f%%; width: 100%%; height: 100%%; position: absolute; top: 0; left: 0;',
+            'background-image: url("%s"); background-size: cover; background-position: %f%% %f%%; width: 100%%; height: 100%%;',
             $imagePath,
             $posX,
             $posY

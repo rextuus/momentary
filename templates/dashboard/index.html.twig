@@ -42,10 +42,10 @@
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="card h-100 bg-primary text-white">
-                    <div class="card-body py-3 text-center">
-                        <div class="small fw-bold text-uppercase opacity-75">Status</div>
-                        <div class="small mb-0 fw-bold"><i class="fas fa-circle text-success me-1"></i> Online</div>
+                <div class="card h-100 bg-white">
+                    <div class="card-body py-3">
+                        <div class="text-muted small fw-bold text-uppercase">Ausgeblendet</div>
+                        <div class="h4 mb-0 fw-bold text-muted">{{ stats.wasted }}</div>
                     </div>
                 </div>
             </div>
@@ -120,18 +120,29 @@
 
             <!-- NEBENSPALTE: PERSONEN & SCHNELLZUGRIFF -->
             <div class="col-lg-4">
-                <!-- Schnellzugriff -->
                 <div class="row g-2 mb-4">
-                    <div class="col-6">
+                    <div class="col-6 col-sm-3 col-lg-6">
                         <a href="{{ path('person_index') }}" class="btn btn-light border shadow-sm w-100 py-3 hover-card">
                             <i class="fas fa-users d-block mb-2 text-primary"></i>
                             <span class="small fw-bold">Personen</span>
                         </a>
                     </div>
-                    <div class="col-6">
+                    <div class="col-6 col-sm-3 col-lg-6">
                         <a href="{{ path('app_identity_resolve') }}" class="btn btn-light border shadow-sm w-100 py-3 hover-card">
                             <i class="fas fa-wand-magic-sparkles d-block mb-2 text-warning"></i>
                             <span class="small fw-bold">Resolve</span>
+                        </a>
+                    </div>
+                    <div class="col-6 col-sm-3 col-lg-6">
+                        <a href="{{ path('app_identity_quick_resolve') }}" class="btn btn-light border shadow-sm w-100 py-3 hover-card">
+                            <i class="fas fa-bolt d-block mb-2 text-info"></i>
+                            <span class="small fw-bold">Quick</span>
+                        </a>
+                    </div>
+                    <div class="col-6 col-sm-3 col-lg-6">
+                        <a href="{{ path('app_identity_tinder_resolve') }}" class="btn btn-light border shadow-sm w-100 py-3 hover-card">
+                            <i class="fas fa-fire d-block mb-2 text-danger"></i>
+                            <span class="small fw-bold">Tinder</span>
                         </a>
                     </div>
                 </div>

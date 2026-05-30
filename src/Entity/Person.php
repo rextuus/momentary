@@ -44,6 +44,9 @@ class Person
     #[ORM\Column(type: 'string', enumType: PersonStatus::class, options: ['default' => PersonStatus::NEW->value])]
     private PersonStatus $status = PersonStatus::NEW;
 
+    #[ORM\Column(options: ['default' => 0])]
+    private int $showCount = 0;
+
     #[ORM\ManyToOne(targetEntity: VideoFace::class)]
     private ?VideoFace $profileFace = null;
 
@@ -251,6 +254,29 @@ class Person
     public function setStatus(PersonStatus $status): self
     {
         $this->status = $status;
+        return $this;
+    }
+
+    public function getSceneCount(): int
+    {
+        $sceneIds = [];
+        foreach ($this->videoFaces as $face) {
+            if ($face->getVideoScene()) {
+                $sceneIds[] = $face->getVideoScene()->getId();
+            }
+        }
+
+        return count(array_unique($sceneIds));
+    }
+
+    public function getShowCount(): int
+    {
+        return $this->showCount;
+    }
+
+    public function setShowCount(int $showCount): self
+    {
+        $this->showCount = $showCount;
         return $this;
     }
 }

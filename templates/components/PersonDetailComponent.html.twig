@@ -35,13 +35,34 @@
 
                     <div class="card-body text-center">
                         <h4 class="fw-bold mb-1">{{ person.name }}</h4>
-                        <div class="d-flex justify-content-center gap-2 mt-2">
+                        <div class="d-flex justify-content-center gap-2 mt-2 mb-4">
                             <span class="badge {{ person.status.value == 'identified' ? 'bg-success' : 'bg-warning text-dark' }} px-2 py-1">
                                 {{ person.status.value|upper }}
                             </span>
                             <span class="badge bg-light text-dark border px-2 py-1">
                                 <i class="fas fa-venus-mars me-1 text-primary"></i> {{ person.getProbablyGender|capitalize }}
                             </span>
+                        </div>
+
+                        {# NEU: Merge-Bereich #}
+                        <div class="p-3 border rounded bg-light text-start mt-4">
+                            <label class="form-label small fw-bold text-muted mb-2">Mit anderer Person zusammenführen</label>
+                            {{ form_start(form, {
+                                attr: {
+                                    'data-action': 'live#action:prevent',
+                                    'data-live-action-param': 'merge',
+                                }
+                            }) }}
+                            <div class="input-group input-group-sm">
+                                {{ form_widget(form.target, { attr: { 'class': 'form-select border-0 bg-transparent shadow-none' } }) }}
+                                <button type="submit" class="btn btn-primary" title="Merge" onclick="return confirm('Diese Person wirklich mit der Zielperson verschmelzen? Dies kann nicht rückgängig gemacht werden.')">
+                                    <i class="fas fa-compress-alt"></i>
+                                </button>
+                            </div>
+                            {{ form_end(form, {render_rest: false}) }}
+                            <div class="form-text mt-1" style="font-size: 0.7rem;">
+                                Alle Sichtungen werden übertragen und diese Person gelöscht.
+                            </div>
                         </div>
                     </div>
                 </div>

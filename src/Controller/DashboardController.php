@@ -18,6 +18,7 @@ class DashboardController extends AbstractController
                 'persons' => $personRepo->count([]),
                 'videos' => $videoRepo->count([]),
                 'identified' => $personRepo->count(['status' => 'identified']),
+                'wasted' => $personRepo->count(['status' => 'wasted']),
             ],
             'recent_persons' => $personRepo->findBy(['status' => 'identified'], ['id' => 'DESC'], 5),
             // Die neuesten 5 Videos für das Dashboard

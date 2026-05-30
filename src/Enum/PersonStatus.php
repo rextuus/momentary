@@ -9,5 +9,6 @@ enum PersonStatus: string
     case NEW = 'new';                 // Frisch erstellt, noch nicht bearbeitet
     case IDENTIFIED = 'identified';   // Erfolgreich zugewiesen
     case UNKNOWN = 'unknown';         // Markiert als "nicht identifizierbar" (Fremde)
+    case WASTED = 'wasted';           // Markiert als unwichtig/Hintergrundrauschen
     case ARCHIVED = 'archived';       // Optional: Für späteres Aussortieren
 }

@@ -31,6 +31,18 @@ class PersonResolverComponent extends AbstractController
     #[LiveProp]
     public ?int $activeFaceId = null;
 
+    #[LiveProp(writable: true)]
+    public bool $showWasted = false;
+
+    #[LiveProp]
+    public bool $fromQuickResolve = false;
+
+    #[LiveProp]
+    public bool $fromTinder = false;
+
+    #[LiveProp]
+    public array $mergeIds = [];
+
     public function __construct(
         private PersonRepository $personRepository,
         private EntityManagerInterface $entityManager
@@ -41,9 +53,24 @@ class PersonResolverComponent extends AbstractController
         return $this->createForm(PersonResolverType::class);
     }
 
-    public function mount(): void
+    public function mount(?int $currentPersonId = null, bool $fromQuickResolve = false, bool $fromTinder = false, ?string $mergeIds = null): void
     {
-        $this->loadNextBestPerson();
+        $this->fromQuickResolve = $fromQuickResolve;
+        $this->fromTinder = $fromTinder;
+        if ($mergeIds) {
+            $this->mergeIds = array_filter(array_map('intval', explode(',', $mergeIds)));
+        }
+        if ($currentPersonId) {
+            $this->currentPersonId = $currentPersonId;
+            // Wenn wir eine spezifische Person laden, die evtl. ausgeblendet ist,
+            // sollten wir den Filter automatisch aktivieren, damit man sie sieht
+            $person = $this->personRepository->find($currentPersonId);
+            if ($person && $person->getStatus() === PersonStatus::WASTED) {
+                $this->showWasted = true;
+            }
+        } else {
+            $this->loadNextBestPerson();
+        }
     }
 
     public function getUnidentifiedPerson(): ?Person
@@ -53,19 +80,25 @@ class PersonResolverComponent extends AbstractController
 
     private function loadNextBestPerson(): void
     {
+        $statuses = [PersonStatus::NEW];
+        if ($this->showWasted) {
+            $statuses[] = PersonStatus::WASTED;
+        }
+
         $qb = $this->personRepository->createQueryBuilder('p')
             ->select('p.id')
             ->leftJoin('p.videoFaces', 'f')
-            // Wir laden nur Personen, die noch den Status NEW haben
-            ->where('p.status = :status')
-            ->setParameter('status', PersonStatus::NEW);
+            ->where('p.status IN (:statuses)')
+            ->setParameter('statuses', $statuses);
 
         if ($this->currentPersonId) {
             $qb->andWhere('p.id != :cid')->setParameter('cid', $this->currentPersonId);
         }
 
         $qb->groupBy('p.id')
-            ->orderBy('COUNT(f.id)', 'DESC')
+            ->addSelect('COUNT(DISTINCT f.videoScene) as HIDDEN scene_count')
+            ->orderBy('scene_count', 'DESC')
+            ->addOrderBy('COUNT(f.id)', 'DESC')
             ->setMaxResults(1);
 
         $result = $qb->getQuery()->getOneOrNullResult();
@@ -102,8 +135,10 @@ class PersonResolverComponent extends AbstractController
         $this->activeFaceId = $id;
     }
 
+
+
     #[LiveAction]
-    public function markAsUnknown(): void
+    public function markAsUnknown()
     {
         $currentPerson = $this->getUnidentifiedPerson();
         if (!$currentPerson) return;
@@ -112,12 +147,23 @@ class PersonResolverComponent extends AbstractController
         $currentPerson->setStatus(PersonStatus::UNKNOWN);
 
         $this->entityManager->flush();
+
+        if ($this->fromQuickResolve) {
+            $this->addFlash('success', 'Person als unbekannt markiert.');
+            return $this->redirectToRoute('app_identity_quick_resolve');
+        }
+
+        if ($this->fromTinder) {
+            $this->addFlash('success', 'Person als unbekannt markiert.');
+            return $this->redirectToRoute('app_identity_tinder_resolve');
+        }
+
         $this->resetForm();
         $this->loadNextBestPerson();
     }
 
     #[LiveAction]
-    public function processIdentification(): void
+    public function processIdentification()
     {
         $currentPerson = $this->getUnidentifiedPerson();
         if (!$currentPerson) return;
@@ -127,12 +173,19 @@ class PersonResolverComponent extends AbstractController
 
         if ($targetPerson instanceof Person) {
             // MERGE: Bestehende Person ausgewählt
-            foreach ($currentPerson->getVideoFaces() as $face) {
-                $face->setPerson($targetPerson);
+            $personsToMerge = array_merge([$currentPerson], $this->getMergePersons());
+            foreach ($personsToMerge as $p) {
+                foreach ($p->getVideoFaces() as $face) {
+                    $face->setPerson($targetPerson);
+                }
+                if ($p !== $targetPerson) {
+                    $p->setStatus(PersonStatus::IDENTIFIED);
+                    $p->setIdentified(true);
+                    if ($p->getName() === null || $p->getName() === '') {
+                        $p->setName($targetPerson->getName() . ' (merged)');
+                    }
+                }
             }
-            $currentPerson->setStatus(PersonStatus::IDENTIFIED);
-            $currentPerson->setIdentified(true); // Kompatibilität
-            $currentPerson->setName($currentPerson->getName() . ' (merged)');
         }
         elseif (!empty(trim($this->newName))) {
             // NEU: Name eingegeben
@@ -147,19 +200,47 @@ class PersonResolverComponent extends AbstractController
             $currentPerson->setName($trimmedName);
             $currentPerson->setStatus(PersonStatus::IDENTIFIED);
             $currentPerson->setIdentified(true); // Kompatibilität
+
+            // Auch hier: mergeIds verarbeiten
+            foreach ($this->getMergePersons() as $p) {
+                foreach ($p->getVideoFaces() as $face) {
+                    $face->setPerson($currentPerson);
+                }
+                $p->setStatus(PersonStatus::IDENTIFIED);
+                $p->setIdentified(true);
+            }
         } else {
             // Nichts ausgewählt oder eingegeben
             return;
         }
 
         $this->entityManager->flush();
+
+        if ($this->fromQuickResolve) {
+            $this->addFlash('success', 'Person erfolgreich identifiziert.');
+            return $this->redirectToRoute('app_identity_quick_resolve');
+        }
+
+        if ($this->fromTinder) {
+            $this->addFlash('success', 'Person erfolgreich identifiziert.');
+            return $this->redirectToRoute('app_identity_tinder_resolve');
+        }
+
         $this->resetForm();
         $this->loadNextBestPerson();
     }
 
     #[LiveAction]
-    public function skip(): void
+    public function skip()
     {
+        if ($this->fromQuickResolve) {
+            return $this->redirectToRoute('app_identity_quick_resolve');
+        }
+
+        if ($this->fromTinder) {
+            return $this->redirectToRoute('app_identity_tinder_resolve');
+        }
+
         $this->resetForm();
         $this->loadNextBestPerson();
     }
@@ -236,7 +317,7 @@ class PersonResolverComponent extends AbstractController
     }
 
     #[LiveAction]
-    public function selectSuggestedPerson(#[LiveArg] int $id): void
+    public function selectSuggestedPerson(#[LiveArg] int $id)
     {
         $targetPerson = $this->personRepository->find($id);
         if (!$targetPerson) return;
@@ -245,21 +326,52 @@ class PersonResolverComponent extends AbstractController
         if (!$currentPerson) return;
 
         // Dieselbe Logik wie beim Formular-Submit
-        foreach ($currentPerson->getVideoFaces() as $face) {
-            $face->setPerson($targetPerson);
+        $personsToMerge = array_merge([$currentPerson], $this->getMergePersons());
+        foreach ($personsToMerge as $p) {
+            foreach ($p->getVideoFaces() as $face) {
+                $face->setPerson($targetPerson);
+            }
+            if ($p !== $targetPerson) {
+                $p->setStatus(PersonStatus::IDENTIFIED);
+                $p->setIdentified(true);
+                if ($p->getName() === null || $p->getName() === '') {
+                    $p->setName($targetPerson->getName() . ' (merged)');
+                }
+            }
         }
-        $currentPerson->setStatus(PersonStatus::IDENTIFIED);
-        $currentPerson->setIdentified(true);
-        $currentPerson->setName($currentPerson->getName() . ' (merged)');
 
         $this->entityManager->flush();
+
+        if ($this->fromQuickResolve) {
+            $this->addFlash('success', 'Person erfolgreich identifiziert und zusammengeführt.');
+            return $this->redirectToRoute('app_identity_quick_resolve');
+        }
+
+        if ($this->fromTinder) {
+            $this->addFlash('success', 'Person erfolgreich identifiziert.');
+            return $this->redirectToRoute('app_identity_tinder_resolve');
+        }
+
         $this->resetForm();
         $this->loadNextBestPerson();
     }
 
+    private function getMergePersons(): array
+    {
+        if (empty($this->mergeIds)) {
+            return [];
+        }
+
+        return $this->personRepository->findBy(['id' => $this->mergeIds]);
+    }
+
     public function getRemainingCount(): int
     {
-        // Zähle nur die Personen, die noch bearbeitet werden müssen
-        return $this->personRepository->count(['status' => PersonStatus::NEW]);
+        $statuses = [PersonStatus::NEW];
+        if ($this->showWasted) {
+            $statuses[] = PersonStatus::WASTED;
+        }
+
+        return $this->personRepository->count(['status' => $statuses]);
     }
 }

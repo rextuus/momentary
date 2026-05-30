@@ -1,0 +1,20 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Quick Resolve - Momentary{% endblock %}
+
+{% block body %}
+    <div class="container mt-4">
+        <div class="mb-4">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ path('app_dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Quick Resolve</li>
+                </ol>
+            </nav>
+            <h1 class="fw-bold">Gesichter schnell zuordnen</h1>
+            <p class="text-muted">Klicke auf ein bekanntes Gesicht, um es zu benennen, oder lade die nächsten 10.</p>
+        </div>
+
+        {{ component('QuickResolveComponent') }}
+    </div>
+{% endblock %}

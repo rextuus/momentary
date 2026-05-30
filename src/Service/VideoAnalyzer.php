@@ -845,6 +845,11 @@ readonly class VideoAnalyzer
                 if ($matchedFace) {
                     $videoFace->setMatchedBy($matchedFace);
                     $videoFace->setMatchSimilarity((float) $faceData['similarity']);
+
+                    // NEU: Wenn die Ähnlichkeit hoch genug ist, markieren wir die Person als "wahrscheinlich"
+                    if ($faceData['similarity'] >= 80.0 && $matchedFace->getPerson() && $matchedFace->getPerson()->isIdentified()) {
+                        $videoFace->setDetection($matchedFace->getPerson());
+                    }
                 }
 
                 $this->entityManager->persist($videoFace);

@@ -1,0 +1,132 @@
+<div {{ attributes }} class="quick-resolve-container">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">Schnelle Identifizierung</h4>
+        <span class="badge bg-secondary rounded-pill">Noch {{ this.remainingCount }} Personen</span>
+    </div>
+
+    <div class="card mb-4 shadow-sm border-0">
+        <div class="card-body p-3">
+            <h6 class="card-subtitle mb-2 text-muted small uppercase fw-bold">Status-Filter</h6>
+            <div class="d-flex flex-wrap gap-2">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="status_new" value="new" data-model="statuses[]" {% if 'new' in statuses %}checked{% endif %}>
+                    <label class="form-check-label small" for="status_new">Neu</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="status_wasted" value="wasted" data-model="statuses[]" {% if 'wasted' in statuses %}checked{% endif %}>
+                    <label class="form-check-label small" for="status_wasted">Ausgeblendet</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="status_unknown" value="unknown" data-model="statuses[]" {% if 'unknown' in statuses %}checked{% endif %}>
+                    <label class="form-check-label small" for="status_unknown">Unbekannt</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-2 mb-4">
+        {% set personsList = this.persons %}
+        {% for person in personsList %}
+            {% set displayFace = person.profileFace ?: person.videoFaces|first %}
+            <div class="col-6 col-md-4 col-lg-2-4"> {# 2.4 columns for 5 in a row on large, 2 on small #}
+                <div class="card h-100 shadow-sm border-0 person-card">
+                    <a href="{{ path('app_identity_resolve', {currentPersonId: person.id, fromQuickResolve: 1}) }}" class="text-decoration-none">
+                        <div class="card-img-top overflow-hidden bg-light position-relative" style="aspect-ratio: 1/1;">
+                            <div class="position-absolute top-0 end-0 p-2" style="z-index: 10;">
+                                <input class="form-check-input shadow-sm border-primary" type="checkbox" value="{{ person.id }}" data-model="selectedPersonIds[]" style="width: 1.5rem; height: 1.5rem;">
+                            </div>
+                            {% if displayFace %}
+                                <div class="position-absolute top-0 left-0 w-100 h-100" style="{{ face_zoom_style(asset('uploads/faces/' ~ displayFace.faceImagePath), displayFace.boundingBox, 0) }}"></div>
+                                <div class="position-absolute border border-danger border-2" style="{{ displayFace.boundingBoxStyles|raw }}; pointer-events: none;"></div>
+                            {% else %}
+                                <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+                                    <i class="fas fa-user-slash fa-2x"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="card-body p-2 text-center">
+                            {% set detectedPerson = null %}
+                            {% for face in person.videoFaces %}
+                                {% if face.detection %}
+                                    {% set detectedPerson = face.detection %}
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if detectedPerson %}
+                                <div class="mb-2">
+                                    <button type="button" 
+                                            data-action="live#action" 
+                                            data-live-action-param="assignToDetectedPerson" 
+                                            data-live-person-id-param="{{ person.id }}" 
+                                            data-live-detected-person-id-param="{{ detectedPerson.id }}" 
+                                            class="btn btn-sm btn-success w-100 py-1"
+                                            title="Ähnlichkeit erkannt: {{ person.videoFaces|filter(f => f.detection and f.detection.id == detectedPerson.id)|first.matchSimilarity|round(1) }}%">
+                                        <i class="fas fa-check-circle me-1"></i> Ist das {{ detectedPerson.name }}?
+                                    </button>
+                                </div>
+                            {% endif %}
+
+                            <div class="small fw-bold text-dark text-truncate">{{ person.videoFaces|length }} Sichtungen</div>
+                            <div class="progress mt-1" style="height: 4px;">
+                                <div class="progress-bar bg-info" role="progressbar" style="width: {{ person.showCount * 10 }}%" aria-valuenow="{{ person.showCount }}" aria-valuemin="0" aria-valuemax="10"></div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        {% else %}
+            <div class="col-12">
+                <div class="alert alert-info text-center py-5">
+                    <i class="fas fa-search fa-3x mb-3 d-block"></i>
+                    <h5>Keine Personen gefunden</h5>
+                    <p class="mb-0">Versuche andere Status-Filter oder lade neue Videos hoch.</p>
+                    <div class="mt-3 text-muted small">
+                        IDs: {{ currentPersonIds|join(', ') ?: 'keine' }}<br>
+                        Filter: {{ statuses|join(', ') }}<br>
+                        Gefundene Personen: {{ personsList|length }}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    {% if this.persons|length > 0 %}
+        <div class="text-center mt-4 pb-5">
+            {% if selectedPersonIds|length > 0 %}
+                <div class="mb-4">
+                    <a href="{{ path('app_identity_resolve', {currentPersonId: selectedPersonIds|first, mergeIds: selectedPersonIds|slice(1)|join(','), fromQuickResolve: 1}) }}" class="btn btn-success btn-lg rounded-pill px-5 shadow animate__animated animate__pulse animate__infinite">
+                        <i class="fas fa-object-group me-2"></i>{{ selectedPersonIds|length }} Personen zusammenführen & identifizieren
+                    </a>
+                </div>
+            {% endif %}
+
+            <div class="d-flex flex-column flex-md-row justify-content-center gap-3">
+                <button data-action="live#action" data-live-action-param="markAllUnknown" class="btn btn-outline-danger btn-lg rounded-pill px-5 shadow-sm">
+                    <i class="fas fa-user-slash me-2"></i>Alle als unbekannt markieren
+                </button>
+                <button data-action="live#action" data-live-action-param="nextBatch" class="btn btn-primary btn-lg rounded-pill px-5 shadow">
+                    <i class="fas fa-forward me-2"></i>Nächste 10 Gesichter laden
+                </button>
+            </div>
+            <p class="text-muted small mt-3">
+                Diese Gesichter als "unbekannt" markieren, wenn sie nach 10-maligem Anzeigen nicht erkannt wurden.
+            </p>
+        </div>
+    {% endif %}
+
+    <style>
+        .col-lg-2-4 {
+            flex: 0 0 auto;
+            width: 20%;
+        }
+        @media (max-width: 991px) {
+            .col-lg-2-4 { width: 33.333%; }
+        }
+        @media (max-width: 575px) {
+            .col-lg-2-4 { width: 50%; }
+        }
+        .person-card { transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
+        .person-card:hover { transform: translateY(-3px); box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15) !important; }
+        .person-card a { display: block; }
+    </style>
+</div>

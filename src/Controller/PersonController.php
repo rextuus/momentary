@@ -25,22 +25,8 @@ class PersonController extends AbstractController
     }
 
     #[Route('/', name: 'person_index')]
-    public function index(PersonRepository $personRepository): Response
+    public function index(): Response
     {
-        // Fetch all persons from the database
-        $persons = $personRepository->createQueryBuilder('p')
-            ->leftJoin('p.videoFaces', 'f')
-            ->where('p.status != :unknown')
-            ->setParameter('unknown', PersonStatus::UNKNOWN)
-            // Nur Personen mit Namen oder Faces anzeigen (optional)
-            ->groupBy('p.id')
-            ->orderBy('COUNT(f.id)', 'DESC')
-            ->getQuery()
-            ->getResult();
-
-        // Render the listing template
-        return $this->render('person/index.html.twig', [
-            'persons' => $persons,
-        ]);
+        return $this->render('person/index.html.twig');
     }
 }

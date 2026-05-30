@@ -29,12 +29,18 @@
                             {{ this.remainingCount }} verbleibend
                         </span>
                     </h2>
-                    <button type="button" class="btn btn-sm btn-outline-secondary shadow-sm" 
-                            data-action="live#action" 
-                            data-live-action-param="skip"
-                            id="btn-skip-person">
-                        Überspringen
-                    </button>
+                    <div class="d-flex gap-2 align-items-center flex-wrap justify-content-end">
+                        <div class="form-check form-switch me-md-3">
+                            <input class="form-check-input" type="checkbox" id="showWasted" data-model="showWasted">
+                            <label class="form-check-label small text-muted" for="showWasted">Ausgeblendete zeigen</label>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary shadow-sm" 
+                                data-action="live#action" 
+                                data-live-action-param="skip"
+                                id="btn-skip-person">
+                            Überspringen
+                        </button>
+                    </div>
                 </div>
 
                 <div class="card shadow border-0 overflow-hidden">
@@ -42,13 +48,21 @@
                         <div class="row g-0">
 
                             {# LINKE SEITE: Visualisierung & Galerie #}
-                            <div class="col-lg-7 bg-dark p-4 d-flex flex-column align-items-center" style="min-height: 750px;">
+                            <div class="col-lg-7 bg-dark p-3 p-md-4 d-flex flex-column align-items-center" style="min-height: 400px; height: auto;">
+                                <div class="w-100 d-flex justify-content-between mb-2">
+                                    <span class="badge bg-info text-dark shadow-sm">
+                                        <i class="bi bi-camera-video me-1"></i> {{ person.videoFaces|length }} Sichtungen
+                                    </span>
+                                    <span class="badge bg-secondary shadow-sm">
+                                        <i class="bi bi-film me-1"></i> {{ person.sceneCount }} Szenen
+                                    </span>
+                                </div>
 
                                 {# 1. OBEN: ZOOM #}
                                 <div class="text-center w-100 mb-4">
                                     <small class="text-light opacity-50 d-block mb-2 text-uppercase fw-bold">Gesichts-Zoom</small>
                                     <div class="d-inline-block shadow-lg border border-4 border-white rounded overflow-hidden bg-black"
-                                         style="width: 300px; height: 300px;">
+                                         style="width: 250px; height: 250px; max-width: 100%;">
 
                                         {% if mainFace and mainFace.boundingBox %}
                                             {% set box = mainFace.boundingBox %}
@@ -66,8 +80,8 @@
                                                          object-fit: none;
                                                          object-position: {{ centerX }}% {{ centerY }}%;
                                                          display: block;
-                                                         width: 300px;
-                                                         height: 300px;">
+                                                         width: 250px;
+                                                         height: 250px;">
                                         {% else %}
                                             <div class="text-white p-5">Vorschau nicht verfügbar</div>
                                         {% endif %}
@@ -77,7 +91,7 @@
                                 {# 2. MITTE: KONTEXT (MIT BOX) #}
                                 <div class="text-center w-100 mb-4">
                                     <small class="text-light opacity-50 d-block mb-2 text-uppercase fw-bold">Kontext im Video</small>
-                                    <div class="position-relative d-inline-block shadow border border-1 border-secondary rounded overflow-hidden bg-black" style="max-width: 450px;">
+                                    <div class="position-relative d-inline-block shadow border border-1 border-secondary rounded overflow-hidden bg-black" style="max-width: 100%;">
                                         {% if mainFace %}
                                             <img src="{{ asset('uploads/faces/' ~ mainFace.faceImagePath) }}"
                                                  class="img-fluid"
@@ -94,7 +108,7 @@
                                 </div>
 
                                 {# 3. UNTEN: GALERIE (Klickbare Thumbnails) #}
-                                <div class="w-100 mt-auto pt-3 border-top border-secondary">
+                                <div class="w-100 mt-md-auto pt-3 border-top border-secondary">
                                     <small class="text-light opacity-50 d-block mb-2 text-uppercase fw-bold text-center">Aufnahmen dieser Person</small>
                                     <div class="d-flex flex-wrap justify-content-center gap-2 overflow-auto py-2" style="max-height: 160px;">
                                         {% for face in person.videoFaces %}
@@ -128,7 +142,7 @@
                                 {% if suggestions %}
                                     <div class="mb-4">
                                         <label class="form-label fw-bold text-muted small text-uppercase">Vorschläge (Top 20)</label>
-                                        <div class="row row-cols-5 g-2">
+                                        <div class="row row-cols-3 row-cols-md-5 g-2">
                                             {% for sug in suggestions %}
                                                 {# Wir nehmen das erste Gesicht der Person als Profilbild #}
                                                 {% set sugFace = sug.profileFace ?: sug.videoFaces.first %}
@@ -180,13 +194,18 @@
                                         Speichern & Nächste <kbd class="ms-2">Strg + Enter</kbd>
                                     </button>
 
-                                    <button type="button"
-                                            class="btn btn-outline-danger shadow-sm py-2 mt-2 w-100"
-                                            data-action="live#action"
-                                            data-live-action-param="markAsUnknown"
-                                            id="btn-mark-as-unknown">
-                                        <i class="bi bi-person-x-fill me-2"></i> Als unbekannt markieren <kbd class="ms-2">U</kbd>
-                                    </button>
+                                    <div class="row g-2 mt-2">
+                                        <div class="col-12">
+                                            <button type="button"
+                                                    class="btn btn-outline-danger shadow-sm py-2 w-100"
+                                                    data-action="live#action"
+                                                    data-live-action-param="markAsUnknown"
+                                                    id="btn-mark-as-unknown"
+                                                    title="Als unbekannt/Fremde markieren">
+                                                <i class="bi bi-person-x-fill me-1"></i> Unbekannt <kbd class="ms-1">U</kbd>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                                 {# Verhindert doppeltes Rendern von Feldern #}
                                 {{ form_rest(form) }}
@@ -201,9 +220,25 @@
     {% else %}
         <div class="text-center py-5">
             <div class="display-1 text-muted mb-4"><i class="bi bi-check2-circle"></i></div>
-            <h3 class="text-muted fw-light">Alles erledigt!</h3>
-            <p class="text-secondary">Alle Personen wurden erfolgreich identifiziert.</p>
-            <a href="/" class="btn btn-primary mt-3 px-5 shadow-sm">Zum Dashboard</a>
+            <h3 class="text-muted fw-light">Keine Person zum Bearbeiten</h3>
+            <p class="text-secondary">Es wurde keine unidentifizierte Person gefunden, die den aktuellen Filtern entspricht.</p>
+            {% if showWasted == false %}
+                <div class="alert alert-info d-inline-block px-4 shadow-sm mt-3">
+                    <i class="bi bi-info-circle me-2"></i> Tipp: Aktiviere "Ausgeblendete zeigen", um bereits aussortierte Personen zu sehen.
+                </div>
+            {% endif %}
+            <div class="mt-4 d-flex justify-content-center gap-2">
+                <a href="/" class="btn btn-outline-secondary px-4 shadow-sm">Dashboard</a>
+                <button class="btn btn-primary px-4 shadow-sm" data-action="live#action" data-live-action-param="loadNextBestPerson">Neu laden</button>
+            </div>
+            
+            {% if app.debug %}
+                <div class="mt-5 small text-muted text-start border-top pt-3 mx-auto" style="max-width: 400px;">
+                    <strong>Debug Info:</strong><br>
+                    Current Person ID: {{ currentPersonId ?: 'null' }}<br>
+                    Show Wasted: {{ showWasted ? 'true' : 'false' }}
+                </div>
+            {% endif %}
         </div>
     {% endif %}
 </div>
