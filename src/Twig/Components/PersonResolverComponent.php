@@ -165,50 +165,74 @@ class PersonResolverComponent extends AbstractController
     }
 
     /**
-     * Holt Quick-Vorschläge basierend auf Video-Häufigkeit und globaler Häufigkeit
+     * Holt Quick-Vorschläge basierend auf Video-Häufigkeit, globaler Häufigkeit, Geschlecht und Alter
      */
     public function getQuickSuggestions(): array
     {
         $currentPerson = $this->getUnidentifiedPerson();
         if (!$currentPerson) return [];
 
-        // Wir brauchen das Video der aktuellen Gesichter
-        $faces = $currentPerson->getVideoFaces();
-        if ($faces->isEmpty()) return [];
+        $activeFace = $this->getActiveFace();
+        if (!$activeFace) return [];
 
-        $videoId = $faces->first()->getVideo()?->getId();
+        $videoId = $activeFace->getVideo()?->getId();
+        $targetGender = $activeFace->getGender();
+        $targetAge = $activeFace->getAge();
 
-        // 1. Top Personen in DIESEM Video
-        $videoTop = $this->personRepository->createQueryBuilder('p')
-            ->select('p')
-            ->join('p.videoFaces', 'f')
-            ->where('f.video = :videoId')
-            ->andWhere('p.status = :status')
+        // Wir holen alle identifizierten Personen
+        $allIdentified = $this->personRepository->createQueryBuilder('p')
+            ->select('p, COUNT(DISTINCT f_video.id) as video_count, COUNT(DISTINCT f_global.id) as global_count')
+            ->leftJoin('p.videoFaces', 'f_video', 'WITH', 'f_video.video = :videoId')
+            ->leftJoin('p.videoFaces', 'f_global')
+            ->where('p.status = :status')
             ->setParameter('videoId', $videoId)
             ->setParameter('status', PersonStatus::IDENTIFIED)
             ->groupBy('p.id')
-            ->orderBy('COUNT(f.id)', 'DESC')
-            ->setMaxResults(3)
             ->getQuery()
             ->getResult();
 
-        // 2. Generelle Top Personen (global)
-        $globalTop = $this->personRepository->createQueryBuilder('p')
-            ->select('p')
-            ->join('p.videoFaces', 'f')
-            ->where('p.status = :status')
-            ->setParameter('status', PersonStatus::IDENTIFIED)
-            ->groupBy('p.id')
-            ->orderBy('COUNT(f.id)', 'DESC')
-            ->setMaxResults(5)
-            ->getQuery()
-            ->getResult();
+        // Manuelle Sortierung nach den komplexen Kriterien
+        usort($allIdentified, function($a_data, $b_data) use ($targetGender, $targetAge) {
+            $a = $a_data[0];
+            $b = $b_data[0];
+            
+            // 1. Häufigkeit im Video
+            if ($a_data['video_count'] !== $b_data['video_count']) {
+                return $b_data['video_count'] <=> $a_data['video_count'];
+            }
 
-        // Zusammenführen und Duplikate entfernen
-        $suggestions = array_unique(array_merge($videoTop, $globalTop), SORT_REGULAR);
+            // 2. Häufigkeit überhaupt
+            if ($a_data['global_count'] !== $b_data['global_count']) {
+                return $b_data['global_count'] <=> $a_data['global_count'];
+            }
 
-        // Max 5-6 Vorschläge zurückgeben
-        return array_slice($suggestions, 0, 6);
+            // 3. Geschlecht
+            $aGenderMatch = ($targetGender && $a->getProbablyGender() === $targetGender) ? 1 : 0;
+            $bGenderMatch = ($targetGender && $b->getProbablyGender() === $targetGender) ? 1 : 0;
+            if ($aGenderMatch !== $bGenderMatch) {
+                return $bGenderMatch <=> $aGenderMatch;
+            }
+
+            // 4. Ähnliches Alter
+            // Wir vergleichen mit dem Alter des Profile-Faces der Person (falls vorhanden)
+            $aAge = $a->getProfileFace()?->getAge();
+            $bAge = $b->getProfileFace()?->getAge();
+            
+            if ($targetAge && ($aAge || $bAge)) {
+                $aDiff = $aAge ? abs($aAge - $targetAge) : 100;
+                $bDiff = $bAge ? abs($bAge - $targetAge) : 100;
+                if ($aDiff !== $bDiff) {
+                    return $aDiff <=> $bDiff;
+                }
+            }
+
+            return 0;
+        });
+
+        // Nur die Personen-Objekte zurückgeben
+        $suggestions = array_map(fn($item) => $item[0], $allIdentified);
+
+        return array_slice($suggestions, 0, 20);
     }
 
     #[LiveAction]

@@ -1,4 +1,8 @@
-<div {{ attributes }}>
+<div {{ attributes }}
+     data-controller="keyboard-shortcuts"
+     data-action="keydown@window->keyboard-shortcuts#onKeydown"
+     class="person-resolver-container"
+>
     {# Flash-Messages für Fehlermeldungen #}
     {% for label, messages in app.flashes %}
         {% for message in messages %}
@@ -15,7 +19,9 @@
         {# Wir holen uns das spezifisch ausgewählte Gesicht über die PHP-Getter-Logik #}
         {% set mainFace = this.activeFace %}
 
-        <div class="row justify-content-center">
+    <div class="row justify-content-center" 
+         data-keyboard-shortcuts-target="container"
+    >
             <div class="col-md-11">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h2 class="h4 mb-0 text-secondary">Identität klären
@@ -23,7 +29,10 @@
                             {{ this.remainingCount }} verbleibend
                         </span>
                     </h2>
-                    <button type="button" class="btn btn-sm btn-outline-secondary shadow-sm" data-action="live#action" data-live-action-param="skip">
+                    <button type="button" class="btn btn-sm btn-outline-secondary shadow-sm" 
+                            data-action="live#action" 
+                            data-live-action-param="skip"
+                            id="btn-skip-person">
                         Überspringen
                     </button>
                 </div>
@@ -118,25 +127,27 @@
                                 {% set suggestions = this.quickSuggestions %}
                                 {% if suggestions %}
                                     <div class="mb-4">
-                                        <label class="form-label fw-bold text-muted small text-uppercase">Vorschläge</label>
-                                        <div class="d-flex flex-wrap gap-2">
+                                        <label class="form-label fw-bold text-muted small text-uppercase">Vorschläge (Top 20)</label>
+                                        <div class="row row-cols-5 g-2">
                                             {% for sug in suggestions %}
                                                 {# Wir nehmen das erste Gesicht der Person als Profilbild #}
-                                                {% set sugFace = sug.videoFaces.first %}
-                                                <button type="button"
-                                                        class="btn btn-outline-light p-1 border shadow-sm d-flex align-items-center"
-                                                        style="border-radius: 50px; transition: all 0.2s;"
-                                                        data-action="live#action"
-                                                        data-live-action-param="selectSuggestedPerson"
-                                                        data-live-id-param="{{ sug.id }}"
-                                                        title="{{ sug.name }}">
-                                                    {% if sugFace %}
-                                                        <img src="{{ asset('uploads/faces/' ~ sugFace.faceImagePath) }}"
-                                                             class="rounded-circle"
-                                                             style="width: 35px; height: 35px; object-fit: cover;">
-                                                    {% endif %}
-                                                    <span class="px-2 text-dark small fw-bold">{{ sug.name }}</span>
-                                                </button>
+                                                {% set sugFace = sug.profileFace ?: sug.videoFaces.first %}
+                                                <div class="col">
+                                                    <button type="button"
+                                                            class="btn btn-outline-light p-1 border shadow-sm w-100 d-flex flex-column align-items-center position-relative"
+                                                            style="border-radius: 8px; transition: all 0.2s; min-height: 85px;"
+                                                            data-action="live#action"
+                                                            data-live-action-param="selectSuggestedPerson"
+                                                            data-live-id-param="{{ sug.id }}"
+                                                            title="{{ sug.name }}">
+                                                        {% if sugFace %}
+                                                            <img src="{{ asset('uploads/faces/' ~ sugFace.faceImagePath) }}"
+                                                                 class="rounded-circle mb-1"
+                                                                 style="width: 45px; height: 45px; object-fit: cover;">
+                                                        {% endif %}
+                                                        <span class="text-dark small fw-bold text-truncate w-100 px-1" style="font-size: 0.75rem;">{{ sug.name }}</span>
+                                                    </button>
+                                                </div>
                                             {% endfor %}
                                         </div>
                                     </div>
@@ -162,17 +173,19 @@
 
                                 <div class="mt-auto d-grid gap-2">
                                     <button type="button"
-                                            class="btn btn-primary btn-lg py-3 shadow fw-bold"
+                                            class="btn btn-primary btn-lg py-3 shadow fw-bold w-100"
                                             data-action="live#action"
-                                            data-live-action-param="prevent|processIdentification">
-                                        Speichern & Nächste
+                                            data-live-action-param="prevent|processIdentification"
+                                            id="btn-process-identification">
+                                        Speichern & Nächste <kbd class="ms-2">Strg + Enter</kbd>
                                     </button>
 
                                     <button type="button"
-                                            class="btn btn-outline-danger shadow-sm py-2 mt-2"
+                                            class="btn btn-outline-danger shadow-sm py-2 mt-2 w-100"
                                             data-action="live#action"
-                                            data-live-action-param="markAsUnknown">
-                                        <i class="bi bi-person-x-fill me-2"></i> Als unbekannt markieren
+                                            data-live-action-param="markAsUnknown"
+                                            id="btn-mark-as-unknown">
+                                        <i class="bi bi-person-x-fill me-2"></i> Als unbekannt markieren <kbd class="ms-2">U</kbd>
                                     </button>
                                 </div>
                                 {# Verhindert doppeltes Rendern von Feldern #}

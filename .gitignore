@@ -34,3 +34,7 @@ yarn-error.log
 .venv
 
 /video-analyzer/python/venv/
+
+###> symfonycasts/sass-bundle ###
+/public/assets/
+###< symfonycasts/sass-bundle ###
