@@ -1,0 +1,33 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Plex POC Test{% endblock %}
+
+{% block body %}
+<div class="container mt-5">
+    <h1>Plex Integration POC</h1>
+    
+    <div class="card mt-4">
+        <div class="card-header">
+            Plex Status & Info
+        </div>
+        <div class="card-body">
+            <p><strong>Upload-Verzeichnis:</strong> <code>{{ upload_dir }}</code></p>
+            <p>Um Videos in Plex zu sehen:</p>
+            <ol>
+                <li>Starte den Plex Container: <code>docker compose up -d plex</code></li>
+                <li>Öffne Plex im Browser (meist <a href="http://localhost:32400/web" target="_blank">http://localhost:32400/web</a>)</li>
+                <li>Richte eine neue Bibliothek (Typ: Filme oder Andere Videos) ein und wähle den Ordner <code>/uploads</code> im Container aus.</li>
+                <li>Dateien, die über den <code>PlexUploadService</code> hinzugefügt werden, erscheinen dort nach einem Scan.</li>
+            </ol>
+            
+            <a href="{{ path('app_plex_trigger_scan') }}" class="btn btn-primary">Bibliotheks-Scan manuell triggern</a>
+        </div>
+    </div>
+
+    {% for message in app.flashes('success') %}
+        <div class="alert alert-success mt-3">
+            {{ message }}
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}

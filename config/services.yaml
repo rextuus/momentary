@@ -4,6 +4,7 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    env(PLEX_HOST): 'http://localhost:32400'
     app.frame_analysis_fps: 0.2
     app.min_scene_length_for_refinement: 2.0
     app.refined_frame_analysis_fps: 1.0
@@ -31,6 +32,11 @@ services:
     App\Service\VideoAnalyzer:
         arguments:
             $filesystem: '@faces.storage'
+
+    App\Service\PlexUploadService:
+        arguments:
+            $plexHost: '%env(resolve:PLEX_HOST)%'
+            $plexToken: '%env(default:null:PLEX_TOKEN)%'
 
     App\Service\File\FileSystem:
         arguments:

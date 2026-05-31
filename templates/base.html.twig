@@ -108,6 +108,11 @@
                                 <i class="fas fa-wand-magic-sparkles me-1"></i> Resolve
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ app.request.attributes.get('_route') == 'app_plex_test_upload' ? 'active' }}" href="{{ path('app_plex_test_upload') }}">
+                                <i class="fas fa-upload me-1"></i> Plex Upload
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </div>

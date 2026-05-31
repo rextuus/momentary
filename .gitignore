@@ -38,3 +38,16 @@ yarn-error.log
 ###> symfonycasts/sass-bundle ###
 /public/assets/
 ###< symfonycasts/sass-bundle ###
+
+# Docker & Persistence
+/docker/plex/config/
+/docker/plex/movies/
+/docker/plex/tvseries/
+/docker/plex/uploads/
+/docker/db/data/
+
+# IDE & OS
+.idea/
+.DS_Store
+Thumbs.db
+/docker/plex/config/Library/Application Support/Plex Media Server/Logs/
