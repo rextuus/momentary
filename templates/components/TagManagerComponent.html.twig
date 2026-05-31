@@ -1,0 +1,130 @@
+<div {{ attributes }} class="card shadow-sm mb-4" id="tag-manager">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-tags me-2"></i>Tag-Verwaltung (Kategorien)</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-4">
+            <!-- Kategorien verwalten -->
+            <div class="col-md-6">
+                <h6>Kategorien</h6>
+                <div class="input-group mb-3">
+                    <input type="text" 
+                           data-model="newCategoryName" 
+                           class="form-control" 
+                           placeholder="Neue Kategorie...">
+                    <button class="btn btn-primary" 
+                            data-action="live#action" 
+                            data-live-action-param="addCategory">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </div>
+
+                <div class="list-group">
+                    {% for category in this.categories %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center {% if editingCategoryId == category.id %}bg-light{% endif %}">
+                            <div class="flex-grow-1">
+                                {% if editingCategoryId == category.id %}
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" data-model="editingCategoryName" class="form-control">
+                                        <button class="btn btn-success" data-action="live#action" data-live-action-param="saveCategory"><i class="bi bi-check"></i></button>
+                                        <button class="btn btn-secondary" data-action="live#action" data-live-action-param="cancelEdit"><i class="bi bi-x"></i></button>
+                                    </div>
+                                {% else %}
+                                    <span class="badge" style="background-color: {{ category.color }}; width: 15px; height: 15px; display: inline-block; margin-right: 5px;">&nbsp;</span>
+                                    <strong>{{ category.name }}</strong>
+                                    <small class="text-muted">({{ category.tags|length }} Tags)</small>
+                                {% endif %}
+                            </div>
+                            {% if editingCategoryId != category.id %}
+                                <div>
+                                    <button class="btn btn-sm btn-outline-secondary me-1" 
+                                            data-action="live#action" 
+                                            data-live-action-param="startEditCategory" 
+                                            data-live-id-param="{{ category.id }}">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" 
+                                            data-action="live#action" 
+                                            data-live-action-param="deleteCategory" 
+                                            data-live-id-param="{{ category.id }}"
+                                            data-confirm="Möchten Sie diese Kategorie und alle zugehörigen Tags wirklich löschen?">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Tags verwalten -->
+            <div class="col-md-6 border-start">
+                <h6>Tags für Kategorie</h6>
+                <select data-model="selectedCategoryId" class="form-select mb-3">
+                    <option value="">-- Kategorie wählen --</option>
+                    {% for category in this.categories %}
+                        <option value="{{ category.id }}">{{ category.name }}</option>
+                    {% endfor %}
+                </select>
+
+                {% if selectedCategoryId %}
+                    <div class="input-group mb-3">
+                        <input type="text" 
+                               data-model="newTagName" 
+                               class="form-control" 
+                               placeholder="Neuer Tag...">
+                        <button class="btn btn-primary" 
+                                data-action="live#action" 
+                                data-live-action-param="addTag">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
+
+                    {% set currentCategory = null %}
+                    {% for cat in this.categories %}
+                        {% if cat.id == selectedCategoryId %}{% set currentCategory = cat %}{% endif %}
+                    {% endfor %}
+
+                    <div class="list-group">
+                        {% if currentCategory %}
+                            {% for tag in currentCategory.tags %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center {% if editingTagId == tag.id %}bg-light{% endif %}">
+                                    <div class="flex-grow-1">
+                                        {% if editingTagId == tag.id %}
+                                            <div class="input-group input-group-sm">
+                                                <input type="text" data-model="editingTagName" class="form-control">
+                                                <button class="btn btn-success" data-action="live#action" data-live-action-param="saveTag"><i class="bi bi-check"></i></button>
+                                                <button class="btn btn-secondary" data-action="live#action" data-live-action-param="cancelEdit"><i class="bi bi-x"></i></button>
+                                            </div>
+                                        {% else %}
+                                            <span>{{ tag.name }}</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if editingTagId != tag.id %}
+                                        <div>
+                                            <button class="btn btn-sm btn-outline-secondary me-1" 
+                                                    data-action="live#action" 
+                                                    data-live-action-param="startEditTag" 
+                                                    data-live-id-param="{{ tag.id }}">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" 
+                                                    data-action="live#action" 
+                                                    data-live-action-param="deleteTag" 
+                                                    data-live-id-param="{{ tag.id }}"
+                                                    data-confirm="Diesen Tag wirklich löschen?">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center py-4">Wählen Sie eine Kategorie aus, um Tags zu verwalten.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>

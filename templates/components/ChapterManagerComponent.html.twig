@@ -1,0 +1,137 @@
+<div {{ attributes.defaults({ id: 'chapter-manager', class: 'chapter-manager mb-5' }) }}>
+    <div class="card border-0 shadow-sm" style="border-radius: 15px; background: #f8f9fa;">
+        <div class="card-body p-4">
+            <h5 class="fw-bold mb-4">
+                <i class="fas fa-bookmark text-primary me-2"></i>Video-Kapitel (Bereiche)
+            </h5>
+
+            {# Liste der existierenden Kapitel #}
+            {% if this.chapters|length > 0 %}
+                <div class="table-responsive mb-4">
+                    <table class="table table-hover align-middle bg-white rounded shadow-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Titel</th>
+                                <th>Bereich (Sekunden)</th>
+                                <th>Dauer</th>
+                                <th class="text-end">Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for chapter in this.chapters %}
+                                <tr class="{{ editingChapterId == chapter.id ? 'table-primary' : '' }}">
+                                    {% if editingChapterId == chapter.id %}
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm" data-model="editingTitle">
+                                        </td>
+                                        <td>
+                                            <div class="d-flex gap-1 align-items-center">
+                                                <select class="form-select form-select-sm" data-model="editingStartSceneId">
+                                                    {% for scene in video.scenes %}
+                                                        <option value="{{ scene.id }}">S{{ scene.sceneNumber }} ({{ scene.startSeconds|round(1) }}s)</option>
+                                                    {% endfor %}
+                                                </select>
+                                                <span>-</span>
+                                                <select class="form-select form-select-sm" data-model="editingEndSceneId">
+                                                    {% for scene in video.scenes %}
+                                                        <option value="{{ scene.id }}">S{{ scene.sceneNumber }} ({{ scene.startSeconds|round(1) }}s)</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </td>
+                                        <td>-</td>
+                                        <td class="text-end">
+                                            <div class="btn-group">
+                                                <button class="btn btn-sm btn-success"
+                                                        data-action="live#action"
+                                                        data-live-action-param="saveChapter">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-secondary"
+                                                        data-action="live#action"
+                                                        data-live-action-param="cancelEdit">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    {% else %}
+                                        <td class="fw-bold">{{ chapter.title }}</td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border">
+                                                {{ chapter.startSeconds|round(1) }}s - {{ chapter.endSeconds|round(1) }}s
+                                            </span>
+                                        </td>
+                                        <td>{{ (chapter.endSeconds - chapter.startSeconds)|round(1) }}s</td>
+                                        <td class="text-end">
+                                            <div class="btn-group">
+                                                <button class="btn btn-sm btn-outline-primary border-0"
+                                                        data-action="live#action"
+                                                        data-live-action-param="editChapter"
+                                                        data-live-id-param="{{ chapter.id }}">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger border-0"
+                                                        data-action="live#action"
+                                                        data-live-action-param="deleteChapter"
+                                                        data-live-id-param="{{ chapter.id }}"
+                                                        onclick="return confirm('Dieses Kapitel wirklich löschen?')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    {% endif %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-4 bg-white rounded border border-dashed mb-4">
+                    <p class="text-muted mb-0 italic">Noch keine Kapitel definiert. Nutze das Formular unten, um Szenen zusammenzufassen.</p>
+                </div>
+            {% endif %}
+
+            {# Formular zum Erstellen eines neuen Kapitels #}
+            <div class="bg-white p-3 rounded shadow-sm border">
+                <h6 class="fw-bold mb-3 small text-uppercase text-muted">Neues Kapitel erstellen</h6>
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Titel</label>
+                        <input type="text" class="form-control" placeholder="z.B. Urlaub Frankreich" data-model="newChapterTitle">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Start-Szene</label>
+                        <select class="form-select" data-model="startSceneId">
+                            <option value="">Wählen...</option>
+                            {% for scene in video.scenes %}
+                                <option value="{{ scene.id }}">Szene {{ scene.sceneNumber }} ({{ scene.startSeconds|round(1) }}s)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">End-Szene</label>
+                        <select class="form-select" data-model="endSceneId">
+                            <option value="">Wählen...</option>
+                            {% for scene in video.scenes %}
+                                <option value="{{ scene.id }}">Szene {{ scene.sceneNumber }} ({{ scene.endSeconds|round(1) }}s)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-primary w-100" 
+                                data-action="live#action" 
+                                data-live-action-param="createChapter"
+                                {{ (not newChapterTitle or not startSceneId or not endSceneId) ? 'disabled' : '' }}>
+                            <i class="fas fa-plus me-1"></i> Erstellen
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <small class="text-muted italic">
+                        <i class="fas fa-info-circle me-1"></i> Ein Kapitel fasst alle Szenen zwischen dem gewählten Start und Ende zusammen.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
