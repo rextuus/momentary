@@ -4,15 +4,19 @@ declare(strict_types=1);
 
 namespace App\Twig\Components;
 
+use App\Entity\Tag;
+use App\Entity\TagCategory;
 use App\Entity\VideoScene;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\UX\LiveComponent\Attribute\AsLiveComponent;
 use Symfony\UX\LiveComponent\Attribute\LiveAction;
 use Symfony\UX\LiveComponent\Attribute\LiveProp;
 use Symfony\UX\LiveComponent\DefaultActionTrait;
 
 #[AsLiveComponent]
-class SceneSectionComponent
+class SceneSectionComponent extends AbstractController
 {
     use DefaultActionTrait;
 
@@ -22,11 +26,90 @@ class SceneSectionComponent
     #[LiveProp]
     public int $sceneNumber;
 
+    #[LiveProp(writable: true)]
+    public ?int $assignToChapterId = null;
+
+    #[LiveProp(writable: true)]
+    public string $newChapterTitle = '';
+
     public function __construct(private EntityManagerInterface $entityManager) {}
 
-    public function getFaces(): iterable
+    public function getCategories(): array
     {
-        return $this->scene->getVideoFaces();
+        return $this->entityManager->getRepository(TagCategory::class)->findAll();
+    }
+
+    #[LiveAction]
+    public function toggleTag(#[LiveArg] int $tagId): void
+    {
+        $tag = $this->entityManager->getRepository(Tag::class)->find($tagId);
+        if (!$tag) return;
+
+        if ($this->scene->getTags()->contains($tag)) {
+            $this->scene->removeTag($tag);
+        } else {
+            $this->scene->addTag($tag);
+        }
+
+        $this->entityManager->flush();
+    }
+
+    public function getChapters(): array
+    {
+        return $this->entityManager->getRepository(\App\Entity\VideoChapter::class)->findBy(['video' => $this->scene->getVideo()]);
+    }
+
+    #[LiveAction]
+    public function assignToChapter(): ?Response
+    {
+        if (!$this->assignToChapterId) {
+            return null;
+        }
+
+        $chapter = $this->entityManager->getRepository(\App\Entity\VideoChapter::class)->find($this->assignToChapterId);
+        if (!$chapter) {
+            return null;
+        }
+
+        // Kapitel erweitern, um diese Szene einzuschließen
+        $chapter->setStartSeconds(min($chapter->getStartSeconds(), $this->scene->getStartSeconds()));
+        $chapter->setEndSeconds(max($chapter->getEndSeconds(), $this->scene->getEndSeconds()));
+
+        $this->entityManager->flush();
+        $this->assignToChapterId = null;
+        
+        return $this->redirectToRoute('video_timeline', ['id' => $this->scene->getVideo()->getId()]);
+    }
+
+    #[LiveAction]
+    public function createChapterAndAssignFollowing(): ?Response
+    {
+        if (empty($this->newChapterTitle)) {
+            return null;
+        }
+
+        $video = $this->scene->getVideo();
+        $scenes = $video->getScenes();
+        
+        $maxEndTime = $this->scene->getEndSeconds();
+        foreach ($scenes as $s) {
+            if ($s->getSceneNumber() >= $this->scene->getSceneNumber()) {
+                $maxEndTime = max($maxEndTime, $s->getEndSeconds());
+            }
+        }
+
+        $chapter = new \App\Entity\VideoChapter();
+        $chapter->setVideo($video);
+        $chapter->setTitle($this->newChapterTitle);
+        $chapter->setStartSeconds($this->scene->getStartSeconds());
+        $chapter->setEndSeconds($maxEndTime);
+
+        $this->entityManager->persist($chapter);
+        $this->entityManager->flush();
+
+        $this->newChapterTitle = '';
+
+        return $this->redirectToRoute('video_timeline', ['id' => $video->getId()]);
     }
 
     #[LiveAction]
@@ -38,7 +121,7 @@ class SceneSectionComponent
     }
 
     #[LiveAction]
-    public function mergeWithNext(): void
+    public function mergeWithNext(): Response
     {
         $video = $this->scene->getVideo();
         $nextScene = $this->findSceneByNumber($this->scene->getSceneNumber() + 1);
@@ -46,14 +129,16 @@ class SceneSectionComponent
         if ($nextScene) {
             $this->performMerge($this->scene, $nextScene);
         }
+
+        return $this->redirectToRoute('video_timeline', ['id' => $video->getId()]);
     }
 
     #[LiveAction]
-    public function mergeEmptyBackwards(): void
+    public function mergeEmptyBackwards(): ?Response
     {
         $targetScene = $this->getTargetSceneForBackwardsMerge();
         if (!$targetScene) {
-            return;
+            return null;
         }
 
         $video = $this->scene->getVideo();
@@ -80,8 +165,7 @@ class SceneSectionComponent
 
         $this->renumberScenes();
 
-        header("Refresh:0");
-        exit;
+        return $this->redirectToRoute('video_timeline', ['id' => $video->getId()]);
     }
 
     public function canMergeBackwards(): bool
@@ -137,9 +221,6 @@ class SceneSectionComponent
         $this->entityManager->flush();
 
         $this->renumberScenes();
-
-        header("Refresh:0");
-        exit;
     }
 
     private function renumberScenes(): void
@@ -155,6 +236,11 @@ class SceneSectionComponent
         }
 
         $this->entityManager->flush();
+    }
+
+    public function getFaces(): iterable
+    {
+        return $this->scene->getVideoFaces();
     }
 
     public function getDuration(): float

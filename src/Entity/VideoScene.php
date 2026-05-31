@@ -37,9 +37,40 @@ class VideoScene
     #[ORM\OneToMany(targetEntity: VideoFace::class, mappedBy: 'videoScene')]
     private Collection $videoFaces;
 
+    /**
+     * @var Collection<int, Tag>
+     */
+    #[ORM\ManyToMany(targetEntity: Tag::class, inversedBy: 'scenes')]
+    private Collection $tags;
+
     public function __construct()
     {
         $this->videoFaces = new ArrayCollection();
+        $this->tags = new ArrayCollection();
+    }
+
+    /**
+     * @return Collection<int, Tag>
+     */
+    public function getTags(): Collection
+    {
+        return $this->tags;
+    }
+
+    public function addTag(Tag $tag): static
+    {
+        if (!$this->tags->contains($tag)) {
+            $this->tags->add($tag);
+        }
+
+        return $this;
+    }
+
+    public function removeTag(Tag $tag): static
+    {
+        $this->tags->removeElement($tag);
+
+        return $this;
     }
 
     public function getVideoFaces(): Collection

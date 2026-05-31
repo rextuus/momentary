@@ -66,6 +66,13 @@ class Video
     #[ORM\OrderBy(['sceneNumber' => 'ASC'])]
     private Collection $scenes;
 
+    /**
+     * @var Collection<int, VideoChapter>
+     */
+    #[ORM\OneToMany(targetEntity: VideoChapter::class, mappedBy: 'video', cascade: ['remove'], orphanRemoval: true)]
+    #[ORM\OrderBy(['startSeconds' => 'ASC'])]
+    private Collection $chapters;
+
     #[ORM\Column(options: ['default' => 0])]
     private int $totalFrames = 0;
 
@@ -154,6 +161,8 @@ class Video
     {
         $this->videoFaces = new ArrayCollection();
         $this->scenes = new ArrayCollection();
+        $this->chapters = new ArrayCollection();
+        $this->createdAt = new \DateTimeImmutable();
     }
 
     public function getId(): ?int
@@ -656,6 +665,33 @@ class Video
         if ($this->scenes->removeElement($scene)) {
             if ($scene->getVideo() === $this) {
                 $scene->setVideo(null);
+            }
+        }
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, VideoChapter>
+     */
+    public function getChapters(): Collection
+    {
+        return $this->chapters;
+    }
+
+    public function addChapter(VideoChapter $chapter): static
+    {
+        if (!$this->chapters->contains($chapter)) {
+            $this->chapters->add($chapter);
+            $chapter->setVideo($this);
+        }
+        return $this;
+    }
+
+    public function removeChapter(VideoChapter $chapter): static
+    {
+        if ($this->chapters->removeElement($chapter)) {
+            if ($chapter->getVideo() === $this) {
+                $chapter->setVideo(null);
             }
         }
         return $this;
