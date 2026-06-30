@@ -6,6 +6,7 @@ use App\Message\DownloadVideoMessage;
 use App\Message\DetectVideoScenesMessage; // Neue Message importieren
 use App\Repository\VideoRepository;
 use App\Service\VideoAnalyzer;
+use App\Service\WorkflowMachine;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 
@@ -15,13 +16,19 @@ final class DownloadVideoMessageHandler
     public function __construct(
         private VideoAnalyzer $videoAnalyzer,
         private VideoRepository $videoRepository,
-        private MessageBusInterface $bus
+        private MessageBusInterface $bus,
+        private WorkflowMachine $workflowMachine
     ) {}
 
     public function __invoke(DownloadVideoMessage $message): void
     {
         $video = $this->videoRepository->find($message->getVideoId());
         if (!$video) return;
+
+        if ($this->workflowMachine->can($video, 'start_download')) {
+            $this->workflowMachine->apply($video, 'start_download');
+        }
+        $video->setErrorMessage(null);
 
         $videoPath = $this->videoAnalyzer->downloadVideo($video->getId(), $video->getYoutubeUrl());
 

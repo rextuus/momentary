@@ -11,6 +11,7 @@ use App\Entity\VideoScene;
 use App\Enum\VideoStatus;
 use App\Message\FrameAnalyzerMessage;
 use App\Repository\VideoRepository;
+use App\Service\WorkflowMachine;
 use App\Service\Aws\AmazonRekognitionService;
 use Doctrine\ORM\EntityManagerInterface;
 use League\Flysystem\FilesystemOperator;
@@ -20,8 +21,10 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Process\Process;
 
-readonly class VideoAnalyzer
+class VideoAnalyzer
 {
+    private string $pythonBinaryPath;
+
     public function __construct(
         private MessageBusInterface $bus,
         private FilesystemOperator $filesystem,
@@ -29,10 +32,11 @@ readonly class VideoAnalyzer
         private VideoRepository $videoRepository,
         private AmazonRekognitionService $rekognitionService,
         private LoggerInterface $logger,
+        private WorkflowMachine $workflowMachine,
         #[Autowire('%kernel.project_dir%')]
         private string $projectDir,
         #[Autowire('%env(PYTHON_BINARY)%')]
-        private string $pythonBinary = '/usr/bin/python3',
+        string $pythonBinary = '/usr/bin/python3',
         #[Autowire('%env(default:app.frame_analysis_fps:FRAME_ANALYSIS_FPS)%')]
         private float $defaultFps = 0.2,
         #[Autowire('%env(default:app.min_scene_length_for_refinement:MIN_SCENE_LENGTH_FOR_REFINEMENT)%')]
@@ -40,6 +44,13 @@ readonly class VideoAnalyzer
         #[Autowire('%env(default:app.refined_frame_analysis_fps:REFINED_FRAME_ANALYSIS_FPS)%')]
         private float $refinedFps = 1.0
     ) {
+        // Fallback für Docker: Wenn der konfigurierte Python-Pfad nicht existiert,
+        // nutzen wir den systemweiten python3 Befehl.
+        if (!file_exists($pythonBinary)) {
+            $this->pythonBinaryPath = 'python3';
+        } else {
+            $this->pythonBinaryPath = $pythonBinary;
+        }
     }
 
     public function getVideoRepository(): VideoRepository
@@ -95,12 +106,35 @@ readonly class VideoAnalyzer
         return $path;
     }
 
-    private function updateStatus(int $videoId, VideoStatus $status, ?string $localPath = null, ?string $errorMessage = null): void
+    public function updateStatus(int $videoId, VideoStatus $status, ?string $localPath = null, ?string $errorMessage = null): void
     {
         $video = $this->videoRepository->find($videoId);
         if ($video) {
             $oldStatus = $video->getStatus();
-            $video->setStatus($status);
+
+            // Mapping VideoStatus to transitions
+            $transition = match ($status) {
+                VideoStatus::DOWNLOADING => 'start_download',
+                VideoStatus::CONVERTING => 'start_conversion',
+                VideoStatus::SCENE_DETECTION => 'start_scene_detection',
+                VideoStatus::SPLITTING => 'start_splitting',
+                VideoStatus::ANALYZING_FACES => 'start_analyzing',
+                VideoStatus::REFINING_EXTRACTION => 'start_refining_extraction',
+                VideoStatus::REFINING_ANALYSIS => 'start_refining_analysis',
+                VideoStatus::MERGING_SCENES => 'start_merging',
+                VideoStatus::COMPLETED => 'complete',
+                VideoStatus::ERROR => 'fail',
+                VideoStatus::PENDING => 'reset',
+                default => null
+            };
+
+            if ($transition && $this->workflowMachine->can($video, $transition)) {
+                $this->workflowMachine->apply($video, $transition);
+            } else {
+                // Fallback to manual set if no transition matches or is allowed
+                $video->setStatus($status);
+            }
+
             if ($localPath) {
                 // Wir speichern Pfade bevorzugt relativ, um umgebungsunabhängig zu sein
                 $video->setLocalPath($this->makePathRelative($localPath));
@@ -221,7 +255,7 @@ readonly class VideoAnalyzer
         $this->updateStatus($videoId, VideoStatus::DOWNLOADING);
 
         $process = new Process([
-            $this->pythonBinary,
+            $this->pythonBinaryPath,
             $this->projectDir . '/video-analyzer/python/download_video.py',
             $youtubeUrl,
             '--video-id=' . $videoId
@@ -276,7 +310,7 @@ readonly class VideoAnalyzer
         $this->updateStatus($videoId, VideoStatus::SCENE_DETECTION);
 
         $process = new Process([
-            $this->pythonBinary,
+            $this->pythonBinaryPath,
             $this->projectDir . '/video-analyzer/python/detect_scenes.py',
             $videoPath,
             '--threshold',
@@ -399,7 +433,7 @@ readonly class VideoAnalyzer
 
         try {
             $command = [
-                $this->pythonBinary,
+                $this->pythonBinaryPath,
                 $this->projectDir . '/video-analyzer/python/extract_frames.py',
                 $videoPath,
                 (string) $fps,

@@ -75,7 +75,14 @@ JELLYFIN_API_KEY=dein_api_key
     - Im Docker-Container sind diese nun vorinstalliert (nach einem `docker compose build`).
     - Bei lokalem Betrieb müssen diese auf dem Host installiert sein und die `PYTHON_BINARY` in der `.env.local` muss auf den korrekten Pfad zeigen.
 
-    **Wichtig bei lokalem Betrieb**: Die Anwendung ist so konfiguriert, dass sie Pfade zwischen Docker (`/var/www/html/`) und lokalen Pfaden automatisch auflöst, sofern die Projektstruktur identisch ist. Es wird empfohlen, Pfade in der Datenbank relativ zum Projektverzeichnis zu speichern (z.B. `public/uploads/import/video.mp4`), was durch aktuelle Updates im `VideoAnalyzer` automatisch unterstützt wird.
+    **Wichtig bei lokalem Betrieb**: Die Anwendung ist so konfiguriert, dass sie Pfade zwischen Docker (`/var/www/html/`) und lokalen Pfaden automatisch auflöst. Zudem gibt es einen Fallback-Mechanismus für die `PYTHON_BINARY`: Falls der konfigurierte Pfad (z.B. ein lokaler venv-Pfad) in der aktuellen Umgebung (Docker) nicht existiert, wird automatisch der systemweite `python3`-Befehl genutzt. Dies stellt sicher, dass die Pipeline sowohl lokal als auch im Container ohne manuelle Anpassung der `.env.local` läuft.
+
+    **Python-Abhängigkeiten im Container**:
+    Falls Fehler wie `ModuleNotFoundError` auftreten, stelle sicher, dass das Docker-Image aktuell ist:
+    ```bash
+    docker compose build app
+    docker compose up -d
+    ```
 
     **Berechtigungen für Jellyfin-Export**: Falls du den Worker lokal ausführst, musst du dem Upload-Verzeichnis Schreibrechte geben, da Docker dieses Verzeichnis oft als `root` anlegt:
     ```bash

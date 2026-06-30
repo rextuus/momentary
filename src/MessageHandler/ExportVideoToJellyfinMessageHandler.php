@@ -6,6 +6,7 @@ use App\Message\ExportVideoToJellyfinMessage;
 use App\Repository\VideoRepository;
 use App\Service\JellyfinUploadService;
 use App\Service\VideoAnalyzer;
+use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -18,7 +19,8 @@ class ExportVideoToJellyfinMessageHandler
         private readonly JellyfinUploadService $jellyfinUploadService,
         private readonly VideoAnalyzer $videoAnalyzer,
         private readonly EntityManagerInterface $entityManager,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly WorkflowMachine $workflowMachine
     ) {
     }
 
@@ -84,6 +86,11 @@ class ExportVideoToJellyfinMessageHandler
             }
         } else {
             $this->logger->error("Failed to export video $videoId to Jellyfin.");
+            if ($this->workflowMachine->can($video, 'fail')) {
+                $this->workflowMachine->apply($video, 'fail');
+            }
+            $video->setErrorMessage("Export to Jellyfin failed.");
+            $this->entityManager->flush();
         }
     }
 }

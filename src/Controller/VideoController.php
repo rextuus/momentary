@@ -4,10 +4,13 @@ namespace App\Controller;
 
 use App\Entity\Video;
 use App\Form\VideoType;
+use App\Message\ConvertVideoMessage;
 use App\Message\DetectVideoScenesMessage;
 use App\Message\DownloadVideoMessage;
+use App\Message\OptimizeVideoForJellyfinMessage;
 use App\Message\SplitVideoIntoFramesMessage;
 use App\Repository\VideoRepository;
+use App\Service\WorkflowMachine;
 use App\Service\Video\VideoFaceMap;
 use App\Service\VideoAnalyzer;
 use App\Enum\VideoStatus;
@@ -27,6 +30,7 @@ final class VideoController extends AbstractController
         private MessageBusInterface $messageBus,
         private VideoRepository $videoRepository,
         private EntityManagerInterface $entityManager,
+        private WorkflowMachine $workflowMachine,
         #[Autowire('%kernel.project_dir%/public/uploads/import')]
         private string $importDir
     ) {}
@@ -63,11 +67,21 @@ final class VideoController extends AbstractController
             $this->entityManager->flush();
 
             if ($video->getYoutubeUrl()) {
-                $this->messageBus->dispatch(new DownloadVideoMessage($video->getId()));
-                $this->addFlash('success', 'Video hinzugefügt und Download gestartet!');
+                if ($this->workflowMachine->can($video, 'start_download')) {
+                    $this->workflowMachine->apply($video, 'start_download');
+                    $this->messageBus->dispatch(new DownloadVideoMessage($video->getId()));
+                    $this->addFlash('success', 'Video hinzugefügt und Download gestartet!');
+                }
             } elseif ($video->getLocalPath()) {
-                $this->messageBus->dispatch(new DetectVideoScenesMessage($video->getId(), $video->getLocalPath()));
-                $this->addFlash('success', 'Lokales Video hinzugefügt und Analyse gestartet!');
+                if ($this->workflowMachine->can($video, 'start_conversion')) {
+                    $this->workflowMachine->apply($video, 'start_conversion');
+                    $this->messageBus->dispatch(new ConvertVideoMessage($video->getId()));
+                    $this->addFlash('success', 'Lokales Video hinzugefügt und Pipeline gestartet!');
+                } elseif ($this->workflowMachine->can($video, 'start_scene_detection')) {
+                    $this->workflowMachine->apply($video, 'start_scene_detection');
+                    $this->messageBus->dispatch(new DetectVideoScenesMessage($video->getId(), $video->getLocalPath()));
+                    $this->addFlash('success', 'Lokales Video hinzugefügt und Analyse gestartet!');
+                }
             }
 
             return $this->redirectToRoute('app_video_index');
@@ -101,33 +115,50 @@ final class VideoController extends AbstractController
      * Die fehlende Trigger-Route für die Buttons im Template
      */
     #[Route('/{id}/trigger/{step}', name: 'app_video_trigger', methods: ['GET'])]
-    public function trigger(Video $video, string $step, VideoAnalyzer $videoAnalyzer): Response
+    public function trigger(Video $video, string $step, VideoAnalyzer $videoAnalyzer, WorkflowMachine $workflowMachine): Response
     {
         try {
             // Reset error when re-triggering
             $video->setErrorMessage(null);
 
             match ($step) {
+                'download' => [
+                    $this->ensureStepAccessible($video, 'start_download', $workflowMachine),
+                    $video->setDownloadedAt(null),
+                    $video->setCompletedAt(null),
+                    $this->messageBus->dispatch(new DownloadVideoMessage($video->getId()))
+                ],
+                'convert'  => [
+                    $this->ensureStepAccessible($video, 'start_conversion', $workflowMachine),
+                    $video->setConvertedAt(null),
+                    $video->setCompletedAt(null),
+                    $this->messageBus->dispatch(new ConvertVideoMessage($video->getId()))
+                ],
+                'optimize' => [
+                    $this->ensureStepAccessible($video, 'start_optimization', $workflowMachine),
+                    $video->setCompletedAt(null),
+                    $this->messageBus->dispatch(new OptimizeVideoForJellyfinMessage($video->getId()))
+                ],
                 'scenes'   => [
-                    $video->setStatus(VideoStatus::SCENE_DETECTION),
-                    $video->setConvertedAt($video->getConvertedAt() ?? new \DateTimeImmutable()), // Mark conversion done if skipping to here
+                    $this->ensureStepAccessible($video, 'start_scene_detection', $workflowMachine),
+                    $video->setConvertedAt($video->getConvertedAt() ?? new \DateTimeImmutable()),
                     $video->setScenesDetectedAt(null),
                     $video->setFramesExtractedAt(null),
                     $video->setFacesAnalyzedAt(null),
                     $video->setRefinedAt(null),
                     $video->setCompletedAt(null),
-                    (function() use ($video) { $this->messageBus->dispatch(new DetectVideoScenesMessage($video->getId(), (string)$video->getLocalPath())); })()
+                    $this->messageBus->dispatch(new DetectVideoScenesMessage($video->getId(), (string)$video->getLocalPath()))
                 ],
                 'split'    => [
-                    $video->setStatus(VideoStatus::SPLITTING),
+                    $this->ensureStepAccessible($video, 'start_splitting', $workflowMachine),
                     $video->setFramesExtractedAt(null),
                     $video->setFacesAnalyzedAt(null),
                     $video->setRefinedAt(null),
                     $video->setCompletedAt(null),
-                    (function() use ($video) { $this->messageBus->dispatch(new SplitVideoIntoFramesMessage($video->getId(), (string)$video->getLocalPath())); })()
+                    $this->messageBus->dispatch(new SplitVideoIntoFramesMessage($video->getId(), (string)$video->getLocalPath()))
                 ],
                 'refine'   => [
-                    $video->setStatus(VideoStatus::REFINING_EXTRACTION),
+                    $this->ensureStepAccessible($video, 'start_refining_extraction', $workflowMachine),
                     $video->setRefinedAt(null),
                     $video->setRefiningExtractionFinishedAt(null),
                     $video->setRefiningAnalysisFinishedAt(null),
@@ -135,7 +166,7 @@ final class VideoController extends AbstractController
                     $videoAnalyzer->refineSceneAnalysis($video)
                 ],
                 'reset'    => [
-                    $video->setStatus(VideoStatus::PENDING),
+                    $workflowMachine->apply($video, 'reset'),
                     $video->setDownloadedAt(null),
                     $video->setConvertedAt(null),
                     $video->setScenesDetectedAt(null),
@@ -153,22 +184,52 @@ final class VideoController extends AbstractController
                     $video->setRefiningExtractionDuration(null),
                     $video->setRefiningAnalysisDuration(null),
                     $video->setRefinementDuration(null),
-                    (function() use ($videoAnalyzer, $video) { $videoAnalyzer->clearOldScenes($video); })()
+                    $videoAnalyzer->clearOldScenes($video)
                 ],
-                'delete'   => (function() use ($videoAnalyzer, $video) { $videoAnalyzer->cleanupLocalFile($video->getId()); })(),
-                default    => throw new \InvalidArgumentException("Ungültiger Schritt"),
+                'delete'   => $videoAnalyzer->cleanupLocalFile($video->getId()),
+                default    => throw new \InvalidArgumentException("Ungültiger Schritt: $step"),
             };
 
             $this->entityManager->flush();
             $this->addFlash('success', "Schritt '$step' wurde für '{$video->getTitle()}' manuell getriggert.");
         } catch (\Exception $e) {
-            $video->setStatus(VideoStatus::ERROR);
+            if ($workflowMachine->can($video, 'fail')) {
+                $workflowMachine->apply($video, 'fail');
+            }
             $video->setErrorMessage($e->getMessage());
             $this->entityManager->flush();
-            $this->addFlash('error', "Fehler beim Triggern: " . $e->getMessage());
+            $this->addFlash('error', "Fehler beim Triggern ($step): " . $e->getMessage());
         }
 
-        return $this->redirectToRoute('app_video_index');
+        return $this->redirectToRoute('app_video_show', ['id' => $video->getId()]);
+    }
+
+    private function ensureStepAccessible(Video $video, string $transition, WorkflowMachine $workflowMachine): void
+    {
+        if ($workflowMachine->can($video, $transition)) {
+            $workflowMachine->apply($video, $transition);
+            return;
+        }
+
+        // Falls wir nicht direkt hinkönnen, schauen wir ob wir zurückspringen können
+        $backTransitions = [
+            'start_download' => 'back_to_pending',
+            'start_conversion' => 'back_to_conversion',
+            'start_scene_detection' => 'back_to_scene_detection',
+            'start_splitting' => 'back_to_splitting',
+            'start_refining_extraction' => 'back_to_refining_extraction',
+            'start_optimization' => 'start_optimization', // Optimierung erlaubt von überall
+        ];
+
+        if (isset($backTransitions[$transition])) {
+            $backTransition = $backTransitions[$transition];
+            if ($workflowMachine->can($video, $backTransition)) {
+                $workflowMachine->apply($video, $backTransition);
+                return;
+            }
+        }
+
+        throw new \RuntimeException("Der Schritt kann vom aktuellen Status ({$video->getStatus()->value}) aus nicht gestartet werden.");
     }
 
     /**

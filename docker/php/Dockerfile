@@ -8,8 +8,12 @@ RUN apt-get update && apt-get install -y \
     unzip \
     git \
     python3 \
+    python3-pip \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
+
+# Install scenedetect for video processing
+RUN python3 -m pip install scenedetect[av] --break-system-packages
 
 # Install PHP extensions
 # Workaround for PHP 8.5 experimental images: install extensions one by one

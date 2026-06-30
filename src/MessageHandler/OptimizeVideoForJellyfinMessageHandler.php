@@ -6,6 +6,7 @@ use App\Message\OptimizeVideoForJellyfinMessage;
 use App\Message\ExportVideoToJellyfinMessage;
 use App\Repository\VideoRepository;
 use App\Service\VideoAnalyzer;
+use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -22,6 +23,7 @@ class OptimizeVideoForJellyfinMessageHandler
         private readonly EntityManagerInterface $entityManager,
         private readonly MessageBusInterface $messageBus,
         private readonly LoggerInterface $logger,
+        private readonly WorkflowMachine $workflowMachine,
         #[Autowire('%kernel.project_dir%')] private readonly string $projectDir,
         #[Autowire('%env(PYTHON_BINARY)%')] private readonly string $pythonBinary = '/usr/bin/python3'
     ) {
@@ -35,6 +37,10 @@ class OptimizeVideoForJellyfinMessageHandler
         if (!$video) {
             $this->logger->error("Could not find video $videoId for Jellyfin optimization.");
             return;
+        }
+
+        if ($this->workflowMachine->can($video, 'start_optimization')) {
+            $this->workflowMachine->apply($video, 'start_optimization');
         }
 
         $localPath = $video->getLocalPath();
@@ -53,6 +59,9 @@ class OptimizeVideoForJellyfinMessageHandler
         // For now, let's always optimize if requested, or skip if already mp4
         if (str_ends_with(strtolower($sourcePath), '.mp4')) {
             $this->logger->info("Video $videoId is already MP4, skipping optimization.");
+            if ($this->workflowMachine->can($video, 'complete')) {
+                $this->workflowMachine->apply($video, 'complete');
+            }
             $this->messageBus->dispatch(new ExportVideoToJellyfinMessage($videoId));
             return;
         }
@@ -89,6 +98,11 @@ class OptimizeVideoForJellyfinMessageHandler
 
         if (!$process->isSuccessful()) {
             $this->logger->error("Optimization failed for video $videoId (Command: {$process->getCommandLine()}): " . $process->getErrorOutput());
+            if ($this->workflowMachine->can($video, 'fail')) {
+                $this->workflowMachine->apply($video, 'fail');
+            }
+            $video->setErrorMessage("Optimization failed: " . $process->getErrorOutput());
+            $this->entityManager->flush();
             return;
         }
 
@@ -100,6 +114,12 @@ class OptimizeVideoForJellyfinMessageHandler
             // We make it relative to the uploads dir if possible
             $relativeOutputPath = $this->videoAnalyzer->makePathRelative($outputPath);
             $video->setLocalPath($relativeOutputPath);
+            $video->setConvertedAt(new \DateTimeImmutable());
+            
+            if ($this->workflowMachine->can($video, 'complete')) {
+                $this->workflowMachine->apply($video, 'complete');
+            }
+            
             $this->entityManager->flush();
 
             // Now trigger the actual export
