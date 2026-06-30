@@ -9,6 +9,8 @@ Welcome to the Momentary documentation. This project is designed to help you man
 3.  [Database Schema & Entities](database_schema.md)
 4.  [Console Commands](console_commands.md)
 5.  [Setup & Configuration](setup.md)
+6.  [Jellyfin Integration](jellyfin_integration.md)
+7.  [Alternativen zu Jellyfin](alternatives.md)
 
 ## Key Features
 

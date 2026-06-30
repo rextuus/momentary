@@ -47,6 +47,54 @@ readonly class VideoAnalyzer
         return $this->videoRepository;
     }
 
+    /**
+     * Stellt sicher, dass ein Pfad in der aktuellen Umgebung gültig ist.
+     * Insbesondere werden Docker-spezifische Pfade (/var/www/html/...) 
+     * in lokale Pfade übersetzt, falls die App außerhalb von Docker läuft.
+     */
+    public function resolvePath(string $path): string
+    {
+        // Wenn der Pfad bereits existiert, ist alles gut
+        if (file_exists($path)) {
+            return $path;
+        }
+
+        // Falls er absolut ist und aus Docker stammt
+        if (str_starts_with($path, '/var/www/html/')) {
+            $relativePath = str_replace('/var/www/html/', '', $path);
+            $localPath = $this->projectDir . '/' . $relativePath;
+            
+            if (file_exists($localPath)) {
+                return $localPath;
+            }
+        }
+
+        // Falls er bereits relativ ist (oder wir ihn relativ gemacht haben)
+        $projectPath = $this->projectDir . '/' . ltrim($path, '/');
+        if (file_exists($projectPath)) {
+            return $projectPath;
+        }
+
+        return $path;
+    }
+
+    /**
+     * Macht einen absoluten Pfad zu einem relativen Pfad (innerhalb des Projekts).
+     */
+    public function makePathRelative(string $path): string
+    {
+        $dockerPrefix = '/var/www/html/';
+        if (str_starts_with($path, $dockerPrefix)) {
+            return str_replace($dockerPrefix, '', $path);
+        }
+
+        if (str_starts_with($path, $this->projectDir)) {
+            return ltrim(str_replace($this->projectDir, '', $path), '/');
+        }
+
+        return $path;
+    }
+
     private function updateStatus(int $videoId, VideoStatus $status, ?string $localPath = null, ?string $errorMessage = null): void
     {
         $video = $this->videoRepository->find($videoId);
@@ -54,7 +102,8 @@ readonly class VideoAnalyzer
             $oldStatus = $video->getStatus();
             $video->setStatus($status);
             if ($localPath) {
-                $video->setLocalPath($localPath);
+                // Wir speichern Pfade bevorzugt relativ, um umgebungsunabhängig zu sein
+                $video->setLocalPath($this->makePathRelative($localPath));
             }
             if ($errorMessage !== null || $status !== VideoStatus::ERROR) {
                 $video->setErrorMessage($errorMessage);

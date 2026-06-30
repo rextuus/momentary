@@ -17,7 +17,12 @@ A set of specialized scripts for media handling:
 -   `detect_scenes.py`: Analyzes video content to find scene changes.
 -   `extract_frames.py`: Captures frames from the video at specific intervals for face analysis.
 
-### 3. Amazon Rekognition
+### 3. Jellyfin Media Server (Empfohlene Integration)
+Ermöglicht das Streamen und Betrachten der verarbeiteten Videos:
+-   **Export**: Abgeschlossene Videos können in ein von Jellyfin überwachtes Verzeichnis verschoben werden.
+-   **API Integration**: Momentary triggert automatisch einen Library-Scan in Jellyfin nach dem Export.
+
+### 4. Amazon Rekognition
 Cloud service used for:
 -   **Face Indexing**: Storing face vectors in a collection.
 -   **Face Searching**: Comparing newly detected faces against existing ones in the collection to identify people.
@@ -26,7 +31,7 @@ Cloud service used for:
 ## Communication Flow
 
 1.  User adds a video via the Symfony Dashboard.
-2.  Symfony dispatches an `InitVideoMessage`.
+2.  If it's a YouTube URL, a `DownloadVideoMessage` is dispatched. If it's a local file, a `DetectVideoScenesMessage` is dispatched.
 3.  The `VideoAnalyzer` service calls Python scripts via Symfony `Process`.
 4.  Extracted frames are sent to the `FrameAnalyzerMessageHandler`.
 5.  AWS Rekognition is called to analyze each frame.

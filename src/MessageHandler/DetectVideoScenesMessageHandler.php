@@ -20,9 +20,11 @@ final class DetectVideoScenesMessageHandler
     {
         fwrite(STDOUT, "Asynchrone Szenenerkennung für Video {$message->getVideoId()}..." . PHP_EOL);
 
+        $videoPath = $this->videoAnalyzer->resolvePath($message->getVideoPath());
+
         // Hier lag der Hund begraben: Wir müssen videoPath UND videoId übergeben
         $scenes = $this->videoAnalyzer->detectScenes(
-            $message->getVideoPath(),
+            $videoPath,
             $message->getVideoId()
         );
 
@@ -31,7 +33,7 @@ final class DetectVideoScenesMessageHandler
 
         // Wir laden das Video neu, falls sich der localPath während der Szenenerkennung geändert hat (Konvertierung)
         $video = $this->videoAnalyzer->getVideoRepository()->find($message->getVideoId());
-        $currentVideoPath = $video?->getLocalPath() ?? $message->getVideoPath();
+        $currentVideoPath = $video?->getLocalPath() ?? $videoPath;
 
         fwrite(STDOUT, count($scenes) . " Szenen in DB verewigt." . PHP_EOL);
 

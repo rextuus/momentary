@@ -8,6 +8,9 @@ services:
       - ./:/var/www/html:rw
     environment:
       DATABASE_URL: "mysql://app:!ChangeMe!@database:3306/app?serverVersion=8.0.32&charset=utf8mb4"
+      JELLYFIN_HOST: "http://jellyfin:8096"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8088:80"
     depends_on:
@@ -33,20 +36,18 @@ services:
       - "9906:3306"
 ###< doctrine/doctrine-bundle ###
 
-  plex:
-    image: lscr.io/linuxserver/plex:latest
-    container_name: plex
-    network_mode: host
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - VERSION=docker
-      - PLEX_CLAIM= # Optional
+  jellyfin:
+    image: jellyfin/jellyfin
+    container_name: jellyfin
+    # user: 1000:1000
+    # network_mode: host
+    ports:
+      - "8096:8096"
     volumes:
-      - ./docker/plex/config:/config
-      - ./docker/plex/tvseries:/tv
-      - ./docker/plex/movies:/movies
-      - ./docker/plex/uploads:/uploads
+      - ./docker/jellyfin/config:/config
+      - ./docker/jellyfin/cache:/cache
+      - ./docker/jellyfin/movies:/movies
+      - ./docker/jellyfin/uploads:/uploads
     restart: unless-stopped
 
 ###> symfony/mailer ###

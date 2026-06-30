@@ -16,11 +16,13 @@ readonly final class FrameAnalyzerMessageHandler
 
     public function __invoke(FrameAnalyzerMessage $message): void
     {
+        $framePath = $this->videoAnalyzer->resolvePath($message->getFramePath());
+
         // Wir übergeben jetzt auch das vierte Argument ($message->isLast()),
         // damit der Service weiß, wann er das Video auf "COMPLETED" setzen kann.
         $this->videoAnalyzer->analyzeFrame(
             $message->getVideoId(),
-            $message->getFramePath(),
+            $framePath,
             $message->getTimestamp(),
             $message->isLast(),
             $message->isRefinement()

@@ -157,6 +157,12 @@ class Video
     #[ORM\Column(nullable: true)]
     private ?int $estimatedFaceAnalysisDuration = null;
 
+    #[ORM\Column(length: 511, nullable: true)]
+    private ?string $jellyfinPath = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $jellyfinItemId = null;
+
     public function __construct()
     {
         $this->videoFaces = new ArrayCollection();
@@ -673,6 +679,30 @@ class Video
     /**
      * @return Collection<int, VideoChapter>
      */
+    public function getJellyfinPath(): ?string
+    {
+        return $this->jellyfinPath;
+    }
+
+    public function setJellyfinPath(?string $jellyfinPath): self
+    {
+        $this->jellyfinPath = $jellyfinPath;
+
+        return $this;
+    }
+
+    public function getJellyfinItemId(): ?string
+    {
+        return $this->jellyfinItemId;
+    }
+
+    public function setJellyfinItemId(?string $jellyfinItemId): self
+    {
+        $this->jellyfinItemId = $jellyfinItemId;
+
+        return $this;
+    }
+
     public function getChapters(): Collection
     {
         return $this->chapters;

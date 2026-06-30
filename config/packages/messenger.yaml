@@ -25,10 +25,11 @@ framework:
             Symfony\Component\Notifier\Message\ChatMessage: async
             Symfony\Component\Notifier\Message\SmsMessage: async
             App\Message\FrameAnalyzerMessage: async
-            App\Message\InitVideoMessage: async
             App\Message\DownloadVideoMessage: async
             App\Message\SplitVideoIntoFramesMessage: async
             App\Message\DetectVideoScenesMessage: async
+            App\Message\OptimizeVideoForJellyfinMessage: async
+            App\Message\ExportVideoToJellyfinMessage: async
 
             # Route your messages to the transports
             # 'App\Message\YourMessage': async

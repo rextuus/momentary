@@ -15,6 +15,7 @@ final class SplitVideoIntoFramesMessageHandler
 
     public function __invoke(SplitVideoIntoFramesMessage $message): void
     {
-        $this->videoAnalyzer->extractFrames($message->getVideoId(), $message->getLocalVideoPath());
+        $localVideoPath = $this->videoAnalyzer->resolvePath($message->getLocalVideoPath());
+        $this->videoAnalyzer->extractFrames($message->getVideoId(), $localVideoPath);
     }
 }

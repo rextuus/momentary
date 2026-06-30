@@ -56,7 +56,7 @@ final class VideoController extends AbstractController
             $video->setCreatedAt(new \DateTimeImmutable());
 
             if ($video->getSourceFile()) {
-                $video->setLocalPath($this->importDir . '/' . $video->getSourceFile());
+                $video->setLocalPath('public/uploads/import/' . $video->getSourceFile());
             }
 
             $this->entityManager->persist($video);
@@ -200,10 +200,21 @@ final class VideoController extends AbstractController
      * Detail Ansicht
      */
     #[Route('/{id}', name: 'app_video_show', methods: ['GET'])]
-    public function show(Video $video): Response
-    {
+    public function show(
+        Video $video,
+        #[Autowire('%env(JELLYFIN_HOST)%')] string $jellyfinHost,
+        #[Autowire('%env(JELLYFIN_API_KEY)%')] string $jellyfinApiKey
+    ): Response {
+        // Für den Browser müssen wir ggf. den Host anpassen, wenn er intern anders heißt als extern
+        $publicJellyfinHost = str_replace('http://jellyfin:', 'http://localhost:', $jellyfinHost);
+
+        // Optional: Ensure the host has no trailing slash to avoid double slashes in URLs
+        $publicJellyfinHost = rtrim($publicJellyfinHost, '/');
+
         return $this->render('video/show.html.twig', [
             'video' => $video,
+            'jellyfin_host' => $publicJellyfinHost,
+            'jellyfin_api_key' => $jellyfinApiKey,
         ]);
     }
 }

@@ -7,6 +7,8 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     git \
+    python3 \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
@@ -40,5 +42,13 @@ RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf
 # Allow overrides in Apache
 RUN sed -i '/<Directory ${APACHE_DOCUMENT_ROOT}>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf || \
     echo "<Directory \${APACHE_DOCUMENT_ROOT}>\n\tAllowOverride All\n</Directory>" >> /etc/apache2/apache2.conf
+
+# Increase PHP upload limits for video files
+RUN echo "upload_max_filesize = 10G" > /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "post_max_size = 10G" >> /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "memory_limit = 512M" >> /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "max_execution_time = 3600" >> /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "max_input_time = 3600" >> /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "output_buffering = 4096" >> /usr/local/etc/php/conf.d/uploads.ini
 
 EXPOSE 80

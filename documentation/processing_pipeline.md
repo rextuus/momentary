@@ -4,7 +4,7 @@ The processing of a video is a multi-step asynchronous workflow.
 
 ## Step 1: Initialization
 When a video is submitted via the web interface:
--   **If YouTube URL provided**: An `InitVideoMessage` is dispatched to download the video.
+-   **If YouTube URL provided**: A `DownloadVideoMessage` is dispatched.
 -   **If local file selected**: A `DetectVideoScenesMessage` is dispatched immediately using the file from `public/uploads/import`.
 
 ## Step 2: Downloading & Scene Detection (or just Scene Detection)
@@ -27,4 +27,12 @@ The `FrameAnalyzerMessageHandler` processes each frame:
 ## Step 5: Completion & Cleanup
 Once the last frame is processed, the video status is set to `COMPLETED`.
 If a `youtubeUrl` is present, the local video file is deleted to save space. If the `youtubeUrl` is added after the analysis is complete, the cleanup is triggered at that moment.
-The user can then review identified persons and manually resolve "unknown" persons.
+
+### Step 6: Export (Optional)
+Wenn konfiguriert, kann das Video zu Jellyfin exportiert werden. Dieser Prozess beinhaltet:
+- **Optimierung**: Konvertierung zu MP4 via Python/FFmpeg.
+- **Transfer**: Kopieren in das Jellyfin-Verzeichnis.
+- **Scan**: Triggerung der Jellyfin-API.
+- **ID-Mapping**: Verknüpfung der Jellyfin-ID für den internen Player.
+
+Siehe [Jellyfin Integration](jellyfin_integration.md) für Details.

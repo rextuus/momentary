@@ -36,6 +36,20 @@ php bin/console app:video:admin
 
 ## Testing & Analysis
 
+### `app:jellyfin:test-export`
+Exportiert ein Video zu Jellyfin zum Testen der API-Anbindung.
+
+**Usage:**
+```bash
+# Lokal
+php bin/console app:jellyfin:test-export <videoId>
+
+# Im Docker-Container
+docker exec momentary-app-1 php bin/console app:jellyfin:test-export <videoId>
+```
+-   `videoId`: Die ID des zu exportierenden Videos aus der Datenbank.
+-   Kopiert die lokale Videodatei in das Jellyfin-Upload-Verzeichnis und triggert einen Library-Scan.
+
 ### `app:video:analyze-scenes`
 Tests the local scene detection for a specific video and displays the results in a table.
 
