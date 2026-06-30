@@ -113,6 +113,11 @@
                                 <i class="fas fa-video me-1"></i> Videos
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ app.request.attributes.get('_route') == 'app_upload' ? 'active' }}" href="{{ path('app_upload') }}">
+                                <i class="fas fa-cloud-upload-alt me-1"></i> Upload
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </div>

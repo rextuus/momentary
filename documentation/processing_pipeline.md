@@ -5,10 +5,11 @@ The processing of a video is managed by a **Symfony Workflow (State Machine)** t
 ## Step 0: Workflow Machine
 All status changes are handled by the `App\Service\WorkflowMachine`. It uses transitions to move from one state to another, preventing invalid states.
 
-## Step 1: Initialization
+## Step 1: Initialization & Upload
 When a video is submitted via the web interface:
 -   **If YouTube URL provided**: Transition `start_download` is applied and a `DownloadVideoMessage` is dispatched.
 -   **If local file selected**: Transition `start_conversion` is applied and a `ConvertVideoMessage` is dispatched.
+-   **Direct Upload**: Files can be uploaded via the "Upload" page directly into `public/uploads/import`, making them available for selection.
 
 ## Step 2: Downloading & Scene Detection (or just Scene Detection)
 -   **Download**: (If via YouTube) `download_video.py` uses `yt-dlp` to fetch the video. Status changes to `DOWNLOADING`.

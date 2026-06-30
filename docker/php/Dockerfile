@@ -47,7 +47,8 @@ RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf
 RUN sed -i '/<Directory ${APACHE_DOCUMENT_ROOT}>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf || \
     echo "<Directory \${APACHE_DOCUMENT_ROOT}>\n\tAllowOverride All\n</Directory>" >> /etc/apache2/apache2.conf
 
-# Increase PHP upload limits for video files
+# Increase Apache and PHP limits for large video files
+RUN echo "LimitRequestBody 0" >> /etc/apache2/apache2.conf
 RUN echo "upload_max_filesize = 10G" > /usr/local/etc/php/conf.d/uploads.ini \
     && echo "post_max_size = 10G" >> /usr/local/etc/php/conf.d/uploads.ini \
     && echo "memory_limit = 512M" >> /usr/local/etc/php/conf.d/uploads.ini \
