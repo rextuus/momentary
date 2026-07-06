@@ -11,6 +11,8 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
+use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 
 #[ORM\Entity(repositoryClass: VideoRepository::class)]
 #[ApiResource(
@@ -23,6 +25,10 @@ use Symfony\Component\Serializer\Attribute\Groups;
         )
     ]
 )]
+// Erlaubt: /api/videos?title=mallorca
+#[ApiFilter(SearchFilter::class, properties: ['title' => 'partial'])]
+// Erlaubt: /api/videos?videoFaces.person.name=Wolf
+#[ApiFilter(SearchFilter::class, properties: ['videoFaces.person.name' => 'partial'])]
 class Video
 {
     #[ORM\Id]
