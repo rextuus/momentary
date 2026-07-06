@@ -1,6 +1,12 @@
 # see https://symfony.com/doc/current/reference/configuration/framework.html
 framework:
     secret: '%env(APP_SECRET)%'
+    serializer:
+        enabled: true
+    property_info:
+        enabled: true
+    property_access:
+        enabled: true
 
     # Note that the session will be started ONLY if you read or write from it.
     session: true

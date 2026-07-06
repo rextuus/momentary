@@ -159,6 +159,13 @@
                     <i class="fas fa-object-group"></i>
                 </button>
 
+                {# VIDEO ANSEHEN BUTTON #}
+                <a href="{{ path('app_video_show', {id: scene.video.id, t: scene.startSeconds|round(1)}) }}" 
+                   class="btn btn-sm btn-outline-success py-0 px-2"
+                   title="Szene im Video-Player ansehen">
+                    <i class="fas fa-play me-1"></i> Video
+                </a>
+
                 <span class="badge rounded-pill {{ this.faces|length > 0 ? 'bg-primary' : 'bg-light text-muted' }} border"
                       data-bs-toggle="collapse"
                       data-bs-target="#scene-collapse-{{ scene.id }}"

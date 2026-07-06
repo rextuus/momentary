@@ -309,8 +309,27 @@
                 });
 
                 // Check if video is playable, otherwise try switching to HLS
-                player.on('loadedmetadata', function() {
-                    console.log('Video metadata loaded');
+                player.ready(function() {
+                    console.log('Video.js Player is ready');
+                    
+                    const checkAndJump = function() {
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const startTime = urlParams.get('t');
+                        if (startTime) {
+                            const time = parseFloat(startTime);
+                            if (!isNaN(time)) {
+                                console.log('Jumping to time from URL:', time);
+                                player.currentTime(time);
+                                player.play();
+                            }
+                        }
+                    };
+
+                    // Try immediately
+                    checkAndJump();
+
+                    // Also try on loadedmetadata as it's more reliable for some browsers
+                    player.on('loadedmetadata', checkAndJump);
                 });
 
                 // Jump to time functionality

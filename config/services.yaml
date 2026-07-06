@@ -11,6 +11,10 @@ parameters:
     app.aws_face_match_threshold: 80.0
     app.aws_max_faces: 15
     app.aws_quality_filter: AUTO
+    imgproxy_key: '%env(IMGPROXY_KEY)%'
+    imgproxy_salt: '%env(IMGPROXY_SALT)%'
+    imgproxy_public_host: '%env(IMGPROXY_PUBLIC_HOST)%'
+    app.internal_api_host: 'http://app'
 
 services:
     # default configuration for services in *this* file
@@ -41,3 +45,13 @@ services:
     App\Service\File\FileSystem:
         arguments:
             $filesystem: '@faces.storage'
+
+    App\Service\ImgproxyService:
+        arguments:
+            $key: '%imgproxy_key%'
+            $salt: '%imgproxy_salt%'
+            $publicHost: '%imgproxy_public_host%'
+
+    App\Command\InitProfileImagesCommand:
+        arguments:
+            $internalApiHost: '%app.internal_api_host%'

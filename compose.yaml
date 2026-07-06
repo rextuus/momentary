@@ -15,6 +15,9 @@ services:
       - "8088:80"
     depends_on:
       - database
+    networks:
+      - default
+      - momentary-network
 
 ###> doctrine/doctrine-bundle ###
   database:
@@ -61,7 +64,21 @@ services:
       MP_SMTP_AUTH_ALLOW_INSECURE: 1
 ###< symfony/mailer ###
 
+  imgproxy:
+    image: darthsim/imgproxy:latest
+    environment:
+      IMGPROXY_KEY: ${IMGPROXY_KEY}
+      IMGPROXY_SALT: ${IMGPROXY_SALT}
+    ports:
+      - "8080:8080"
+    networks:
+      - momentary-network
+
 volumes:
 ###> doctrine/doctrine-bundle ###
   database_data:
 ###< doctrine/doctrine-bundle ###
+
+networks:
+  momentary-network:
+    external: true
