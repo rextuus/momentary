@@ -29,8 +29,13 @@
                                 'error': {'color': 'danger', 'icon': 'exclamation-triangle'}
                             }[video.status.value] ?? {'color': 'secondary', 'icon': 'question'} %}
 
-                            <div class="col-md-auto bg-{{ statusInfo.color }} d-flex align-items-center justify-content-center" style="width: 60px; min-height: 100px;">
-                                <i class="fas fa-{{ statusInfo.icon }} text-white fa-lg"></i>
+                            <div class="col-md-auto position-relative bg-light d-flex align-items-center justify-content-center overflow-hidden" style="width: 200px; min-height: 120px;">
+                                {% if video.thumbnailUrl %}
+                                    <img src="{{ imgproxy_url(video.thumbnailUrl, 200, 120) }}" alt="{{ video.title }}" class="w-100 h-100 object-fit-cover position-absolute top-0 start-0">
+                                {% endif %}
+                                <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-{{ statusInfo.color }} bg-opacity-25">
+                                    <i class="fas fa-{{ statusInfo.icon }} text-white fa-lg shadow-sm"></i>
+                                </div>
                             </div>
 
                             <div class="col">

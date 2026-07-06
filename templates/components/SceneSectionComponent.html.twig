@@ -182,7 +182,7 @@
                     <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-6 g-3">
                         {% for videoFace in this.faces %}
                             <div class="col face-item-wrapper">
-                                {{ component('FaceCardComponent', { videoFace: videoFace }) }}
+                                {{ component('TimelineVideoFaceComponent', { videoFace: videoFace }) }}
                             </div>
                         {% endfor %}
                     </div>

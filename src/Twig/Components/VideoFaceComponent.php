@@ -5,7 +5,7 @@ namespace App\Twig\Components;
 use App\Entity\VideoFace;
 use App\Form\PersonCombineType;
 use App\Form\VideoFaceSwitchType;
-use App\Service\File\FileSystem;
+use App\Service\ImgproxyService;
 use App\Service\Person\Data\PersonCombineData;
 use App\Service\Video\VideoFaceSwitchData;
 use Doctrine\ORM\EntityManagerInterface;
@@ -34,7 +34,7 @@ final class VideoFaceComponent extends AbstractController
     public bool $small = false;
 
     public function __construct(
-        private readonly FileSystem $filesystem,
+        private readonly ImgproxyService $imgproxyService,
         private readonly EntityManagerInterface $entityManager
     ) {
     }
@@ -110,7 +110,14 @@ final class VideoFaceComponent extends AbstractController
             return null;
         }
 
-        return $this->filesystem->getFilesystem()->publicUrl($this->videoFace->getFaceImagePath());
+        $width = $this->small ? 80 : 250;
+        $height = $this->small ? 80 : 250;
+
+        return $this->imgproxyService->generateUrl(
+            $this->videoFace->getFaceImagePath(),
+            $width,
+            $height
+        );
     }
 
     public function getMatchImageUrl(): ?string
@@ -119,7 +126,14 @@ final class VideoFaceComponent extends AbstractController
             return null;
         }
 
-        return $this->filesystem->getFilesystem()->publicUrl($this->videoFace->getMatchedBy()->getFaceImagePath());
+        $width = $this->small ? 80 : 250;
+        $height = $this->small ? 80 : 250;
+
+        return $this->imgproxyService->generateUrl(
+            $this->videoFace->getMatchedBy()->getFaceImagePath(),
+            $width,
+            $height
+        );
     }
 
     public function getImageDimensions(): string

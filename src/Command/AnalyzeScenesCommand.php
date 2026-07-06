@@ -82,7 +82,8 @@ class AnalyzeScenesCommand extends Command
 
         if ($shouldConvert) {
             $io->info("Konvertiere Video nach MP4 für bessere Analyse...");
-            $tempMp4 = sys_get_temp_dir() . '/video_analyze_' . $videoId . '.mp4';
+            $tempMp4Name = 'video_analyze_' . $videoId . '.mp4';
+            $tempMp4 = $this->videoAnalyzer->getProjectDir() . '/public/uploads/import/' . $tempMp4Name;
             
             // Wir nutzen ffmpeg direkt via Process
             $process = new \Symfony\Component\Process\Process([

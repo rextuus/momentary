@@ -111,6 +111,23 @@ final class VideoController extends AbstractController
         return $this->redirectToRoute('app_video_index');
     }
 
+    #[Route('/{id}/extract-thumbnail', name: 'video_extract_thumbnail', methods: ['POST'])]
+    public function extractThumbnail(Video $video, Request $request, VideoAnalyzer $videoAnalyzer): RedirectResponse
+    {
+        $time = $request->request->get('time');
+        $timeInSeconds = $time !== null ? (float) $time : 0.0;
+        
+        $thumbnailPath = $videoAnalyzer->extractThumbnail($video, $timeInSeconds);
+
+        if ($thumbnailPath) {
+            $this->addFlash('success', 'Thumbnail wurde erfolgreich erstellt (Zeit: ' . ($timeInSeconds > 0 ? round($timeInSeconds, 2) . 's' : 'zufällig') . ').');
+        } else {
+            $this->addFlash('error', 'Fehler beim Erstellen des Thumbnails.');
+        }
+
+        return $this->redirectToRoute('app_video_show', ['id' => $video->getId()]);
+    }
+
     /**
      * Die fehlende Trigger-Route für die Buttons im Template
      */

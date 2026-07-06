@@ -100,6 +100,10 @@ class Video
     #[ORM\OrderBy(['sceneNumber' => 'ASC'])]
     private Collection $scenes;
 
+    #[ORM\Column(length: 1000, nullable: true)]
+    #[Groups(['video:detail'])]
+    private ?string $thumbnailPath = null;
+
     /**
      * @var Collection<int, VideoChapter>
      */
@@ -335,6 +339,18 @@ class Video
     public function setConvertedVideoPath(?string $convertedVideoPath): self
     {
         $this->convertedVideoPath = $convertedVideoPath;
+        return $this;
+    }
+
+    public function getThumbnailPath(): ?string
+    {
+        return $this->thumbnailPath;
+    }
+
+    public function setThumbnailPath(?string $thumbnailPath): self
+    {
+        $this->thumbnailPath = $thumbnailPath;
+
         return $this;
     }
 
@@ -793,6 +809,6 @@ class Video
     #[Groups(['video:list', 'video:detail'])]
     public function getThumbnailUrl(): ?string
     {
-        return $this->convertedVideoPath;
+        return $this->thumbnailPath ?? $this->convertedVideoPath ?? 'defaults/video-placeholder.jpg';
     }
 }

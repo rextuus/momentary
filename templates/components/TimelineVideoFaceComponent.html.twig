@@ -15,7 +15,7 @@
                     {% if videoFace.age %}<strong>Age:</strong> {{ videoFace.age }}<br>{% endif %}
                     {% if videoFace.emotion %}<strong>Emotion:</strong> {{ videoFace.emotion }}<br>{% endif %}
                 </p>
-                {% if videoFace.video %}
+                {% if videoFace.person %}
                     <a href="{{ path('person_detail', {id: videoFace.person.id}) }}" class="btn btn-sm btn-primary">Check Person</a>
                 {% endif %}
             </div>

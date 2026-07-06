@@ -214,6 +214,24 @@
                             <i class="fas fa-chart-line me-2"></i> Timeline anzeigen
                         </a>
                         <hr>
+                        <h6 class="small text-muted fw-bold text-uppercase mb-3">Thumbnail</h6>
+                        <form action="{{ path('video_extract_thumbnail', {id: video.id}) }}" method="post" id="extract-thumbnail-form">
+                            <input type="hidden" name="time" id="thumbnail-time-input">
+                            <div class="position-relative mb-3 bg-light rounded overflow-hidden shadow-sm" style="aspect-ratio: 16/9;">
+                                {% if video.thumbnailUrl %}
+                                    <img src="{{ imgproxy_url(video.thumbnailUrl, 320, 180) }}" alt="Current Thumbnail" class="w-100 h-100 object-fit-cover">
+                                {% else %}
+                                    <div class="w-100 h-100 d-flex align-items-center justify-content-center text-muted">
+                                        <i class="fas fa-image fa-2x"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <p class="small text-muted mb-2">Setze das aktuelle Frame des Videos als Thumbnail.</p>
+                            <button type="submit" class="btn btn-outline-secondary w-100 rounded-pill mb-2">
+                                <i class="fas fa-camera me-2"></i> Als Thumbnail setzen
+                            </button>
+                        </form>
+                        <hr>
                         <h6 class="small text-muted fw-bold text-uppercase mb-3">Jellyfin Integration</h6>
                         {% if video.status.value == 'completed' %}
                             <form action="{{ path('app_jellyfin_export', {id: video.id}) }}" method="post">
@@ -343,6 +361,17 @@
                         document.getElementById('jellyfin-player').scrollIntoView({ behavior: 'smooth', block: 'center' });
                     });
                 });
+
+                // Thumbnail extraction logic
+                const thumbnailForm = document.getElementById('extract-thumbnail-form');
+                const thumbnailInput = document.getElementById('thumbnail-time-input');
+                if (thumbnailForm && thumbnailInput) {
+                    thumbnailForm.addEventListener('submit', function(e) {
+                        const currentTime = player.currentTime();
+                        thumbnailInput.value = currentTime;
+                        console.log('Setting thumbnail time to:', currentTime);
+                    });
+                }
             }
         });
     </script>

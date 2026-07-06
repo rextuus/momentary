@@ -70,6 +70,7 @@ services:
       IMGPROXY_KEY: ${IMGPROXY_KEY}
       IMGPROXY_SALT: ${IMGPROXY_SALT}
       IMGPROXY_LOCAL_FILESYSTEM_ROOT: /public
+      IMGPROXY_ALLOW_ORIGIN: "*"
     ports:
       - "8080:8080"
     volumes:

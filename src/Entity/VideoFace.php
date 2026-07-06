@@ -42,7 +42,7 @@ class VideoFace
     /**
      * Verknüpfung zur Szene
      */
-    #[ORM\ManyToOne(targetEntity: VideoScene::class)]
+    #[ORM\ManyToOne(targetEntity: VideoScene::class, inversedBy: 'videoFaces')]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     #[Groups(['videoface:detail'])]
     private ?VideoScene $videoScene = null;

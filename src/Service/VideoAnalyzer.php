@@ -53,6 +53,97 @@ class VideoAnalyzer
         }
     }
 
+    public function getProjectDir(): string
+    {
+        return $this->projectDir;
+    }
+
+    public function extractThumbnail(Video $video, float $timeInSeconds = 0.0): ?string
+    {
+        $videoPath = $video->getConvertedVideoPath();
+        if (!$videoPath || str_starts_with($videoPath, 'defaults/')) {
+            $videoPath = $video->getLocalPath();
+        }
+
+        if (!$videoPath) {
+            return null;
+        }
+
+        $videoPath = $this->resolvePath($videoPath);
+        if (!file_exists($videoPath)) {
+            $this->logger->error("Video file not found for thumbnail extraction: " . $videoPath);
+            return null;
+        }
+
+        // Wenn Zeit 0.0 ist, versuchen wir eine sinnvollere Zeit zu finden (zufällig)
+        if ($timeInSeconds <= 0.0) {
+            try {
+                $ffprobeProcess = new Process([
+                    'ffprobe',
+                    '-v', 'error',
+                    '-show_entries', 'format=duration',
+                    '-of', 'default=noprint_wrappers=1:nokey=1',
+                    $videoPath
+                ]);
+                $ffprobeProcess->run();
+                if ($ffprobeProcess->isSuccessful()) {
+                    $duration = (float) $ffprobeProcess->getOutput();
+                    if ($duration > 0) {
+                        // Wähle einen zufälligen Zeitpunkt zwischen 10% und 90%
+                        $timeInSeconds = $duration * (mt_rand(10, 90) / 100);
+                        $this->logger->info(sprintf('Generated random thumbnail time %fs for video %d (duration %fs)', $timeInSeconds, $video->getId(), $duration));
+                    }
+                } else {
+                    $this->logger->warning('ffprobe failed to get duration: ' . $ffprobeProcess->getErrorOutput());
+                    $timeInSeconds = 1.0;
+                }
+            } catch (\Exception $e) {
+                $this->logger->warning('Could not determine video duration for random thumbnail: ' . $e->getMessage());
+                $timeInSeconds = 1.0; // Fallback auf 1 Sekunde
+            }
+        }
+
+        $thumbnailDir = $this->projectDir . '/public/uploads/thumbnails';
+        if (!is_dir($thumbnailDir)) {
+            mkdir($thumbnailDir, 0777, true);
+        }
+
+        $thumbnailName = sprintf('video_%d.jpg', $video->getId());
+        $thumbnailPath = $thumbnailDir . '/' . $thumbnailName;
+
+        // FFmpeg Kommando um ein einzelnes Frame zu extrahieren
+        // -ss vor -i für schnelles Seek
+        $command = [
+            'ffmpeg',
+            '-loglevel', 'error',
+            '-y',
+            '-ss', (string)$timeInSeconds,
+            '-i', $videoPath,
+            '-vframes', '1',
+            '-q:v', '2',
+            $thumbnailPath
+        ];
+
+        $process = new Process($command);
+        $process->setTimeout(60);
+        $process->run();
+
+        if (!$process->isSuccessful()) {
+            $this->logger->error('Thumbnail extraction failed: ' . $process->getErrorOutput());
+            return null;
+        }
+
+        $relativeThumbnailPath = 'uploads/thumbnails/' . $thumbnailName;
+        
+        // Cache-Buster hinzufügen, um Browser-Caching zu umgehen
+        $relativeThumbnailPath .= '?t=' . time();
+        
+        $video->setThumbnailPath($relativeThumbnailPath);
+        $this->entityManager->flush();
+
+        return $relativeThumbnailPath;
+    }
+
     public function getVideoRepository(): VideoRepository
     {
         return $this->videoRepository;
@@ -350,7 +441,8 @@ class VideoAnalyzer
             // (z.B. Interlaced MPG). In diesem Fall versuchen wir eine automatische Konvertierung
             // und starten den Prozess erneut, falls es noch nicht die konvertierte Version war.
             if (!str_contains($videoPath, 'video_analyze_')) {
-                $tempMp4 = sys_get_temp_dir() . '/video_analyze_' . $videoId . '.mp4';
+                $tempMp4Name = 'video_analyze_' . $videoId . '.mp4';
+                $tempMp4 = $this->projectDir . '/public/uploads/import/' . $tempMp4Name;
 
                 $this->updateStatus($videoId, VideoStatus::CONVERTING);
 
@@ -435,7 +527,7 @@ class VideoAnalyzer
             $command = [
                 $this->pythonBinaryPath,
                 $this->projectDir . '/video-analyzer/python/extract_frames.py',
-                $videoPath,
+                $this->resolvePath($videoPath),
                 (string) $fps,
                 '--output-dir',
                 $frameDirPath
@@ -875,9 +967,14 @@ class VideoAnalyzer
 
         // 3. Konvertiertes Video löschen
         $convPath = $video->getConvertedVideoPath();
-        if ($convPath && file_exists($convPath) && str_contains($convPath, sys_get_temp_dir())) {
-            unlink($convPath);
-            $video->setConvertedVideoPath(null);
+        if ($convPath && file_exists($convPath)) {
+            $isImport = str_contains($convPath, '/uploads/import/');
+            $isTemp = str_contains($convPath, sys_get_temp_dir());
+
+            if ($isImport || $isTemp) {
+                unlink($convPath);
+                $video->setConvertedVideoPath(null);
+            }
         }
 
         $this->entityManager->flush();
