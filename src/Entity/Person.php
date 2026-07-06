@@ -2,25 +2,42 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
 use App\Enum\PersonStatus;
 use App\Repository\PersonRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: PersonRepository::class)]
+#[ApiResource(
+    operations: [
+        new GetCollection(
+            normalizationContext: ['groups' => ['person:list']]
+        ),
+        new Get(
+            normalizationContext: ['groups' => ['person:detail']]
+        )
+    ]
+)]
 class Person
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['person:list', 'person:detail'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['person:list', 'person:detail'])]
     private ?string $name = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    #[Groups(['person:detail'])]
     private ?string $description = null;
 
     /**
@@ -30,9 +47,11 @@ class Person
     private Collection $videoFaces;
 
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    #[Groups(['person:list', 'person:detail'])]
     private bool $identified = false;
 
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    #[Groups(['person:list', 'person:detail'])]
     private bool $wasted = false;
 
     /**
@@ -42,31 +61,39 @@ class Person
     private Collection $detectionFaces;
 
     #[ORM\Column(type: 'string', enumType: PersonStatus::class, options: ['default' => PersonStatus::NEW->value])]
+    #[Groups(['person:list', 'person:detail'])]
     private PersonStatus $status = PersonStatus::NEW;
 
     #[ORM\Column(options: ['default' => 0])]
+    #[Groups(['person:list', 'person:detail'])]
     private int $showCount = 0;
 
     #[ORM\ManyToOne(targetEntity: self::class)]
     #[ORM\JoinColumn(name: 'merged_into_id', referencedColumnName: 'id', nullable: true, onDelete: 'SET NULL')]
+    #[Groups(['person:detail'])]
     private ?Person $mergedInto = null;
 
     #[ORM\ManyToOne(targetEntity: VideoFace::class)]
     private ?VideoFace $profileFace = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['person:list', 'person:detail'])]
     private ?int $age = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['person:list', 'person:detail'])]
     private ?string $gender = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    #[Groups(['person:detail'])]
     private ?string $characteristics = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['person:list', 'person:detail'])]
     private ?string $fullName = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['person:list', 'person:detail'])]
     private ?string $relation = null;
 
     public function __construct()
@@ -230,7 +257,7 @@ class Person
         return $gender;
     }
 
-    function determineGenderFromDbField(string $input): ?string
+    public function determineGenderFromDbField(string $input): ?string
     {
         if (trim(strtolower($input)) === 'unknown' || empty($input)) {
             return null;
@@ -354,16 +381,19 @@ class Person
         $this->showCount = $showCount;
         return $this;
     }
+
     public function getMergedInto(): ?Person
     {
         return $this->mergedInto;
     }
+
     public function setMergedInto(?Person $mergedInto): self
     {
         $this->mergedInto = $mergedInto;
         return $this;
     }
 
+    #[Groups(['person:list', 'person:detail'])]
     public function getProfileImageUrl(): ?string
     {
         if (!$this->profileFace) {

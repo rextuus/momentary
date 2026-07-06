@@ -2,30 +2,49 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
 use App\Enum\VideoStatus;
 use App\Repository\VideoRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: VideoRepository::class)]
+#[ApiResource(
+    operations: [
+        new GetCollection(
+            normalizationContext: ['groups' => ['video:list']]
+        ),
+        new Get(
+            normalizationContext: ['groups' => ['video:detail']]
+        )
+    ]
+)]
 class Video
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['video:list', 'video:detail'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['video:list', 'video:detail'])]
     private ?string $title = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['video:list', 'video:detail'])]
     private ?string $youtubeUrl = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['video:detail'])]
     private ?string $sourceFile = null;
 
     #[ORM\Column]
+    #[Groups(['video:list', 'video:detail'])]
     private ?\DateTimeImmutable $createdAt = null;
 
     /**
@@ -35,28 +54,36 @@ class Video
     private Collection $videoFaces;
 
     #[ORM\Column(type: 'string', length: 32, enumType: VideoStatus::class)]
+    #[Groups(['video:list', 'video:detail'])]
     private VideoStatus $status = VideoStatus::PENDING;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?float $analysisFps = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?float $minSceneLengthForRefinement = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?float $refinedAnalysisFps = null;
 
     #[ORM\Column(options: ['default' => false])]
+    #[Groups(['video:detail'])]
     private bool $mergeEmptyScenesWithLastPersonScene = false;
 
     #[ORM\Column(type: 'text', nullable: true)]
+    #[Groups(['video:list', 'video:detail'])] // Fehler wollen wir oft auch in der Liste sehen
     private ?string $errorMessage = null;
 
     // Pfad zur lokalen Datei nach dem Download
     #[ORM\Column(length: 1000, nullable: true)]
+    #[Groups(['video:detail'])]
     private ?string $localPath = null;
 
     #[ORM\Column(length: 1000, nullable: true)]
+    #[Groups(['video:detail'])]
     private ?string $convertedVideoPath = null;
 
     /**
@@ -74,93 +101,123 @@ class Video
     private Collection $chapters;
 
     #[ORM\Column(options: ['default' => 0])]
+    #[Groups(['video:list', 'video:detail'])]
     private int $totalFrames = 0;
 
     #[ORM\Column(options: ['default' => 0])]
+    #[Groups(['video:list', 'video:detail'])]
     private int $processedFrames = 0;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?\DateTimeImmutable $downloadedAt = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?\DateTimeImmutable $convertedAt = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?\DateTimeImmutable $scenesDetectedAt = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?\DateTimeImmutable $framesExtractedAt = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?\DateTimeImmutable $facesAnalyzedAt = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?\DateTimeImmutable $refiningExtractionFinishedAt = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?\DateTimeImmutable $refiningAnalysisFinishedAt = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?\DateTimeImmutable $mergingScenesAt = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?\DateTimeImmutable $refinedAt = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:list', 'video:detail'])]
     private ?\DateTimeImmutable $completedAt = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:list', 'video:detail'])]
     private ?float $duration = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?int $downloadDuration = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?int $conversionDuration = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?int $sceneDetectionDuration = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?int $frameExtractionDuration = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?int $faceAnalysisDuration = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?int $refiningExtractionDuration = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?int $refiningAnalysisDuration = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?int $mergingScenesDuration = null;
 
     #[ORM\Column(length: 500, nullable: true)]
+    #[Groups(['video:detail'])]
     private ?string $currentFrameDirectory = null;
 
     #[ORM\Column(length: 500, nullable: true)]
+    #[Groups(['video:detail'])]
     private ?string $currentRefinementFrameDirectory = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?int $refinementDuration = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?int $estimatedConversionDuration = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?int $estimatedSceneDetectionDuration = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?int $estimatedFrameExtractionDuration = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['video:detail'])]
     private ?int $estimatedFaceAnalysisDuration = null;
 
     #[ORM\Column(length: 511, nullable: true)]
+    #[Groups(['video:detail'])]
     private ?string $jellyfinPath = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['video:detail'])]
     private ?string $jellyfinItemId = null;
 
     public function __construct()
@@ -244,7 +301,6 @@ class Video
     public function removeVideoFace(VideoFace $videoFace): static
     {
         if ($this->videoFaces->removeElement($videoFace)) {
-            // set the owning side to null (unless already changed)
             if ($videoFace->getVideo() === $this) {
                 $videoFace->setVideo(null);
             }
@@ -676,9 +732,6 @@ class Video
         return $this;
     }
 
-    /**
-     * @return Collection<int, VideoChapter>
-     */
     public function getJellyfinPath(): ?string
     {
         return $this->jellyfinPath;
@@ -703,6 +756,9 @@ class Video
         return $this;
     }
 
+    /**
+     * @return Collection<int, VideoChapter>
+     */
     public function getChapters(): Collection
     {
         return $this->chapters;
@@ -727,6 +783,7 @@ class Video
         return $this;
     }
 
+    #[Groups(['video:list', 'video:detail'])]
     public function getThumbnailUrl(): ?string
     {
         return $this->convertedVideoPath;
