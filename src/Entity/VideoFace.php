@@ -2,55 +2,79 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
 use App\Repository\VideoFaceRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: VideoFaceRepository::class)]
+#[ApiResource(
+    operations: [
+        new GetCollection(
+            normalizationContext: ['groups' => ['videoface:list']]
+        ),
+        new Get(
+            normalizationContext: ['groups' => ['videoface:detail']]
+        )
+    ]
+)]
 class VideoFace
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['video:list', 'video:detail', 'videoface:list', 'videoface:detail'])]
     private ?int $id = null;
 
     #[ORM\ManyToOne(inversedBy: 'videoFaces')]
+    #[Groups(['videoface:detail'])]
     private ?Video $video = null;
 
     #[ORM\ManyToOne(inversedBy: 'videoFaces')]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['video:list', 'video:detail', 'videoface:list', 'videoface:detail'])]
     private ?Person $person = null;
 
     /**
-     * NEU: Verknüpfung zur Szene
+     * Verknüpfung zur Szene
      */
     #[ORM\ManyToOne(targetEntity: VideoScene::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    #[Groups(['videoface:detail'])]
     private ?VideoScene $videoScene = null;
 
     #[ORM\Column]
+    #[Groups(['video:list', 'video:detail', 'videoface:list', 'videoface:detail'])]
     private ?int $timestamp = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['video:list', 'video:detail', 'videoface:list', 'videoface:detail'])]
     private ?string $faceLabel = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $faceImagePath = null;
 
     #[ORM\Column(type: 'json', nullable: true)]
+    #[Groups(['video:detail', 'videoface:detail'])]
     private ?array $boundingBox = null;
 
     #[ORM\Column(nullable: true)]
     private ?array $embedding = null;
 
     #[ORM\Column]
+    #[Groups(['video:list', 'video:detail', 'videoface:list', 'videoface:detail'])]
     private ?int $age = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['video:list', 'video:detail', 'videoface:list', 'videoface:detail'])]
     private ?string $gender = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['video:list', 'video:detail', 'videoface:list', 'videoface:detail'])]
     private ?string $emotion = null;
 
     #[ORM\ManyToOne(inversedBy: 'detectionFaces')]
@@ -66,6 +90,7 @@ class VideoFace
     private Collection $matchFor;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['videoface:detail'])]
     private ?float $matchSimilarity = null;
 
     public function __construct()
@@ -100,17 +125,11 @@ class VideoFace
         return $this;
     }
 
-    /**
-     * Getter für VideoScene
-     */
     public function getVideoScene(): ?VideoScene
     {
         return $this->videoScene;
     }
 
-    /**
-     * Setter für VideoScene
-     */
     public function setVideoScene(?VideoScene $videoScene): static
     {
         $this->videoScene = $videoScene;
@@ -257,6 +276,7 @@ class VideoFace
         return $this->matchFor;
     }
 
+    #[Groups(['video:list', 'video:detail', 'videoface:list', 'videoface:detail'])]
     public function getImageUrl(): ?string
     {
         return $this->faceImagePath;

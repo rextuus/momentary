@@ -69,8 +69,11 @@ services:
     environment:
       IMGPROXY_KEY: ${IMGPROXY_KEY}
       IMGPROXY_SALT: ${IMGPROXY_SALT}
+      IMGPROXY_LOCAL_FILESYSTEM_ROOT: /public
     ports:
       - "8080:8080"
+    volumes:
+      - ./public:/public
     networks:
       - momentary-network
 

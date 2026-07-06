@@ -2,6 +2,7 @@
 
 namespace App\Command;
 
+use App\Repository\VideoFaceRepository;
 use App\Repository\VideoRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -13,12 +14,13 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'app:video:set-default-thumbnail',
-    description: 'Weist Videos einen Standard-Thumbnail-Pfad für Imgproxy-Tests zu.',
+    description: 'Weist Videos und VideoFaces Standard-Pfade für Imgproxy-Tests zu.',
 )]
 class VideoSetDefaultThumbnailCommand extends Command
 {
     public function __construct(
         private VideoRepository $videoRepository,
+        private VideoFaceRepository $videoFaceRepository,
         private EntityManagerInterface $entityManager
     ) {
         parent::__construct();
@@ -30,7 +32,7 @@ class VideoSetDefaultThumbnailCommand extends Command
             'force',
             null,
             InputOption::VALUE_NONE,
-            'Überschreibt auch Videos, die bereits einen Thumbnail-Pfad haben.'
+            'Überschreibt auch Einträge, die bereits einen Pfad konfiguriert haben.'
         );
     }
 
@@ -39,36 +41,65 @@ class VideoSetDefaultThumbnailCommand extends Command
         $io = new SymfonyStyle($input, $output);
         $force = $input->getOption('force');
 
-        // Dummy-Pfad, den dein Imgproxy-System/Storage auflösen kann
-        $defaultPath = 'defaults/video-placeholder.jpg';
+        $defaultVideoPath = 'defaults/video-placeholder.jpg';
+        $defaultFacePath = 'defaults/face-placeholder.jpg';
 
+        // --- 1. VIDEOS VERARBEITEN ---
         $videos = $this->videoRepository->findAll();
-        $updatedCount = 0;
+        $updatedVideos = 0;
 
-        if (empty($videos)) {
-            $io->warning('Keine Videos in der Datenbank gefunden.');
-            return Command::SUCCESS;
-        }
+        if (!empty($videos)) {
+            $io->section('Verarbeite Videos...');
+            $io->progressStart(count($videos));
 
-        $io->comment(sprintf('Starte Zuweisung des Default-Thumbnails ("%s")...', $defaultPath));
-        $io->progressStart(count($videos));
+            foreach ($videos as $video) {
+                if (!$force && $video->getConvertedVideoPath() !== null) {
+                    $io->progressAdvance();
+                    continue;
+                }
 
-        foreach ($videos as $video) {
-            // Wenn 'force' nicht aktiv ist, überspringen wir Videos mit existierendem Pfad
-            if (!$force && $video->getConvertedVideoPath() !== null) {
+                $video->setConvertedVideoPath($defaultVideoPath);
+                $updatedVideos++;
                 $io->progressAdvance();
-                continue;
             }
-
-            $video->setConvertedVideoPath($defaultPath);
-            $updatedCount++;
-            $io->progressAdvance();
+            $io->progressFinish();
+        } else {
+            $io->warning('Keine Videos in der Datenbank gefunden.');
         }
 
-        $this->entityManager->flush();
-        $io->progressFinish();
+        // --- 2. VIDEO FACES VERARBEITEN ---
+        $faces = $this->videoFaceRepository->findAll();
+        $updatedFaces = 0;
 
-        $io->success(sprintf('Fertig! %d von %d Videos wurden aktualisiert.', $updatedCount, count($videos)));
+        if (!empty($faces)) {
+            $io->section('Verarbeite Video Faces...');
+            $io->progressStart(count($faces));
+
+            foreach ($faces as $face) {
+                if (!$force && $face->getFaceImagePath() !== null) {
+                    $io->progressAdvance();
+                    continue;
+                }
+
+                $face->setFaceImagePath($defaultFacePath);
+                $updatedFaces++;
+                $io->progressAdvance();
+            }
+            $io->progressFinish();
+        } else {
+            $io->warning('Keine VideoFaces in der Datenbank gefunden.');
+        }
+
+        // Alles auf einmal in die DB schreiben
+        if ($updatedVideos > 0 || $updatedFaces > 0) {
+            $this->entityManager->flush();
+        }
+
+        $io->success(sprintf(
+            'Fertig! Aktualisiert: %d Videos und %d VideoFaces.',
+            $updatedVideos,
+            $updatedFaces
+        ));
 
         return Command::SUCCESS;
     }

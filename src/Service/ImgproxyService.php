@@ -23,6 +23,10 @@ class ImgproxyService
 
     public function generateUrl(string $sourceUrl, int $width = 300, int $height = 300, string $resizingType = 'fill'): string
     {
+        if (!str_starts_with($sourceUrl, 'http://') && !str_starts_with($sourceUrl, 'https://') && !str_starts_with($sourceUrl, 'local:///')) {
+            $sourceUrl = 'local:///' . ltrim($sourceUrl, '/');
+        }
+
         return $this->publicHost . $this->builder
             ->with(new Width($width), new Height($height), new ResizingType($resizingType))
             ->url($sourceUrl, 'jpg');

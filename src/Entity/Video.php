@@ -51,6 +51,7 @@ class Video
      * @var Collection<int, VideoFace>
      */
     #[ORM\OneToMany(targetEntity: VideoFace::class, mappedBy: 'video')]
+    #[Groups(['video:list', 'video:detail'])]
     private Collection $videoFaces;
 
     #[ORM\Column(type: 'string', length: 32, enumType: VideoStatus::class)]
