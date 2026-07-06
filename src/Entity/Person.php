@@ -363,4 +363,13 @@ class Person
         $this->mergedInto = $mergedInto;
         return $this;
     }
+
+    public function getProfileImageUrl(): ?string
+    {
+        if (!$this->profileFace) {
+            return null;
+        }
+
+        return $this->profileFace->getFaceImagePath();
+    }
 }

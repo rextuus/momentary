@@ -726,4 +726,9 @@ class Video
         }
         return $this;
     }
+
+    public function getThumbnailUrl(): ?string
+    {
+        return $this->convertedVideoPath;
+    }
 }

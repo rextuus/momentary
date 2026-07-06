@@ -256,4 +256,9 @@ class VideoFace
     {
         return $this->matchFor;
     }
+
+    public function getImageUrl(): ?string
+    {
+        return $this->faceImagePath;
+    }
 }

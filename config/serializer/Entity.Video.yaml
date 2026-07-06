@@ -1,0 +1,41 @@
+App\Entity\Video:
+    attributes:
+        video:read:
+            id: true
+            title: true
+            youtubeUrl: true
+            sourceFile: true
+            createdAt: true
+            status: true
+            scenes: true
+            videoFaces: true
+            completedAt: true
+            duration: true
+            jellyfinPath: true
+            jellyfinItemId: true
+            thumbnailUrl: true
+
+App\Entity\Person:
+    attributes:
+        person:read:
+            id: true
+            name: true
+            description: true
+            age: true
+            gender: true
+            fullName: true
+            relation: true
+            profileImageUrl: true
+        video:read:
+            id: true
+            name: true
+            profileImageUrl: true
+
+App\Entity\VideoFace:
+    attributes:
+        video:read:
+            id: true
+            person: true
+            faceImagePath: true
+            imageUrl: true
+            timestamp: true
