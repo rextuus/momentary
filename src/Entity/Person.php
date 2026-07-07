@@ -74,6 +74,7 @@ class Person
     private ?Person $mergedInto = null;
 
     #[ORM\ManyToOne(targetEntity: VideoFace::class)]
+    #[ORM\JoinColumn(name: 'profile_face_id', referencedColumnName: 'id', onDelete: 'SET NULL')]
     private ?VideoFace $profileFace = null;
 
     #[ORM\Column(nullable: true)]

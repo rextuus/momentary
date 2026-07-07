@@ -6,6 +6,8 @@ use App\Message\DetectVideoScenesMessage;
 use App\Message\SplitVideoIntoFramesMessage;
 use App\Service\VideoAnalyzer;
 use App\Service\WorkflowMachine;
+use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 
@@ -15,7 +17,9 @@ final class DetectVideoScenesMessageHandler
     public function __construct(
         private VideoAnalyzer $videoAnalyzer,
         private MessageBusInterface $bus,
-        private WorkflowMachine $workflowMachine
+        private WorkflowMachine $workflowMachine,
+        private LoggerInterface $logger,
+        private EntityManagerInterface $entityManager
     ) {}
 
     public function __invoke(DetectVideoScenesMessage $message): void
@@ -37,7 +41,15 @@ final class DetectVideoScenesMessageHandler
 
         $videoPath = $this->videoAnalyzer->resolvePath($message->getVideoPath());
 
-        // Hier lag der Hund begraben: Wir müssen videoPath UND videoId übergeben
+        if (!file_exists($videoPath)) {
+            $this->logger->error("Source video for scene detection not found: $videoPath");
+            if ($this->workflowMachine->can($video, 'fail')) {
+                $this->workflowMachine->apply($video, 'fail');
+            }
+            $video->setErrorMessage("Source video not found: $videoPath");
+            $this->entityManager->flush();
+            return;
+        }
         $scenes = $this->videoAnalyzer->detectScenes(
             $videoPath,
             $message->getVideoId()

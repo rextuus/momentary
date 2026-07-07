@@ -367,9 +367,19 @@
                 const thumbnailInput = document.getElementById('thumbnail-time-input');
                 if (thumbnailForm && thumbnailInput) {
                     thumbnailForm.addEventListener('submit', function(e) {
-                        const currentTime = player.currentTime();
-                        thumbnailInput.value = currentTime;
-                        console.log('Setting thumbnail time to:', currentTime);
+                        if (typeof player !== 'undefined' && player.currentTime) {
+                            // Erhöhe die Zeit minimal um 0.1s, um sicherzustellen, dass ffmpeg ein Frame an dieser Stelle findet
+                            // und nicht das vorherige Keyframe nimmt, falls player.currentTime() exakt auf einer Grenze liegt.
+                            let currentTime = player.currentTime();
+                            if (currentTime > 0) {
+                                currentTime += 0.1;
+                            }
+                            thumbnailInput.value = currentTime;
+                            console.log('Setting thumbnail time from player to:', currentTime);
+                        } else {
+                            console.warn('Player not ready, sending 0.0 for thumbnail time');
+                            thumbnailInput.value = 0;
+                        }
                     });
                 }
             }

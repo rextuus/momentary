@@ -64,13 +64,18 @@ class ImgproxyService
 
         // Wir fügen den Cache-Buster wieder an die Source-URL an, die imgproxy erhält,
         // damit imgproxy selbst seinen Cache umgeht (falls konfiguriert)
-        // ODER wir lassen ihn nur an der finalen URL.
-        // Meistens reicht es, wenn die Source-URL für imgproxy anders aussieht.
         $finalSourceUrl = $pureSourceUrl . $queryString;
 
-        return $this->publicHost . $this->builder
+        $generatedUrl = $this->publicHost . $this->builder
             ->with(new Width($width), new Height($height), new ResizingType($resizingType))
             ->url($finalSourceUrl, 'jpg');
+
+        // Auch an die generierte URL den Cache-Buster hängen für den Browser
+        if ($queryString) {
+            $generatedUrl .= (str_contains($generatedUrl, '?') ? '&' : '?') . ltrim($queryString, '?');
+        }
+
+        return $generatedUrl;
     }
 
     public function getPublicHost(): string

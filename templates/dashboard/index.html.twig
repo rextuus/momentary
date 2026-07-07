@@ -60,57 +60,70 @@
                         <a href="{{ path('app_video_index') }}" class="btn btn-sm btn-outline-primary rounded-pill px-3">Alle Videos</a>
                     </div>
                     <div class="card-body px-4">
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle">
-                                <thead class="text-muted small text-uppercase">
-                                <tr>
-                                    <th>Video</th>
-                                    <th>Status</th>
-                                    <th class="text-end">Aktionen</th>
-                                </tr>
-                                </thead>
-                                <tbody>
+                        <div class="row g-3">
                                 {% for video in recent_videos %}
-                                    <tr>
-                                        <td>
-                                            <div class="fw-bold text-dark text-truncate" style="max-width: 250px;">{{ video.title }}</div>
-                                            <div class="text-muted small">
-                                                {% if video.youtubeUrl %}
-                                                    {{ video.youtubeUrl|slice(0, 40) }}...
-                                                {% else %}
-                                                    <span class="text-warning">YouTube-Link fehlt</span>
-                                                {% endif %}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            {% set statusInfo = {
-                                                'pending': {'color': 'secondary', 'icon': 'clock'},
-                                                'downloading': {'color': 'info', 'icon': 'download'},
-                                                'scene_detection': {'color': 'warning', 'icon': 'cut'},
-                                                'splitting': {'color': 'primary', 'icon': 'film'},
-                                                'analyzing_faces': {'color': 'dark', 'icon': 'user-search'},
-                                                'completed': {'color': 'success', 'icon': 'check-circle'},
-                                                'error': {'color': 'danger', 'icon': 'exclamation-triangle'}
-                                            }[video.status.value] ?? {'color': 'secondary', 'icon': 'question'} %}
+                                    {% set statusInfo = {
+                                        'pending': {'color': 'secondary', 'icon': 'clock'},
+                                        'downloading': {'color': 'info', 'icon': 'download'},
+                                        'scene_detection': {'color': 'warning', 'icon': 'cut'},
+                                        'splitting': {'color': 'primary', 'icon': 'film'},
+                                        'analyzing_faces': {'color': 'dark', 'icon': 'user-search'},
+                                        'optimizing': {'color': 'info', 'icon': 'magic'},
+                                        'completed': {'color': 'success', 'icon': 'check-circle'},
+                                        'error': {'color': 'danger', 'icon': 'exclamation-triangle'}
+                                    }[video.status.value] ?? {'color': 'secondary', 'icon': 'question'} %}
 
-                                            <span class="badge rounded-pill bg-{{ statusInfo.color }} bg-opacity-10 text-{{ statusInfo.color }} border border-{{ statusInfo.color }} px-2 py-1">
-                                                <i class="fas fa-{{ statusInfo.icon }} me-1"></i> {{ video.status.value|upper }}
-                                            </span>
-                                        </td>
-                                        <td class="text-end">
-                                            <div class="btn-group shadow-sm rounded">
-                                                <a href="{{ path('video_timeline', {id: video.id}) }}" class="btn btn-sm btn-white border" title="Timeline">
-                                                    <i class="fas fa-stream text-primary"></i>
-                                                </a>
+                                    <div class="col-12">
+                                        <div class="card border-0 bg-light bg-opacity-50">
+                                            <div class="card-body p-2">
+                                                <div class="row g-3 align-items-center">
+                                                    <div class="col-auto">
+                                                        <div class="position-relative bg-white rounded overflow-hidden shadow-sm" style="width: 100px; height: 60px;">
+                                                            {% if video.thumbnailUrl %}
+                                                                <img src="{{ imgproxy_url(video.thumbnailUrl, 100, 60) }}" alt="{{ video.title }}" class="w-100 h-100 object-fit-cover position-absolute top-0 start-0">
+                                                            {% endif %}
+                                                            <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-{{ statusInfo.color }} bg-opacity-25" style="z-index: 1;">
+                                                                <i class="fas fa-{{ statusInfo.icon }} text-white shadow-sm" style="font-size: 0.8rem;"></i>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col">
+                                                        <div class="fw-bold text-dark text-truncate small" title="{{ video.title }}">{{ video.title }}</div>
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <span class="badge rounded-pill bg-{{ statusInfo.color }} bg-opacity-10 text-{{ statusInfo.color }} border border-{{ statusInfo.color }} px-1 py-0" style="font-size: 0.6rem;">
+                                                                {{ video.status.value|upper }}
+                                                            </span>
+                                                            {% if video.youtubeUrl %}
+                                                                <span class="text-muted text-truncate" style="font-size: 0.65rem;">
+                                                                    <i class="fab fa-youtube text-danger me-1"></i> {{ video.youtubeUrl|slice(0, 30) }}...
+                                                                </span>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-auto">
+                                                        <div class="btn-group btn-group-sm shadow-sm rounded">
+                                                            <a href="{{ path('app_video_show', {id: video.id}) }}" class="btn btn-white px-2" title="Details">
+                                                                <i class="fas fa-eye text-primary"></i>
+                                                            </a>
+                                                            <a href="{{ path('video_timeline', {id: video.id}) }}" class="btn btn-white px-2" title="Timeline">
+                                                                <i class="fas fa-stream text-primary"></i>
+                                                            </a>
+                                                            <form method="post" action="{{ path('video_delete', {id: video.id}) }}" onsubmit="return confirm('Soll dieses Video wirklich gelöscht werden?');" class="d-inline">
+                                                                <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ video.id) }}">
+                                                                <button class="btn btn-white px-2 text-danger" title="Löschen">
+                                                                    <i class="fas fa-trash-alt"></i>
+                                                                </button>
+                                                            </form>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </td>
-                                    </tr>
+                                        </div>
+                                    </div>
                                 {% else %}
-                                    <tr><td colspan="3" class="text-center py-4 text-muted small">Keine aktuellen Videos.</td></tr>
+                                    <div class="col-12 text-center py-4 text-muted small">Keine aktuellen Videos.</div>
                                 {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
+                            </div>
                     </div>
                 </div>
             </div>
@@ -147,6 +160,15 @@
                             <i class="fas fa-scissors d-block mb-2 text-warning"></i>
                             <span class="small fw-bold">Auftrennen</span>
                         </a>
+                    </div>
+                    <div class="col-6 col-sm-3 col-lg-6">
+                        <form action="{{ path('person_cleanup') }}" method="POST" onsubmit="return confirm('Sollen wirklich alle Personen ohne Sichtungen gelöscht werden?');">
+                            <input type="hidden" name="_token" value="{{ csrf_token('person_cleanup') }}">
+                            <button type="submit" class="btn btn-light border shadow-sm w-100 py-3 hover-card">
+                                <i class="fas fa-broom d-block mb-2 text-danger"></i>
+                                <span class="small fw-bold">Cleanup</span>
+                            </button>
+                        </form>
                     </div>
                     <div class="col-12 mt-2">
                         <a href="{{ path('app_video_index') }}" class="btn btn-primary shadow-sm w-100 py-3 hover-card">

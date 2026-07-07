@@ -30,6 +30,7 @@ framework:
             App\Message\DetectVideoScenesMessage: async
             App\Message\OptimizeVideoForJellyfinMessage: async
             App\Message\ExportVideoToJellyfinMessage: async
+            App\Message\ExtractThumbnailMessage: async
 
             # Route your messages to the transports
             # 'App\Message\YourMessage': async

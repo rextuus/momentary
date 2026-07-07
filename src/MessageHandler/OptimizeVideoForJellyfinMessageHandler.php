@@ -50,9 +50,26 @@ class OptimizeVideoForJellyfinMessageHandler
         }
 
         $sourcePath = $this->videoAnalyzer->resolvePath($localPath);
+        
+        $this->logger->info("Resolved source path for optimization: $sourcePath (Original: $localPath)");
+
         if (!file_exists($sourcePath)) {
-            $this->logger->error("Local file $sourcePath for video $videoId does not exist.");
-            return;
+            // Eine kurze Pause einlegen und noch mal probieren, falls die Datei gerade erst geschrieben wurde (z.B. langsames NFS/Mount)
+            clearstatcache(true, $sourcePath);
+            if (!file_exists($sourcePath)) {
+                sleep(1);
+                clearstatcache(true, $sourcePath);
+            }
+
+            if (!file_exists($sourcePath)) {
+                $this->logger->error("Local file $sourcePath for video $videoId does not exist. (Tried resolving from $localPath)");
+                if ($this->workflowMachine->can($video, 'fail')) {
+                    $this->workflowMachine->apply($video, 'fail');
+                }
+                $video->setErrorMessage("Source file not found: $sourcePath");
+                $this->entityManager->flush();
+                return;
+            }
         }
 
         // If it's already an MP4, we can skip optimization or still run it for web-optimizing

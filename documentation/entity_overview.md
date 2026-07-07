@@ -10,8 +10,9 @@ Diese Dokumentation beschreibt das Datenmodell von Momentary, einschließlich al
 - **VideoScene** (n) <---> (m) **Tag**
 - **Tag** (n) <---> (1) **TagCategory**
 - **VideoFace** (n) <---> (1) **Person** (Zugeordnete Person)
-- **VideoFace** (n) <---> (1) **Person** (Detektions-Referenz)
-- **Person** (n) <---> (1) **Person** (Zusammengeführt in/Merged Into)
+- **VideoFace** (n) <---> (1) **Person** (Detektions-Pool / `detection`)
+- **VideoFace** (1) <---> (1) **VideoFace** (Refinement-Referenz / `matchedBy`)
+- **Person** (n) <---> (1) **Person** (Zusammengeführt in / `mergedInto`)
 
 ---
 
@@ -23,21 +24,29 @@ Das zentrale Element, das eine Videodatei und deren Analyse-Metadaten repräsent
 - `title`: String
 - `youtubeUrl`: String (optional)
 - `sourceFile`: String
-- `localPath`: String
-- `convertedVideoPath`: String
+- `localPath`: String (Relativer Pfad zur aktuell genutzten Datei, z.B. optimiertes MP4)
+- `convertedVideoPath`: String (Veraltet/Optional)
+- `thumbnailPath`: String (Pfad zum generierten Thumbnail)
 - `status`: VideoStatus (Enum)
 - `duration`: Float (in Sekunden)
-- `createdAt`: DateTimeImmutable
-- `downloadedAt`, `convertedAt`, `scenesDetectedAt`, `framesExtractedAt`, `facesAnalyzedAt`, `refinedAt`, `completedAt`: DateTimeImmutable (Timestamps für Workflow-Schritte)
 - `totalFrames`, `processedFrames`: Integer (Fortschrittsanzeige)
 - `analysisFps`, `refinedAnalysisFps`: Float
+- `minSceneLengthForRefinement`: Float
+- `mergeEmptyScenesWithLastPersonScene`: Boolean
 - `errorMessage`: Text (optional)
 - `jellyfinPath`, `jellyfinItemId`: String (Export-Metadaten)
+- `createdAt`: DateTimeImmutable
+- `downloadedAt`, `convertedAt`, `scenesDetectedAt`, `framesExtractedAt`, `facesAnalyzedAt`, `refinedAt`, `completedAt`: DateTimeImmutable (Workflow-Timestamps)
+- `refiningExtractionFinishedAt`, `refiningAnalysisFinishedAt`, `mergingScenesAt`: DateTimeImmutable (Detaillierte Workflow-Schritte)
+- `downloadDuration`, `conversionDuration`, `sceneDetectionDuration`, `frameExtractionDuration`, `faceAnalysisDuration`, `refinementDuration`, `refiningExtractionDuration`, `refiningAnalysisDuration`, `mergingScenesDuration`: Integer (Dauer der Schritte in Sekunden)
+- `estimatedConversionDuration`, `estimatedSceneDetectionDuration`, `estimatedFrameExtractionDuration`, `estimatedFaceAnalysisDuration`: Integer (Schätzwerte)
+- `currentFrameDirectory`, `currentRefinementFrameDirectory`: String (Interne Pfade während der Verarbeitung)
 
 ### Relationen
 - `scenes`: OneToMany -> **VideoScene** (Inversed by `video`)
 - `videoFaces`: OneToMany -> **VideoFace** (Inversed by `video`)
 - `chapters`: OneToMany -> **VideoChapter** (Inversed by `video`)
+- `thumbnailUrl`: Transient (Generiert via `VideoNormalizer` & Imgproxy)
 
 ---
 
@@ -54,7 +63,7 @@ Repräsentiert ein durch PySceneDetect erkanntes Zeitsegment innerhalb eines Vid
 ### Relationen
 - `video`: ManyToOne -> **Video** (Owning side)
 - `videoFaces`: OneToMany -> **VideoFace** (Inversed by `videoScene`)
-- `tags`: ManyToMany -> **Tag** (Inversed by `scenes`)
+- `tags`: ManyToMany -> **Tag** (Owning side, Inversed by `scenes`)
 
 ---
 
@@ -63,10 +72,10 @@ Ein spezifisches Vorkommen eines Gesichts in einem Frame des Videos.
 
 ### Properties
 - `id`: Integer (PK)
-- `timestamp`: Integer (ms oder Frame-Index)
+- `timestamp`: Integer (Frame-Index oder Zeitstempel)
 - `faceLabel`: String
-- `faceImagePath`: String
-- `boundingBox`: Array (Koordinaten im Bild)
+- `faceImagePath`: String (Pfad zum extrahierten Gesichtsbild)
+- `boundingBox`: Array (Koordinaten [x1, y1, x2, y2])
 - `age`: Integer (erkanntes Alter)
 - `gender`: String (erkanntes Geschlecht)
 - `emotion`: String (erkannte Emotion)
@@ -77,8 +86,10 @@ Ein spezifisches Vorkommen eines Gesichts in einem Frame des Videos.
 - `video`: ManyToOne -> **Video**
 - `videoScene`: ManyToOne -> **VideoScene**
 - `person`: ManyToOne -> **Person** (Die final zugeordnete Person)
-- `detection`: ManyToOne -> **Person** (Referenz zur Person für das Interface)
+- `detection`: ManyToOne -> **Person** (Referenz zur Person für das Interface / Detektions-Pool)
 - `matchedBy`: ManyToOne -> **self** (Referenz auf das Original-Face bei Refinements)
+- `matchFor`: OneToMany -> **self** (Gegenstück zu `matchedBy`)
+- `imageUrl`: Transient (Signierte Imgproxy-URL, generiert via `VideoFaceNormalizer`)
 
 ---
 
@@ -89,19 +100,24 @@ Ein individuelles Profil einer Person, dem mehrere `VideoFace`-Vorkommen zugeord
 - `id`: Integer (PK)
 - `name`: String
 - `fullName`: String (optional)
-- `age`: Integer (Manuell korrigiert oder Durchschnitt)
-- `gender`: String
+- `age`: Integer (Durchschnitt oder manuell korrigiert)
+- `gender`: String (erkanntes Geschlecht)
+- `probablyGender`: String (Berechnete Tendenz basierend auf zugeordneten Faces)
 - `relation`: String (Beziehung zum Archiv-Inhaber)
 - `characteristics`: Text
 - `description`: Text
 - `isIdentified`: Boolean
 - `isWasted`: Boolean (Für Profile, die ignoriert werden sollen)
-- `status`: PersonStatus (Enum)
+- `status`: PersonStatus (Enum: `NEW`, `IDENTIFIED`, `WASTED`)
+- `sceneCount`: Integer (Anzahl der Szenen, in denen die Person vorkommt)
+- `showCount`: Integer (Häufigkeit der Anzeige/Interaktion)
 
 ### Relationen
 - `videoFaces`: OneToMany -> **VideoFace** (Alle zugeordneten Vorkommen)
+- `detectionFaces`: OneToMany -> **VideoFace** (Referenz für den Detektions-Pool)
 - `profileFace`: ManyToOne -> **VideoFace** (Das Bild, das als Profilbild dient)
-- `mergedInto`: ManyToOne -> **Person** (Referenz, wenn Profile zusammengeführt wurden)
+- `mergedInto`: ManyToOne -> **Person** (Referenz bei Profil-Zusammenführungen)
+- `profileImageUrl`: Transient (Signierte Imgproxy-URL des Profilbildes)
 
 ---
 
@@ -113,13 +129,16 @@ Ermöglichen die semantische Kategorisierung von Szenen.
 - `name`: String
 
 ### Tag Relationen
-- `category`: ManyToOne -> **TagCategory**
-- `scenes`: ManyToMany -> **VideoScene**
+- `category`: ManyToOne -> **TagCategory** (Owning side)
+- `scenes`: ManyToMany -> **VideoScene** (Inversed by `tags`)
 
 ### TagCategory Properties
 - `id`: Integer (PK)
 - `name`: String
-- `color`: String (Hex-Code für UI)
+- `color`: String (Hex-Code für UI, optional)
+
+### TagCategory Relationen
+- `tags`: OneToMany -> **Tag** (Inversed by `category`)
 
 ---
 
@@ -131,7 +150,7 @@ Strukturierte Kapitel für den Export (z.B. an Jellyfin).
 - `title`: String
 - `startSeconds`: Float
 - `endSeconds`: Float
-- `description`: Text
+- `description`: Text (optional)
 
 ### Relationen
-- `video`: ManyToOne -> **Video**
+- `video`: ManyToOne -> **Video** (Owning side)

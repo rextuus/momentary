@@ -30,7 +30,7 @@ class QuickResolveComponent
         private PersonRepository $personRepository,
         private EntityManagerInterface $entityManager
     ) {
-        $this->statuses = [PersonStatus::WASTED->value];
+        $this->statuses = [PersonStatus::NEW->value, PersonStatus::WASTED->value];
     }
 
     public function updatedStatuses(): void

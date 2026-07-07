@@ -56,7 +56,7 @@ class Video
     /**
      * @var Collection<int, VideoFace>
      */
-    #[ORM\OneToMany(targetEntity: VideoFace::class, mappedBy: 'video')]
+    #[ORM\OneToMany(targetEntity: VideoFace::class, mappedBy: 'video', cascade: ['persist', 'remove'], orphanRemoval: true)]
     #[Groups(['video:list', 'video:detail'])]
     private Collection $videoFaces;
 
@@ -809,6 +809,6 @@ class Video
     #[Groups(['video:list', 'video:detail'])]
     public function getThumbnailUrl(): ?string
     {
-        return $this->thumbnailPath ?? $this->convertedVideoPath ?? 'defaults/video-placeholder.jpg';
+        return $this->thumbnailPath ?? 'defaults/video-placeholder.jpg';
     }
 }

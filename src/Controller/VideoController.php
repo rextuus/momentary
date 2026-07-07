@@ -7,6 +7,7 @@ use App\Form\VideoType;
 use App\Message\ConvertVideoMessage;
 use App\Message\DetectVideoScenesMessage;
 use App\Message\DownloadVideoMessage;
+use App\Message\ExtractThumbnailMessage;
 use App\Message\OptimizeVideoForJellyfinMessage;
 use App\Message\SplitVideoIntoFramesMessage;
 use App\Repository\VideoRepository;
@@ -21,6 +22,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/video')]
@@ -31,6 +33,7 @@ final class VideoController extends AbstractController
         private VideoRepository $videoRepository,
         private EntityManagerInterface $entityManager,
         private WorkflowMachine $workflowMachine,
+        private LoggerInterface $logger,
         #[Autowire('%kernel.project_dir%/public/uploads/import')]
         private string $importDir
     ) {}
@@ -60,6 +63,9 @@ final class VideoController extends AbstractController
             $video->setCreatedAt(new \DateTimeImmutable());
 
             if ($video->getSourceFile()) {
+                // Wir speichern den Pfad relativ zum Root des Projekts, ohne "public/" falls möglich,
+                // aber da resolvePath nun beides kann, bleiben wir bei einem konsistenten Format.
+                // Bisher wurde "public/uploads/import/" genutzt. Wir machen es expliziter.
                 $video->setLocalPath('public/uploads/import/' . $video->getSourceFile());
             }
 
@@ -92,6 +98,22 @@ final class VideoController extends AbstractController
         ]);
     }
 
+    #[Route('/{id}/delete', name: 'video_delete', methods: ['POST'])]
+    public function delete(Request $request, Video $video, VideoAnalyzer $videoAnalyzer): Response
+    {
+        if ($this->isCsrfTokenValid('delete' . $video->getId(), $request->request->get('_token'))) {
+            // Erst Dateien löschen, dann Entity (bevor DB-Datensatz weg ist)
+            // cleanupLocalFile löscht nun auch das Thumbnail
+            $videoAnalyzer->cleanupLocalFile($video->getId());
+
+            $this->entityManager->remove($video);
+            $this->entityManager->flush();
+            $this->addFlash('success', 'Video wurde erfolgreich gelöscht.');
+        }
+
+        return $this->redirectToRoute('app_video_index');
+    }
+
     #[Route('/{id}/set-youtube-url', name: 'video_set_youtube_url', methods: ['POST'])]
     public function setYoutubeUrl(Video $video, Request $request, VideoAnalyzer $videoAnalyzer): RedirectResponse
     {
@@ -112,18 +134,15 @@ final class VideoController extends AbstractController
     }
 
     #[Route('/{id}/extract-thumbnail', name: 'video_extract_thumbnail', methods: ['POST'])]
-    public function extractThumbnail(Video $video, Request $request, VideoAnalyzer $videoAnalyzer): RedirectResponse
+    public function extractThumbnail(Video $video, Request $request): RedirectResponse
     {
         $time = $request->request->get('time');
         $timeInSeconds = $time !== null ? (float) $time : 0.0;
         
-        $thumbnailPath = $videoAnalyzer->extractThumbnail($video, $timeInSeconds);
+        $this->logger->info(sprintf('Dispatching ExtractThumbnailMessage for video %d at %f', $video->getId(), $timeInSeconds));
+        $this->messageBus->dispatch(new ExtractThumbnailMessage($video->getId(), $timeInSeconds));
 
-        if ($thumbnailPath) {
-            $this->addFlash('success', 'Thumbnail wurde erfolgreich erstellt (Zeit: ' . ($timeInSeconds > 0 ? round($timeInSeconds, 2) . 's' : 'zufällig') . ').');
-        } else {
-            $this->addFlash('error', 'Fehler beim Erstellen des Thumbnails.');
-        }
+        $this->addFlash('success', 'Thumbnail-Erstellung wurde in die Warteschlange eingereiht (Zeit: ' . ($timeInSeconds > 0 ? round($timeInSeconds, 2) . 's' : 'zufällig') . ').');
 
         return $this->redirectToRoute('app_video_show', ['id' => $video->getId()]);
     }

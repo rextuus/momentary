@@ -81,6 +81,7 @@ class VideoFace
     private ?Person $detection = null;
 
     #[ORM\ManyToOne(targetEntity: self::class, inversedBy: 'matchFor')]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
     private ?self $matchedBy = null;
 
     /**

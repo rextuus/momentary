@@ -25,6 +25,7 @@
                                 'scene_detection': {'color': 'warning', 'icon': 'cut'},
                                 'splitting': {'color': 'primary', 'icon': 'film'},
                                 'analyzing_faces': {'color': 'dark', 'icon': 'user-search'},
+                                'optimizing': {'color': 'info', 'icon': 'magic'},
                                 'completed': {'color': 'success', 'icon': 'check-circle'},
                                 'error': {'color': 'danger', 'icon': 'exclamation-triangle'}
                             }[video.status.value] ?? {'color': 'secondary', 'icon': 'question'} %}
@@ -33,7 +34,7 @@
                                 {% if video.thumbnailUrl %}
                                     <img src="{{ imgproxy_url(video.thumbnailUrl, 200, 120) }}" alt="{{ video.title }}" class="w-100 h-100 object-fit-cover position-absolute top-0 start-0">
                                 {% endif %}
-                                <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-{{ statusInfo.color }} bg-opacity-25">
+                                <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-{{ statusInfo.color }} bg-opacity-25" style="z-index: 1;">
                                     <i class="fas fa-{{ statusInfo.icon }} text-white fa-lg shadow-sm"></i>
                                 </div>
                             </div>
@@ -98,15 +99,20 @@
                                     </div>
 
                                     <div class="d-flex flex-wrap gap-2 align-items-center">
-                                        <a href="{{ path('app_video_show', {id: video.id}) }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
-                                            <i class="fas fa-info-circle me-1"></i> Details
+                                        <a href="{{ path('app_video_show', {id: video.id}) }}" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm">
+                                            <i class="fas fa-eye me-1"></i> Details
                                         </a>
 
                                         <a href="{{ path('video_timeline', {id: video.id}) }}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
                                             <i class="fas fa-chart-line me-1"></i> Timeline
                                         </a>
 
-                                        <div class="vr mx-2 d-none d-md-block"></div>
+                                        <form method="post" action="{{ path('video_delete', {id: video.id}) }}" onsubmit="return confirm('Soll dieses Video wirklich gelöscht werden?');" class="d-inline">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ video.id) }}">
+                                            <button class="btn btn-sm btn-outline-danger rounded-pill px-3">
+                                                <i class="fas fa-trash-alt me-1"></i> Löschen
+                                            </button>
+                                        </form>
                                     </div>
                                 </div>
                             </div>

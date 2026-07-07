@@ -65,11 +65,14 @@ class VideoAnalyzer
             $videoPath = $video->getLocalPath();
         }
 
+        $this->logger->info(sprintf('Extracting thumbnail for video %d at %fs. Original path: %s', $video->getId(), $timeInSeconds, $videoPath ?: 'NULL'));
+
         if (!$videoPath) {
             return null;
         }
 
         $videoPath = $this->resolvePath($videoPath);
+        $this->logger->info(sprintf('Resolved video path for thumbnail: %s', $videoPath));
         if (!file_exists($videoPath)) {
             $this->logger->error("Video file not found for thumbnail extraction: " . $videoPath);
             return null;
@@ -111,6 +114,8 @@ class VideoAnalyzer
         $thumbnailName = sprintf('video_%d.jpg', $video->getId());
         $thumbnailPath = $thumbnailDir . '/' . $thumbnailName;
 
+        $this->logger->info(sprintf('Thumbnail will be saved to: %s', $thumbnailPath));
+
         // FFmpeg Kommando um ein einzelnes Frame zu extrahieren
         // -ss vor -i für schnelles Seek
         $command = [
@@ -126,10 +131,21 @@ class VideoAnalyzer
 
         $process = new Process($command);
         $process->setTimeout(60);
+        $this->logger->info(sprintf('Running FFmpeg: ' . implode(' ', $command)));
         $process->run();
 
         if (!$process->isSuccessful()) {
             $this->logger->error('Thumbnail extraction failed: ' . $process->getErrorOutput());
+            $this->logger->error('Command used: ' . implode(' ', $command));
+            return null;
+        }
+
+        // Verifizieren, dass die Datei existiert und aktualisiert wurde
+        if (file_exists($thumbnailPath)) {
+            $this->logger->info(sprintf('Thumbnail file successfully created/updated: %s (Size: %d bytes)', $thumbnailPath, filesize($thumbnailPath)));
+            @touch($thumbnailPath); // Zeitstempel aktualisieren, falls Größe identisch war
+        } else {
+            $this->logger->error('FFmpeg reported success, but thumbnail file not found at: ' . $thumbnailPath);
             return null;
         }
 
@@ -172,9 +188,23 @@ class VideoAnalyzer
         }
 
         // Falls er bereits relativ ist (oder wir ihn relativ gemacht haben)
-        $projectPath = $this->projectDir . '/' . ltrim($path, '/');
-        if (file_exists($projectPath)) {
-            return $projectPath;
+        $cleanPath = ltrim($path, '/');
+        
+        // Wenn der Pfad mit "public/" beginnt, versuchen wir es auch ohne "public/", 
+        // da im Docker-Kontext das "public/" oft das Root-Verzeichnis des Webservers ist
+        // und Dateien relativ zum Projektroot in "public/..." liegen.
+        $pathsToTry = [
+            $this->projectDir . '/' . $cleanPath,
+        ];
+        
+        if (str_starts_with($cleanPath, 'public/')) {
+            $pathsToTry[] = $this->projectDir . '/' . substr($cleanPath, 7);
+        }
+
+        foreach ($pathsToTry as $projectPath) {
+            if (file_exists($projectPath)) {
+                return $projectPath;
+            }
         }
 
         return $path;
@@ -975,6 +1005,17 @@ class VideoAnalyzer
                 unlink($convPath);
                 $video->setConvertedVideoPath(null);
             }
+        }
+
+        // 4. Thumbnail löschen
+        $thumbnailPath = $video->getThumbnailPath();
+        if ($thumbnailPath) {
+            $cleanThumbnailPath = explode('?', $thumbnailPath)[0];
+            $fullThumbnailPath = $this->projectDir . '/public/' . $cleanThumbnailPath;
+            if (file_exists($fullThumbnailPath)) {
+                @unlink($fullThumbnailPath);
+            }
+            $video->setThumbnailPath(null);
         }
 
         $this->entityManager->flush();

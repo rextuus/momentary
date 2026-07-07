@@ -49,7 +49,7 @@ framework:
                     from: !php/const App\Enum\VideoStatus::REFINING_ANALYSIS
                     to:   !php/const App\Enum\VideoStatus::MERGING_SCENES
                 start_optimization:
-                    from: [!php/const App\Enum\VideoStatus::MERGING_SCENES, !php/const App\Enum\VideoStatus::ANALYZING_FACES, !php/const App\Enum\VideoStatus::SCENE_DETECTION, !php/const App\Enum\VideoStatus::COMPLETED, !php/const App\Enum\VideoStatus::ERROR]
+                    from: [!php/const App\Enum\VideoStatus::MERGING_SCENES, !php/const App\Enum\VideoStatus::ANALYZING_FACES, !php/const App\Enum\VideoStatus::SCENE_DETECTION, !php/const App\Enum\VideoStatus::OPTIMIZING, !php/const App\Enum\VideoStatus::COMPLETED, !php/const App\Enum\VideoStatus::ERROR]
                     to:   !php/const App\Enum\VideoStatus::OPTIMIZING
                 complete:
                     from: [!php/const App\Enum\VideoStatus::MERGING_SCENES, !php/const App\Enum\VideoStatus::ANALYZING_FACES, !php/const App\Enum\VideoStatus::SCENE_DETECTION, !php/const App\Enum\VideoStatus::OPTIMIZING]
