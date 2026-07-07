@@ -27,7 +27,7 @@
                                         data-live-id-param="{{ face.id }}">
                                     <div class="d-flex align-items-center">
                                         <div class="me-2 position-relative" style="width: 50px; height: 50px; overflow: hidden; border-radius: 4px;">
-                                            <div class="position-absolute top-0 left-0 w-100 h-100" style="{{ face_zoom_style(asset('uploads/faces/' ~ face.faceImagePath), face.boundingBox, 0) }}"></div>
+                                            <div class="position-absolute top-0 left-0 w-100 h-100" style="{{ face_zoom_style(imgproxy_url(face.faceImagePath), face.boundingBox, 0) }}"></div>
                                             <div class="position-absolute border border-danger border-1" style="{{ face.boundingBoxStyles|raw }}; pointer-events: none;"></div>
                                         </div>
                                         <div class="small text-truncate">
@@ -53,11 +53,11 @@
                              style="width: 300px; height: 300px; cursor: zoom-in;"
                              data-bs-toggle="modal"
                              data-bs-target="#imageModal"
-                             data-bs-img="{{ asset('uploads/faces/' ~ activeFace.faceImagePath) }}"
+                             data-bs-img="{{ imgproxy_url(activeFace.faceImagePath, 800, 600, 'fit') }}"
                              data-bs-box="{{ activeFace.boundingBoxStyles }}"
                              data-bs-caption="Sichtung in {{ activeFace.video.title }}">
                              {# Wir nutzen hier den face_zoom_style, falls vorhanden, sonst einfach img #}
-                             <div class="position-absolute top-0 left-0 w-100 h-100" style="{{ face_zoom_style(asset('uploads/faces/' ~ activeFace.faceImagePath), activeFace.boundingBox, 0.4) }}"></div>
+                             <div class="position-absolute top-0 left-0 w-100 h-100" style="{{ face_zoom_style(imgproxy_url(activeFace.faceImagePath), activeFace.boundingBox, 0.4) }}"></div>
                              <div class="position-absolute border border-danger border-3" style="{{ activeFace.boundingBoxStyles|raw }}; pointer-events: none;"></div>
                         </div>
                         
@@ -103,7 +103,7 @@
                                                 data-live-person-id-param="{{ sug.id }}"
                                                 title="{{ sug.name }}">
                                             {% if sugFace %}
-                                                <img src="{{ asset('uploads/faces/' ~ sugFace.faceImagePath) }}"
+                                                <img src="{{ imgproxy_url(sugFace.faceImagePath, 100, 100) }}"
                                                      class="rounded-circle mb-1"
                                                      style="width: 45px; height: 45px; object-fit: cover;">
                                             {% endif %}

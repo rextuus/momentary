@@ -58,11 +58,11 @@
                 <div class="card-img-top bg-dark position-relative overflow-hidden" style="aspect-ratio: 1/1; cursor: zoom-in;"
                      data-bs-toggle="modal"
                      data-bs-target="#imageModal"
-                     data-bs-img="{{ asset('uploads/faces/' ~ displayFace.faceImagePath) }}"
+                     data-bs-img="{{ imgproxy_url(displayFace.faceImagePath, 800, 600, 'fit') }}"
                      data-bs-box="{{ displayFace.boundingBoxStyles }}"
                      data-bs-caption="Sichtung in {{ displayFace.video.title }}">
                     {% if displayFace %}
-                        <div class="position-absolute top-0 left-0 w-100 h-100" style="{{ face_zoom_style(asset('uploads/faces/' ~ displayFace.faceImagePath), displayFace.boundingBox, 0.2) }}"></div>
+                        <div class="position-absolute top-0 left-0 w-100 h-100" style="{{ face_zoom_style(imgproxy_url(displayFace.faceImagePath), displayFace.boundingBox, 0.2) }}"></div>
                         <div class="position-absolute border border-danger border-3" style="{{ displayFace.boundingBoxStyles|raw }}; pointer-events: none;"></div>
                     {% else %}
                         <div class="d-flex align-items-center justify-content-center h-100 text-white opacity-50">

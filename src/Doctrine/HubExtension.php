@@ -7,6 +7,7 @@ use ApiPlatform\Doctrine\Orm\Extension\QueryItemExtensionInterface;
 use ApiPlatform\Doctrine\Orm\Util\QueryNameGeneratorInterface;
 use App\Entity\Person;
 use App\Entity\Video;
+use App\Enum\PersonStatus;
 use App\Enum\VideoStatus;
 use ApiPlatform\Metadata\Operation;
 use Doctrine\ORM\QueryBuilder;
@@ -27,16 +28,14 @@ final class HubExtension implements QueryCollectionExtensionInterface, QueryItem
     {
         if (Person::class === $resourceClass) {
             $rootAlias = $queryBuilder->getRootAliases()[0];
-            $queryBuilder->andWhere(sprintf('%s.identified = :identified', $rootAlias));
-            $queryBuilder->andWhere(sprintf('%s.wasted = :wasted', $rootAlias));
-            $queryBuilder->setParameter('identified', true);
-            $queryBuilder->setParameter('wasted', false);
+            $queryBuilder->andWhere(sprintf('%s.status = :status', $rootAlias));
+            $queryBuilder->setParameter('status', PersonStatus::IDENTIFIED);
         }
 
         if (Video::class === $resourceClass) {
             $rootAlias = $queryBuilder->getRootAliases()[0];
             $queryBuilder->andWhere(sprintf('%s.status = :status', $rootAlias));
-            $queryBuilder->setParameter('status', VideoStatus::COMPLETED->value);
+            $queryBuilder->setParameter('status', VideoStatus::COMPLETED);
         }
     }
 }

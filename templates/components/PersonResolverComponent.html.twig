@@ -79,7 +79,7 @@
                                             {% set centerX = (box.Left + (box.Width / 2)) * 100 %}
                                             {% set centerY = (box.Top + (box.Height / 2)) * 100 %}
 
-                                            <img src="{{ asset('uploads/faces/' ~ mainFace.faceImagePath) }}"
+                                            <img src="{{ imgproxy_url(mainFace.faceImagePath, 800, 600, 'fit') }}"
                                                  style="width: {{ imgWidth }}%;
                                                          height: auto;
                                                          aspect-ratio: 16/9;
@@ -99,7 +99,7 @@
                                     <small class="text-light opacity-50 d-block mb-2 text-uppercase fw-bold">Kontext im Video</small>
                                     <div class="position-relative d-inline-block shadow border border-1 border-secondary rounded overflow-hidden bg-black" style="max-width: 100%;">
                                         {% if mainFace %}
-                                            <img src="{{ asset('uploads/faces/' ~ mainFace.faceImagePath) }}"
+                                            <img src="{{ imgproxy_url(mainFace.faceImagePath, 800, 600, 'fit') }}"
                                                  class="img-fluid"
                                                  style="width: 100%; opacity: 0.4; display: block;"
                                                  alt="Context">
@@ -124,7 +124,7 @@
                                                  data-live-action-param="selectFace"
                                                  data-live-face-id-param="{{ face.id }}">
 
-                                                <img src="{{ asset('uploads/faces/' ~ face.faceImagePath) }}"
+                                                <img src="{{ imgproxy_url(face.faceImagePath, 150, 150) }}"
                                                      class="rounded border {{ (mainFace and face.id == mainFace.id) ? 'border-primary border-4 shadow' : 'border-secondary opacity-50' }}"
                                                      style="width: 70px; height: 70px; object-fit: cover; transition: all 0.2s;"
                                                      alt="Thumbnail">
@@ -161,7 +161,7 @@
                                                             data-live-id-param="{{ sug.id }}"
                                                             title="{{ sug.name }}">
                                                         {% if sugFace %}
-                                                            <img src="{{ asset('uploads/faces/' ~ sugFace.faceImagePath) }}"
+                                                            <img src="{{ imgproxy_url(sugFace.faceImagePath, 100, 100) }}"
                                                                  class="rounded-circle mb-1"
                                                                  style="width: 45px; height: 45px; object-fit: cover;">
                                                         {% endif %}

@@ -13,7 +13,7 @@
             {% if displayFace %}
                 {# Cache-Busting: Die ?v= ID sorgt dafür, dass die Liste das Bild aktualisiert,
                    sobald du in der Detailansicht ein neues Face gewählt hast. #}
-                {% set imagePath = asset('uploads/faces/' ~ displayFace.faceImagePath) ~ '?v=' ~ displayFace.id %}
+                {% set imagePath = imgproxy_url(displayFace.faceImagePath) ~ '?v=' ~ displayFace.id %}
                 <div style="{{ face_zoom_style(imagePath, displayFace.boundingBox, 0.1) }}"></div>
             {% else %}
                 <div class="d-flex align-items-center justify-content-center h-100 fw-bold text-muted bg-soft-secondary">

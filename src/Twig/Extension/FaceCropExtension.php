@@ -2,16 +2,28 @@
 
 namespace App\Twig\Extension;
 
+use App\Service\ImgproxyService;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 
 class FaceCropExtension extends AbstractExtension
 {
+    public function __construct(
+        private readonly ImgproxyService $imgproxyService
+    ) {
+    }
+
     public function getFunctions(): array
     {
         return [
             new TwigFunction('face_zoom_style', [$this, 'getFaceZoomStyle']),
+            new TwigFunction('imgproxy_url', [$this, 'getImgproxyUrl']),
         ];
+    }
+
+    public function getImgproxyUrl(string $path, int $width = 300, int $height = 300, string $resizingType = 'fill'): string
+    {
+        return $this->imgproxyService->generateUrl($path, $width, $height, $resizingType);
     }
 
     /**

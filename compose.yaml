@@ -71,6 +71,9 @@ services:
       IMGPROXY_SALT: ${IMGPROXY_SALT}
       IMGPROXY_LOCAL_FILESYSTEM_ROOT: /public
       IMGPROXY_ALLOW_ORIGIN: "*"
+      # Zusätzliche Header für CORS-Stabilität im Browser
+      IMGPROXY_CORS_EXPOSE_HEADERS: "*"
+      IMGPROXY_CORS_METHODS: "GET,HEAD,OPTIONS"
     ports:
       - "8080:8080"
     volumes:

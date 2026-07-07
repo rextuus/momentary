@@ -25,7 +25,7 @@
                         {% set displayFace = person.profileFace ?: person.videoFaces|first %}
 
                         {% if displayFace %}
-                            <div style="{{ face_zoom_style(asset('uploads/faces/' ~ displayFace.faceImagePath), displayFace.boundingBox, 0.1) }}"></div>
+                            <div style="{{ face_zoom_style(imgproxy_url(displayFace.faceImagePath), displayFace.boundingBox, 0.1) }}"></div>
                         {% else %}
                             <div class="d-flex align-items-center justify-content-center h-100 bg-secondary text-white">
                                 <i class="fas fa-user fa-3x"></i>
@@ -139,12 +139,12 @@
                     {% for face in person.videoFaces %}
                         <div class="col-6 col-sm-4 col-md-3 col-lg-2">
                             <div class="card h-100 border-0 shadow-sm overflow-hidden position-relative appearance-card bg-black" style="aspect-ratio: 16/9;">
-                                <img src="{{ asset('uploads/faces/' ~ face.faceImagePath) }}"
+                                <img src="{{ imgproxy_url(face.faceImagePath) }}"
                                      class="w-100 h-100"
                                      style="object-fit: cover; cursor: pointer;"
                                      data-bs-toggle="modal"
                                      data-bs-target="#imageModal"
-                                     data-bs-img="{{ asset('uploads/faces/' ~ face.faceImagePath) }}"
+                                     data-bs-img="{{ imgproxy_url(face.faceImagePath, 800, 600, 'fit') }}"
                                      data-bs-box="{{ face.boundingBoxStyles }}"
                                      data-bs-caption="Sichtung in {{ face.video.title }} ({{ face.timestamp }}s)">
 

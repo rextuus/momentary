@@ -26,18 +26,43 @@ class PersonNormalizer implements NormalizerInterface, NormalizerAwareInterface
         // 2. An den Core-Serializer von API Platform übergeben
         $data = $this->normalizer->normalize($object, $format, $context);
 
-        // 3. URL mit ImgProxy manipulieren
-        if (is_array($data) && isset($data['profileImageUrl']) && $object instanceof Person) {
+        // 3. Sicherstellen, dass wir ein Array haben und mit einer Person arbeiten
+        if (is_array($data) && $object instanceof Person) {
             $groups = $context['groups'] ?? [];
 
+            // Auflösung bestimmen (Kiosk-Grid vs. Detailansicht)
             $width = in_array('person:list', $groups) ? 150 : 400;
             $height = in_array('person:list', $groups) ? 150 : 400;
 
-            $data['profileImageUrl'] = $this->imgproxyService->generateUrl(
-                $data['profileImageUrl'],
-                $width,
-                $height
-            );
+            // Pfad-Logik mit Fallbacks (Punkt 3 der Anforderung)
+            $imagePath = null;
+
+            // Fall 1: Explizites Profilbild
+            if ($object->getProfileFace()) {
+                $imagePath = $object->getProfileFace()->getFaceImagePath();
+            }
+
+            // Fall 2: Erstes Video-Face (Sichtung)
+            if (!$imagePath && !$object->getVideoFaces()->isEmpty()) {
+                $imagePath = $object->getVideoFaces()->first()->getFaceImagePath();
+            }
+
+            // Fall 3: Erstes Detektions-Face (Pool)
+            if (!$imagePath && !$object->getDetectionFaces()->isEmpty()) {
+                $imagePath = $object->getDetectionFaces()->first()->getFaceImagePath();
+            }
+
+            // Wenn wir einen Pfad gefunden haben, generieren wir die signierte URL
+            if ($imagePath) {
+                $data['profileImageUrl'] = $this->imgproxyService->generateUrl(
+                    $imagePath,
+                    $width,
+                    $height
+                );
+            } else {
+                // Optional: Explizit null setzen, falls gar kein Bild existiert
+                $data['profileImageUrl'] = null;
+            }
         }
 
         return $data;

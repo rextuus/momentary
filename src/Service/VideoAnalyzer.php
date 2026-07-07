@@ -751,6 +751,8 @@ class VideoAnalyzer
                 }
                 $imageContent = file_get_contents($framePath);
                 $uuid = Uuid::uuid4()->toString();
+                // Wir speichern im Root des faces.storage, was public/uploads/faces entspricht.
+                // Innerhalb dieses Storages legen wir den Unterordner video_faces an.
                 $storagePath = "video_faces/{$uuid}.jpg";
                 $this->filesystem->write($storagePath, $imageContent);
 

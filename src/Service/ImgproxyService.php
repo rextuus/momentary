@@ -31,35 +31,29 @@ class ImgproxyService
             $queryString = substr($sourceUrl, $pos);
         }
 
-        // Falls wir eine URL haben, die bereits local:/// enthält, aber noch gemappt werden muss
-        if (str_starts_with($pureSourceUrl, 'local:///video_faces/')) {
-            $pureSourceUrl = str_replace('local:///video_faces/', 'local:///uploads/faces/video_faces/', $pureSourceUrl);
-        }
-
-        if (str_starts_with($pureSourceUrl, 'local:///tmp/video_analyze_')) {
-            $pureSourceUrl = str_replace('local:///tmp/', 'local:///uploads/import/', $pureSourceUrl);
-        }
+        // Mapping für lokale Pfade: imgproxy sieht /public als Root (siehe compose.yaml)
+        // Die Files liegen physisch unter:
+        // - Gesichter: public/uploads/faces/video_faces/ -> Mapping: local:///uploads/faces/video_faces/
+        // - Thumbnails: public/uploads/thumbnails/ -> Mapping: local:///uploads/thumbnails/
+        // - Import-Videos: public/uploads/import/ -> Mapping: local:///uploads/import/
 
         if (!str_starts_with($pureSourceUrl, 'http://') && !str_starts_with($pureSourceUrl, 'https://') && !str_starts_with($pureSourceUrl, 'local:///')) {
-            // Mapping für lokale Pfade: imgproxy sieht /public als Root.
-            // Die Files liegen aber unter /public/uploads/faces/...
-            if (str_starts_with($pureSourceUrl, 'video_faces/')) {
-                $pureSourceUrl = 'uploads/faces/' . $pureSourceUrl;
-            }
+            
+            $path = ltrim($pureSourceUrl, '/');
 
-            if (str_starts_with($pureSourceUrl, 'video_analyze_')) {
-                $pureSourceUrl = 'uploads/import/' . $pureSourceUrl;
+            if (str_starts_with($path, 'video_faces/')) {
+                $path = 'uploads/faces/' . $path;
+            } elseif (str_starts_with($path, 'video_analyze_')) {
+                $path = 'uploads/import/' . $path;
             }
+            // Thumbnails (uploads/thumbnails/...) bleiben wie sie sind
 
-            if ($pureSourceUrl === 'defaults/video-placeholder.jpg') {
-                $pureSourceUrl = 'defaults/video-placeholder.jpg'; // Just for clarity, it stays the same
-            }
+            $pureSourceUrl = 'local:///' . $path;
+        }
 
-            if (str_starts_with($pureSourceUrl, 'uploads/thumbnails/')) {
-                // thumbnailPath in der Datenbank ist bereits uploads/thumbnails/video_X.jpg
-            }
-
-            $pureSourceUrl = 'local:///' . ltrim($pureSourceUrl, '/');
+        // Falls wir eine URL haben, die bereits local:/// enthält, aber noch gemappt werden muss (Legacy/Alternativpfade)
+        if (str_starts_with($pureSourceUrl, 'local:///video_faces/')) {
+            $pureSourceUrl = str_replace('local:///video_faces/', 'local:///uploads/faces/video_faces/', $pureSourceUrl);
         }
 
         // Wir fügen den Cache-Buster wieder an die Source-URL an, die imgproxy erhält,

@@ -3,20 +3,15 @@
 namespace App\Twig\Extension;
 
 use App\Entity\VideoFace;
-use App\Service\File\FileSystem;
-use App\Twig\Runtime\ImageExtensionRuntime;
+use App\Service\ImgproxyService;
 use Twig\Extension\AbstractExtension;
-use Twig\TwigFilter;
 use Twig\TwigFunction;
 
 class ImageExtension extends AbstractExtension
 {
-
-
     public function __construct(
-        private readonly FileSystem $filesystem
-    )
-    {
+        private readonly ImgproxyService $imgproxyService
+    ) {
     }
 
     public function getFunctions(): array
@@ -28,7 +23,6 @@ class ImageExtension extends AbstractExtension
 
     public function displayImage(VideoFace $videoFace): string
     {
-        return $this->filesystem->getFilesystem()->publicUrl($videoFace->getFaceImagePath());
-
+        return $this->imgproxyService->generateUrl($videoFace->getFaceImagePath());
     }
 }

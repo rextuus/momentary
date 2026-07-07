@@ -4,10 +4,10 @@
 
         <div class="face-card-header position-relative bg-dark" style="height: 150px; overflow: hidden !important;">
             <div class="face-thumb w-100 h-100"
-                 style="cursor: zoom-in; border-radius: 0 !important; {{ face_zoom_style(asset('uploads/faces/' ~ videoFace.faceImagePath), videoFace.boundingBox, 0.5) }}"
+                 style="cursor: zoom-in; border-radius: 0 !important; {{ face_zoom_style(imgproxy_url(videoFace.faceImagePath), videoFace.boundingBox, 0.5) }}"
                  data-bs-toggle="modal"
                  data-bs-target="#imageModal"
-                 data-bs-img="{{ asset('uploads/faces/' ~ videoFace.faceImagePath) }}"
+                 data-bs-img="{{ imgproxy_url(videoFace.faceImagePath, 800, 600, 'fit') }}"
                  data-bs-box="{{ videoFace.boundingBoxStyles }}"
                  data-bs-caption="Zeitpunkt: {{ videoFace.timestamp }}s">
             </div>
@@ -22,7 +22,7 @@
                    style="z-index: 20; position: absolute; top: 8px; right: 8px; width: 36px; height: 36px; border: 2px solid white; border-radius: 50% !important; background: white; overflow: hidden; display: block;">
 
                     <div class="w-100 h-100"
-                         style="border-radius: 50% !important; {{ face_zoom_style(asset('uploads/faces/' ~ profileFace.faceImagePath), profileFace.boundingBox, 0.1) }}">
+                         style="border-radius: 50% !important; {{ face_zoom_style(imgproxy_url(profileFace.faceImagePath), profileFace.boundingBox, 0.1) }}">
                     </div>
                 </a>
             {% endif %}
