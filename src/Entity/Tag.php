@@ -2,24 +2,44 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use App\Repository\TagRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: TagRepository::class)]
+#[ApiResource(
+    operations: [
+        new GetCollection(
+            normalizationContext: ['groups' => ['tag:read']]
+        ),
+        new Get(
+            normalizationContext: ['groups' => ['tag:read']]
+        )
+    ]
+)]
+#[ApiFilter(SearchFilter::class, properties: ['name' => 'partial'])]
 class Tag
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['tag:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['tag:read'])]
     private ?string $name = null;
 
     #[ORM\ManyToOne(inversedBy: 'tags')]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['tag:read'])]
     private ?TagCategory $category = null;
 
     #[ORM\ManyToMany(targetEntity: VideoScene::class, mappedBy: 'tags')]

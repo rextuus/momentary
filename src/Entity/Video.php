@@ -29,6 +29,7 @@ use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 #[ApiFilter(SearchFilter::class, properties: ['title' => 'partial'])]
 // Erlaubt: /api/videos?videoFaces.person.name=Wolf
 #[ApiFilter(SearchFilter::class, properties: ['videoFaces.person.name' => 'partial'])]
+#[ApiFilter(SearchFilter::class, properties: ['scenes.tags.name' => 'partial', 'scenes.tags.id' => 'exact'])]
 class Video
 {
     #[ORM\Id]
