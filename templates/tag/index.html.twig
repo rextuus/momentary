@@ -1,22 +1,22 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Tags - Momentary{% endblock %}
+{% block title %}Tag-Verwaltung - Momentary{% endblock %}
 
 {% block body %}
-<div class="container">
-    <div class="mb-4">
-        <h1 class="fw-bold mb-0">Tags</h1>
-        <p class="text-muted">Verwalte Kategorien und Schlagworte für deine Videos.</p>
-    </div>
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">
+                <i class="fas fa-tags text-primary me-2"></i>
+                Tag- & Kategorien-Verwaltung
+            </h1>
+            
+            <p class="text-muted mb-4">
+                Hier können Sie Kategorien erstellen und bearbeiten, um Szenen in Ihren Videos zu klassifizieren. 
+                Jeder Kategorie können beliebig viele Tags zugeordnet werden.
+            </p>
 
-    <div class="card p-5 text-center shadow-sm border-0">
-        <div class="text-muted mb-3">
-            <i class="fas fa-tags fa-3x"></i>
-        </div>
-        <h3>Tag-Management</h3>
-        <p class="text-muted">Diese Funktion wird in einer zukünftigen Version implementiert.</p>
-        <div class="mt-3">
-            <a href="{{ path('app_dashboard') }}" class="btn btn-primary rounded-pill px-4">Zurück zum Dashboard</a>
+            {{ component('TagManagerComponent') }}
         </div>
     </div>
 </div>

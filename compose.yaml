@@ -75,7 +75,7 @@ services:
       IMGPROXY_CORS_EXPOSE_HEADERS: "*"
       IMGPROXY_CORS_METHODS: "GET,HEAD,OPTIONS"
     ports:
-      - "8080:8080"
+      - "0.0.0.0:8080:8080"
     volumes:
       - ./public:/public
     networks:

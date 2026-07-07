@@ -11,7 +11,13 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 final class TagController extends AbstractController
 {
 
-    #[Route('/tag', name: 'app_tag')]
+    #[Route('/tagging', name: 'app_tag_admin')]
+    public function index(): Response
+    {
+        return $this->render('tag/index.html.twig');
+    }
+
+    #[Route('/tag-test', name: 'app_tag_test')]
     public function tag(HttpClientInterface $httpClient): Response
     {
         $imagePath = __DIR__ . '/../../assets/images/test_face.jpg';

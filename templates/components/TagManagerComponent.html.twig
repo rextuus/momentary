@@ -1,6 +1,6 @@
 <div {{ attributes }} class="card shadow-sm mb-4" id="tag-manager">
     <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="bi bi-tags me-2"></i>Tag-Verwaltung (Kategorien)</h5>
+        <h5 class="mb-0"><i class="fas fa-tags me-2"></i>Tag-Verwaltung (Kategorien)</h5>
     </div>
     <div class="card-body">
         <div class="row g-4">
@@ -15,7 +15,7 @@
                     <button class="btn btn-primary" 
                             data-action="live#action" 
                             data-live-action-param="addCategory">
-                        <i class="bi bi-plus-lg"></i>
+                        <i class="fas fa-plus"></i>
                     </button>
                 </div>
 
@@ -26,8 +26,8 @@
                                 {% if editingCategoryId == category.id %}
                                     <div class="input-group input-group-sm">
                                         <input type="text" data-model="editingCategoryName" class="form-control">
-                                        <button class="btn btn-success" data-action="live#action" data-live-action-param="saveCategory"><i class="bi bi-check"></i></button>
-                                        <button class="btn btn-secondary" data-action="live#action" data-live-action-param="cancelEdit"><i class="bi bi-x"></i></button>
+                                        <button class="btn btn-success" data-action="live#action" data-live-action-param="saveCategory"><i class="fas fa-check"></i></button>
+                                        <button class="btn btn-secondary" data-action="live#action" data-live-action-param="cancelEdit"><i class="fas fa-times"></i></button>
                                     </div>
                                 {% else %}
                                     <span class="badge" style="background-color: {{ category.color }}; width: 15px; height: 15px; display: inline-block; margin-right: 5px;">&nbsp;</span>
@@ -41,14 +41,14 @@
                                             data-action="live#action" 
                                             data-live-action-param="startEditCategory" 
                                             data-live-id-param="{{ category.id }}">
-                                        <i class="bi bi-pencil"></i>
+                                        <i class="fas fa-pencil-alt"></i>
                                     </button>
                                     <button class="btn btn-sm btn-outline-danger" 
                                             data-action="live#action" 
                                             data-live-action-param="deleteCategory" 
                                             data-live-id-param="{{ category.id }}"
                                             data-confirm="Möchten Sie diese Kategorie und alle zugehörigen Tags wirklich löschen?">
-                                        <i class="bi bi-trash"></i>
+                                        <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
                             {% endif %}
@@ -76,7 +76,7 @@
                         <button class="btn btn-primary" 
                                 data-action="live#action" 
                                 data-live-action-param="addTag">
-                            <i class="bi bi-plus-lg"></i>
+                            <i class="fas fa-plus"></i>
                         </button>
                     </div>
 
@@ -93,8 +93,8 @@
                                         {% if editingTagId == tag.id %}
                                             <div class="input-group input-group-sm">
                                                 <input type="text" data-model="editingTagName" class="form-control">
-                                                <button class="btn btn-success" data-action="live#action" data-live-action-param="saveTag"><i class="bi bi-check"></i></button>
-                                                <button class="btn btn-secondary" data-action="live#action" data-live-action-param="cancelEdit"><i class="bi bi-x"></i></button>
+                                                <button class="btn btn-success" data-action="live#action" data-live-action-param="saveTag"><i class="fas fa-check"></i></button>
+                                                <button class="btn btn-secondary" data-action="live#action" data-live-action-param="cancelEdit"><i class="fas fa-times"></i></button>
                                             </div>
                                         {% else %}
                                             <span>{{ tag.name }}</span>
@@ -106,14 +106,14 @@
                                                     data-action="live#action" 
                                                     data-live-action-param="startEditTag" 
                                                     data-live-id-param="{{ tag.id }}">
-                                                <i class="bi bi-pencil"></i>
+                                                <i class="fas fa-pencil-alt"></i>
                                             </button>
                                             <button class="btn btn-sm btn-outline-danger" 
                                                     data-action="live#action" 
                                                     data-live-action-param="deleteTag" 
                                                     data-live-id-param="{{ tag.id }}"
                                                     data-confirm="Diesen Tag wirklich löschen?">
-                                                <i class="bi bi-trash"></i>
+                                                <i class="fas fa-trash"></i>
                                             </button>
                                         </div>
                                     {% endif %}
