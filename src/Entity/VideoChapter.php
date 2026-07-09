@@ -6,12 +6,15 @@ use App\Repository\VideoChapterRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
+use Symfony\Component\Serializer\Attribute\Groups;
+
 #[ORM\Entity(repositoryClass: VideoChapterRepository::class)]
 class VideoChapter
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['video:detail'])]
     private ?int $id = null;
 
     #[ORM\ManyToOne(inversedBy: 'chapters')]
@@ -19,15 +22,19 @@ class VideoChapter
     private ?Video $video = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['video:detail'])]
     private ?string $title = null;
 
     #[ORM\Column]
+    #[Groups(['video:detail'])]
     private ?float $startSeconds = null;
 
     #[ORM\Column]
+    #[Groups(['video:detail'])]
     private ?float $endSeconds = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    #[Groups(['video:detail'])]
     private ?string $description = null;
 
     public function getId(): ?int

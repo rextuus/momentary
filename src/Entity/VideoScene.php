@@ -7,12 +7,15 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
+use Symfony\Component\Serializer\Attribute\Groups;
+
 #[ORM\Entity(repositoryClass: VideoSceneRepository::class)]
 class VideoScene
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['video:detail'])]
     private ?int $id = null;
 
     #[ORM\ManyToOne(targetEntity: Video::class, inversedBy: 'scenes')]
@@ -20,15 +23,19 @@ class VideoScene
     private ?Video $video = null;
 
     #[ORM\Column]
+    #[Groups(['video:detail'])]
     private int $sceneNumber;
 
     #[ORM\Column]
+    #[Groups(['video:detail'])]
     private float $startSeconds;
 
     #[ORM\Column]
+    #[Groups(['video:detail'])]
     private float $endSeconds;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['video:detail'])]
     private ?string $title = null;
 
     /**

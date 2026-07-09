@@ -99,6 +99,7 @@ class Video
      */
     #[ORM\OneToMany(targetEntity: VideoScene::class, mappedBy: 'video', cascade: ['remove'], orphanRemoval: true)]
     #[ORM\OrderBy(['sceneNumber' => 'ASC'])]
+    #[Groups(['video:detail'])]
     private Collection $scenes;
 
     #[ORM\Column(length: 1000, nullable: true)]
@@ -110,6 +111,7 @@ class Video
      */
     #[ORM\OneToMany(targetEntity: VideoChapter::class, mappedBy: 'video', cascade: ['remove'], orphanRemoval: true)]
     #[ORM\OrderBy(['startSeconds' => 'ASC'])]
+    #[Groups(['video:detail'])]
     private Collection $chapters;
 
     #[ORM\Column(options: ['default' => 0])]
@@ -229,7 +231,7 @@ class Video
     private ?string $jellyfinPath = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['video:detail'])]
+    #[Groups(['video:list', 'video:detail'])]
     private ?string $jellyfinItemId = null;
 
     public function __construct()
