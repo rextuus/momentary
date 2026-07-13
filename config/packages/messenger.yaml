@@ -5,7 +5,7 @@ framework:
         transports:
             # https://symfony.com/doc/current/messenger.html#transport-configuration
             async:
-                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                dsn: 'doctrine://default?queue_name=async&auto_setup=0'
                 options:
                     use_notify: true
                     check_delayed_interval: 60000
@@ -31,6 +31,7 @@ framework:
             App\Message\OptimizeVideoForJellyfinMessage: async
             App\Message\ExportVideoToJellyfinMessage: async
             App\Message\ExtractThumbnailMessage: async
+            App\Message\IndexVideoMessage: async
 
             # Route your messages to the transports
             # 'App\Message\YourMessage': async

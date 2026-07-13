@@ -21,7 +21,7 @@ class SceneSectionComponent extends AbstractController
 {
     use DefaultActionTrait;
 
-    #[LiveProp] // Die Scene kann Symfony automatisch dehydrieren (via ID)
+    #[LiveProp(writable: ['title'])] // Die Scene kann Symfony automatisch dehydrieren (via ID)
     public VideoScene $scene;
 
     #[LiveProp]
@@ -118,6 +118,7 @@ class SceneSectionComponent extends AbstractController
     {
         // Durch LiveProp(writable: true) wird der Titel automatisch im Objekt gesetzt.
         // Wir müssen nur noch flushen.
+        $this->entityManager->persist($this->scene);
         $this->entityManager->flush();
     }
 

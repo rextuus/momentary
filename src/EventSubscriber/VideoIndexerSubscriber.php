@@ -3,6 +3,7 @@
 namespace App\EventSubscriber;
 
 use App\Entity\Video;
+use App\Entity\VideoScene;
 use App\Message\IndexVideoMessage;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsDoctrineListener;
 use Doctrine\ORM\Event\PostPersistEventArgs;
@@ -32,16 +33,18 @@ final class VideoIndexerSubscriber
 
     public function preRemove(PreRemoveEventArgs $args): void
     {
-        // TODO: Handle removal from MeiliSearch
-        // $this->handleRemoval($args->getObject());
+        $this->handle($args->getObject());
     }
 
     private function handle(object $entity): void
     {
-        if (!$entity instanceof Video) {
-            return;
+        if ($entity instanceof Video) {
+            $this->messageBus->dispatch(new IndexVideoMessage($entity->getId()));
+        } elseif ($entity instanceof VideoScene) {
+            $video = $entity->getVideo();
+            if ($video) {
+                $this->messageBus->dispatch(new IndexVideoMessage($video->getId()));
+            }
         }
-
-        $this->messageBus->dispatch(new IndexVideoMessage($entity->getId()));
     }
 }

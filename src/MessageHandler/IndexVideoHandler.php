@@ -19,12 +19,16 @@ final class IndexVideoHandler
 
     public function __invoke(IndexVideoMessage $message): void
     {
+        file_put_contents('var/log/handler.log', 'Handler called for video: ' . $message->getVideoId() . ' - ' . date('Y-m-d H:i:s') . PHP_EOL, FILE_APPEND);
+        
+        $this->videoRepository->getEntityManager()->clear();
         $video = $this->videoRepository->find($message->getVideoId());
         if (!$video) {
             return;
         }
 
         $data = $this->videoIndexer->transform($video);
+        file_put_contents('var/log/handler_data.log', 'Transformed data: ' . json_encode($data) . PHP_EOL, FILE_APPEND);
         $this->meiliSearchClient->index('videos')->addDocuments([$data]);
     }
 }

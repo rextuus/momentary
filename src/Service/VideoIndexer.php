@@ -11,11 +11,14 @@ class VideoIndexer
         $personsGroups = [];
         foreach ($video->getVideoFaces() as $face) {
             if ($face->getPerson() && !str_starts_with($face->getPerson()->getName(), 'unknown_')) {
+                file_put_contents('/tmp/indexer.log', 'Face: ' . $face->getId() . ' Scene: ' . ($face->getVideoScene() ? $face->getVideoScene()->getId() : 'null') . PHP_EOL, FILE_APPEND);
                 if ($face->getVideoScene()) {
                     $name = $face->getPerson()->getName();
+                    $title = $face->getVideoScene()->getTitle();
                     $personsGroups[$name][] = [
                         'start' => (int)$face->getVideoScene()->getStartSeconds(),
                         'end' => (int)$face->getVideoScene()->getEndSeconds(),
+                        'title' => $title ?? 'Unbenannte Szene',
                     ];
                 }
             }
@@ -31,6 +34,7 @@ class VideoIndexer
                     'name' => $name,
                     'start' => $interval['start'],
                     'end' => $interval['end'],
+                    'title' => $interval['title'],
                 ];
             }
         }
@@ -42,6 +46,7 @@ class VideoIndexer
                 $tagsGroups[$name][] = [
                     'start' => (int)$scene->getStartSeconds(),
                     'end' => (int)$scene->getEndSeconds(),
+                    'title' => $scene->getTitle() ?? 'Unbenannte Szene',
                 ];
             }
         }
@@ -56,12 +61,13 @@ class VideoIndexer
                     'name' => $name,
                     'start' => $interval['start'],
                     'end' => $interval['end'],
+                    'title' => $interval['title'],
                 ];
             }
         }
 
         return [
-            'id' => $video->getId(),
+            'id' => (string)$video->getId(),
             'jellyfinItemId' => $video->getJellyfinItemId(),
             'title' => $video->getTitle(),
             'persons_with_scenes' => $personsWithScenes,
@@ -86,6 +92,13 @@ class VideoIndexer
             if ($intervals[$i]['start'] <= $current['end']) {
                 // Overlap or consecutive: merge
                 $current['end'] = max($current['end'], $intervals[$i]['end']);
+                // Aggregiere Titel, falls unterschiedlich
+                if (isset($intervals[$i]['title']) && $current['title'] !== $intervals[$i]['title']) {
+                    $titles = explode(', ', $current['title']);
+                    if (!in_array($intervals[$i]['title'], $titles)) {
+                        $current['title'] = $current['title'] . ', ' . $intervals[$i]['title'];
+                    }
+                }
             } else {
                 $merged[] = $current;
                 $current = $intervals[$i];
