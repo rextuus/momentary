@@ -64,6 +64,18 @@ services:
       MP_SMTP_AUTH_ALLOW_INSECURE: 1
 ###< symfony/mailer ###
 
+  meilisearch:
+    image: getmeili/meilisearch:latest
+    container_name: meilisearch
+    ports:
+      - "7700:7700"
+    environment:
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY}
+    volumes:
+      - ./docker/meilisearch/data:/meili_data
+    networks:
+      - momentary-network
+
   imgproxy:
     image: darthsim/imgproxy:latest
     environment:
@@ -74,6 +86,7 @@ services:
       # Zusätzliche Header für CORS-Stabilität im Browser
       IMGPROXY_CORS_EXPOSE_HEADERS: "*"
       IMGPROXY_CORS_METHODS: "GET,HEAD,OPTIONS"
+      IMGPROXY_PUBLIC_HOST: "http://192.168.178.56:8080"
     ports:
       - "0.0.0.0:8080:8080"
     volumes:
@@ -85,6 +98,7 @@ volumes:
 ###> doctrine/doctrine-bundle ###
   database_data:
 ###< doctrine/doctrine-bundle ###
+  meilisearch_data:
 
 networks:
   momentary-network:

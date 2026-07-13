@@ -25,7 +25,7 @@ class VideoFaceNormalizer implements NormalizerInterface, NormalizerAwareInterfa
         $data = $this->normalizer->normalize($object, $format, $context);
 
         if (is_array($data) && isset($data['imageUrl']) && $object instanceof VideoFace) {
-            $groups = $context['groups'] ?? [];
+            $groups = (array) ($context['groups'] ?? []);
 
             // Quadratischer Ausschnitt für Gesichter-Thumbnails (z.B. 80x80 in Listen)
             $width = in_array('video:list', $groups) || in_array('videoface:list', $groups) ? 80 : 250;

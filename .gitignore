@@ -53,3 +53,4 @@ Thumbs.db
 /docker/plex/config/Library/Application Support/Plex Media Server/Logs/
 /docker/jellyfin/cache/
 /docker/jellyfin/
+/FrameBilder/

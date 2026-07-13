@@ -55,3 +55,8 @@ services:
     App\Command\InitProfileImagesCommand:
         arguments:
             $internalApiHost: '%app.internal_api_host%'
+
+    Meilisearch\Client:
+        arguments:
+            $url: '%env(MEILISEARCH_URL)%'
+            $apiKey: '%env(MEILI_MASTER_KEY)%'

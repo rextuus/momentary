@@ -6,7 +6,6 @@ namespace App\Serializer;
 
 use App\Entity\Video;
 use App\Service\ImgproxyService;
-use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Serializer\Normalizer\NormalizerAwareInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerAwareTrait;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
@@ -18,8 +17,7 @@ class VideoNormalizer implements NormalizerInterface, NormalizerAwareInterface
     private const ALREADY_CALLED = 'VIDEO_NORMALIZER_ALREADY_CALLED';
 
     public function __construct(
-        private ImgproxyService $imgproxyService,
-        private RequestStack $requestStack
+        private ImgproxyService $imgproxyService
     ) {}
 
     public function normalize($object, ?string $format = null, array $context = []): array|string|int|float|bool|\ArrayObject|null
@@ -31,29 +29,12 @@ class VideoNormalizer implements NormalizerInterface, NormalizerAwareInterface
             return $this->normalizer->normalize($object, $format, $context);
         }
 
-        // 2. Query-Parameter auslesen (für activePersonScenes & activeTagScenes)
-        $request = $this->requestStack->getCurrentRequest();
-        $filterPersonId = null;
-        $filterPersonName = null;
-        $filterTagName = null;
-        $filterTagId = null;
-
-        if ($request) {
-            $filterPersonId = $request->query->get('videoFaces_person') ?? $request->query->get('person');
-            $filterPersonName = $request->query->get('videoFaces_person_name');
-            $filterTagName = $request->query->get('scenes_tags_name') ?? $request->query->get('scenes.tags.name');
-            $filterTagId = $request->query->get('scenes_tags_id') ?? $request->query->get('scenes.tags.id');
-        }
-
-        $isPersonFilterActive = $filterPersonId !== null || $filterPersonName !== null;
-        $isTagFilterActive = $filterTagName !== null || $filterTagId !== null;
-
         // 3. API Platform das Standard-Array bauen lassen
         $data = $this->normalizer->normalize($object, $format, $context);
 
         // 4. Sicherstellen, dass wir ein Array haben
         if (is_array($data)) {
-            $groups = $context['groups'] ?? [];
+            $groups = (array) ($context['groups'] ?? []);
 
             // ImgProxy URL generieren (Thumbnail)
             if (isset($data['thumbnailUrl'])) {
@@ -66,78 +47,6 @@ class VideoNormalizer implements NormalizerInterface, NormalizerAwareInterface
                     $height
                 );
             }
-
-            // 5. activePersonScenes befüllen
-            $activePersonScenes = [];
-            
-            if ($isPersonFilterActive) {
-                $scenes = [];
-                foreach ($object->getVideoFaces() as $face) {
-                    $person = $face->getPerson();
-                    if (!$person) {
-                        continue;
-                    }
-
-                    $match = false;
-                    if ($filterPersonId !== null && (int)$person->getId() === (int)$filterPersonId) {
-                        $match = true;
-                    }
-                    if ($filterPersonName !== null && $person->getName() !== null && str_contains(strtolower($person->getName()), strtolower((string)$filterPersonName))) {
-                        $match = true;
-                    }
-
-                    if ($match) {
-                        $scene = $face->getVideoScene();
-                        if ($scene) {
-                            $scenes[$scene->getId()] = [
-                                'id' => $scene->getId(),
-                                'sceneNumber' => $scene->getSceneNumber(),
-                                'startSeconds' => $scene->getStartSeconds(),
-                                'endSeconds' => $scene->getEndSeconds(),
-                                'title' => $scene->getTitle(),
-                            ];
-                        }
-                    }
-                }
-                usort($scenes, fn($a, $b) => $a['sceneNumber'] <=> $b['sceneNumber']);
-                $activePersonScenes = array_values($scenes);
-            }
-
-            $data['activePersonScenes'] = $activePersonScenes;
-
-            // 6. activeTagScenes befüllen
-            $activeTagScenes = [];
-
-            if ($isTagFilterActive) {
-                $scenes = [];
-                foreach ($object->getScenes() as $scene) {
-                    $match = false;
-                    foreach ($scene->getTags() as $tag) {
-                        if ($filterTagId !== null && (int)$tag->getId() === (int)$filterTagId) {
-                            $match = true;
-                            break;
-                        }
-                        if ($filterTagName !== null && $tag->getName() !== null && str_contains(strtolower($tag->getName()), strtolower((string)$filterTagName))) {
-                            $match = true;
-                            break;
-                        }
-                    }
-
-                    if ($match) {
-                        $scenes[$scene->getId()] = [
-                            'id' => $scene->getId(),
-                            'sceneNumber' => $scene->getSceneNumber(),
-                            'startSeconds' => $scene->getStartSeconds(),
-                            'endSeconds' => $scene->getEndSeconds(),
-                            'title' => $scene->getTitle(),
-                        ];
-                    }
-                }
-                usort($scenes, fn($a, $b) => $a['sceneNumber'] <=> $b['sceneNumber']);
-                $activeTagScenes = array_values($scenes);
-            }
-
-            $data['activeTagScenes'] = $activeTagScenes;
         }
 
         return $data;

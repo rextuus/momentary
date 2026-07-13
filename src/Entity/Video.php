@@ -58,7 +58,7 @@ class Video
      * @var Collection<int, VideoFace>
      */
     #[ORM\OneToMany(targetEntity: VideoFace::class, mappedBy: 'video', cascade: ['persist', 'remove'], orphanRemoval: true)]
-    #[Groups(['video:list', 'video:detail'])]
+    #[Groups(['video:detail'])]
     private Collection $videoFaces;
 
     #[ORM\Column(type: 'string', length: 32, enumType: VideoStatus::class)]
