@@ -10,6 +10,7 @@ use App\Entity\VideoScene;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\UX\LiveComponent\Attribute\AsLiveComponent;
 use Symfony\UX\LiveComponent\Attribute\LiveAction;
 use Symfony\UX\LiveComponent\Attribute\LiveArg;
@@ -33,7 +34,10 @@ class SceneSectionComponent extends AbstractController
     #[LiveProp(writable: true)]
     public string $newChapterTitle = '';
 
-    public function __construct(private EntityManagerInterface $entityManager) {}
+    public function __construct(
+        private EntityManagerInterface $entityManager,
+        private MessageBusInterface $messageBus
+    ) {}
 
     public function getCategories(): array
     {
@@ -120,6 +124,12 @@ class SceneSectionComponent extends AbstractController
         // Wir müssen nur noch flushen.
         $this->entityManager->persist($this->scene);
         $this->entityManager->flush();
+    }
+
+    #[LiveAction]
+    public function refreshThumbnail(): void
+    {
+        $this->messageBus->dispatch(new \App\Message\ExtractSceneThumbnailMessage($this->scene->getId()));
     }
 
     #[LiveAction]

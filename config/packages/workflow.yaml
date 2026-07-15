@@ -20,6 +20,7 @@ framework:
                 - !php/const App\Enum\VideoStatus::REFINING_EXTRACTION
                 - !php/const App\Enum\VideoStatus::REFINING_ANALYSIS
                 - !php/const App\Enum\VideoStatus::MERGING_SCENES
+                - !php/const App\Enum\VideoStatus::EXTRACTING_THUMBNAILS
                 - !php/const App\Enum\VideoStatus::OPTIMIZING
                 - !php/const App\Enum\VideoStatus::COMPLETED
                 - !php/const App\Enum\VideoStatus::ERROR
@@ -33,8 +34,11 @@ framework:
                 start_scene_detection:
                     from: [!php/const App\Enum\VideoStatus::CONVERTING, !php/const App\Enum\VideoStatus::PENDING, !php/const App\Enum\VideoStatus::DOWNLOADING]
                     to:   !php/const App\Enum\VideoStatus::SCENE_DETECTION
-                start_splitting:
+                start_extracting_thumbnails:
                     from: !php/const App\Enum\VideoStatus::SCENE_DETECTION
+                    to:   !php/const App\Enum\VideoStatus::EXTRACTING_THUMBNAILS
+                start_splitting:
+                    from: !php/const App\Enum\VideoStatus::EXTRACTING_THUMBNAILS
                     to:   !php/const App\Enum\VideoStatus::SPLITTING
                 start_analyzing:
                     from: !php/const App\Enum\VideoStatus::SPLITTING

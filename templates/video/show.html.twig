@@ -213,6 +213,9 @@
                         <a href="{{ path('video_timeline', {id: video.id}) }}" class="btn btn-outline-primary rounded-pill mb-2">
                             <i class="fas fa-chart-line me-2"></i> Timeline anzeigen
                         </a>
+                        <a href="{{ path('app_video_trigger', {id: video.id, step: 'thumbnails'}) }}" class="btn btn-outline-info rounded-pill mb-2">
+                            <i class="fas fa-images me-2"></i> Szenen-Thumbnails neu generieren
+                        </a>
                         <hr>
                         <h6 class="small text-muted fw-bold text-uppercase mb-3">Thumbnail</h6>
                         <form action="{{ path('video_extract_thumbnail', {id: video.id}) }}" method="post" id="extract-thumbnail-form">

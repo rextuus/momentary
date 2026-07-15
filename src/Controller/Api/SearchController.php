@@ -3,6 +3,7 @@
 namespace App\Controller\Api;
 
 use App\Repository\VideoRepository;
+use App\Service\ImgproxyService;
 use Meilisearch\Client as MeiliSearchClient;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -15,7 +16,8 @@ class SearchController extends AbstractController
     public function __construct(
         private MeiliSearchClient $meiliSearchClient,
         private VideoRepository $videoRepository,
-        private SerializerInterface $serializer
+        private SerializerInterface $serializer,
+        private ImgproxyService $imgproxyService
     ) {}
 
     #[Route('/api/search', name: 'api_search', methods: ['GET'])]
@@ -68,12 +70,28 @@ class SearchController extends AbstractController
                 });
             }
 
+            // Transform thumbnailUrl in personsWithScenes
+            foreach ($personsWithScenes as &$item) {
+                if (isset($item['thumbnailUrl'])) {
+                    $item['thumbnailUrl'] = $this->imgproxyService->generateUrl($item['thumbnailUrl'], 320, 180);
+                }
+            }
+            unset($item);
+
             // Filter tags_with_scenes if tags requested
             if (!empty($tags)) {
                 $tagsWithScenes = array_filter($tagsWithScenes, function ($item) use ($tags) {
                     return in_array($item['name'], $tags);
                 });
             }
+
+            // Transform thumbnailUrl in tagsWithScenes
+            foreach ($tagsWithScenes as &$item) {
+                if (isset($item['thumbnailUrl'])) {
+                    $item['thumbnailUrl'] = $this->imgproxyService->generateUrl($item['thumbnailUrl'], 320, 180);
+                }
+            }
+            unset($item);
 
             $hitDataMap[(int)$hit['id']] = [
                 'persons_with_scenes' => array_values($personsWithScenes),

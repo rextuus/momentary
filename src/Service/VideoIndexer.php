@@ -19,6 +19,7 @@ class VideoIndexer
                         'start' => (int)$face->getVideoScene()->getStartSeconds(),
                         'end' => (int)$face->getVideoScene()->getEndSeconds(),
                         'title' => $title ?? 'Unbenannte Szene',
+                        'thumbnailUrl' => $face->getVideoScene()->getThumbnailUrl(),
                     ];
                 }
             }
@@ -35,6 +36,7 @@ class VideoIndexer
                     'start' => $interval['start'],
                     'end' => $interval['end'],
                     'title' => $interval['title'],
+                    'thumbnailUrl' => $interval['thumbnailUrl'],
                 ];
             }
         }
@@ -47,6 +49,7 @@ class VideoIndexer
                     'start' => (int)$scene->getStartSeconds(),
                     'end' => (int)$scene->getEndSeconds(),
                     'title' => $scene->getTitle() ?? 'Unbenannte Szene',
+                    'thumbnailUrl' => $scene->getThumbnailUrl(),
                 ];
             }
         }
@@ -62,6 +65,7 @@ class VideoIndexer
                     'start' => $interval['start'],
                     'end' => $interval['end'],
                     'title' => $interval['title'],
+                    'thumbnailUrl' => $interval['thumbnailUrl'],
                 ];
             }
         }

@@ -159,6 +159,14 @@
                     <i class="fas fa-object-group"></i>
                 </button>
 
+                {# REFRESH THUMBNAIL BUTTON #}
+                <button class="btn btn-link text-muted p-1"
+                        title="Thumbnail neu generieren"
+                        data-action="live#action"
+                        data-live-action-param="refreshThumbnail">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+
                 {# VIDEO ANSEHEN BUTTON #}
                 <a href="{{ path('app_video_show', {id: scene.video.id, t: scene.startSeconds|round(1)}) }}" 
                    class="btn btn-sm btn-outline-success py-0 px-2"

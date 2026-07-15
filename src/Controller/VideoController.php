@@ -8,6 +8,7 @@ use App\Message\ConvertVideoMessage;
 use App\Message\DetectVideoScenesMessage;
 use App\Message\DownloadVideoMessage;
 use App\Message\ExtractThumbnailMessage;
+use App\Message\ExtractAllSceneThumbnailsMessage;
 use App\Message\OptimizeVideoForJellyfinMessage;
 use App\Message\SplitVideoIntoFramesMessage;
 use App\Repository\VideoRepository;
@@ -185,6 +186,10 @@ final class VideoController extends AbstractController
                     $video->setCompletedAt(null),
                     $this->messageBus->dispatch(new DetectVideoScenesMessage($video->getId(), (string)$video->getLocalPath()))
                 ],
+                'thumbnails' => [
+                    $this->ensureStepAccessible($video, 'start_extracting_thumbnails', $workflowMachine),
+                    $this->messageBus->dispatch(new ExtractAllSceneThumbnailsMessage($video->getId()))
+                ],
                 'split'    => [
                     $this->ensureStepAccessible($video, 'start_splitting', $workflowMachine),
                     $video->setFramesExtractedAt(null),
@@ -252,6 +257,7 @@ final class VideoController extends AbstractController
             'start_download' => 'back_to_pending',
             'start_conversion' => 'back_to_conversion',
             'start_scene_detection' => 'back_to_scene_detection',
+            'start_extracting_thumbnails' => 'back_to_scene_detection',
             'start_splitting' => 'back_to_splitting',
             'start_refining_extraction' => 'back_to_refining_extraction',
             'start_optimization' => 'start_optimization', // Optimierung erlaubt von überall

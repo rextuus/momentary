@@ -38,6 +38,10 @@ class VideoScene
     #[Groups(['video:detail'])]
     private ?string $title = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['video:detail'])]
+    private ?string $thumbnailUrl = null;
+
     /**
      * @var Collection<int, VideoFace>
      */
@@ -101,6 +105,17 @@ class VideoScene
     public function setTitle(?string $title): self
     {
         $this->title = $title;
+        return $this;
+    }
+
+    public function getThumbnailUrl(): ?string
+    {
+        return $this->thumbnailUrl;
+    }
+
+    public function setThumbnailUrl(?string $thumbnailUrl): self
+    {
+        $this->thumbnailUrl = $thumbnailUrl;
         return $this;
     }
 

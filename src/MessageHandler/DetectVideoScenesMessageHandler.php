@@ -58,16 +58,18 @@ final class DetectVideoScenesMessageHandler
         // Szenen speichern
         $this->videoAnalyzer->storeScenes($message->getVideoId(), $scenes);
 
+        // Workflow Transition zu Thumbnails
+        $this->videoAnalyzer->updateStatus($message->getVideoId(), \App\Enum\VideoStatus::EXTRACTING_THUMBNAILS);
+
         // Wir laden das Video neu, falls sich der localPath während der Szenenerkennung geändert hat (Konvertierung)
         $video = $this->videoAnalyzer->getVideoRepository()->find($message->getVideoId());
         $currentVideoPath = $video?->getLocalPath() ?? $videoPath;
 
-        fwrite(STDOUT, count($scenes) . " Szenen in DB verewigt." . PHP_EOL);
+        if (empty($scenes)) {
+            $this->videoAnalyzer->updateStatus($message->getVideoId(), \App\Enum\VideoStatus::SPLITTING);
+            $this->bus->dispatch(new \App\Message\SplitVideoIntoFramesMessage($message->getVideoId(), $currentVideoPath));
+        }
 
-        // Weiter zum Splitting
-        $this->bus->dispatch(new SplitVideoIntoFramesMessage(
-            $message->getVideoId(),
-            $currentVideoPath
-        ));
+        fwrite(STDOUT, count($scenes) . " Szenen in DB verewigt." . PHP_EOL);
     }
 }

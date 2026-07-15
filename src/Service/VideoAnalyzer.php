@@ -9,6 +9,7 @@ use App\Entity\Video;
 use App\Entity\VideoFace;
 use App\Entity\VideoScene;
 use App\Enum\VideoStatus;
+use App\Message\ExtractSceneThumbnailMessage;
 use App\Message\FrameAnalyzerMessage;
 use App\Repository\VideoRepository;
 use App\Service\WorkflowMachine;
@@ -238,6 +239,7 @@ class VideoAnalyzer
                 VideoStatus::DOWNLOADING => 'start_download',
                 VideoStatus::CONVERTING => 'start_conversion',
                 VideoStatus::SCENE_DETECTION => 'start_scene_detection',
+                VideoStatus::EXTRACTING_THUMBNAILS => 'start_extracting_thumbnails',
                 VideoStatus::SPLITTING => 'start_splitting',
                 VideoStatus::ANALYZING_FACES => 'start_analyzing',
                 VideoStatus::REFINING_EXTRACTION => 'start_refining_extraction',
@@ -529,6 +531,10 @@ class VideoAnalyzer
         }
 
         $this->entityManager->flush();
+
+        foreach ($video->getScenes() as $scene) {
+            $this->bus->dispatch(new ExtractSceneThumbnailMessage($scene->getId()));
+        }
     }
 
     public function extractFrames(
