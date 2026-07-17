@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Repository\PersonRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\MapQueryParameter;
@@ -9,6 +10,26 @@ use Symfony\Component\Routing\Attribute\Route;
 
 class IdentityController extends AbstractController
 {
+    #[Route('/admin/mass-face-resolve/{personId}', name: 'app_identity_mass_face_resolve')]
+    public function massFaceResolve(int $personId): Response
+    {
+        return $this->render('identity/mass_face_resolve.html.twig', [
+            'personId' => $personId,
+        ]);
+    }
+
+    #[Route('/admin/mass-face-resolve', name: 'app_identity_random_mass_face_resolve')]
+    public function randomMassFaceResolve(PersonRepository $personRepository): Response
+    {
+        $people = $personRepository->findIdentifiedWithUnverifiedFaces();
+        if (empty($people)) {
+            return $this->redirectToRoute('app_dashboard');
+        }
+        $person = $people[array_rand($people)];
+
+        return $this->redirectToRoute('app_identity_mass_face_resolve', ['personId' => $person->getId()]);
+    }
+
     #[Route('/admin/quick-resolve', name: 'app_identity_quick_resolve')]
     public function quickResolve(): Response
     {

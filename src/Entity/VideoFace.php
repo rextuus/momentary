@@ -94,6 +94,10 @@ class VideoFace
     #[Groups(['videoface:detail'])]
     private ?float $matchSimilarity = null;
 
+    #[ORM\Column]
+    #[Groups(['video:list', 'video:detail', 'videoface:list', 'videoface:detail'])]
+    private bool $isVerified = false;
+
     public function __construct()
     {
         $this->matchFor = new ArrayCollection();
@@ -247,6 +251,17 @@ class VideoFace
     public function setMatchSimilarity(?float $matchSimilarity): static
     {
         $this->matchSimilarity = $matchSimilarity;
+        return $this;
+    }
+
+    public function isVerified(): bool
+    {
+        return $this->isVerified;
+    }
+
+    public function setIsVerified(bool $isVerified): static
+    {
+        $this->isVerified = $isVerified;
         return $this;
     }
 

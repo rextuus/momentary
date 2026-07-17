@@ -159,6 +159,7 @@
                                     {# Als Profilbild setzen (Blau) #}
                                     <button class="btn btn-primary btn-sm shadow-sm"
                                             title="Als Profilbild setzen"
+                                            onclick="event.stopPropagation()"
                                             data-action="live#action"
                                             data-live-action-param="setAsProfile"
                                             data-live-face-id-param="{{ face.id }}"
@@ -170,6 +171,7 @@
                                     <button class="btn btn-warning btn-sm shadow-sm"
                                             title="Falsche Zuordnung: Von dieser Person entfernen"
                                             type="button"
+                                            onclick="event.stopPropagation()"
                                             data-action="live#action"
                                             data-live-action-param="reassignFace"
                                             data-live-face-id-param="{{ face.id }}"

@@ -31,13 +31,19 @@ class PersonRepository extends ServiceEntityRepository
     //        ;
     //    }
 
-    //    public function findOneBySomeField($value): ?Person
-    //    {
-    //        return $this->createQueryBuilder('p')
-    //            ->andWhere('p.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->getQuery()
-    //            ->getOneOrNullResult()
-    //        ;
-    //    }
+    /**
+     * @return Person[]
+     */
+    public function findIdentifiedWithUnverifiedFaces(): array
+    {
+        return $this->createQueryBuilder('p')
+            ->innerJoin('p.videoFaces', 'vf')
+            ->andWhere('p.status = :status')
+            ->andWhere('vf.isVerified = :isVerified')
+            ->setParameter('status', \App\Enum\PersonStatus::IDENTIFIED)
+            ->setParameter('isVerified', false)
+            ->distinct()
+            ->getQuery()
+            ->getResult();
+    }
 }
