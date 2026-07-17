@@ -44,6 +44,17 @@ class ChapterManagerComponent
 
     public function __construct(private EntityManagerInterface $entityManager) {}
 
+    public function getSceneCountForChapter(VideoChapter $chapter): int
+    {
+        $count = 0;
+        foreach ($this->video->getScenes() as $scene) {
+            if ($scene->getStartSeconds() >= $chapter->getStartSeconds() && $scene->getEndSeconds() <= $chapter->getEndSeconds()) {
+                $count++;
+            }
+        }
+        return $count;
+    }
+
     /**
      * @return array<VideoChapter>
      */

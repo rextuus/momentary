@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
     ffmpeg \
+    librabbitmq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install scenedetect for video processing
@@ -18,6 +19,7 @@ RUN python3 -m pip install scenedetect[av] --break-system-packages
 # Install PHP extensions
 # Workaround for PHP 8.5 experimental images: install extensions one by one
 # and handle opcache specifically.
+RUN pecl install amqp && docker-php-ext-enable amqp
 RUN docker-php-ext-configure intl && docker-php-ext-install intl
 RUN docker-php-ext-install pdo_mysql
 RUN docker-php-ext-configure zip && docker-php-ext-install zip

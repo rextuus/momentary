@@ -16,6 +16,7 @@ use App\Service\WorkflowMachine;
 use App\Service\Aws\AmazonRekognitionService;
 use Doctrine\ORM\EntityManagerInterface;
 use League\Flysystem\FilesystemOperator;
+use App\Service\VideoProcessingService;
 use Psr\Log\LoggerInterface;
 use Ramsey\Uuid\Uuid;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -34,6 +35,7 @@ class VideoAnalyzer
         private AmazonRekognitionService $rekognitionService,
         private LoggerInterface $logger,
         private WorkflowMachine $workflowMachine,
+        private VideoProcessingService $processingService,
         #[Autowire('%kernel.project_dir%')]
         private string $projectDir,
         #[Autowire('%env(PYTHON_BINARY)%')]
@@ -59,7 +61,7 @@ class VideoAnalyzer
         return $this->projectDir;
     }
 
-    public function extractThumbnail(Video $video, float $timeInSeconds = 0.0): ?string
+    public function extractThumbnail(Video $video, float $timeInSeconds = 0.0, ?string $customFilename = null): ?string
     {
         $videoPath = $video->getConvertedVideoPath();
         if (!$videoPath || str_starts_with($videoPath, 'defaults/')) {
@@ -112,7 +114,7 @@ class VideoAnalyzer
             mkdir($thumbnailDir, 0777, true);
         }
 
-        $thumbnailName = sprintf('video_%d.jpg', $video->getId());
+        $thumbnailName = $customFilename ?? sprintf('video_%d.jpg', $video->getId());
         $thumbnailPath = $thumbnailDir . '/' . $thumbnailName;
 
         $this->logger->info(sprintf('Thumbnail will be saved to: %s', $thumbnailPath));
@@ -155,8 +157,10 @@ class VideoAnalyzer
         // Cache-Buster hinzufügen, um Browser-Caching zu umgehen
         $relativeThumbnailPath .= '?t=' . time();
         
-        $video->setThumbnailPath($relativeThumbnailPath);
-        $this->entityManager->flush();
+        if ($customFilename === null) {
+            $video->setThumbnailPath($relativeThumbnailPath);
+            $this->entityManager->flush();
+        }
 
         return $relativeThumbnailPath;
     }
@@ -233,10 +237,17 @@ class VideoAnalyzer
         $video = $this->videoRepository->find($videoId);
         if ($video) {
             $oldStatus = $video->getStatus();
+            
+            // Centralized management of processing steps
+            if ($this->isProcessingStep($status)) {
+                $this->processingService->startStep($video, $status);
+            }
+            if ($oldStatus !== $status && $this->isProcessingStep($oldStatus)) {
+                $this->processingService->finishStep($video, $oldStatus);
+            }
 
             // Mapping VideoStatus to transitions
             $transition = match ($status) {
-                VideoStatus::DOWNLOADING => 'start_download',
                 VideoStatus::CONVERTING => 'start_conversion',
                 VideoStatus::SCENE_DETECTION => 'start_scene_detection',
                 VideoStatus::EXTRACTING_THUMBNAILS => 'start_extracting_thumbnails',
@@ -271,7 +282,6 @@ class VideoAnalyzer
             $this->calculateDuration($video, $oldStatus, $now);
 
             match ($status) {
-                VideoStatus::DOWNLOADING => $this->setEstimates($video),
                 VideoStatus::CONVERTING => $video->setDownloadedAt($video->getDownloadedAt() ?? $now),
                 VideoStatus::SCENE_DETECTION => $video->setConvertedAt($video->getConvertedAt() ?? $video->getDownloadedAt() ?? $now),
                 VideoStatus::SPLITTING => $video->setScenesDetectedAt($video->getScenesDetectedAt() ?? $now),
@@ -304,10 +314,24 @@ class VideoAnalyzer
         }
     }
 
+    private function isProcessingStep(VideoStatus $status): bool
+    {
+        return in_array($status, [
+            VideoStatus::CONVERTING,
+            VideoStatus::SCENE_DETECTION,
+            VideoStatus::SPLITTING,
+            VideoStatus::ANALYZING_FACES,
+            VideoStatus::REFINING_EXTRACTION,
+            VideoStatus::REFINING_ANALYSIS,
+            VideoStatus::MERGING_SCENES,
+            VideoStatus::EXTRACTING_THUMBNAILS,
+            VideoStatus::OPTIMIZING,
+        ], true);
+    }
+
     private function calculateDuration(Video $video, VideoStatus $oldStatus, \DateTimeImmutable $now): void
     {
         $startTime = match ($oldStatus) {
-            VideoStatus::DOWNLOADING => $video->getCreatedAt(),
             VideoStatus::CONVERTING => $video->getDownloadedAt(),
             VideoStatus::SCENE_DETECTION => $video->getConvertedAt() ?? $video->getDownloadedAt(),
             VideoStatus::SPLITTING => $video->getScenesDetectedAt(),
@@ -325,7 +349,6 @@ class VideoAnalyzer
         $duration = $now->getTimestamp() - $startTime->getTimestamp();
 
         match ($oldStatus) {
-            VideoStatus::DOWNLOADING => $video->setDownloadDuration($duration),
             VideoStatus::CONVERTING => $video->setConversionDuration($duration),
             VideoStatus::SCENE_DETECTION => $video->setSceneDetectionDuration($duration),
             VideoStatus::SPLITTING => $video->setFrameExtractionDuration($duration),
@@ -337,86 +360,18 @@ class VideoAnalyzer
         };
     }
 
-    private function setEstimates(Video $video): void
+
+    public function convertToMp4(string $sourcePath, string $targetPath): bool
     {
-        $duration = $video->getDuration();
-        if (!$duration) return;
-
-        $statuses = [
-            VideoStatus::CONVERTING,
-            VideoStatus::SCENE_DETECTION,
-            VideoStatus::SPLITTING,
-            VideoStatus::ANALYZING_FACES
-        ];
-
-        foreach ($statuses as $status) {
-            $ratio = $this->videoRepository->getAverageDurationRatio($status);
-            if ($ratio <= 0) {
-                // Default ratios if no history exists
-                $ratio = match($status) {
-                    VideoStatus::CONVERTING => 0.1,
-                    VideoStatus::SCENE_DETECTION => 0.2,
-                    VideoStatus::SPLITTING => 0.1,
-                    VideoStatus::ANALYZING_FACES => 1.5, // analysis is slow
-                    default => 0.1,
-                };
-            }
-
-            $estimated = (int) ($duration * $ratio);
-            match($status) {
-                VideoStatus::CONVERTING => $video->setEstimatedConversionDuration($estimated),
-                VideoStatus::SCENE_DETECTION => $video->setEstimatedSceneDetectionDuration($estimated),
-                VideoStatus::SPLITTING => $video->setEstimatedFrameExtractionDuration($estimated),
-                VideoStatus::ANALYZING_FACES => $video->setEstimatedFaceAnalysisDuration($estimated),
-                default => null,
-            };
-        }
-    }
-
-    public function downloadVideo(int $videoId, string $youtubeUrl): ?string
-    {
-        $this->updateStatus($videoId, VideoStatus::DOWNLOADING);
-
-        $process = new Process([
-            $this->pythonBinaryPath,
-            $this->projectDir . '/video-analyzer/python/download_video.py',
-            $youtubeUrl,
-            '--video-id=' . $videoId
+        $process = new \Symfony\Component\Process\Process([
+            'ffmpeg', '-y', '-i', $sourcePath, 
+            '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23', 
+            '-c:a', 'aac', $targetPath
         ]);
-
-        $process->setTimeout(300);
+        $process->setTimeout(1800);
         $process->run();
-        if (!$process->isSuccessful()) {
-            // Hier ist der entscheidende Teil: Wir loggen jetzt STDOUT und STDERR!
-            $errorOutput = $process->getErrorOutput();
-            $stdOutput = $process->getOutput();
-
-            $msg = "Download failed: " . $errorOutput . " | STDOUT: " . $stdOutput;
-
-            // Schreibe es in die Logs von Symfony
-            error_log($msg);
-
-            $this->updateStatus($videoId, VideoStatus::ERROR, null, $msg);
-            
-            throw new \RuntimeException($msg);
-        }
-
-        $data = json_decode($process->getOutput(), true);
-        $path = $data['video_path'] ?? null;
-        $duration = $data['duration'] ?? null;
-
-        // Nach dem Download speichern wir den Pfad und die Länge direkt am Video
-        $video = $this->videoRepository->find($videoId);
-        if ($video) {
-            if ($duration) {
-                $video->setDuration((float) $duration);
-            }
-            $this->entityManager->flush();
-        }
-
-        $this->updateStatus($videoId, VideoStatus::PENDING, $path);
-
-        return $path;
+        
+        return $process->isSuccessful();
     }
 
     public function detectScenes(
@@ -646,6 +601,12 @@ class VideoAnalyzer
                 );
             }
 
+            if ($isRefinement) {
+                $this->updateStatus($videoId, VideoStatus::REFINING_ANALYSIS);
+            } else {
+                $this->updateStatus($videoId, VideoStatus::ANALYZING_FACES);
+            }
+
             return true;
         } catch (\Throwable $e) {
             $this->updateStatus($videoId, VideoStatus::ERROR, null, $e->getMessage());
@@ -675,6 +636,15 @@ class VideoAnalyzer
             $this->entityManager->flush(); // Explicit flush here
 
         $this->entityManager->refresh($video);
+    }
+
+    public function clearSteps(Video $video): void
+    {
+        $connection = $this->entityManager->getConnection();
+        $connection->executeStatement(
+            'DELETE FROM video_processing_step WHERE video_id = ?',
+            [$video->getId()]
+        );
     }
 
     public function analyzeFrame(int $videoId, string $framePath, int $timestamp, bool $isLastFrame, bool $isRefinement = false): void
@@ -716,12 +686,6 @@ class VideoAnalyzer
             }
 
             // Wir stellen sicher, dass wir im richtigen Status sind
-            if ($isRefinement && $video->getStatus() === VideoStatus::REFINING_EXTRACTION) {
-                 $this->updateStatus($videoId, VideoStatus::REFINING_ANALYSIS);
-            } elseif (!$isRefinement && $video->getStatus() === VideoStatus::SPLITTING) {
-                 $this->updateStatus($videoId, VideoStatus::ANALYZING_FACES);
-            }
-
             $currentScene = $this->entityManager->getRepository(VideoScene::class)
                 ->createQueryBuilder('s')
                 ->where('s.video = :video')
@@ -876,16 +840,29 @@ class VideoAnalyzer
         $sceneArray = $scenes->toArray();
         $lastSceneWithPerson = null;
 
+        // Collect all scenes with person to easily find next scene with person
+        $scenesWithPerson = [];
+        foreach ($sceneArray as $scene) {
+            $this->entityManager->refresh($scene);
+            if (!$scene->getVideoFaces()->isEmpty()) {
+                $scenesWithPerson[] = $scene;
+            }
+        }
+        
+        $currentPersonSceneIndex = 0;
+        $extendedScenesWithPerson = [];
+
         foreach ($sceneArray as $scene) {
             // Wir müssen die Collection neu laden oder sicherstellen, dass wir die aktuellen Faces haben
             $this->entityManager->refresh($scene);
             
             if (!$scene->getVideoFaces()->isEmpty()) {
                 $lastSceneWithPerson = $scene;
+                $currentPersonSceneIndex++;
                 continue;
             }
 
-            // Wenn es eine leere Szene ist und wir bereits eine Szene mit Person davor hatten
+            // Wenn es eine leere Szene ist...
             if ($lastSceneWithPerson !== null) {
                 $this->logger->info('Merging scene into last person scene', [
                     'videoId' => $video->getId(),
@@ -894,6 +871,24 @@ class VideoAnalyzer
                 ]);
                 // Erweitere die letzte Szene mit Person bis zum Ende der aktuellen leeren Szene
                 $lastSceneWithPerson->setEndSeconds($scene->getEndSeconds());
+                
+                // Entferne die leere Szene
+                $video->removeScene($scene);
+                $this->entityManager->remove($scene);
+            } elseif (isset($scenesWithPerson[$currentPersonSceneIndex])) {
+                $nextSceneWithPerson = $scenesWithPerson[$currentPersonSceneIndex];
+                
+                $this->logger->info('Merging scene into next person scene', [
+                    'videoId' => $video->getId(),
+                    'emptyScene' => $scene->getSceneNumber(),
+                    'targetScene' => $nextSceneWithPerson->getSceneNumber()
+                ]);
+                
+                // Erweitere die nächste Szene mit Person bis zum Anfang der aktuellen leeren Szene
+                if (!isset($extendedScenesWithPerson[$nextSceneWithPerson->getId()])) {
+                    $nextSceneWithPerson->setStartSeconds($scene->getStartSeconds());
+                    $extendedScenesWithPerson[$nextSceneWithPerson->getId()] = true;
+                }
                 
                 // Entferne die leere Szene
                 $video->removeScene($scene);

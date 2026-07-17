@@ -3,7 +3,6 @@
 namespace App\Command;
 
 use App\Repository\VideoRepository;
-use App\Message\DownloadVideoMessage;
 use App\Message\DetectVideoScenesMessage;
 use App\Message\SplitVideoIntoFramesMessage;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -40,13 +39,11 @@ class VideoAdminCommand extends Command
         $video = $videoMap[$selectedTitle];
 
         $step = $io->choice('Welchen Schritt triggern?', [
-            'download' => 'Download starten',
             'scenes'   => 'Szenenerkennung (benötigt localPath)',
             'split'    => 'Frames extrahieren & Analyse (benötigt localPath)',
         ]);
 
         match ($step) {
-            'download' => $this->bus->dispatch(new DownloadVideoMessage($video->getId())),
             'scenes'   => $this->bus->dispatch(new DetectVideoScenesMessage($video->getId(), (string)$video->getLocalPath())),
             'split'    => $this->bus->dispatch(new SplitVideoIntoFramesMessage($video->getId(), (string)$video->getLocalPath())),
         };

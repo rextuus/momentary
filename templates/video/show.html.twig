@@ -105,9 +105,25 @@
                                     <h6 class="fw-bold mb-3 small text-uppercase text-muted"><i class="fas fa-bookmark me-2"></i> Kapitel / Szenen</h6>
                                     <div class="d-flex flex-wrap gap-2">
                                         {% for chapter in video.chapters %}
-                                            <button class="btn btn-sm btn-light border jump-to-time" data-time="{{ (chapter.startFrame / video.fps)|default(chapter.startFrame / 25) }}">
+                                            <button class="btn btn-sm btn-light border jump-to-time" data-time="{{ chapter.startSeconds }}">
                                                 <i class="fas fa-step-forward me-1"></i> {{ chapter.title ?: 'Szene ' ~ loop.index }}
                                             </button>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endif %}
+
+                            {% if video.processingSteps|length > 0 %}
+                                <div class="mt-4">
+                                    <h6 class="fw-bold mb-3 small text-uppercase text-muted"><i class="fas fa-tasks me-2"></i> Verarbeitungsschritte</h6>
+                                    <div class="list-group">
+                                        {% for step in video.processingSteps %}
+                                            <a href="{{ path('app_video_processing_step_show', {'id': step.id}) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                                {{ step.step.value }}
+                                                <span class="badge {{ step.finishedAt ? 'bg-success' : (step.errorMessage ? 'bg-danger' : 'bg-warning') }} rounded-pill">
+                                                    {{ step.finishedAt ? 'Fertig' : (step.errorMessage ? 'Fehler' : 'In Bearbeitung') }}
+                                                </span>
+                                            </a>
                                         {% endfor %}
                                     </div>
                                 </div>
@@ -136,69 +152,7 @@
                     <h5 class="fw-bold mb-0">Pipeline Schritte</h5>
                 </div>
                 <div class="card-body p-0">
-                    <div class="list-group list-group-flush">
-                        {% set steps = [
-                            {'id': 'download', 'name': 'Video Download', 'trigger': 'download', 'ts': video.downloadedAt, 'dur': video.downloadDuration, 'est': null, 'icon': 'download', 'status': video.downloadedAt ? 'done' : (video.status.value == 'downloading' ? 'active' : 'pending')},
-                            {'id': 'convert', 'name': 'Konvertierung', 'trigger': 'convert', 'ts': video.convertedAt, 'dur': video.conversionDuration, 'est': video.estimatedConversionDuration, 'icon': 'sync', 'status': video.convertedAt ? 'done' : (video.status.value == 'converting' ? 'active' : 'pending')},
-                            {'id': 'scenes', 'name': 'Szenenerkennung', 'trigger': 'scenes', 'ts': video.scenesDetectedAt, 'dur': video.sceneDetectionDuration, 'est': video.estimatedSceneDetectionDuration, 'icon': 'cut', 'status': video.scenesDetectedAt ? 'done' : (video.status.value == 'scene_detection' ? 'active' : 'pending')},
-                            {'id': 'splitting', 'name': 'Frame Extraktion', 'trigger': 'split', 'ts': video.framesExtractedAt, 'dur': video.frameExtractionDuration, 'est': video.estimatedFrameExtractionDuration, 'icon': 'film', 'status': video.framesExtractedAt ? 'done' : (video.status.value == 'splitting' ? 'active' : 'pending')},
-                            {'id': 'analysis', 'name': 'Gesichtsanalyse', 'trigger': null, 'ts': video.facesAnalyzedAt, 'dur': video.faceAnalysisDuration, 'est': video.estimatedFaceAnalysisDuration, 'icon': 'user-search', 'status': video.facesAnalyzedAt ? 'done' : (video.status.value == 'analyzing_faces' ? 'active' : 'pending')},
-                            {'id': 'refine_extract', 'name': 'Verfeinerung: Extraktion', 'trigger': 'refine', 'ts': video.refiningExtractionFinishedAt, 'dur': video.refiningExtractionDuration, 'est': null, 'icon': 'search-plus', 'status': video.refiningExtractionFinishedAt ? 'done' : (video.status.value == 'refining_extraction' ? 'active' : 'pending')},
-                            {'id': 'refine_analyze', 'name': 'Verfeinerung: Analyse', 'trigger': null, 'ts': video.refiningAnalysisFinishedAt, 'dur': video.refiningAnalysisDuration, 'est': null, 'icon': 'microscope', 'status': video.refiningAnalysisFinishedAt ? 'done' : (video.status.value == 'refining_analysis' ? 'active' : 'pending')},
-                            {'id': 'merge_scenes', 'name': 'Szenen Zusammenführen', 'trigger': null, 'ts': video.mergingScenesAt, 'dur': video.mergingScenesDuration, 'est': null, 'icon': 'object-group', 'status': video.mergingScenesAt ? 'done' : (video.status.value == 'merging_scenes' ? 'active' : 'pending')},
-                            {'id': 'optimize', 'name': 'MP4 Optimierung', 'trigger': 'optimize', 'ts': video.convertedAt, 'dur': null, 'est': null, 'icon': 'magic', 'status': video.status.value == 'optimizing' ? 'active' : (video.convertedAt and video.localPath and video.localPath ends with '.mp4' ? 'done' : 'pending')},
-                            {'id': 'complete', 'name': 'Abschluss', 'trigger': null, 'ts': video.completedAt, 'dur': null, 'est': null, 'icon': 'check-double', 'status': video.completedAt ? 'done' : 'pending'}
-                        ] %}
-
-                        {% for step in steps %}
-                            <div class="list-group-item p-4 d-flex align-items-center justify-content-between {% if step.status == 'active' %}bg-primary bg-opacity-10{% endif %}">
-                                <div class="d-flex align-items-center flex-grow-1">
-                                    <div class="me-4 d-flex align-items-center justify-content-center rounded-circle 
-                                        {% if step.status == 'done' %}bg-success text-white
-                                        {% elseif step.status == 'active' %}bg-primary text-white
-                                        {% else %}bg-light text-muted{% endif %}" 
-                                        style="width: 48px; height: 48px;">
-                                        {% if step.status == 'done' %}
-                                            <i class="fas fa-check"></i>
-                                        {% else %}
-                                            <i class="fas fa-{{ step.icon }}"></i>
-                                        {% endif %}
-                                    </div>
-                                    <div class="flex-grow-1">
-                                        <div class="d-flex justify-content-between align-items-start">
-                                            <div>
-                                                <h6 class="fw-bold mb-1">{{ step.name }}</h6>
-                                                <p class="small text-muted mb-0">
-                                                    {% if step.status == 'done' %}
-                                                        Abgeschlossen am {{ step.ts|date('H:i:s') }}
-                                                        {% if step.dur %} (Dauer: {{ step.dur }}s){% endif %}
-                                                    {% elseif step.status == 'active' %}
-                                                        In Bearbeitung... 
-                                                        {% if step.est %} (~{{ (step.est / 60)|round(0, 'floor') }}:{{ (step.est % 60)|format('%02d') }} min geschätzt){% endif %}
-                                                    {% else %}
-                                                        Wartet auf Start
-                                                        {% if step.est %} (Geschätzt: ~{{ (step.est / 60)|round(0, 'floor') }}:{{ (step.est % 60)|format('%02d') }} min){% endif %}
-                                                    {% endif %}
-                                                </p>
-                                            </div>
-                                            {% if step.trigger and video.localPath %}
-                                                <a href="{{ path('app_video_trigger', {id: video.id, step: step.trigger}) }}" 
-                                                   class="btn btn-xs btn-outline-secondary rounded-pill" 
-                                                   title="Ab hier neu starten">
-                                                    <i class="fas fa-redo-alt me-1"></i> Neustart
-                                                </a>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                                {% if step.status == 'active' %}
-                                    <div class="spinner-border spinner-border-sm text-primary ms-3" role="status">
-                                        <span class="visually-hidden">Loading...</span>
-                                    </div>
-                                {% endif %}
-                            </div>
-                        {% endfor %}
-                    </div>
+                    {{ component('VideoPipelineComponent', { video: video }) }}
                 </div>
             </div>
         </div>
@@ -212,9 +166,6 @@
                     <div class="d-grid gap-2">
                         <a href="{{ path('video_timeline', {id: video.id}) }}" class="btn btn-outline-primary rounded-pill mb-2">
                             <i class="fas fa-chart-line me-2"></i> Timeline anzeigen
-                        </a>
-                        <a href="{{ path('app_video_trigger', {id: video.id, step: 'thumbnails'}) }}" class="btn btn-outline-info rounded-pill mb-2">
-                            <i class="fas fa-images me-2"></i> Szenen-Thumbnails neu generieren
                         </a>
                         <hr>
                         <h6 class="small text-muted fw-bold text-uppercase mb-3">Thumbnail</h6>

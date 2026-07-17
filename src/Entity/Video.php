@@ -110,9 +110,15 @@ class Video
      * @var Collection<int, VideoChapter>
      */
     #[ORM\OneToMany(targetEntity: VideoChapter::class, mappedBy: 'video', cascade: ['remove'], orphanRemoval: true)]
-    #[ORM\OrderBy(['startSeconds' => 'ASC'])]
     #[Groups(['video:detail'])]
     private Collection $chapters;
+
+    /**
+     * @var Collection<int, VideoProcessingStep>
+     */
+    #[ORM\OneToMany(targetEntity: VideoProcessingStep::class, mappedBy: 'video', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[Groups(['video:detail'])]
+    private Collection $processingSteps;
 
     #[ORM\Column(options: ['default' => 0])]
     #[Groups(['video:list', 'video:detail'])]
@@ -239,7 +245,7 @@ class Video
         $this->videoFaces = new ArrayCollection();
         $this->scenes = new ArrayCollection();
         $this->chapters = new ArrayCollection();
-        $this->createdAt = new \DateTimeImmutable();
+        $this->processingSteps = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -813,5 +819,35 @@ class Video
     public function getThumbnailUrl(): ?string
     {
         return $this->thumbnailPath ?? 'defaults/video-placeholder.jpg';
+    }
+
+    /**
+     * @return Collection<int, VideoProcessingStep>
+     */
+    public function getProcessingSteps(): Collection
+    {
+        return $this->processingSteps;
+    }
+
+    public function addProcessingStep(VideoProcessingStep $processingStep): static
+    {
+        if (!$this->processingSteps->contains($processingStep)) {
+            $this->processingSteps->add($processingStep);
+            $processingStep->setVideo($this);
+        }
+
+        return $this;
+    }
+
+    public function removeProcessingStep(VideoProcessingStep $processingStep): static
+    {
+        if ($this->processingSteps->removeElement($processingStep)) {
+            // set the owning side to null (unless already changed)
+            if ($processingStep->getVideo() === $this) {
+                $processingStep->setVideo(null);
+            }
+        }
+
+        return $this;
     }
 }

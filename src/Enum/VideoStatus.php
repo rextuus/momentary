@@ -7,7 +7,6 @@ namespace App\Enum;
 enum VideoStatus: string
 {
     case PENDING = 'pending';
-    case DOWNLOADING = 'downloading';
     case CONVERTING = 'converting';
     case SCENE_DETECTION = 'scene_detection';
     case SPLITTING = 'splitting';

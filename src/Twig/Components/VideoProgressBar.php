@@ -43,12 +43,26 @@ class VideoProgressBar
             return (int) min(99, round(($video->getProcessedFrames() / $video->getTotalFrames()) * 100));
         }
 
+        if ($status === VideoStatus::EXTRACTING_THUMBNAILS) {
+            $totalScenes = $video->getScenes()->count();
+            if ($totalScenes === 0) {
+                return 0;
+            }
+            $scenesWithThumbnails = 0;
+            foreach ($video->getScenes() as $scene) {
+                if ($scene->getThumbnailUrl() !== null) {
+                    $scenesWithThumbnails++;
+                }
+            }
+            return (int) min(99, round(($scenesWithThumbnails / $totalScenes) * 100));
+        }
+
         // Andere statustypen haben keine Frame-basierte Prozentrechnung
         $statusOrder = [
             VideoStatus::PENDING->value => 0,
-            VideoStatus::DOWNLOADING->value => 5,
             VideoStatus::CONVERTING->value => 10,
             VideoStatus::SCENE_DETECTION->value => 20,
+            VideoStatus::EXTRACTING_THUMBNAILS->value => 25,
             VideoStatus::SPLITTING->value => 30,
             VideoStatus::ANALYZING_FACES->value => 40,
             VideoStatus::REFINING_EXTRACTION->value => 70,

@@ -12,7 +12,6 @@ framework:
             initial_marking: !php/const App\Enum\VideoStatus::PENDING
             places:
                 - !php/const App\Enum\VideoStatus::PENDING
-                - !php/const App\Enum\VideoStatus::DOWNLOADING
                 - !php/const App\Enum\VideoStatus::CONVERTING
                 - !php/const App\Enum\VideoStatus::SCENE_DETECTION
                 - !php/const App\Enum\VideoStatus::SPLITTING
@@ -25,14 +24,11 @@ framework:
                 - !php/const App\Enum\VideoStatus::COMPLETED
                 - !php/const App\Enum\VideoStatus::ERROR
             transitions:
-                start_download:
-                    from: !php/const App\Enum\VideoStatus::PENDING
-                    to:   !php/const App\Enum\VideoStatus::DOWNLOADING
                 start_conversion:
-                    from: [!php/const App\Enum\VideoStatus::DOWNLOADING, !php/const App\Enum\VideoStatus::PENDING]
+                    from: [!php/const App\Enum\VideoStatus::PENDING]
                     to:   !php/const App\Enum\VideoStatus::CONVERTING
                 start_scene_detection:
-                    from: [!php/const App\Enum\VideoStatus::CONVERTING, !php/const App\Enum\VideoStatus::PENDING, !php/const App\Enum\VideoStatus::DOWNLOADING]
+                    from: [!php/const App\Enum\VideoStatus::CONVERTING]
                     to:   !php/const App\Enum\VideoStatus::SCENE_DETECTION
                 start_extracting_thumbnails:
                     from: !php/const App\Enum\VideoStatus::SCENE_DETECTION
@@ -53,7 +49,7 @@ framework:
                     from: !php/const App\Enum\VideoStatus::REFINING_ANALYSIS
                     to:   !php/const App\Enum\VideoStatus::MERGING_SCENES
                 start_optimization:
-                    from: [!php/const App\Enum\VideoStatus::MERGING_SCENES, !php/const App\Enum\VideoStatus::ANALYZING_FACES, !php/const App\Enum\VideoStatus::SCENE_DETECTION, !php/const App\Enum\VideoStatus::OPTIMIZING, !php/const App\Enum\VideoStatus::COMPLETED, !php/const App\Enum\VideoStatus::ERROR]
+                    from: [!php/const App\Enum\VideoStatus::MERGING_SCENES]
                     to:   !php/const App\Enum\VideoStatus::OPTIMIZING
                 complete:
                     from: [!php/const App\Enum\VideoStatus::MERGING_SCENES, !php/const App\Enum\VideoStatus::ANALYZING_FACES, !php/const App\Enum\VideoStatus::SCENE_DETECTION, !php/const App\Enum\VideoStatus::OPTIMIZING]
@@ -61,7 +57,6 @@ framework:
                 fail:
                     from: 
                         - !php/const App\Enum\VideoStatus::PENDING
-                        - !php/const App\Enum\VideoStatus::DOWNLOADING
                         - !php/const App\Enum\VideoStatus::CONVERTING
                         - !php/const App\Enum\VideoStatus::SCENE_DETECTION
                         - !php/const App\Enum\VideoStatus::SPLITTING
@@ -73,7 +68,7 @@ framework:
                     to: !php/const App\Enum\VideoStatus::ERROR
                 # Rücksprünge
                 back_to_pending:
-                    from: [!php/const App\Enum\VideoStatus::DOWNLOADING, !php/const App\Enum\VideoStatus::CONVERTING, !php/const App\Enum\VideoStatus::SCENE_DETECTION, !php/const App\Enum\VideoStatus::SPLITTING, !php/const App\Enum\VideoStatus::ANALYZING_FACES, !php/const App\Enum\VideoStatus::REFINING_EXTRACTION, !php/const App\Enum\VideoStatus::REFINING_ANALYSIS, !php/const App\Enum\VideoStatus::MERGING_SCENES, !php/const App\Enum\VideoStatus::OPTIMIZING, !php/const App\Enum\VideoStatus::COMPLETED, !php/const App\Enum\VideoStatus::ERROR]
+                    from: [!php/const App\Enum\VideoStatus::CONVERTING, !php/const App\Enum\VideoStatus::SCENE_DETECTION, !php/const App\Enum\VideoStatus::SPLITTING, !php/const App\Enum\VideoStatus::ANALYZING_FACES, !php/const App\Enum\VideoStatus::REFINING_EXTRACTION, !php/const App\Enum\VideoStatus::REFINING_ANALYSIS, !php/const App\Enum\VideoStatus::MERGING_SCENES, !php/const App\Enum\VideoStatus::OPTIMIZING, !php/const App\Enum\VideoStatus::COMPLETED, !php/const App\Enum\VideoStatus::ERROR]
                     to:   !php/const App\Enum\VideoStatus::PENDING
                 back_to_conversion:
                     from: [!php/const App\Enum\VideoStatus::SCENE_DETECTION, !php/const App\Enum\VideoStatus::SPLITTING, !php/const App\Enum\VideoStatus::ANALYZING_FACES, !php/const App\Enum\VideoStatus::REFINING_EXTRACTION, !php/const App\Enum\VideoStatus::REFINING_ANALYSIS, !php/const App\Enum\VideoStatus::MERGING_SCENES, !php/const App\Enum\VideoStatus::OPTIMIZING, !php/const App\Enum\VideoStatus::COMPLETED, !php/const App\Enum\VideoStatus::ERROR]
@@ -89,7 +84,6 @@ framework:
                     to:   !php/const App\Enum\VideoStatus::REFINING_EXTRACTION
                 reset:
                     from: 
-                        - !php/const App\Enum\VideoStatus::DOWNLOADING
                         - !php/const App\Enum\VideoStatus::CONVERTING
                         - !php/const App\Enum\VideoStatus::SCENE_DETECTION
                         - !php/const App\Enum\VideoStatus::SPLITTING

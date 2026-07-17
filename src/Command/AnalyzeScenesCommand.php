@@ -59,25 +59,10 @@ class AnalyzeScenesCommand extends Command
         }
 
         if (!$videoPath || !file_exists($videoPath)) {
-            if (!$video->getYoutubeUrl()) {
-                $io->error("Weder lokaler Pfad vorhanden noch YouTube-URL für Download.");
-                return Command::FAILURE;
-            }
-
-            $io->info("Lade Video von YouTube herunter...");
-            try {
-                $videoPath = $this->videoAnalyzer->downloadVideo($videoId, $video->getYoutubeUrl());
-            } catch (\Exception $e) {
-                $io->error("Download fehlgeschlagen: " . $e->getMessage());
-                return Command::FAILURE;
-            }
+            $io->error("Video-Datei konnte nicht gefunden werden.");
+            return Command::FAILURE;
         } else {
             $io->info("Nutze vorhandene lokale Datei: " . $videoPath);
-        }
-
-        if (!$videoPath || !file_exists($videoPath)) {
-            $io->error("Video-Datei konnte nicht gefunden oder heruntergeladen werden.");
-            return Command::FAILURE;
         }
 
         if ($shouldConvert) {

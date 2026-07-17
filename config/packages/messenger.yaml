@@ -5,14 +5,11 @@ framework:
         transports:
             # https://symfony.com/doc/current/messenger.html#transport-configuration
             async:
-                dsn: 'doctrine://default?queue_name=async&auto_setup=0'
-                options:
-                    use_notify: true
-                    check_delayed_interval: 60000
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
                 retry_strategy:
                     max_retries: 3
                     multiplier: 2
-            failed: 'doctrine://default?queue_name=failed'
+            failed: 'amqp://guest:guest@rabbitmq:5672/%2f/messages_failed'
             # sync: 'sync://'
 
         default_bus: messenger.bus.default
@@ -25,7 +22,6 @@ framework:
             Symfony\Component\Notifier\Message\ChatMessage: async
             Symfony\Component\Notifier\Message\SmsMessage: async
             App\Message\FrameAnalyzerMessage: async
-            App\Message\DownloadVideoMessage: async
             App\Message\SplitVideoIntoFramesMessage: async
             App\Message\DetectVideoScenesMessage: async
             App\Message\OptimizeVideoForJellyfinMessage: async
@@ -34,6 +30,7 @@ framework:
             App\Message\ExtractSceneThumbnailMessage: async
             App\Message\ExtractAllSceneThumbnailsMessage: async
             App\Message\IndexVideoMessage: async
+            App\Message\TestMessage: async
 
             # Route your messages to the transports
             # 'App\Message\YourMessage': async

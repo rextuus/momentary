@@ -7,6 +7,7 @@ use App\Message\DetectVideoScenesMessage;
 use App\Repository\VideoRepository;
 use App\Service\VideoAnalyzer;
 use App\Service\WorkflowMachine;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 
@@ -16,8 +17,10 @@ final class ConvertVideoMessageHandler
     public function __construct(
         private VideoAnalyzer $videoAnalyzer,
         private VideoRepository $videoRepository,
+        private EntityManagerInterface $entityManager,
         private MessageBusInterface $bus,
-        private WorkflowMachine $workflowMachine
+        private WorkflowMachine $workflowMachine,
+        private \App\Service\VideoProcessingService $processingService
     ) {}
 
     public function __invoke(ConvertVideoMessage $message): void
@@ -27,6 +30,7 @@ final class ConvertVideoMessageHandler
 
         if ($this->workflowMachine->can($video, 'start_conversion')) {
             $this->workflowMachine->apply($video, 'start_conversion');
+            $this->processingService->startStep($video, \App\Enum\VideoStatus::CONVERTING);
         }
         $video->setErrorMessage(null);
 
@@ -43,29 +47,31 @@ final class ConvertVideoMessageHandler
         $sourcePath = $this->videoAnalyzer->resolvePath($localPath);
         
         // Wenn es schon mp4 ist, überspringen wir die eigentliche Konvertierung
-        // und gehen direkt zur Szenenerkennung.
         if (str_ends_with(strtolower($sourcePath), '.mp4')) {
-            echo "Video {$video->getId()} ist bereits MP4. Überspringe Konvertierung." . PHP_EOL;
-            $this->bus->dispatch(new DetectVideoScenesMessage($video->getId(), $localPath));
-            return;
+            echo "Video {$video->getId()} ist bereits MP4." . PHP_EOL;
+        } else {
+            echo "Starte Konvertierung für Video {$video->getId()}..." . PHP_EOL;
+            
+            $tempMp4Name = 'video_converted_' . $video->getId() . '.mp4';
+            $tempMp4 = $this->videoAnalyzer->getProjectDir() . '/public/uploads/import/' . $tempMp4Name;
+            
+            if ($this->videoAnalyzer->convertToMp4($sourcePath, $tempMp4)) {
+                $video->setConvertedVideoPath($tempMp4);
+                $video->setLocalPath($tempMp4);
+                $this->entityManager->persist($video);
+                $this->entityManager->flush();
+                $this->processingService->finishStep($video, \App\Enum\VideoStatus::CONVERTING);
+                $localPath = $tempMp4;
+                echo "Konvertierung abgeschlossen." . PHP_EOL;
+            } else {
+                echo "Konvertierung fehlgeschlagen." . PHP_EOL;
+                $video->setErrorMessage("Konvertierung fehlgeschlagen.");
+                $this->processingService->failStep($video, \App\Enum\VideoStatus::CONVERTING, "Konvertierung fehlgeschlagen.");
+                $this->entityManager->persist($video);
+                $this->entityManager->flush();
+                return;
+            }
         }
-
-        echo "Starte Konvertierung für Video {$video->getId()}..." . PHP_EOL;
-        
-        // Wir könnten hier das gleiche Python-Skript nutzen wie bei der Optimierung.
-        // Da wir aber im VideoAnalyzer Kontext sind, schauen wir ob es dort was gibt.
-        // Der User hat vorher erwähnt, dass die Optimierung optional ist.
-        // Aber hier geht es um die Grund-Konvertierung damit die Pipeline (Szenenerkennung etc) arbeiten kann.
-        
-        // Einfachheitshalber nutzen wir die DetectVideoScenesMessage direkt, 
-        // da das Python-Skript für Szenenerkennung (detect_scenes.py) via PyAV/FFmpeg 
-        // oft auch mit anderen Formaten klarkommt. 
-        // ABER der User möchte explizit den "Konvertierung" Schritt triggern.
-        
-        // Da ich kein neues Python Skript bauen will wenn nicht nötig, 
-        // triggere ich hier die Szenenerkennung, da diese der nächste logische Schritt ist.
-        // Wenn der User später eine echte Konvertierung (z.B. Deinterlacing) will, 
-        // kann er das hier einbauen.
         
         $this->bus->dispatch(new DetectVideoScenesMessage($video->getId(), $localPath));
     }

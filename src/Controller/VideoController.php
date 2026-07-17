@@ -3,10 +3,10 @@
 namespace App\Controller;
 
 use App\Entity\Video;
+use App\Entity\VideoProcessingStep;
 use App\Form\VideoType;
 use App\Message\ConvertVideoMessage;
 use App\Message\DetectVideoScenesMessage;
-use App\Message\DownloadVideoMessage;
 use App\Message\ExtractThumbnailMessage;
 use App\Message\ExtractAllSceneThumbnailsMessage;
 use App\Message\OptimizeVideoForJellyfinMessage;
@@ -74,11 +74,7 @@ final class VideoController extends AbstractController
             $this->entityManager->flush();
 
             if ($video->getYoutubeUrl()) {
-                if ($this->workflowMachine->can($video, 'start_download')) {
-                    $this->workflowMachine->apply($video, 'start_download');
-                    $this->messageBus->dispatch(new DownloadVideoMessage($video->getId()));
-                    $this->addFlash('success', 'Video hinzugefügt und Download gestartet!');
-                }
+                // Download wurde entfernt
             } elseif ($video->getLocalPath()) {
                 if ($this->workflowMachine->can($video, 'start_conversion')) {
                     $this->workflowMachine->apply($video, 'start_conversion');
@@ -159,12 +155,6 @@ final class VideoController extends AbstractController
             $video->setErrorMessage(null);
 
             match ($step) {
-                'download' => [
-                    $this->ensureStepAccessible($video, 'start_download', $workflowMachine),
-                    $video->setDownloadedAt(null),
-                    $video->setCompletedAt(null),
-                    $this->messageBus->dispatch(new DownloadVideoMessage($video->getId()))
-                ],
                 'convert'  => [
                     $this->ensureStepAccessible($video, 'start_conversion', $workflowMachine),
                     $video->setConvertedAt(null),
@@ -225,7 +215,9 @@ final class VideoController extends AbstractController
                     $video->setRefiningExtractionDuration(null),
                     $video->setRefiningAnalysisDuration(null),
                     $video->setRefinementDuration(null),
-                    $videoAnalyzer->clearOldScenes($video)
+                    $videoAnalyzer->clearOldScenes($video),
+                    $videoAnalyzer->clearSteps($video),
+                    $this->triggerFirstStep($video, $workflowMachine)
                 ],
                 'delete'   => $videoAnalyzer->cleanupLocalFile($video->getId()),
                 default    => throw new \InvalidArgumentException("Ungültiger Schritt: $step"),
@@ -243,6 +235,17 @@ final class VideoController extends AbstractController
         }
 
         return $this->redirectToRoute('app_video_show', ['id' => $video->getId()]);
+    }
+
+    private function triggerFirstStep(Video $video, WorkflowMachine $workflowMachine): void
+    {
+        if ($this->workflowMachine->can($video, 'start_conversion')) {
+            $this->ensureStepAccessible($video, 'start_conversion', $workflowMachine);
+            $this->messageBus->dispatch(new ConvertVideoMessage($video->getId()));
+        } elseif ($this->workflowMachine->can($video, 'start_scene_detection')) {
+            $this->ensureStepAccessible($video, 'start_scene_detection', $workflowMachine);
+            $this->messageBus->dispatch(new DetectVideoScenesMessage($video->getId(), (string)$video->getLocalPath()));
+        }
     }
 
     private function ensureStepAccessible(Video $video, string $transition, WorkflowMachine $workflowMachine): void
@@ -318,6 +321,14 @@ final class VideoController extends AbstractController
             'video' => $video,
             'jellyfin_host' => $publicJellyfinHost,
             'jellyfin_api_key' => $jellyfinApiKey,
+        ]);
+    }
+
+    #[Route('/admin/video/processing-step/{id}', name: 'app_video_processing_step_show', methods: ['GET'])]
+    public function showProcessingStep(VideoProcessingStep $processingStep): Response
+    {
+        return $this->render('video/processing_step_show.html.twig', [
+            'step' => $processingStep,
         ]);
     }
 }

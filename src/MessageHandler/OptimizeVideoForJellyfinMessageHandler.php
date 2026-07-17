@@ -24,6 +24,7 @@ class OptimizeVideoForJellyfinMessageHandler
         private readonly MessageBusInterface $messageBus,
         private readonly LoggerInterface $logger,
         private readonly WorkflowMachine $workflowMachine,
+        private readonly \App\Service\VideoProcessingService $processingService,
         #[Autowire('%kernel.project_dir%')] private readonly string $projectDir,
         #[Autowire('%env(PYTHON_BINARY)%')] private readonly string $pythonBinary = '/usr/bin/python3'
     ) {
@@ -41,6 +42,7 @@ class OptimizeVideoForJellyfinMessageHandler
 
         if ($this->workflowMachine->can($video, 'start_optimization')) {
             $this->workflowMachine->apply($video, 'start_optimization');
+            $this->processingService->startStep($video, \App\Enum\VideoStatus::OPTIMIZING);
         }
 
         $localPath = $video->getLocalPath();
@@ -66,6 +68,7 @@ class OptimizeVideoForJellyfinMessageHandler
                 if ($this->workflowMachine->can($video, 'fail')) {
                     $this->workflowMachine->apply($video, 'fail');
                 }
+                $this->processingService->failStep($video, \App\Enum\VideoStatus::OPTIMIZING, "Source file not found: $sourcePath");
                 $video->setErrorMessage("Source file not found: $sourcePath");
                 $this->entityManager->flush();
                 return;
@@ -131,7 +134,8 @@ class OptimizeVideoForJellyfinMessageHandler
             // We make it relative to the uploads dir if possible
             $relativeOutputPath = $this->videoAnalyzer->makePathRelative($outputPath);
             $video->setLocalPath($relativeOutputPath);
-            $video->setConvertedAt(new \DateTimeImmutable());
+            
+            $this->processingService->finishStep($video, \App\Enum\VideoStatus::OPTIMIZING);
             
             if ($this->workflowMachine->can($video, 'complete')) {
                 $this->workflowMachine->apply($video, 'complete');

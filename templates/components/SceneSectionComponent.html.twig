@@ -21,6 +21,9 @@
         <div class="card-header bg-white p-3 d-flex justify-content-between align-items-center" style="border-radius: 12px 12px 0 0; position: relative;">
 
             <div class="d-flex align-items-center flex-grow-1">
+                {% if scene.thumbnailUrl %}
+                    <img src="{{ imgproxy_url(scene.thumbnailUrl, 320, 180) }}" alt="Szene {{ sceneNumber }}" class="rounded shadow-sm me-3" style="width: 80px; height: 45px; object-fit: cover;">
+                {% endif %}
                 <div class="scene-badge me-3 shadow-sm">{{ sceneNumber }}</div>
                 <div class="flex-grow-1">
                     {# INPUT FÜR DEN TITEL #}
