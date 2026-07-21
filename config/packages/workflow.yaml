@@ -21,6 +21,7 @@ framework:
                 - !php/const App\Enum\VideoStatus::MERGING_SCENES
                 - !php/const App\Enum\VideoStatus::EXTRACTING_THUMBNAILS
                 - !php/const App\Enum\VideoStatus::OPTIMIZING
+                - !php/const App\Enum\VideoStatus::TAGGING_SCENES
                 - !php/const App\Enum\VideoStatus::COMPLETED
                 - !php/const App\Enum\VideoStatus::ERROR
             transitions:
@@ -51,8 +52,11 @@ framework:
                 start_optimization:
                     from: [!php/const App\Enum\VideoStatus::MERGING_SCENES]
                     to:   !php/const App\Enum\VideoStatus::OPTIMIZING
+                start_tagging:
+                    from: [!php/const App\Enum\VideoStatus::OPTIMIZING]
+                    to:   !php/const App\Enum\VideoStatus::TAGGING_SCENES
                 complete:
-                    from: [!php/const App\Enum\VideoStatus::MERGING_SCENES, !php/const App\Enum\VideoStatus::ANALYZING_FACES, !php/const App\Enum\VideoStatus::SCENE_DETECTION, !php/const App\Enum\VideoStatus::OPTIMIZING]
+                    from: [!php/const App\Enum\VideoStatus::MERGING_SCENES, !php/const App\Enum\VideoStatus::ANALYZING_FACES, !php/const App\Enum\VideoStatus::SCENE_DETECTION, !php/const App\Enum\VideoStatus::OPTIMIZING, !php/const App\Enum\VideoStatus::TAGGING_SCENES]
                     to:   !php/const App\Enum\VideoStatus::COMPLETED
                 fail:
                     from: 
@@ -65,22 +69,23 @@ framework:
                         - !php/const App\Enum\VideoStatus::REFINING_ANALYSIS
                         - !php/const App\Enum\VideoStatus::MERGING_SCENES
                         - !php/const App\Enum\VideoStatus::OPTIMIZING
+                        - !php/const App\Enum\VideoStatus::TAGGING_SCENES
                     to: !php/const App\Enum\VideoStatus::ERROR
                 # Rücksprünge
                 back_to_pending:
-                    from: [!php/const App\Enum\VideoStatus::CONVERTING, !php/const App\Enum\VideoStatus::SCENE_DETECTION, !php/const App\Enum\VideoStatus::SPLITTING, !php/const App\Enum\VideoStatus::ANALYZING_FACES, !php/const App\Enum\VideoStatus::REFINING_EXTRACTION, !php/const App\Enum\VideoStatus::REFINING_ANALYSIS, !php/const App\Enum\VideoStatus::MERGING_SCENES, !php/const App\Enum\VideoStatus::OPTIMIZING, !php/const App\Enum\VideoStatus::COMPLETED, !php/const App\Enum\VideoStatus::ERROR]
+                    from: [!php/const App\Enum\VideoStatus::CONVERTING, !php/const App\Enum\VideoStatus::SCENE_DETECTION, !php/const App\Enum\VideoStatus::SPLITTING, !php/const App\Enum\VideoStatus::ANALYZING_FACES, !php/const App\Enum\VideoStatus::REFINING_EXTRACTION, !php/const App\Enum\VideoStatus::REFINING_ANALYSIS, !php/const App\Enum\VideoStatus::MERGING_SCENES, !php/const App\Enum\VideoStatus::OPTIMIZING, !php/const App\Enum\VideoStatus::TAGGING_SCENES, !php/const App\Enum\VideoStatus::COMPLETED, !php/const App\Enum\VideoStatus::ERROR]
                     to:   !php/const App\Enum\VideoStatus::PENDING
                 back_to_conversion:
-                    from: [!php/const App\Enum\VideoStatus::SCENE_DETECTION, !php/const App\Enum\VideoStatus::SPLITTING, !php/const App\Enum\VideoStatus::ANALYZING_FACES, !php/const App\Enum\VideoStatus::REFINING_EXTRACTION, !php/const App\Enum\VideoStatus::REFINING_ANALYSIS, !php/const App\Enum\VideoStatus::MERGING_SCENES, !php/const App\Enum\VideoStatus::OPTIMIZING, !php/const App\Enum\VideoStatus::COMPLETED, !php/const App\Enum\VideoStatus::ERROR]
+                    from: [!php/const App\Enum\VideoStatus::SCENE_DETECTION, !php/const App\Enum\VideoStatus::SPLITTING, !php/const App\Enum\VideoStatus::ANALYZING_FACES, !php/const App\Enum\VideoStatus::REFINING_EXTRACTION, !php/const App\Enum\VideoStatus::REFINING_ANALYSIS, !php/const App\Enum\VideoStatus::MERGING_SCENES, !php/const App\Enum\VideoStatus::OPTIMIZING, !php/const App\Enum\VideoStatus::TAGGING_SCENES, !php/const App\Enum\VideoStatus::COMPLETED, !php/const App\Enum\VideoStatus::ERROR]
                     to:   !php/const App\Enum\VideoStatus::CONVERTING
                 back_to_scene_detection:
-                    from: [!php/const App\Enum\VideoStatus::SPLITTING, !php/const App\Enum\VideoStatus::ANALYZING_FACES, !php/const App\Enum\VideoStatus::REFINING_EXTRACTION, !php/const App\Enum\VideoStatus::REFINING_ANALYSIS, !php/const App\Enum\VideoStatus::MERGING_SCENES, !php/const App\Enum\VideoStatus::OPTIMIZING, !php/const App\Enum\VideoStatus::COMPLETED, !php/const App\Enum\VideoStatus::ERROR]
+                    from: [!php/const App\Enum\VideoStatus::SPLITTING, !php/const App\Enum\VideoStatus::ANALYZING_FACES, !php/const App\Enum\VideoStatus::REFINING_EXTRACTION, !php/const App\Enum\VideoStatus::REFINING_ANALYSIS, !php/const App\Enum\VideoStatus::MERGING_SCENES, !php/const App\Enum\VideoStatus::OPTIMIZING, !php/const App\Enum\VideoStatus::TAGGING_SCENES, !php/const App\Enum\VideoStatus::COMPLETED, !php/const App\Enum\VideoStatus::ERROR]
                     to:   !php/const App\Enum\VideoStatus::SCENE_DETECTION
                 back_to_splitting:
-                    from: [!php/const App\Enum\VideoStatus::ANALYZING_FACES, !php/const App\Enum\VideoStatus::REFINING_EXTRACTION, !php/const App\Enum\VideoStatus::REFINING_ANALYSIS, !php/const App\Enum\VideoStatus::MERGING_SCENES, !php/const App\Enum\VideoStatus::OPTIMIZING, !php/const App\Enum\VideoStatus::COMPLETED, !php/const App\Enum\VideoStatus::ERROR]
+                    from: [!php/const App\Enum\VideoStatus::ANALYZING_FACES, !php/const App\Enum\VideoStatus::REFINING_EXTRACTION, !php/const App\Enum\VideoStatus::REFINING_ANALYSIS, !php/const App\Enum\VideoStatus::MERGING_SCENES, !php/const App\Enum\VideoStatus::OPTIMIZING, !php/const App\Enum\VideoStatus::TAGGING_SCENES, !php/const App\Enum\VideoStatus::COMPLETED, !php/const App\Enum\VideoStatus::ERROR]
                     to:   !php/const App\Enum\VideoStatus::SPLITTING
                 back_to_refining_extraction:
-                    from: [!php/const App\Enum\VideoStatus::REFINING_ANALYSIS, !php/const App\Enum\VideoStatus::MERGING_SCENES, !php/const App\Enum\VideoStatus::OPTIMIZING, !php/const App\Enum\VideoStatus::COMPLETED, !php/const App\Enum\VideoStatus::ERROR]
+                    from: [!php/const App\Enum\VideoStatus::REFINING_ANALYSIS, !php/const App\Enum\VideoStatus::MERGING_SCENES, !php/const App\Enum\VideoStatus::OPTIMIZING, !php/const App\Enum\VideoStatus::TAGGING_SCENES, !php/const App\Enum\VideoStatus::COMPLETED, !php/const App\Enum\VideoStatus::ERROR]
                     to:   !php/const App\Enum\VideoStatus::REFINING_EXTRACTION
                 reset:
                     from: 
@@ -91,6 +96,7 @@ framework:
                         - !php/const App\Enum\VideoStatus::REFINING_EXTRACTION
                         - !php/const App\Enum\VideoStatus::REFINING_ANALYSIS
                         - !php/const App\Enum\VideoStatus::MERGING_SCENES
+                        - !php/const App\Enum\VideoStatus::TAGGING_SCENES
                         - !php/const App\Enum\VideoStatus::COMPLETED
                         - !php/const App\Enum\VideoStatus::ERROR
                     to: !php/const App\Enum\VideoStatus::PENDING

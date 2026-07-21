@@ -30,6 +30,8 @@ framework:
             App\Message\ExtractSceneThumbnailMessage: async
             App\Message\ExtractAllSceneThumbnailsMessage: async
             App\Message\IndexVideoMessage: async
+            App\Message\TagScenesMessage: async
+            App\Message\AnalyzeSceneMessage: async
             App\Message\TestMessage: async
 
             # Route your messages to the transports

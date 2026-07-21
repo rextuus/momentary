@@ -42,15 +42,26 @@ class VideoIndexer
         }
 
         $tagsGroups = [];
+        $tagsByCategory = [];
         foreach ($video->getScenes() as $scene) {
             foreach ($scene->getTags() as $tag) {
                 $name = $tag->getName();
+                $categoryName = $tag->getCategory() ? $tag->getCategory()->getName() : 'Uncategorized';
+                
                 $tagsGroups[$name][] = [
                     'start' => (int)$scene->getStartSeconds(),
                     'end' => (int)$scene->getEndSeconds(),
                     'title' => $scene->getTitle() ?? 'Unbenannte Szene',
                     'thumbnailUrl' => $scene->getThumbnailUrl(),
+                    'category' => $categoryName,
                 ];
+                
+                if (!isset($tagsByCategory[$categoryName])) {
+                    $tagsByCategory[$categoryName] = [];
+                }
+                if (!in_array($name, $tagsByCategory[$categoryName])) {
+                    $tagsByCategory[$categoryName][] = $name;
+                }
             }
         }
 
@@ -62,6 +73,7 @@ class VideoIndexer
             foreach ($merged as $interval) {
                 $tagsWithScenes[] = [
                     'name' => $name,
+                    'category' => $interval['category'],
                     'start' => $interval['start'],
                     'end' => $interval['end'],
                     'title' => $interval['title'],
@@ -76,6 +88,7 @@ class VideoIndexer
             'title' => $video->getTitle(),
             'persons_with_scenes' => $personsWithScenes,
             'tags_with_scenes' => $tagsWithScenes,
+            'tags_by_category' => $tagsByCategory,
             'persons' => $persons,
             'tags' => $tags,
             'createdAt' => $video->getCreatedAt()?->format(\DateTimeInterface::ATOM),

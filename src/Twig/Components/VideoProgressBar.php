@@ -57,6 +57,20 @@ class VideoProgressBar
             return (int) min(99, round(($scenesWithThumbnails / $totalScenes) * 100));
         }
 
+        if ($status === VideoStatus::TAGGING_SCENES) {
+            $totalScenes = $video->getScenes()->count();
+            if ($totalScenes === 0) {
+                return 0;
+            }
+            $scenesWithTags = 0;
+            foreach ($video->getScenes() as $scene) {
+                if ($scene->getTags()->count() > 0) {
+                    $scenesWithTags++;
+                }
+            }
+            return (int) min(99, round(($scenesWithTags / $totalScenes) * 100));
+        }
+
         // Andere statustypen haben keine Frame-basierte Prozentrechnung
         $statusOrder = [
             VideoStatus::PENDING->value => 0,
@@ -67,7 +81,8 @@ class VideoProgressBar
             VideoStatus::ANALYZING_FACES->value => 40,
             VideoStatus::REFINING_EXTRACTION->value => 70,
             VideoStatus::REFINING_ANALYSIS->value => 80,
-            VideoStatus::MERGING_SCENES->value => 95,
+            VideoStatus::MERGING_SCENES->value => 90,
+            VideoStatus::TAGGING_SCENES->value => 95,
             VideoStatus::COMPLETED->value => 100,
         ];
 

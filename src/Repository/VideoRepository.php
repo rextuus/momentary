@@ -68,14 +68,9 @@ class VideoRepository extends ServiceEntityRepository
         return $this->createQueryBuilder('v')
             ->leftJoin('v.scenes', 's')
             ->addSelect('s')
-            ->leftJoin('v.videoFaces', 'vf')
-            ->addSelect('vf')
-            ->leftJoin('vf.person', 'p')
-            ->addSelect('p')
             ->where('v.id = :id')
             ->setParameter('id', $id)
             ->orderBy('s.startSeconds', 'ASC')
-            ->addOrderBy('vf.timestamp', 'ASC')
             ->getQuery()
             ->getOneOrNullResult();
     }

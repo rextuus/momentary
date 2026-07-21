@@ -117,6 +117,7 @@ class Video
      * @var Collection<int, VideoProcessingStep>
      */
     #[ORM\OneToMany(targetEntity: VideoProcessingStep::class, mappedBy: 'video', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OrderBy(['createdAt' => 'ASC'])]
     #[Groups(['video:detail'])]
     private Collection $processingSteps;
 

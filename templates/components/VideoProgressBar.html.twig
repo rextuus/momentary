@@ -14,6 +14,7 @@
             {% elseif video.status.value == 'scene_detection' %}{% set est = video.estimatedSceneDetectionDuration %}
             {% elseif video.status.value == 'splitting' %}{% set est = video.estimatedFrameExtractionDuration %}
             {% elseif video.status.value == 'analyzing_faces' %}{% set est = video.estimatedFaceAnalysisDuration %}
+            {% elseif video.status.value == 'tagging_scenes' %}
             {% endif %}
 
             {% if est %}

@@ -64,8 +64,12 @@
                      data-bs-caption="Sichtung in {{ displayFace.video.title }}"
                      {% endif %}>
                     {% if displayFace %}
-                        <div class="position-absolute top-0 left-0 w-100 h-100" style="{{ face_zoom_style(imgproxy_url(displayFace.faceImagePath), displayFace.boundingBox, 0.2) }}"></div>
-                        <div class="position-absolute border border-danger border-3" style="{{ displayFace.boundingBoxStyles|raw }}; pointer-events: none;"></div>
+                        <div class="position-relative w-100 h-100">
+                             <img src="{{ imgproxy_url(displayFace.faceImagePath, 800, 600, 'fit') }}"
+                                 class="img-fluid"
+                                 style="width: 100%; height: 100%; object-fit: contain;">
+                            <div class="position-absolute border border-danger border-3" style="{{ displayFace.boundingBoxStyles|raw }}; pointer-events: none;"></div>
+                        </div>
                     {% else %}
                         <div class="d-flex align-items-center justify-content-center h-100 text-white opacity-50">
                             <i class="fas fa-user-slash fa-5x"></i>

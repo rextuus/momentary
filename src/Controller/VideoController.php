@@ -13,7 +13,6 @@ use App\Message\OptimizeVideoForJellyfinMessage;
 use App\Message\SplitVideoIntoFramesMessage;
 use App\Repository\VideoRepository;
 use App\Service\WorkflowMachine;
-use App\Service\Video\VideoFaceMap;
 use App\Service\VideoAnalyzer;
 use App\Enum\VideoStatus;
 use Doctrine\ORM\EntityManagerInterface;
@@ -283,22 +282,14 @@ final class VideoController extends AbstractController
     #[Route('/{id}/timeline', name: 'video_timeline', methods: ['GET'])]
     public function timeline(int $id): Response // Wir nehmen die ID statt des Objekts
     {
-        $video = $this->videoRepository->findFullVideo($id);
+        $video = $this->videoRepository->find($id);
 
         if (!$video) {
             throw $this->createNotFoundException('Video nicht gefunden');
         }
 
-        // Die Map brauchen wir nur noch, wenn du sie für andere Logik nutzt.
-        // Für die Szenen-Darstellung filtern wir direkt im Video-Objekt.
-        $map = new VideoFaceMap();
-        foreach ($video->getVideoFaces() as $videoFace) {
-            $map->addFace($videoFace);
-        }
-
         return $this->render('video/timeline.html.twig', [
             'video' => $video,
-            'map' => $map,
         ]);
     }
 

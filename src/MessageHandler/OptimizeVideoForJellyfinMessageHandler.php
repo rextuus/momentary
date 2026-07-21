@@ -79,10 +79,15 @@ class OptimizeVideoForJellyfinMessageHandler
         // For now, let's always optimize if requested, or skip if already mp4
         if (str_ends_with(strtolower($sourcePath), '.mp4')) {
             $this->logger->info("Video $videoId is already MP4, skipping optimization.");
-            if ($this->workflowMachine->can($video, 'complete')) {
+            
+            if ($this->workflowMachine->can($video, 'start_tagging')) {
+                $this->workflowMachine->apply($video, 'start_tagging');
+                $this->messageBus->dispatch(new \App\Message\TagScenesMessage($videoId));
+            } elseif ($this->workflowMachine->can($video, 'complete')) {
                 $this->workflowMachine->apply($video, 'complete');
+                $this->messageBus->dispatch(new ExportVideoToJellyfinMessage($videoId));
             }
-            $this->messageBus->dispatch(new ExportVideoToJellyfinMessage($videoId));
+            
             return;
         }
 
@@ -137,14 +142,15 @@ class OptimizeVideoForJellyfinMessageHandler
             
             $this->processingService->finishStep($video, \App\Enum\VideoStatus::OPTIMIZING);
             
-            if ($this->workflowMachine->can($video, 'complete')) {
+            if ($this->workflowMachine->can($video, 'start_tagging')) {
+                $this->workflowMachine->apply($video, 'start_tagging');
+                $this->messageBus->dispatch(new \App\Message\TagScenesMessage($videoId));
+            } elseif ($this->workflowMachine->can($video, 'complete')) {
                 $this->workflowMachine->apply($video, 'complete');
+                $this->messageBus->dispatch(new ExportVideoToJellyfinMessage($videoId));
             }
             
             $this->entityManager->flush();
-
-            // Now trigger the actual export
-            $this->messageBus->dispatch(new ExportVideoToJellyfinMessage($videoId));
 
             // Optionally, we could delete the intermediate MP4 file if we wanted to keep the original only,
             // but since we updated localPath to it, we should keep it.
