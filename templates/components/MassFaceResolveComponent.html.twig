@@ -1,0 +1,39 @@
+<div {{ attributes }}>
+    {% set person = this.person %}
+    
+    <div class="container mt-4">
+        <h3>Massen-Identifizierung für {{ person.name }}</h3>
+        <p class="text-muted">Klicke auf Gesichter, die <strong>nicht</strong> zu dieser Person gehören (sie werden grau). Klicke anschließend auf "Weiter", um die Verifizierung abzuschließen.</p>
+
+        <div class="row g-2">
+            {% for face in this.unverifiedFaces %}
+                {% set isSelected = face.id in selectedForRemoval %}
+                <div class="col-6 col-md-4 col-lg-3">
+                    <button type="button" class="card h-100 border-2 {{ isSelected ? 'border-danger' : 'border-success' }} shadow-sm overflow-hidden position-relative appearance-card bg-black w-100 p-0 text-start" 
+                         style="cursor: pointer; {{ isSelected ? 'filter: grayscale(1); opacity: 0.6;' : '' }}"
+                         data-action="live#action"
+                         data-live-action-param="toggleSelection"
+                         data-live-face-id-param="{{ face.id }}">
+                        
+                        <div class="position-relative d-inline-block w-100">
+                            <img src="{{ imgproxy_url(face.faceImagePath, 800, 600, 'fit') }}"
+                                 class="img-fluid"
+                                 style="width: 100%;">
+                            {% if face.boundingBox %}
+                                <div class="position-absolute border border-danger border-2" style="{{ face.boundingBoxStyles|raw }}; box-sizing: border-box; pointer-events: none;"></div>
+                            {% endif %}
+                        </div>
+                    </button>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="mt-4">
+            <button class="btn btn-primary btn-lg"
+                    data-action="live#action"
+                    data-live-action-param="submit">
+                Weiter
+            </button>
+        </div>
+    </div>
+</div>

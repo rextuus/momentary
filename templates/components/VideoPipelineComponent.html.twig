@@ -1,0 +1,145 @@
+<div {{ attributes }} {% if this.isProcessing %}data-poll="delay(1000)|$render"{% endif %}>
+    {% set video = this.video %}
+    {% set stepMetadata = {
+        'converting': {'name': 'Konvertierung', 'icon': 'sync', 'trigger': 'convert'},
+        'scene_detection': {'name': 'Szenenerkennung', 'icon': 'cut', 'trigger': 'scenes'},
+        'extracting_thumbnails': {'name': 'Szenen-Thumbnails', 'icon': 'images', 'trigger': 'thumbnails'},
+        'splitting': {'name': 'Frame Extraktion', 'icon': 'film', 'trigger': 'split'},
+        'analyzing_faces': {'name': 'Gesichtsanalyse', 'icon': 'users', 'trigger': null},
+        'refining_extraction': {'name': 'Verfeinerung: Extraktion', 'icon': 'search-plus', 'trigger': 'refine'},
+        'refining_analysis': {'name': 'Verfeinerung: Analyse', 'icon': 'microscope', 'trigger': null},
+        'merging_scenes': {'name': 'Szenen Zusammenführen', 'icon': 'object-group', 'trigger': null},
+        'tagging_scenes': {'name': 'Szenen Tagging', 'icon': 'tags', 'trigger': null},
+        'optimizing': {'name': 'Upload zu Jellyfin', 'icon': 'upload', 'trigger': 'optimize'}
+    } %}
+    {% set statusOrder = [
+        'converting',
+        'scene_detection',
+        'extracting_thumbnails',
+        'splitting',
+        'analyzing_faces',
+        'refining_extraction',
+        'refining_analysis',
+        'merging_scenes',
+        'tagging_scenes',
+        'optimizing'
+    ] %}
+
+    <div class="list-group list-group-flush">
+        {% set spinnerShown = false %}
+        {% set foundActiveStep = false %}
+
+        {% set videoStatusIndex = -1 %}
+        {% for i, statusInOrder in statusOrder %}
+            {% if statusInOrder == video.status.value %}
+                {% set videoStatusIndex = i %}
+            {% endif %}
+        {% endfor %}
+
+        {% for statusName in statusOrder %}
+            {% set metadata = stepMetadata[statusName] %}
+            {% set stepEntity = null %}
+            {% for step in video.processingSteps %}
+                {% if step.step.value == statusName %}
+                    {% set stepEntity = step %}
+                {% endif %}
+            {% endfor %}
+
+            {% set stepStatus = 'pending' %}
+            {% set currentStatusIndex = loop.index0 %}
+            {% if stepEntity %}
+                {% if stepEntity.errorMessage %}
+                    {% set stepStatus = 'error' %}
+                {% elseif stepEntity.finishedAt or video.status.value == 'completed' or (videoStatusIndex != -1 and videoStatusIndex > currentStatusIndex) %}
+                    {% set stepStatus = 'done' %}
+                {% else %}
+                    {% set stepStatus = 'active' %}
+                    {% set foundActiveStep = true %}
+                {% endif %}
+            {% elseif (videoStatusIndex != -1 and videoStatusIndex > currentStatusIndex) or video.status.value == 'completed' %}
+                {% set stepStatus = 'done' %}
+            {% elseif video.status.value == statusName and not foundActiveStep %}
+                {% set stepStatus = 'active' %}
+                {% set foundActiveStep = true %}
+            {% endif %}
+
+            <div class="list-group-item p-4 d-flex align-items-center justify-content-between {% if stepStatus == 'active' %}bg-primary bg-opacity-10{% endif %}">
+                <div class="d-flex align-items-center flex-grow-1">
+                    <div class="me-4 d-flex align-items-center justify-content-center rounded-circle 
+                        {% if stepStatus == 'done' %}bg-success text-white
+                        {% elseif stepStatus == 'active' %}bg-primary text-white
+                        {% elseif stepStatus == 'error' %}bg-danger text-white
+                        {% else %}bg-light text-muted{% endif %}" 
+                        style="width: 48px; height: 48px;">
+                        {% if stepStatus == 'done' %}
+                            <i class="fas fa-check fa-lg"></i>
+                        {% elseif stepStatus == 'error' %}
+                            <i class="fas fa-exclamation-triangle"></i>
+                        {% else %}
+                            <i class="fas fa-{{ metadata.icon }}"></i>
+                        {% endif %}
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="fw-bold mb-1">{{ metadata.name }}</h6>
+                                <p class="small text-muted mb-0">
+                                    {% if stepEntity %}
+                                        {% if stepEntity.startedAt %}
+                                            Gestartet: {{ stepEntity.startedAt|date('H:i:s') }}
+                                        {% endif %}
+                                        {% if stepEntity.finishedAt %}
+                                            | Abgeschlossen: {{ stepEntity.finishedAt|date('H:i:s') }}
+                                            {% if stepEntity.startedAt %} 
+                                                (Dauer: {{ stepEntity.finishedAt.timestamp - stepEntity.startedAt.timestamp }}s)
+                                            {% endif %}
+                                        {% endif %}
+                                        
+                                        {% if stepStatus == 'error' %}
+                                            <br><span class="text-danger">Fehler: {{ stepEntity.errorMessage }}</span>
+                                        {% elseif stepStatus == 'active' and not stepEntity.startedAt %}
+                                            In Bearbeitung...
+                                        {% endif %}
+                                        
+                                        {% if stepStatus == 'active' %}
+                                            {% set progress = this.getEstimatedProgress(statusName) %}
+                                            {% if progress > 0 %}
+                                                <div class="progress mt-2" style="height: 5px;">
+                                                    <div class="progress-bar" role="progressbar" style="width: {{ progress }}%;" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                                </div>
+                                                {% if progress >= 90 %}
+                                                    <p class="small text-warning mt-1 mb-0">Dauert länger als erwartet...</p>
+                                                {% endif %}
+                                            {% endif %}
+                                        {% endif %}
+                                    {% else %}
+                                        {% if stepStatus == 'active' %}
+                                            In Bearbeitung...
+                                        {% elseif stepStatus == 'done' %}
+                                            Gestartet: {{ video.createdAt|date('H:i:s') }} | Abgeschlossen: {{ video.createdAt|date('H:i:s') }} (Dauer: 0s)
+                                        {% else %}
+                                            Wartet auf Start
+                                        {% endif %}
+                                    {% endif %}
+                                </p>
+                            </div>
+                            {% if metadata.trigger and video.localPath and stepStatus == 'error' %}
+                                <a href="{{ path('app_video_trigger', {id: video.id, step: metadata.trigger}) }}" 
+                                   class="btn btn-xs btn-outline-secondary rounded-pill" 
+                                   title="Ab hier neu starten">
+                                    <i class="fas fa-redo-alt me-1"></i> Neustart
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% if stepStatus == 'active' and video.status.value != 'completed' and not spinnerShown %}
+                    <div class="spinner-border spinner-border-sm text-primary ms-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    {% set spinnerShown = true %}
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+</div>

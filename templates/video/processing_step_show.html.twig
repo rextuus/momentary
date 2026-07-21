@@ -1,0 +1,18 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+    <h1>Processing Step: {{ step.step.value }}</h1>
+    <p>Video: <a href="{{ path('app_video_show', {'id': step.video.id}) }}">{{ step.video.title }}</a></p>
+    <ul>
+        <li>Created at: {{ step.createdAt|date('Y-m-d H:i:s') }}</li>
+        <li>Started at: {{ step.startedAt ? step.startedAt|date('Y-m-d H:i:s') : 'N/A' }}</li>
+        <li>Processed at: {{ step.processedAt ? step.processedAt|date('Y-m-d H:i:s') : 'N/A' }}</li>
+        <li>Finished at: {{ step.finishedAt ? step.finishedAt|date('Y-m-d H:i:s') : 'N/A' }}</li>
+    </ul>
+    {% if step.errorMessage %}
+        <div class="alert alert-danger">
+            <strong>Error:</strong> {{ step.errorMessage }}
+        </div>
+    {% endif %}
+    <a href="{{ path('app_video_show', {'id': step.video.id}) }}">Back to video</a>
+{% endblock %}

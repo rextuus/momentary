@@ -1,0 +1,22 @@
+{% for scene in this.getScenes %}
+    {{ component('SceneSectionComponent', {
+        scene: scene,
+        sceneNumber: loop.index
+    }) }}
+{% else %}
+    <div class="card p-5 text-center">
+        <i class="fas fa-ghost fa-3x text-muted mb-3"></i>
+        <p class="text-muted mb-0">Keine Szenen für dieses Video definiert.</p>
+    </div>
+{% endfor %}
+
+{% if this.getScenes|length > 0 %}
+<div class="text-center mt-3">
+    <button type="button" 
+            class="btn btn-primary" 
+            data-action="live#action"
+            data-action-name="loadMore">
+        Mehr laden
+    </button>
+</div>
+{% endif %}
