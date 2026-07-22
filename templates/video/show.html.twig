@@ -280,28 +280,43 @@
                     }
                 });
 
-                // Check if video is playable, otherwise try switching to HLS
+                // Jump to a timestamp passed via the ?t= URL parameter
                 player.ready(function() {
                     console.log('Video.js Player is ready');
-                    
-                    const checkAndJump = function() {
-                        const urlParams = new URLSearchParams(window.location.search);
-                        const startTime = urlParams.get('t');
-                        if (startTime) {
-                            const time = parseFloat(startTime);
-                            if (!isNaN(time)) {
+
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const startTime = urlParams.get('t');
+
+                    if (startTime !== null) {
+                        const time = parseFloat(startTime);
+                        if (!isNaN(time)) {
+                            let hasJumped = false;
+
+                            const jumpToTime = function() {
+                                if (hasJumped) {
+                                    return;
+                                }
+                                hasJumped = true;
                                 console.log('Jumping to time from URL:', time);
                                 player.currentTime(time);
-                                player.play();
+                                // Mute to satisfy browser autoplay policies, then start playback
+                                player.muted(true);
+                                const playPromise = player.play();
+                                if (playPromise && typeof playPromise.catch === 'function') {
+                                    playPromise.catch(e => console.error('Play failed:', e));
+                                }
+                            };
+
+                            // The media must be seekable before we can jump. "canplay" (or a
+                            // fully loaded readyState) guarantees this for both MP4 and HLS.
+                            if (player.readyState() >= 1) {
+                                jumpToTime();
+                            } else {
+                                player.one('loadedmetadata', jumpToTime);
+                                player.one('canplay', jumpToTime);
                             }
                         }
-                    };
-
-                    // Try immediately
-                    checkAndJump();
-
-                    // Also try on loadedmetadata as it's more reliable for some browsers
-                    player.on('loadedmetadata', checkAndJump);
+                    }
                 });
 
                 // Jump to time functionality

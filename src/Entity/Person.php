@@ -395,12 +395,23 @@ class Person
     }
 
     #[Groups(['person:list', 'person:detail'])]
-    public function getProfileImageUrl(): ?string
+    public function getProfileFaceObject(): ?VideoFace
     {
-        if (!$this->profileFace) {
-            return null;
+        if ($this->profileFace) {
+            return $this->profileFace;
         }
 
-        return $this->profileFace->getFaceImagePath();
+        if (!$this->videoFaces->isEmpty()) {
+            return $this->videoFaces->first();
+        }
+
+        return null;
+    }
+
+    #[Groups(['person:list', 'person:detail'])]
+    public function getProfileImageUrl(): ?string
+    {
+        $face = $this->getProfileFaceObject();
+        return $face ? $face->getFaceImagePath() : null;
     }
 }

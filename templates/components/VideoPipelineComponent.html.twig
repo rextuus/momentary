@@ -9,7 +9,8 @@
         'refining_extraction': {'name': 'Verfeinerung: Extraktion', 'icon': 'search-plus', 'trigger': 'refine'},
         'refining_analysis': {'name': 'Verfeinerung: Analyse', 'icon': 'microscope', 'trigger': null},
         'merging_scenes': {'name': 'Szenen Zusammenführen', 'icon': 'object-group', 'trigger': null},
-        'tagging_scenes': {'name': 'Szenen Tagging', 'icon': 'tags', 'trigger': null},
+        'tagging_scenes': {'name': 'Szenen Tagging', 'icon': 'tags', 'trigger': 'tagging'},
+        'chapter_generation': {'name': 'Kapitelgenerierung', 'icon': 'bookmark', 'trigger': 'chapters'},
         'optimizing': {'name': 'Upload zu Jellyfin', 'icon': 'upload', 'trigger': 'optimize'}
     } %}
     {% set statusOrder = [
@@ -22,6 +23,7 @@
         'refining_analysis',
         'merging_scenes',
         'tagging_scenes',
+        'chapter_generation',
         'optimizing'
     ] %}
 
@@ -123,7 +125,7 @@
                                     {% endif %}
                                 </p>
                             </div>
-                            {% if metadata.trigger and video.localPath and stepStatus == 'error' %}
+                            {% if metadata.trigger and video.localPath and (stepStatus == 'error' or stepStatus == 'done') %}
                                 <a href="{{ path('app_video_trigger', {id: video.id, step: metadata.trigger}) }}" 
                                    class="btn btn-xs btn-outline-secondary rounded-pill" 
                                    title="Ab hier neu starten">

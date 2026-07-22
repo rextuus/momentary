@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Entity\VideoChapter;
 use App\Entity\Video;
 use App\Entity\VideoProcessingStep;
 use App\Form\VideoType;
@@ -9,8 +10,8 @@ use App\Message\ConvertVideoMessage;
 use App\Message\DetectVideoScenesMessage;
 use App\Message\ExtractThumbnailMessage;
 use App\Message\ExtractAllSceneThumbnailsMessage;
-use App\Message\OptimizeVideoForJellyfinMessage;
-use App\Message\SplitVideoIntoFramesMessage;
+use App\Message\TagScenesMessage;
+use App\Message\GenerateChaptersMessage;
 use App\Repository\VideoRepository;
 use App\Service\WorkflowMachine;
 use App\Service\VideoAnalyzer;
@@ -218,6 +219,8 @@ final class VideoController extends AbstractController
                     $videoAnalyzer->clearSteps($video),
                     $this->triggerFirstStep($video, $workflowMachine)
                 ],
+                'tagging'   => $this->triggerTagging($video, $workflowMachine),
+                'chapters'  => $this->triggerChapters($video, $workflowMachine),
                 'delete'   => $videoAnalyzer->cleanupLocalFile($video->getId()),
                 default    => throw new \InvalidArgumentException("Ungültiger Schritt: $step"),
             };
@@ -234,6 +237,27 @@ final class VideoController extends AbstractController
         }
 
         return $this->redirectToRoute('app_video_show', ['id' => $video->getId()]);
+    }
+
+    private function triggerTagging(Video $video, WorkflowMachine $workflowMachine): void
+    {
+        $this->ensureStepAccessible($video, 'start_tagging', $workflowMachine);
+        foreach ($video->getScenes() as $scene) {
+            foreach ($scene->getTags() as $tag) {
+                $scene->removeTag($tag);
+            }
+        }
+        $this->messageBus->dispatch(new TagScenesMessage($video->getId()));
+    }
+
+    private function triggerChapters(Video $video, WorkflowMachine $workflowMachine): void
+    {
+        $this->ensureStepAccessible($video, 'start_chapter_generation', $workflowMachine);
+        foreach ($video->getChapters() as $chapter) {
+            $video->removeChapter($chapter);
+            $this->entityManager->remove($chapter);
+        }
+        $this->messageBus->dispatch(new GenerateChaptersMessage($video->getId()));
     }
 
     private function triggerFirstStep(Video $video, WorkflowMachine $workflowMachine): void
@@ -320,6 +344,18 @@ final class VideoController extends AbstractController
     {
         return $this->render('video/processing_step_show.html.twig', [
             'step' => $processingStep,
+        ]);
+    }
+    #[Route('/chapter/{id}', name: 'app_chapter_show', methods: ['GET'])]
+    public function chapterShow(VideoChapter $chapter): Response
+    {
+        $scenes = $chapter->getVideo()->getScenes()->filter(function(\App\Entity\VideoScene $scene) use ($chapter) {
+            return $scene->getStartSeconds() >= $chapter->getStartSeconds() && $scene->getEndSeconds() <= $chapter->getEndSeconds();
+        });
+
+        return $this->render('video/chapter_show.html.twig', [
+            'chapter' => $chapter,
+            'scenes' => $scenes,
         ]);
     }
 }

@@ -1,8 +1,52 @@
-{% for scene in this.getScenes %}
-    {{ component('SceneSectionComponent', {
-        scene: scene,
-        sceneNumber: loop.index
-    }) }}
+{% for item in this.getItems %}
+    {% if item.type == 'chapter' %}
+        <div class="card mb-3 chapter-card">
+            <div class="card-body">
+                <input type="text" value="{{ item.data.title }}" 
+                       data-action="change->live#action" 
+                       data-action-name="updateChapterTitle(chapterId={{ item.data.id }}, newTitle=this.value)" 
+                       class="form-control mb-2" />
+                <p class="text-muted small mb-2">{{ item.data.startSeconds|number_format(0) }}s - {{ item.data.endSeconds|number_format(0) }}s</p>
+                
+                <div class="d-flex gap-2 mb-2">
+                    <a href="{{ path('app_video_show', {id: this.video.id}) }}?t={{ item.data.startSeconds }}" class="btn btn-sm btn-outline-primary">Video</a>
+                    <a href="{{ path('app_chapter_show', {id: item.data.id}) }}" class="btn btn-sm btn-outline-secondary">Szenen</a>
+                </div>
+
+                {% if item.tags|length > 0 %}
+                <div class="mb-2">
+                    <strong>Tags:</strong>
+                    {% for tag in item.tags %}
+                        <span class="badge bg-secondary">{{ tag.name }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                {% if item.persons|length > 0 %}
+                <div class="mb-2">
+                    <strong>Personen:</strong>
+                    {% for personItem in item.persons %}
+                        {% set person = personItem.person %}
+                        {% set isTop5 = personItem.isTop5 %}
+                        {% set size = isTop5 ? '50px' : '30px' %}
+                        
+                        {% set face = person.profileFaceObject %}
+                        {% if face %}
+                            <img src="{{ display_image(face) }}" alt="{{ person.name }}" title="{{ person.name }}" class="rounded-circle" style="width: {{ size }}; height: {{ size }}; object-fit: cover;">
+                        {% else %}
+                            <span class="badge {{ isTop5 ? 'bg-primary' : 'bg-secondary' }}" title="{{ person.name }}" style="font-size: {{ isTop5 ? '1rem' : '0.8rem' }}">{{ person.name }}</span>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    {% else %}
+        {{ component('SceneSectionComponent', {
+            scene: item.data,
+            sceneNumber: loop.index
+        }) }}
+    {% endif %}
 {% else %}
     <div class="card p-5 text-center">
         <i class="fas fa-ghost fa-3x text-muted mb-3"></i>
@@ -10,7 +54,7 @@
     </div>
 {% endfor %}
 
-{% if this.getScenes|length > 0 %}
+{% if this.getItems|length > 0 and this.video.chapters|length == 0 %}
 <div class="text-center mt-3">
     <button type="button" 
             class="btn btn-primary" 

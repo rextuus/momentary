@@ -26,7 +26,8 @@ class OptimizeVideoForJellyfinMessageHandler
         private readonly WorkflowMachine $workflowMachine,
         private readonly \App\Service\VideoProcessingService $processingService,
         #[Autowire('%kernel.project_dir%')] private readonly string $projectDir,
-        #[Autowire('%env(PYTHON_BINARY)%')] private readonly string $pythonBinary = '/usr/bin/python3'
+        #[Autowire('%env(PYTHON_BINARY)%')] private readonly string $pythonBinary = '/usr/bin/python3',
+        #[Autowire('%env(bool:ENABLE_TAGGING_SCENES)%')] private readonly bool $enableTagging = true
     ) {
     }
 
@@ -80,7 +81,7 @@ class OptimizeVideoForJellyfinMessageHandler
         if (str_ends_with(strtolower($sourcePath), '.mp4')) {
             $this->logger->info("Video $videoId is already MP4, skipping optimization.");
             
-            if ($this->workflowMachine->can($video, 'start_tagging')) {
+            if ($this->enableTagging && $this->workflowMachine->can($video, 'start_tagging')) {
                 $this->workflowMachine->apply($video, 'start_tagging');
                 $this->messageBus->dispatch(new \App\Message\TagScenesMessage($videoId));
             } elseif ($this->workflowMachine->can($video, 'complete')) {
@@ -142,7 +143,7 @@ class OptimizeVideoForJellyfinMessageHandler
             
             $this->processingService->finishStep($video, \App\Enum\VideoStatus::OPTIMIZING);
             
-            if ($this->workflowMachine->can($video, 'start_tagging')) {
+            if ($this->enableTagging && $this->workflowMachine->can($video, 'start_tagging')) {
                 $this->workflowMachine->apply($video, 'start_tagging');
                 $this->messageBus->dispatch(new \App\Message\TagScenesMessage($videoId));
             } elseif ($this->workflowMachine->can($video, 'complete')) {

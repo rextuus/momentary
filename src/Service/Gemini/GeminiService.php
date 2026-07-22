@@ -79,5 +79,32 @@ final class GeminiService
         
         return json_decode(trim($text), true) ?? [];
     }
+
+    public function suggestChapters(array $scenesData): array
+    {
+        $prompt = 'Hier ist eine Übersicht über alle Szenen eines Videos mit ihren zugeordneten Tags/Kategorien: ' . json_encode($scenesData) . '.
+            Bitte schlage basierend auf diesen Informationen sinnvolle Kapitel vor, um das Video zu strukturieren.
+            Jedes Kapitel sollte einen Titel, einen Start-Zeitpunkt, einen End-Zeitpunkt und eine kurze Beschreibung haben.
+            Antworte ausschließlich im JSON-Format, z.B. 
+            [
+                {
+                    "title": "Kapitel 1",
+                    "startSeconds": 0,
+                    "endSeconds": 30,
+                    "description": "Beschreibung"
+                }
+            ]';
+
+        $response = $this->client
+            ->generativeModel(model: 'gemini-3.1-flash-lite')
+            ->generateContent([
+                $prompt
+            ]);
+
+        $text = $response->text();
+        $text = str_replace(['```json', '```'], '', $text);
+        
+        return json_decode(trim($text), true) ?? [];
+    }
 }
 

@@ -19,6 +19,7 @@ Der Workflow ist als **State Machine** (`video_processing`) in Symfony implement
 - **MERGING_SCENES**: Szenen werden wieder zusammengeführt.
 - **OPTIMIZING**: Das Video wird für Jellyfin optimiert.
 - **TAGGING_SCENES**: Szenen werden mit Tags versehen.
+- **CHAPTER_GENERATION**: Kapitel werden generiert.
 - **COMPLETED**: Verarbeitung erfolgreich abgeschlossen.
 - **ERROR**: Ein Fehler ist aufgetreten.
 
@@ -40,7 +41,8 @@ stateDiagram-v2
     
     MERGING_SCENES --> OPTIMIZING : start_optimization
     OPTIMIZING --> TAGGING_SCENES : start_tagging
-    TAGGING_SCENES --> COMPLETED : complete
+    TAGGING_SCENES --> CHAPTER_GENERATION : start_chapter_generation
+    CHAPTER_GENERATION --> COMPLETED : complete
     
     %% Fehlerbehandlung
     PENDING --> ERROR : fail
@@ -53,6 +55,7 @@ stateDiagram-v2
     MERGING_SCENES --> ERROR : fail
     OPTIMIZING --> ERROR : fail
     TAGGING_SCENES --> ERROR : fail
+    CHAPTER_GENERATION --> ERROR : fail
     
     %% Rücksprünge (vereinfacht)
     COMPLETED --> PENDING : reset
