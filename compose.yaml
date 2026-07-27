@@ -108,7 +108,7 @@ services:
     container_name: momentary_rabbitmq
     restart: unless-stopped
     ports:
-      - "${RABBITMQ_HOST_BINDING:-127.0.0.1}:15672:15672"
+      - "${RABBITMQ_HOST_BINDING:-127.0.0.1}:${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     environment:
