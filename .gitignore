@@ -54,3 +54,4 @@ Thumbs.db
 /docker/jellyfin/cache/
 /docker/jellyfin/
 /FrameBilder/
+/.env.prod

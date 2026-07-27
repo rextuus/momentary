@@ -25,7 +25,7 @@
 {% endblock %}
 
 {% block body %}
-<div class="container pb-5">
+<div class="container pb-5" data-controller="video-player">
     <nav aria-label="breadcrumb" class="mb-4">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{{ path('app_video_index') }}">Videos</a></li>
@@ -68,7 +68,7 @@
                         <div class="alert alert-success border-0 shadow-sm p-4 mb-4">
                             <h6 class="fw-bold mb-3"><i class="fas fa-play-circle me-2"></i> Jellyfin Stream (Vorschau)</h6>
                             <div class="bg-black rounded-3 overflow-hidden shadow mb-3">
-                                <video id="jellyfin-player" class="video-js vjs-big-play-centered vjs-16-9" controls preload="auto" data-setup='{"nativeControlsForTouch": false}' style="max-height: 70vh;">
+                                <video id="jellyfin-player" data-video-player-target="player" class="video-js vjs-big-play-centered vjs-16-9" controls preload="auto" data-setup='{"nativeControlsForTouch": false}' style="max-height: 70vh;">
                                     {% if video.jellyfinItemId %}
                                         <source src="{{ jellyfin_host }}/Videos/{{ video.jellyfinItemId }}/stream?static=true&api_key={{ jellyfin_api_key }}" type="video/mp4">
                                         <source src="{{ jellyfin_host }}/Videos/{{ video.jellyfinItemId }}/master.m3u8?api_key={{ jellyfin_api_key }}" type="application/x-mpegURL">
@@ -81,7 +81,7 @@
                                     </p>
                                 </video>
                             </div>
-                            <div id="player-error-message" class="alert alert-warning mt-2 d-none">
+                            <div id="player-error-message" data-video-player-target="errorMessage" class="alert alert-warning mt-2 d-none">
                                 <i class="fas fa-exclamation-circle me-2"></i> Wiedergabe-Fehler: <span class="error-details"></span>
                             </div>
                             <div class="mt-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -105,7 +105,7 @@
                                     <h6 class="fw-bold mb-3 small text-uppercase text-muted"><i class="fas fa-bookmark me-2"></i> Kapitel / Szenen</h6>
                                     <div class="d-flex flex-wrap gap-2">
                                         {% for chapter in video.chapters %}
-                                            <button class="btn btn-sm btn-light border jump-to-time" data-time="{{ chapter.startSeconds }}">
+                                            <button class="btn btn-sm btn-light border" data-action="video-player#jumpTo" data-video-player-time-param="{{ chapter.startSeconds }}">
                                                 <i class="fas fa-step-forward me-1"></i> {{ chapter.title ?: 'Szene ' ~ loop.index }}
                                             </button>
                                         {% endfor %}
@@ -169,8 +169,8 @@
                         </a>
                         <hr>
                         <h6 class="small text-muted fw-bold text-uppercase mb-3">Thumbnail</h6>
-                        <form action="{{ path('video_extract_thumbnail', {id: video.id}) }}" method="post" id="extract-thumbnail-form">
-                            <input type="hidden" name="time" id="thumbnail-time-input">
+                        <form action="{{ path('video_extract_thumbnail', {id: video.id}) }}" method="post" id="extract-thumbnail-form" data-action="submit->video-player#prepareThumbnail">
+                            <input type="hidden" name="time" id="thumbnail-time-input" data-video-player-target="thumbnailInput">
                             <div class="position-relative mb-3 bg-light rounded overflow-hidden shadow-sm" style="aspect-ratio: 16/9;">
                                 {% if video.thumbnailUrl %}
                                     <img src="{{ imgproxy_url(video.thumbnailUrl, 320, 180) }}" alt="Current Thumbnail" class="w-100 h-100 object-fit-cover">
@@ -244,114 +244,8 @@
 
 {% block javascripts %}
     {{ parent() }}
+    {# Video.js wird per CDN geladen und global als window.videojs bereitgestellt.
+       Die Player-Logik ist in den Stimulus-Controller
+       assets/controllers/video_player_controller.js ausgelagert. #}
     <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            if (document.getElementById('jellyfin-player')) {
-                const player = videojs('jellyfin-player', {
-                    aspectRatio: '16:9',
-                    playbackRates: [0.5, 1, 1.5, 2],
-                    controlBar: {
-                        children: [
-                            'playToggle',
-                            'volumePanel',
-                            'currentTimeDisplay',
-                            'timeDivider',
-                            'durationDisplay',
-                            'progressControl',
-                            'liveDisplay',
-                            'remainingTimeDisplay',
-                            'playbackRateMenuButton',
-                            'chaptersButton',
-                            'descriptionsButton',
-                            'subsCapsButton',
-                            'audioTrackButton',
-                            'fullscreenToggle'
-                        ]
-                    }
-                });
-
-                player.on('error', function() {
-                    const error = player.error();
-                    const errorDisplay = document.getElementById('player-error-message');
-                    if (errorDisplay) {
-                        errorDisplay.classList.remove('d-none');
-                        errorDisplay.querySelector('.error-details').textContent = error.message + ' (Code: ' + error.code + ')';
-                    }
-                });
-
-                // Jump to a timestamp passed via the ?t= URL parameter
-                player.ready(function() {
-                    console.log('Video.js Player is ready');
-
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const startTime = urlParams.get('t');
-
-                    if (startTime !== null) {
-                        const time = parseFloat(startTime);
-                        if (!isNaN(time)) {
-                            let hasJumped = false;
-
-                            const jumpToTime = function() {
-                                if (hasJumped) {
-                                    return;
-                                }
-                                hasJumped = true;
-                                console.log('Jumping to time from URL:', time);
-                                player.currentTime(time);
-                                // Mute to satisfy browser autoplay policies, then start playback
-                                player.muted(true);
-                                const playPromise = player.play();
-                                if (playPromise && typeof playPromise.catch === 'function') {
-                                    playPromise.catch(e => console.error('Play failed:', e));
-                                }
-                            };
-
-                            // The media must be seekable before we can jump. "canplay" (or a
-                            // fully loaded readyState) guarantees this for both MP4 and HLS.
-                            if (player.readyState() >= 1) {
-                                jumpToTime();
-                            } else {
-                                player.one('loadedmetadata', jumpToTime);
-                                player.one('canplay', jumpToTime);
-                            }
-                        }
-                    }
-                });
-
-                // Jump to time functionality
-                document.querySelectorAll('.jump-to-time').forEach(button => {
-                    button.addEventListener('click', function() {
-                        const time = parseFloat(this.getAttribute('data-time'));
-                        player.currentTime(time);
-                        player.play();
-                        
-                        // Scroll player into view
-                        document.getElementById('jellyfin-player').scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    });
-                });
-
-                // Thumbnail extraction logic
-                const thumbnailForm = document.getElementById('extract-thumbnail-form');
-                const thumbnailInput = document.getElementById('thumbnail-time-input');
-                if (thumbnailForm && thumbnailInput) {
-                    thumbnailForm.addEventListener('submit', function(e) {
-                        if (typeof player !== 'undefined' && player.currentTime) {
-                            // Erhöhe die Zeit minimal um 0.1s, um sicherzustellen, dass ffmpeg ein Frame an dieser Stelle findet
-                            // und nicht das vorherige Keyframe nimmt, falls player.currentTime() exakt auf einer Grenze liegt.
-                            let currentTime = player.currentTime();
-                            if (currentTime > 0) {
-                                currentTime += 0.1;
-                            }
-                            thumbnailInput.value = currentTime;
-                            console.log('Setting thumbnail time from player to:', currentTime);
-                        } else {
-                            console.warn('Player not ready, sending 0.0 for thumbnail time');
-                            thumbnailInput.value = 0;
-                        }
-                    });
-                }
-            }
-        });
-    </script>
 {% endblock %}
