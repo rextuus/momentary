@@ -55,3 +55,4 @@ Thumbs.db
 /docker/jellyfin/
 /FrameBilder/
 /.env.prod
+/.env
