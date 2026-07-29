@@ -147,6 +147,10 @@ class Video
     #[Groups(['video:list', 'video:detail'])]
     private ?string $jellyfinItemId = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['video:list', 'video:detail'])]
+    private ?string $directoryHash = null;
+
     public function __construct()
     {
         $this->videoFaces = new ArrayCollection();
@@ -430,7 +434,17 @@ class Video
     public function setJellyfinItemId(?string $jellyfinItemId): self
     {
         $this->jellyfinItemId = $jellyfinItemId;
+        return $this;
+    }
 
+    public function getDirectoryHash(): ?string
+    {
+        return $this->directoryHash;
+    }
+
+    public function setDirectoryHash(?string $directoryHash): self
+    {
+        $this->directoryHash = $directoryHash;
         return $this;
     }
 

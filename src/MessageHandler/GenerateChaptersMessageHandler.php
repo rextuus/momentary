@@ -9,6 +9,7 @@ use App\Repository\VideoRepository;
 use App\Service\Gemini\GeminiService;
 use App\Service\VideoProcessingService;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -18,7 +19,8 @@ readonly class GenerateChaptersMessageHandler
         private VideoRepository $videoRepository,
         private GeminiService $geminiService,
         private VideoProcessingService $processingService,
-        private EntityManagerInterface $entityManager
+        private EntityManagerInterface $entityManager,
+        private LoggerInterface $logger
     ) {
     }
 
@@ -56,7 +58,9 @@ readonly class GenerateChaptersMessageHandler
 
             $this->entityManager->flush();
             $this->processingService->finishStep($video, VideoStatus::CHAPTER_GENERATION);
+            $this->logger->info("Finished chapter generation for video " . $video->getId());
         } catch (\Exception $e) {
+            $this->logger->error("Error generating chapters: " . $e->getMessage());
             $this->processingService->failStep($video, VideoStatus::CHAPTER_GENERATION, $e->getMessage());
         }
     }

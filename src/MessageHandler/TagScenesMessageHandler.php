@@ -8,6 +8,7 @@ use App\Repository\VideoRepository;
 use App\Service\WorkflowMachine;
 use App\Enum\VideoStatus;
 use App\Service\VideoProcessingService;
+use Symfony\Component\DependencyInjection\Attribute\Target;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -18,7 +19,7 @@ class TagScenesMessageHandler
     public function __construct(
         private readonly VideoRepository $videoRepository,
         private readonly WorkflowMachine $workflowMachine,
-        private readonly LoggerInterface $logger,
+        #[Target('tagging')] private readonly LoggerInterface $logger,
         private readonly MessageBusInterface $messageBus,
         private readonly VideoProcessingService $processingService
     ) {
@@ -40,6 +41,7 @@ class TagScenesMessageHandler
         $this->logger->info("Dispatching " . count($scenes) . " scenes for video " . $video->getId());
         
         foreach ($scenes as $scene) {
+            $this->logger->info("Dispatching AnalyzeSceneMessage for scene " . $scene->getId());
             $this->messageBus->dispatch(new AnalyzeSceneMessage($scene->getId()));
         }
     }

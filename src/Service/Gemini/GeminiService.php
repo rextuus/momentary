@@ -55,11 +55,15 @@ final class GeminiService
     {
         $prompt = 'Analysiere dieses Bild und gib mir eine Liste von Tags zurück, die beschreiben, was auf dem Bild passiert. 
             Gruppiere die Tags in sinnvolle Kategorien.
+            Zusätzlich schlage einen prägnanten Titel für diese Szene vor.
             Antworte ausschließlich im JSON-Format, z.B. 
             {
-                "Personen": ["Kind", "Mann"],
-                "Aktivitäten": ["Sport", "Essen"],
-                "Orte": ["Küche", "Park"]
+                "Titel": "Ein toller Titel",
+                "Tags": {
+                    "Personen": ["Kind", "Mann"],
+                    "Aktivitäten": ["Sport", "Essen"],
+                    "Orte": ["Küche", "Park"]
+                }
             }';
 
         $response = $this->client

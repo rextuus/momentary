@@ -15,8 +15,9 @@ use App\Repository\VideoRepository;
 use App\Service\WorkflowMachine;
 use App\Service\Aws\AmazonRekognitionService;
 use Doctrine\ORM\EntityManagerInterface;
-use League\Flysystem\FilesystemOperator;
 use App\Service\VideoProcessingService;
+use App\Service\VideoFileService;
+use App\Service\ImageFileService;
 use Psr\Log\LoggerInterface;
 use Ramsey\Uuid\Uuid;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -29,10 +30,10 @@ class VideoAnalyzer
 
     public function __construct(
         private MessageBusInterface $bus,
-        private FilesystemOperator $filesystem,
         private EntityManagerInterface $entityManager,
         private VideoRepository $videoRepository,
         private AmazonRekognitionService $rekognitionService,
+        private ImageFileService $imageFileService,
         private LoggerInterface $logger,
         private WorkflowMachine $workflowMachine,
         private VideoProcessingService $processingService,
@@ -45,7 +46,8 @@ class VideoAnalyzer
         #[Autowire('%env(default:app.min_scene_length_for_refinement:MIN_SCENE_LENGTH_FOR_REFINEMENT)%')]
         private float $minSceneLengthForRefinement = 2.0,
         #[Autowire('%env(default:app.refined_frame_analysis_fps:REFINED_FRAME_ANALYSIS_FPS)%')]
-        private float $refinedFps = 1.0
+        private float $refinedFps = 1.0,
+        private VideoFileService $videoFileService
     ) {
         // Fallback für Docker: Wenn der konfigurierte Python-Pfad nicht existiert,
         // nutzen wir den systemweiten python3 Befehl.
@@ -109,13 +111,14 @@ class VideoAnalyzer
             }
         }
 
-        $thumbnailDir = $this->projectDir . '/public/uploads/thumbnails';
-        if (!is_dir($thumbnailDir)) {
-            mkdir($thumbnailDir, 0777, true);
+        $thumbnailDir = $this->videoFileService->getVideoDirectory($video, 'thumbnails');
+        $absoluteDir = $this->videoFileService->getAbsolutePath($thumbnailDir);
+        if (!is_dir($absoluteDir)) {
+            mkdir($absoluteDir, 0777, true);
         }
 
         $thumbnailName = $customFilename ?? sprintf('video_%d.jpg', $video->getId());
-        $thumbnailPath = $thumbnailDir . '/' . $thumbnailName;
+        $thumbnailPath = $absoluteDir . '/' . $thumbnailName;
 
         $this->logger->info(sprintf('Thumbnail will be saved to: %s', $thumbnailPath));
 
@@ -152,7 +155,7 @@ class VideoAnalyzer
             return null;
         }
 
-        $relativeThumbnailPath = 'uploads/thumbnails/' . $thumbnailName;
+        $relativeThumbnailPath = $thumbnailDir . '/' . $thumbnailName;
         
         // Cache-Buster hinzufügen, um Browser-Caching zu umgehen
         $relativeThumbnailPath .= '?t=' . time();
@@ -452,8 +455,12 @@ class VideoAnalyzer
         $fps ??= $video?->getAnalysisFps() ?? $this->defaultFps;
 
         // Eindeutiges Verzeichnis für diese Extraktion (Video ID + Zeitstempel/Zufall)
-        $frameDirName = sprintf('frames_%d_%s', $videoId, uniqid());
-        $frameDirPath = sys_get_temp_dir() . '/' . $frameDirName;
+        $dir = $this->videoFileService->getVideoDirectory($video, 'frames');
+        $absoluteDir = $this->videoFileService->getAbsolutePath($dir);
+        if (!is_dir($absoluteDir)) {
+            mkdir($absoluteDir, 0777, true);
+        }
+        $frameDirPath = $absoluteDir . '/' . uniqid();
 
         try {
             $command = [
@@ -662,10 +669,10 @@ class VideoAnalyzer
                 }
                 $imageContent = file_get_contents($framePath);
                 $uuid = Uuid::uuid4()->toString();
-                // Wir speichern im Root des faces.storage, was public/uploads/faces entspricht.
-                // Innerhalb dieses Storages legen wir den Unterordner video_faces an.
-                $storagePath = "video_faces/{$uuid}.jpg";
-                $this->filesystem->write($storagePath, $imageContent);
+                // Speichern im Video-spezifischen Ordner
+                $dir = $this->videoFileService->getVideoDirectory($video, 'faces');
+                $storagePath = $dir . "/{$uuid}.jpg";
+                $this->imageFileService->getFilesystem()->write($storagePath, $imageContent);
 
                 foreach ($allFacesData as $faceData) {
                     $this->saveFaceData($video, $faceData, $timestamp, $storagePath, $currentScene);
