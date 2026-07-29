@@ -10,7 +10,6 @@ use App\Message\ConvertVideoMessage;
 use App\Message\DetectVideoScenesMessage;
 use App\Message\ExtractThumbnailMessage;
 use App\Message\ExtractAllSceneThumbnailsMessage;
-use App\Message\OptimizeVideoForJellyfinMessage;
 use App\Message\SplitVideoIntoFramesMessage;
 use App\Message\TagScenesMessage;
 use App\Message\GenerateChaptersMessage;
@@ -138,10 +137,6 @@ final class VideoController extends AbstractController
                 'convert'  => [
                     $this->ensureStepAccessible($video, 'start_conversion', $workflowMachine),
                     $this->messageBus->dispatch(new ConvertVideoMessage($video->getId()))
-                ],
-                'optimize' => [
-                    $this->ensureStepAccessible($video, 'start_optimization', $workflowMachine),
-                    $this->messageBus->dispatch(new OptimizeVideoForJellyfinMessage($video->getId()))
                 ],
                 'scenes'   => [
                     $this->ensureStepAccessible($video, 'start_scene_detection', $workflowMachine),

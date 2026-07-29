@@ -104,21 +104,6 @@
                                 </div>
                             {% endif %}
 
-                            {% if video.processingSteps|length > 0 %}
-                                <div class="mt-4">
-                                    <h6 class="fw-bold mb-3 small text-uppercase text-muted"><i class="fas fa-tasks me-2"></i> Verarbeitungsschritte</h6>
-                                    <div class="list-group">
-                                        {% for step in video.processingSteps %}
-                                            <a href="{{ path('app_video_processing_step_show', {'id': step.id}) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                                                {{ step.step.value }}
-                                                <span class="badge {{ step.finishedAt ? 'bg-success' : (step.errorMessage ? 'bg-danger' : 'bg-warning') }} rounded-pill">
-                                                    {{ step.finishedAt ? 'Fertig' : (step.errorMessage ? 'Fehler' : 'In Bearbeitung') }}
-                                                </span>
-                                            </a>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                            {% endif %}
                         </div>
                     {% endif %}
 
@@ -138,14 +123,29 @@
                 </div>
             </div>
 
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-transparent border-bottom p-4">
-                    <h5 class="fw-bold mb-0">Pipeline Schritte</h5>
-                </div>
-                <div class="card-body p-0">
-                    {{ component('VideoPipelineComponent', { video: video }) }}
-                </div>
-            </div>
+                            <div class="card shadow-sm border-0">
+                                <div class="card-header bg-transparent border-bottom p-4">
+                                    <h5 class="fw-bold mb-0">Pipeline Schritte</h5>
+                                </div>
+                                <div class="card-body p-0">
+                                    {{ component('VideoPipelineComponent', { video: video }) }}
+                                </div>
+                                {% if video.processingSteps|length > 0 %}
+                                    <div class="card-footer bg-transparent p-4">
+                                        <h6 class="fw-bold mb-3 small text-uppercase text-muted"><i class="fas fa-tasks me-2"></i> Details</h6>
+                                        <div class="list-group">
+                                            {% for step in video.processingSteps %}
+                                                <a href="{{ path('app_video_processing_step_show', {'id': step.id}) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                                    {{ step.step.value }}
+                                                    <span class="badge {{ step.finishedAt ? 'bg-success' : (step.errorMessage ? 'bg-danger' : 'bg-warning') }} rounded-pill">
+                                                        {{ step.finishedAt ? 'Fertig' : (step.errorMessage ? 'Fehler' : 'In Bearbeitung') }}
+                                                    </span>
+                                                </a>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
         </div>
 
         <div class="col-lg-4">

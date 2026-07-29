@@ -1,0 +1,21 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ chapter.title }}{% endblock %}
+
+{% block body %}
+    <div class="container-fluid">
+        <h1>{{ chapter.title }}</h1>
+        <p class="text-muted">{{ chapter.startSeconds|number_format(0) }}s - {{ chapter.endSeconds|number_format(0) }}s</p>
+        
+        <div class="scenes-list">
+            {% for scene in scenes %}
+                <div class="mb-3">
+                    {{ component('SceneSectionComponent', {
+                        scene: scene,
+                        sceneNumber: loop.index
+                    }) }}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}

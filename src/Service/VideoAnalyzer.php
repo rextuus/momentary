@@ -11,7 +11,6 @@ use App\Entity\VideoScene;
 use App\Enum\VideoStatus;
 use App\Message\ExtractSceneThumbnailMessage;
 use App\Message\FrameAnalyzerMessage;
-use App\Message\OptimizeVideoForJellyfinMessage;
 use App\Repository\VideoRepository;
 use App\Service\WorkflowMachine;
 use App\Service\Aws\AmazonRekognitionService;
@@ -795,8 +794,9 @@ class VideoAnalyzer
         $this->logger->info('Merging empty scenes', ['videoId' => $video->getId()]);
         $scenes = $video->getScenes();
         if ($scenes->isEmpty()) {
-            fwrite(STDOUT, "[mergeEmptyScenes] Keine Szenen für Video {$video->getId()} – dispatche OptimizeVideoForJellyfinMessage." . PHP_EOL);
-            $this->bus->dispatch(new OptimizeVideoForJellyfinMessage($video->getId()));
+            fwrite(STDOUT, "[mergeEmptyScenes] Keine Szenen für Video {$video->getId()} – dispatche TagScenesMessage." . PHP_EOL);
+            $this->processingService->finishStep($video, VideoStatus::MERGING_SCENES);
+            $this->bus->dispatch(new \App\Message\TagScenesMessage($video->getId()));
             return;
         }
 
@@ -870,8 +870,9 @@ class VideoAnalyzer
         }
         $this->entityManager->flush();
 
-        fwrite(STDOUT, "[mergeEmptyScenes] Szenen gemergt für Video {$video->getId()} – dispatche OptimizeVideoForJellyfinMessage." . PHP_EOL);
-        $this->bus->dispatch(new OptimizeVideoForJellyfinMessage($video->getId()));
+        $this->processingService->finishStep($video, VideoStatus::MERGING_SCENES);
+        fwrite(STDOUT, "[mergeEmptyScenes] Szenen gemergt für Video {$video->getId()} – dispatche TagScenesMessage." . PHP_EOL);
+        $this->bus->dispatch(new \App\Message\TagScenesMessage($video->getId()));
     }
 
     public function refineSceneAnalysis(Video $video): bool

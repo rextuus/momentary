@@ -56,3 +56,4 @@ Thumbs.db
 /FrameBilder/
 /.env.prod
 /.env
+/docker/meilisearch/

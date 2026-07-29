@@ -1,0 +1,7 @@
+<div class="row row-cols-auto g-2">
+    {% for videoFace in faces %}
+        <div class="col">
+            {{ component('FaceCardComponent', { videoFace: videoFace }) }}
+        </div>
+    {% endfor %}
+</div>

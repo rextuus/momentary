@@ -25,7 +25,6 @@ framework:
             App\Message\FrameAnalyzerMessage: async
             App\Message\SplitVideoIntoFramesMessage: async
             App\Message\DetectVideoScenesMessage: async
-            App\Message\OptimizeVideoForJellyfinMessage: async
             App\Message\ExportVideoToJellyfinMessage: async
             App\Message\ExtractThumbnailMessage: async
             App\Message\ExtractSceneThumbnailMessage: async

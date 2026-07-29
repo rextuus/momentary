@@ -42,141 +42,141 @@
 
                     {# TAGS ANZEIGE #}
                     <div class="mt-2">
-                        {% for tag in scene.tags %}
-                            <span class="badge rounded-pill border text-dark me-1" 
-                                  style="background-color: {{ tag.category.color }}33; border-color: {{ tag.category.color }} !important; font-size: 0.7rem;"
-                                  title="Kategorie: {{ tag.category.name }}">
-                                {{ tag.name }}
-                            </span>
+                        {% for category in this.categories %}
+                            {% set categoryTags = [] %}
+                            {% for tag in category.tags %}
+                                {% if scene.tags.contains(tag) %}
+                                    {% set categoryTags = categoryTags|merge([tag]) %}
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if categoryTags|length > 0 %}
+                                <div class="d-flex flex-wrap align-items-center mb-1">
+                                    <span class="badge me-1" style="background-color: {{ category.color }}; width: 8px; height: 8px; padding: 0;" title="{{ category.name }}"></span>
+                                    <span class="text-muted fw-bold me-2" style="font-size: 0.7rem;">{{ category.name }}:</span>
+                                    {% for tag in categoryTags %}
+                                        <span class="badge rounded-pill border text-dark me-1" 
+                                              style="background-color: {{ category.color }}33; border-color: {{ category.color }} !important; font-size: 0.7rem;"
+                                              title="Kategorie: {{ category.name }}">
+                                            {{ tag.name }}
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
                         {% endfor %}
                     </div>
                 </div>
             </div>
 
             <div class="d-flex align-items-center gap-2">
-                {# TAG ZUWEISUNG #}
-                <div class="dropdown" style="position: static;">
-                    <button class="btn btn-sm btn-outline-info dropdown-toggle py-0 px-2" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                        <i class="fas fa-tags me-1"></i> Tags
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="min-width: 250px; max-height: 400px; overflow-y: auto;">
-                        <li><h6 class="dropdown-header">Szene taggen</h6></li>
-                        {% for category in this.categories %}
+                <div class="btn-group" role="group">
+                    {# TAG ZUWEISUNG #}
+                    <div class="dropdown" style="position: static;">
+                        <button class="btn btn-sm btn-outline-info dropdown-toggle py-0 px-2" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                            <i class="fas fa-tags me-1"></i> Tags
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="min-width: 250px; max-height: 400px; overflow-y: auto;">
+                            <li><h6 class="dropdown-header">Szene taggen</h6></li>
+                            {% for category in this.categories %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><h6 class="dropdown-header d-flex align-items-center">
+                                    <span class="badge me-2" style="background-color: {{ category.color }}; width: 10px; height: 10px; padding: 0;">&nbsp;</span>
+                                    {{ category.name }}
+                                </h6></li>
+                                {% for tag in category.tags %}
+                                    <li>
+                                        <button class="dropdown-item d-flex justify-content-between align-items-center" 
+                                                data-action="live#action" 
+                                                data-live-action-param="toggleTag"
+                                                data-live-tag-id-param="{{ tag.id }}">
+                                            <span>{{ tag.name }}</span>
+                                            {% if scene.tags.contains(tag) %}
+                                                <i class="fas fa-check-circle text-info ms-2"></i>
+                                            {% else %}
+                                                <i class="far fa-circle text-muted ms-2" style="opacity: 0.3;"></i>
+                                            {% endif %}
+                                        </button>
+                                    </li>
+                                {% endfor %}
+                            {% endfor %}
+                            {% if this.categories|length == 0 %}
+                                <li><span class="dropdown-item-text text-muted small italic text-center d-block">Keine Kategorien definiert.</span></li>
+                            {% endif %}
                             <li><hr class="dropdown-divider"></li>
-                            <li><h6 class="dropdown-header d-flex align-items-center">
-                                <span class="badge me-2" style="background-color: {{ category.color }}; width: 10px; height: 10px; padding: 0;">&nbsp;</span>
-                                {{ category.name }}
-                            </h6></li>
-                            {% for tag in category.tags %}
+                            <li>
+                                <a class="dropdown-item small text-center text-primary" href="#tag-manager" onclick="document.getElementById('tag-manager').scrollIntoView({behavior: 'smooth'})">
+                                    <i class="fas fa-cog me-1"></i> Tag-Manager
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    {# KAPITEL ZUWEISUNG #}
+                    <div class="dropdown" style="position: static;">
+                        <button class="btn btn-sm btn-outline-primary dropdown-toggle py-0 px-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-bookmark me-1"></i> Kapitel
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                            <li><h6 class="dropdown-header">Zu Kapitel hinzufügen</h6></li>
+                            {% for c in this.chapters %}
                                 <li>
                                     <button class="dropdown-item d-flex justify-content-between align-items-center" 
                                             data-action="live#action" 
-                                            data-live-action-param="toggleTag"
-                                            data-live-tag-id-param="{{ tag.id }}">
-                                        <span>{{ tag.name }}</span>
-                                        {% if scene.tags.contains(tag) %}
-                                            <i class="fas fa-check-circle text-info ms-2"></i>
-                                        {% else %}
-                                            <i class="far fa-circle text-muted ms-2" style="opacity: 0.3;"></i>
+                                            data-live-action-param="assignToChapter"
+                                            data-live-assign-to-chapter-id-param="{{ c.id }}">
+                                        <span>{{ c.title }}</span>
+                                        {% if chapter and chapter.id == c.id %}
+                                            <i class="fas fa-check text-success ms-2"></i>
                                         {% endif %}
                                     </button>
                                 </li>
                             {% endfor %}
-                        {% endfor %}
-                        {% if this.categories|length == 0 %}
-                            <li><span class="dropdown-item-text text-muted small italic text-center d-block">Keine Kategorien definiert.</span></li>
-                        {% endif %}
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <a class="dropdown-item small text-center text-primary" href="#tag-manager" onclick="document.getElementById('tag-manager').scrollIntoView({behavior: 'smooth'})">
-                                <i class="fas fa-cog me-1"></i> Tag-Manager
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-
-                {# KAPITEL ZUWEISUNG #}
-                <div class="dropdown" style="position: static;">
-                    <button class="btn btn-sm btn-outline-primary dropdown-toggle py-0 px-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-bookmark me-1"></i> Kapitel
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                        <li><h6 class="dropdown-header">Zu Kapitel hinzufügen</h6></li>
-                        {% for c in this.chapters %}
-                            <li>
-                                <button class="dropdown-item d-flex justify-content-between align-items-center" 
-                                        data-action="live#action" 
-                                        data-live-action-param="assignToChapter"
-                                        data-live-assign-to-chapter-id-param="{{ c.id }}">
-                                    <span>{{ c.title }}</span>
-                                    {% if chapter and chapter.id == c.id %}
-                                        <i class="fas fa-check text-success ms-2"></i>
-                                    {% endif %}
-                                </button>
+                            {% if this.chapters|length == 0 %}
+                                <li><span class="dropdown-item-text text-muted small italic">Keine Kapitel vorhanden</span></li>
+                            {% endif %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li class="px-3 py-2">
+                                <div class="input-group input-group-sm mb-1">
+                                    <input type="text" 
+                                           class="form-control" 
+                                           placeholder="Neues Kapitel Name..."
+                                           data-model="newChapterTitle">
+                                    <button class="btn btn-primary" 
+                                            type="button"
+                                            data-action="live#action"
+                                            data-live-action-param="createChapterAndAssignFollowing">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted" style="font-size: 0.65rem;">Erstellt Kapitel ab hier bis Ende</small>
                             </li>
-                        {% endfor %}
-                        {% if this.chapters|length == 0 %}
-                            <li><span class="dropdown-item-text text-muted small italic">Keine Kapitel vorhanden</span></li>
-                        {% endif %}
-                        <li><hr class="dropdown-divider"></li>
-                        <li class="px-3 py-2">
-                            <div class="input-group input-group-sm mb-1">
-                                <input type="text" 
-                                       class="form-control" 
-                                       placeholder="Neues Kapitel Name..."
-                                       data-model="newChapterTitle">
-                                <button class="btn btn-primary" 
-                                        type="button"
-                                        data-action="live#action"
-                                        data-live-action-param="createChapterAndAssignFollowing">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                            </div>
-                            <small class="text-muted" style="font-size: 0.65rem;">Erstellt Kapitel ab hier bis Ende</small>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <a class="dropdown-item small" href="#chapter-manager" onclick="document.getElementById('chapter-manager').scrollIntoView({behavior: 'smooth'})">
-                                <i class="fas fa-tasks me-1"></i> Kapitel-Manager öffnen
-                            </a>
-                        </li>
-                    </ul>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item small" href="#chapter-manager" onclick="document.getElementById('chapter-manager').scrollIntoView({behavior: 'smooth'})">
+                                    <i class="fas fa-tasks me-1"></i> Kapitel-Manager öffnen
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    {# MERGE BACKWARDS BUTTON #}
+                    {% if this.canMergeBackwards %}
+                        <button class="btn btn-sm btn-outline-secondary py-0 px-2"
+                                title="Alle leeren Szenen davor in die letzte Personen-Szene mergen"
+                                data-action="live#action"
+                                data-live-action-param="mergeEmptyBackwards"
+                                onclick="return confirm('Alle leeren Szenen seit der letzten Personen-Szene mit dieser verschmelzen?')">
+                            <i class="fas fa-level-up-alt fa-rotate-270 me-1"></i> Merge Up
+                        </button>
+                    {% endif %}
+
+                    {# VIDEO ANSEHEN BUTTON #}
+                    <a href="{{ path('app_video_show', {id: scene.video.id, t: scene.startSeconds|round(1)}) }}" 
+                       class="btn btn-sm btn-outline-success py-0 px-2"
+                       title="Szene im Video-Player ansehen">
+                        <i class="fas fa-play me-1"></i> Video
+                    </a>
                 </div>
-
-                {# MERGE BACKWARDS BUTTON #}
-                {% if this.canMergeBackwards %}
-                    <button class="btn btn-sm btn-outline-secondary py-0 px-2"
-                            title="Alle leeren Szenen davor in die letzte Personen-Szene mergen"
-                            data-action="live#action"
-                            data-live-action-param="mergeEmptyBackwards"
-                            onclick="return confirm('Alle leeren Szenen seit der letzten Personen-Szene mit dieser verschmelzen?')">
-                        <i class="fas fa-level-up-alt fa-rotate-270 me-1"></i> Merge Up
-                    </button>
-                {% endif %}
-
-                {# MERGE BUTTON #}
-                <button class="btn btn-link text-muted p-1"
-                        title="Mit nächster Szene zusammenfassen"
-                        data-action="live#action"
-                        data-live-action-param="mergeWithNext"
-                        onclick="return confirm('Diese Szene mit der nächsten verschmelzen?')">
-                    <i class="fas fa-object-group"></i>
-                </button>
-
-                {# REFRESH THUMBNAIL BUTTON #}
-                <button class="btn btn-link text-muted p-1"
-                        title="Thumbnail neu generieren"
-                        data-action="live#action"
-                        data-live-action-param="refreshThumbnail">
-                    <i class="fas fa-sync-alt"></i>
-                </button>
-
-                {# VIDEO ANSEHEN BUTTON #}
-                <a href="{{ path('app_video_show', {id: scene.video.id, t: scene.startSeconds|round(1)}) }}" 
-                   class="btn btn-sm btn-outline-success py-0 px-2"
-                   title="Szene im Video-Player ansehen">
-                    <i class="fas fa-play me-1"></i> Video
-                </a>
 
                 <span class="badge rounded-pill {{ this.faces|length > 0 ? 'bg-primary' : 'bg-light text-muted' }} border"
                       data-bs-toggle="collapse"
@@ -191,13 +191,7 @@
         <div class="collapse show" id="scene-collapse-{{ scene.id }}">
             <div class="card-body bg-light border-top p-3">
                 {% if this.faces|length > 0 %}
-                    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-6 g-3">
-                        {% for videoFace in this.faces %}
-                            <div class="col face-item-wrapper">
-                                {{ component('TimelineVideoFaceComponent', { videoFace: videoFace }) }}
-                            </div>
-                        {% endfor %}
-                    </div>
+                    {{ component('SceneFacesGridComponent', { faces: this.faces }) }}
                 {% else %}
                     <div class="text-center py-3">
                         <p class="text-muted small mb-0 italic">Keine Gesichter in dieser Szene.</p>
