@@ -41,6 +41,18 @@ class OptimizeVideoForJellyfinMessageHandler
             return;
         }
 
+        // Guard: Wenn das Video bereits weiter als OPTIMIZING ist, nichts tun (verhindert Re-Dispatch-Bugs)
+        $alreadyPast = match($video->getStatus()) {
+            \App\Enum\VideoStatus::TAGGING_SCENES,
+            \App\Enum\VideoStatus::CHAPTER_GENERATION,
+            \App\Enum\VideoStatus::COMPLETED => true,
+            default => false,
+        };
+        if ($alreadyPast) {
+            fwrite(STDOUT, "[OptimizeVideo] Video $videoId ist bereits in Status " . $video->getStatus()->value . " – ignoriere doppelten Dispatch." . PHP_EOL);
+            return;
+        }
+
         if ($this->workflowMachine->can($video, 'start_optimization')) {
             $this->workflowMachine->apply($video, 'start_optimization');
             $this->processingService->startStep($video, \App\Enum\VideoStatus::OPTIMIZING);
@@ -79,14 +91,20 @@ class OptimizeVideoForJellyfinMessageHandler
         // If it's already an MP4, we can skip optimization or still run it for web-optimizing
         // For now, let's always optimize if requested, or skip if already mp4
         if (str_ends_with(strtolower($sourcePath), '.mp4')) {
+            fwrite(STDOUT, "Video $videoId ist bereits MP4." . PHP_EOL);
             $this->logger->info("Video $videoId is already MP4, skipping optimization.");
             
+            fwrite(STDOUT, "[OptimizeVideo] enableTagging={$this->enableTagging}, can(start_tagging)=" . ($this->workflowMachine->can($video, 'start_tagging') ? 'true' : 'false') . ", status=" . $video->getStatus()->value . PHP_EOL);
             if ($this->enableTagging && $this->workflowMachine->can($video, 'start_tagging')) {
+                fwrite(STDOUT, "[OptimizeVideo] Dispatche TagScenesMessage für Video $videoId." . PHP_EOL);
                 $this->workflowMachine->apply($video, 'start_tagging');
                 $this->messageBus->dispatch(new \App\Message\TagScenesMessage($videoId));
             } elseif ($this->workflowMachine->can($video, 'complete')) {
+                fwrite(STDOUT, "[OptimizeVideo] Tagging deaktiviert oder nicht möglich – dispatche ExportVideoToJellyfinMessage für Video $videoId." . PHP_EOL);
                 $this->workflowMachine->apply($video, 'complete');
                 $this->messageBus->dispatch(new ExportVideoToJellyfinMessage($videoId));
+            } else {
+                fwrite(STDOUT, "[OptimizeVideo] WARNUNG: Weder start_tagging noch complete möglich für Video $videoId (Status: " . $video->getStatus()->value . ")!" . PHP_EOL);
             }
             
             return;
@@ -143,12 +161,17 @@ class OptimizeVideoForJellyfinMessageHandler
             
             $this->processingService->finishStep($video, \App\Enum\VideoStatus::OPTIMIZING);
             
+            fwrite(STDOUT, "[OptimizeVideo] Nach Konvertierung: enableTagging={$this->enableTagging}, can(start_tagging)=" . ($this->workflowMachine->can($video, 'start_tagging') ? 'true' : 'false') . ", status=" . $video->getStatus()->value . PHP_EOL);
             if ($this->enableTagging && $this->workflowMachine->can($video, 'start_tagging')) {
+                fwrite(STDOUT, "[OptimizeVideo] Dispatche TagScenesMessage für Video $videoId (nach Konvertierung)." . PHP_EOL);
                 $this->workflowMachine->apply($video, 'start_tagging');
                 $this->messageBus->dispatch(new \App\Message\TagScenesMessage($videoId));
             } elseif ($this->workflowMachine->can($video, 'complete')) {
+                fwrite(STDOUT, "[OptimizeVideo] Tagging deaktiviert – dispatche ExportVideoToJellyfinMessage für Video $videoId." . PHP_EOL);
                 $this->workflowMachine->apply($video, 'complete');
                 $this->messageBus->dispatch(new ExportVideoToJellyfinMessage($videoId));
+            } else {
+                fwrite(STDOUT, "[OptimizeVideo] WARNUNG: Weder start_tagging noch complete möglich für Video $videoId (Status: " . $video->getStatus()->value . ")!" . PHP_EOL);
             }
             
             $this->entityManager->flush();

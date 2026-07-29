@@ -34,8 +34,8 @@ class ImgproxyService
         // Mapping für lokale Pfade: imgproxy sieht /public als Root (siehe compose.yaml)
         // Die Files liegen physisch unter:
         // - Gesichter: public/uploads/faces/video_faces/ -> Mapping: local:///uploads/faces/video_faces/
-        // - Thumbnails: public/uploads/thumbnails/ -> Mapping: local:///uploads/thumbnails/
         // - Import-Videos: public/uploads/import/ -> Mapping: local:///uploads/import/
+        // - Flysystem-Pfade (z.B. SomeName_hash/thumbnails/...): public/uploads/{path} -> Mapping: local:///uploads/{path}
 
         if (!str_starts_with($pureSourceUrl, 'http://') && !str_starts_with($pureSourceUrl, 'https://') && !str_starts_with($pureSourceUrl, 'local:///')) {
             
@@ -45,8 +45,10 @@ class ImgproxyService
                 $path = 'uploads/faces/' . $path;
             } elseif (str_starts_with($path, 'video_analyze_')) {
                 $path = 'uploads/import/' . $path;
+            } elseif (!str_starts_with($path, 'uploads/')) {
+                // Flysystem-Pfade (z.B. SomeName_hash/thumbnails/...) liegen unter public/uploads/
+                $path = 'uploads/' . $path;
             }
-            // Thumbnails (uploads/thumbnails/...) bleiben wie sie sind
 
             $pureSourceUrl = 'local:///' . $path;
         }

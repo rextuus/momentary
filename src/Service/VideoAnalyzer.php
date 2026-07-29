@@ -11,6 +11,7 @@ use App\Entity\VideoScene;
 use App\Enum\VideoStatus;
 use App\Message\ExtractSceneThumbnailMessage;
 use App\Message\FrameAnalyzerMessage;
+use App\Message\OptimizeVideoForJellyfinMessage;
 use App\Repository\VideoRepository;
 use App\Service\WorkflowMachine;
 use App\Service\Aws\AmazonRekognitionService;
@@ -132,6 +133,7 @@ class VideoAnalyzer
             '-i', $videoPath,
             '-vframes', '1',
             '-q:v', '2',
+            '-pix_fmt', 'yuvj420p',
             $thumbnailPath
         ];
 
@@ -203,6 +205,7 @@ class VideoAnalyzer
         // und Dateien relativ zum Projektroot in "public/..." liegen.
         $pathsToTry = [
             $this->projectDir . '/' . $cleanPath,
+            $this->projectDir . '/public/uploads/' . $cleanPath,
         ];
         
         if (str_starts_with($cleanPath, 'public/')) {
@@ -431,8 +434,10 @@ class VideoAnalyzer
 
         $this->entityManager->flush();
 
-        foreach ($video->getScenes() as $scene) {
-            $this->bus->dispatch(new ExtractSceneThumbnailMessage($scene->getId()));
+        $sceneIds = array_values(array_map(fn($s) => $s->getId(), $video->getScenes()->toArray()));
+        if (!empty($sceneIds)) {
+            $firstId = array_shift($sceneIds);
+            $this->bus->dispatch(new ExtractSceneThumbnailMessage($firstId, $sceneIds));
         }
     }
 
@@ -532,21 +537,31 @@ class VideoAnalyzer
                 $this->entityManager->flush();
             }
 
+            // Chain-Strategie: nur die erste Message dispatchen, alle weiteren als remainingFrames mitgeben
+            $preparedFrames = [];
             foreach ($frameList as $index => $frame) {
                 $timestamp = (int) $frame['timestamp'];
                 if ($startTime !== null) {
                     $timestamp += (int) $startTime;
                 }
+                $preparedFrames[] = [
+                    'path' => $frame['path'],
+                    'timestamp' => $timestamp,
+                    'isLast' => $markLastAsFinal && $index === array_key_last($frameList),
+                ];
+            }
 
-                $this->bus->dispatch(
-                    new FrameAnalyzerMessage(
-                        $videoId,
-                        $frame['path'],
-                        $timestamp,
-                        $markLastAsFinal && $index === array_key_last($frameList), // Letztes Frame markieren
-                        $isRefinement
-                    )
-                );
+            if (!empty($preparedFrames)) {
+                $first = array_shift($preparedFrames);
+                $this->bus->dispatch(new FrameAnalyzerMessage(
+                    $videoId,
+                    $first['path'],
+                    $first['timestamp'],
+                    $first['isLast'],
+                    $isRefinement,
+                    $preparedFrames
+                ));
+                fwrite(STDOUT, "[extractFrames] Starte Frame-Chain für Video $videoId: 1 + " . count($preparedFrames) . " weitere Frames." . PHP_EOL);
             }
 
             if ($isRefinement) {
@@ -780,7 +795,8 @@ class VideoAnalyzer
         $this->logger->info('Merging empty scenes', ['videoId' => $video->getId()]);
         $scenes = $video->getScenes();
         if ($scenes->isEmpty()) {
-            $this->updateStatus($video->getId(), VideoStatus::COMPLETED);
+            fwrite(STDOUT, "[mergeEmptyScenes] Keine Szenen für Video {$video->getId()} – dispatche OptimizeVideoForJellyfinMessage." . PHP_EOL);
+            $this->bus->dispatch(new OptimizeVideoForJellyfinMessage($video->getId()));
             return;
         }
 
@@ -854,7 +870,8 @@ class VideoAnalyzer
         }
         $this->entityManager->flush();
 
-        $this->updateStatus($video->getId(), VideoStatus::COMPLETED);
+        fwrite(STDOUT, "[mergeEmptyScenes] Szenen gemergt für Video {$video->getId()} – dispatche OptimizeVideoForJellyfinMessage." . PHP_EOL);
+        $this->bus->dispatch(new OptimizeVideoForJellyfinMessage($video->getId()));
     }
 
     public function refineSceneAnalysis(Video $video): bool

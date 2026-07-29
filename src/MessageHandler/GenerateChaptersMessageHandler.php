@@ -4,13 +4,16 @@ namespace App\MessageHandler;
 
 use App\Entity\VideoChapter;
 use App\Enum\VideoStatus;
+use App\Message\ExportVideoToJellyfinMessage;
 use App\Message\GenerateChaptersMessage;
 use App\Repository\VideoRepository;
 use App\Service\Gemini\GeminiService;
 use App\Service\VideoProcessingService;
+use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 #[AsMessageHandler]
 readonly class GenerateChaptersMessageHandler
@@ -20,7 +23,9 @@ readonly class GenerateChaptersMessageHandler
         private GeminiService $geminiService,
         private VideoProcessingService $processingService,
         private EntityManagerInterface $entityManager,
-        private LoggerInterface $logger
+        private LoggerInterface $logger,
+        private WorkflowMachine $workflowMachine,
+        private MessageBusInterface $messageBus
     ) {
     }
 
@@ -59,6 +64,11 @@ readonly class GenerateChaptersMessageHandler
             $this->entityManager->flush();
             $this->processingService->finishStep($video, VideoStatus::CHAPTER_GENERATION);
             $this->logger->info("Finished chapter generation for video " . $video->getId());
+            fwrite(STDOUT, "[GenerateChapters] Kapitel generiert für Video {$video->getId()} – dispatche ExportVideoToJellyfinMessage." . PHP_EOL);
+            if ($this->workflowMachine->can($video, 'complete')) {
+                $this->workflowMachine->apply($video, 'complete');
+            }
+            $this->messageBus->dispatch(new ExportVideoToJellyfinMessage($video->getId()));
         } catch (\Exception $e) {
             $this->logger->error("Error generating chapters: " . $e->getMessage());
             $this->processingService->failStep($video, VideoStatus::CHAPTER_GENERATION, $e->getMessage());

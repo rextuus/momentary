@@ -33,7 +33,9 @@ class VideoType extends AbstractType
             $foundFiles = scandir($this->importDir);
             foreach ($foundFiles as $file) {
                 if ($file !== '.' && $file !== '..' && !is_dir($this->importDir . '/' . $file)) {
-                    $files[$file] = $file;
+                    if (str_ends_with(strtolower($file), '.mp4')) {
+                        $files[$file] = $file;
+                    }
                 }
             }
         }

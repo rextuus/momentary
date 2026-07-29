@@ -46,6 +46,7 @@ class ExportVideoToJellyfinMessageHandler
             return;
         }
 
+        fwrite(STDOUT, "[ExportJellyfin] Starte Export für Video $videoId (Status: " . $video->getStatus()->value . ")." . PHP_EOL);
         $this->logger->info("Processing asynchronous Jellyfin export for video $videoId");
         
         $filename = basename($sourcePath);
@@ -62,7 +63,12 @@ class ExportVideoToJellyfinMessageHandler
 
         if ($result) {
             $video->setJellyfinPath($result);
+            // complete-Transition setzen
+            if ($this->workflowMachine->can($video, 'complete')) {
+                $this->workflowMachine->apply($video, 'complete');
+            }
             $this->entityManager->flush();
+            fwrite(STDOUT, "[ExportJellyfin] Export erfolgreich für Video $videoId – Status: " . $video->getStatus()->value . "." . PHP_EOL);
             $this->logger->info("Successfully exported video $videoId to Jellyfin: $result");
 
             // We try to find the ItemID immediately, but it might take a moment until the scan is done

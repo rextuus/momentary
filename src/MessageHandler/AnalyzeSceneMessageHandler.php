@@ -4,7 +4,11 @@ namespace App\MessageHandler;
 
 use App\Entity\Tag;
 use App\Entity\TagCategory;
+use App\Enum\VideoStatus;
 use App\Message\AnalyzeSceneMessage;
+use App\Message\GenerateChaptersMessage;
+use App\Service\WorkflowMachine;
+use Symfony\Component\Messenger\MessageBusInterface;
 use App\Repository\VideoSceneRepository;
 use App\Service\Gemini\GeminiService;
 use App\Service\VideoAnalyzer;
@@ -23,7 +27,9 @@ class AnalyzeSceneMessageHandler
         private readonly VideoAnalyzer $videoAnalyzer,
         private readonly EntityManagerInterface $entityManager,
         #[Target('tagging')] private readonly LoggerInterface $logger,
-        private readonly VideoProcessingService $processingService
+        private readonly VideoProcessingService $processingService,
+        private readonly WorkflowMachine $workflowMachine,
+        private readonly MessageBusInterface $messageBus
     ) {
     }
 
@@ -124,11 +130,20 @@ class AnalyzeSceneMessageHandler
             $this->entityManager->flush();
             $this->logger->info("Finished tagging scene: " . $scene->getId());
 
-            $untaggedCount = $this->videoSceneRepository->countUntaggedScenes($video);
-            $this->logger->info("Untagged scenes count for video " . $video->getId() . ": " . $untaggedCount);
-            if ($untaggedCount === 0) {
+            // Chain: nächste Szene dispatchen oder, wenn alle fertig, GenerateChaptersMessage
+            $remaining = $message->getRemainingSceneIds();
+            if (!empty($remaining)) {
+                $nextId = array_shift($remaining);
+                fwrite(STDOUT, "[AnalyzeScene] Szene {$scene->getId()} getaggt – nächste Szene $nextId, " . count($remaining) . " weitere." . PHP_EOL);
+                $this->messageBus->dispatch(new AnalyzeSceneMessage($nextId, $remaining));
+            } else {
                 $this->processingService->finishStep($video, VideoStatus::TAGGING_SCENES);
                 $this->logger->info("All scenes tagged for video " . $video->getId());
+                fwrite(STDOUT, "[AnalyzeScene] Alle Szenen getaggt für Video {$video->getId()} – dispatche GenerateChaptersMessage." . PHP_EOL);
+                if ($this->workflowMachine->can($video, 'start_chapter_generation')) {
+                    $this->workflowMachine->apply($video, 'start_chapter_generation');
+                }
+                $this->messageBus->dispatch(new GenerateChaptersMessage($video->getId()));
             }
 
         } catch (\Exception $e) {

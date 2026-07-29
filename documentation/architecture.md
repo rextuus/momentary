@@ -30,15 +30,16 @@ Cloud-Dienst für:
 -   **Attribute Extraction**: Analyse von Alter, Geschlecht und Emotionen.
 
 ### 5. Tagging & KI-Integration
--   **Google Gemini**: Wird als KI-Modell für die automatische, inhaltsbasierte Verschlagwortung (Tagging) der Szenen eingesetzt.
+-   **Google Gemini**: Wird als KI-Modell für die automatische, inhaltsbasierte Verschlagwortung (Tagging) der Szenen und die Kapitelgenerierung eingesetzt.
 -   **Amazon Rekognition**: Unterstützt bei der Erkennung und Analyse von Gesichtern.
 
 ## Kommunikationsfluss
 Die Symfony-Anwendung steuert den Prozess über den `messenger-worker`:
-1.  **Dispatching**: Wenn ein Video hinzugefügt wird, dispatcht Symfony entsprechende Nachrichten (z.B. `DownloadVideoMessage`, `DetectVideoScenesMessage`) in die RabbitMQ-Queue.
-2.  **Worker-Ausführung**: Der `messenger-worker` verarbeitet diese Nachrichten asynchron und führt bei Bedarf die Python-Skripte aus.
-3.  **KI-Analysen**: Für Szenenanalysen und das Tagging bindet der Workflow Dienste wie Amazon Rekognition (für Gesichter) und Google Gemini (für inhaltliche Tags) ein.
-4.  **Datenpersistenz**: Ergebnisse der Analysen (Tags, Gesichter, Szenenmetadaten) werden in der MySQL-Datenbank gespeichert und für das Frontend (und Suche über Meilisearch) bereitgestellt.
+1.  **Upload**: Das Video wird als MP4 in `public/uploads/import/` abgelegt (manuell via SFTP oder Upload-Formular). Nur MP4-Dateien werden im Formular `/video/new` angezeigt.
+2.  **Dispatching**: Beim Absenden des Formulars dispatcht Symfony `ConvertVideoMessage` → der Worker startet die Pipeline.
+3.  **Worker-Ausführung**: Der `messenger-worker` verarbeitet die Nachrichten asynchron und führt bei Bedarf Python-Skripte aus.
+4.  **KI-Analysen**: Für Szenenanalysen und das Tagging bindet der Workflow Amazon Rekognition (Gesichter) und Google Gemini (Tags, Kapitel) ein.
+5.  **Datenpersistenz**: Ergebnisse werden in MySQL gespeichert und für das Frontend (Suche via Meilisearch) bereitgestellt.
 
 ## Infrastruktur (Docker Compose)
 Das System besteht aus mehreren Containern, die via `docker-compose` orchestriert werden:
@@ -48,24 +49,33 @@ Das System besteht aus mehreren Containern, die via `docker-compose` orchestrier
 -   **database**: Eine MySQL-Datenbank zur Speicherung aller Applikationsdaten.
 -   **rabbitmq**: Message Broker für das asynchrone Messaging zwischen `app` und `messenger-worker`.
 -   **meilisearch**: Suchmaschine für schnelle Suchen nach Personen/Szenen.
--   **imgproxy**: Optimiert Bilder für die Darstellung im Frontend.
+-   **imgproxy**: Optimiert Bilder für die Darstellung im Frontend. Liest Dateien aus `public/` (gemountet als `/public`).
 -   **jellyfin**: Media-Server zur Anzeige der fertigen Videos.
 -   **mailer**: Mailpit zum Testen von E-Mails in der Entwicklung.
 
 ## Verarbeitungsprozess (Workflow)
-Die Videoverarbeitung wird durch eine Symfony **State Machine** (`video_processing`) gesteuert. Der Workflow durchläuft folgende Zustände:
+Die Videoverarbeitung wird durch eine Symfony **State Machine** (`video_processing`) gesteuert. Der Workflow durchläuft folgende Zustände in dieser Reihenfolge:
 
-1.  **PENDING**: Video registriert, wartet auf Start.
-2.  **CONVERTING**: Video-Konvertierung in ein kompatibles Format.
-3.  **SCENE_DETECTION**: Szenenerkennung.
-4.  **EXTRACTING_THUMBNAILS**: Extraktion von Vorschaubildern.
-5.  **SPLITTING**: Zerteilen des Videos in Szenen.
-6.  **ANALYZING_FACES**: Gesichteranalyse mittels AWS Rekognition.
-7.  **REFINING_EXTRACTION** & **REFINING_ANALYSIS**: Verfeinerung der Analyse.
-8.  **MERGING_SCENES**: Zusammenführen der Szenen.
-9.  **OPTIMIZING**: Vorbereitung für Jellyfin.
-10. **TAGGING_SCENES**: Automatische Verschlagwortung.
-11. **CHAPTER_GENERATION**: Kapitelmarken-Generierung.
-12. **COMPLETED**: Abschluss.
+1.  **PENDING** → Video registriert, wartet auf Start.
+2.  **CONVERTING** → `ConvertVideoMessage`: Konvertierung falls nötig (bei MP4 wird dieser Schritt übersprungen). Danach immer `DetectVideoScenesMessage`.
+3.  **SCENE_DETECTION** → `DetectVideoScenesMessage`: Szenenerkennung via Python-Skript. Danach `ExtractAllSceneThumbnailsMessage` (wenn Szenen gefunden) oder direkt `SplitVideoIntoFramesMessage` (wenn keine Szenen).
+4.  **EXTRACTING_THUMBNAILS** → `ExtractAllSceneThumbnailsMessage` / `ExtractSceneThumbnailMessage`: Für jede Szene wird ein Thumbnail extrahiert und gespeichert. Danach `SplitVideoIntoFramesMessage`.
+5.  **SPLITTING** → `SplitVideoIntoFramesMessage`: Das Video wird in Frames aufgeteilt (Standard: 5s-Intervalle). Für jeden Frame wird `FrameAnalyzerMessage` dispatcht.
+6.  **ANALYZING_FACES** → `FrameAnalyzerMessage`: Frames werden an Amazon Rekognition zur Gesichtserkennung geschickt. Nach dem letzten Frame: `SplitVideoIntoFramesMessage` (Refinement, 1s-Intervalle für Szenen ohne erkannte Personen).
+7.  **REFINING_EXTRACTION** → `SplitVideoIntoFramesMessage` (isRefinement=true): Szenen ohne Personen werden in 1s-Frames aufgeteilt.
+8.  **REFINING_ANALYSIS** → `FrameAnalyzerMessage` (isRefinement=true): Verfeinerte Frames werden erneut analysiert. Nach dem letzten Frame: `VideoAnalyzer::mergeEmptyScenes()` → `OptimizeVideoForJellyfinMessage`.
+9.  **MERGING_SCENES** → `VideoAnalyzer::mergeEmptyScenes()`: Szenen ohne erkannte Personen werden mit der nächsten Szene zusammengeführt. Danach `OptimizeVideoForJellyfinMessage`.
+10. **OPTIMIZING** → `OptimizeVideoForJellyfinMessage`: Vorbereitung für Jellyfin (bei MP4 wird die eigentliche Optimierung übersprungen). Danach `TagScenesMessage` (wenn `ENABLE_TAGGING_SCENES=true`) oder `ExportVideoToJellyfinMessage`.
+11. **TAGGING_SCENES** → `TagScenesMessage` / `AnalyzeSceneMessage`: Für jede Szene wird das Thumbnail an Google Gemini geschickt und Tags + Titel generiert. Nach dem letzten getaggten Szene: `GenerateChaptersMessage`.
+12. **CHAPTER_GENERATION** → `GenerateChaptersMessage`: Aus den gesammelten Tags und Szenen werden Kapitel mit Gemini generiert. Danach `ExportVideoToJellyfinMessage`.
+13. **COMPLETED** → `ExportVideoToJellyfinMessage`: Das Video wird in das Jellyfin-Verzeichnis exportiert und ein Library-Scan getriggert.
 
 Fehler während des Prozesses führen in den Status **ERROR**.
+
+## Datei-Ablage (Flysystem)
+Alle Uploads werden unter `public/uploads/` gespeichert:
+-   **Import-Videos**: `public/uploads/import/{filename}` — Quelldateien
+-   **Video-Assets** (Thumbnails, Frames, Faces): `public/uploads/{VideoName}_{hash}/{thumbnails,frames,faces}/`
+-   **Defaults**: `public/uploads/defaults/` — Platzhalterbilder
+
+Flysystem ist so konfiguriert, dass alle Dateien mit `0644` und Verzeichnisse mit `0755` angelegt werden, damit imgproxy lesend zugreifen kann.

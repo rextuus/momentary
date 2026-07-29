@@ -9,7 +9,8 @@ final readonly class FrameAnalyzerMessage
         private string $framePath,
         private int $timestamp,
         private bool $isLast = false,
-        private bool $isRefinement = false
+        private bool $isRefinement = false,
+        private array $remainingFrames = []
     ) {}
 
     public function getVideoId(): int
@@ -35,5 +36,10 @@ final readonly class FrameAnalyzerMessage
     public function isRefinement(): bool
     {
         return $this->isRefinement;
+    }
+
+    public function getRemainingFrames(): array
+    {
+        return $this->remainingFrames;
     }
 }

@@ -3,6 +3,7 @@
 namespace App\MessageHandler;
 
 use App\Message\DetectVideoScenesMessage;
+use App\Message\ExtractAllSceneThumbnailsMessage;
 use App\Message\SplitVideoIntoFramesMessage;
 use App\Service\VideoAnalyzer;
 use App\Service\WorkflowMachine;
@@ -65,11 +66,15 @@ final class DetectVideoScenesMessageHandler
         $video = $this->videoAnalyzer->getVideoRepository()->find($message->getVideoId());
         $currentVideoPath = $video?->getLocalPath() ?? $videoPath;
 
-        if (empty($scenes)) {
-            $this->videoAnalyzer->updateStatus($message->getVideoId(), \App\Enum\VideoStatus::SPLITTING);
-            $this->bus->dispatch(new \App\Message\SplitVideoIntoFramesMessage($message->getVideoId(), $currentVideoPath));
-        }
-
         fwrite(STDOUT, count($scenes) . " Szenen in DB verewigt." . PHP_EOL);
+
+        if (empty($scenes)) {
+            fwrite(STDOUT, "Keine Szenen erkannt – dispatche SplitVideoIntoFramesMessage für Video {$message->getVideoId()}." . PHP_EOL);
+            $this->videoAnalyzer->updateStatus($message->getVideoId(), \App\Enum\VideoStatus::SPLITTING);
+            $this->bus->dispatch(new SplitVideoIntoFramesMessage($message->getVideoId(), $currentVideoPath));
+        } else {
+            fwrite(STDOUT, "Dispatche ExtractAllSceneThumbnailsMessage für Video {$message->getVideoId()}." . PHP_EOL);
+            $this->bus->dispatch(new ExtractAllSceneThumbnailsMessage($message->getVideoId()));
+        }
     }
 }

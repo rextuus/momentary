@@ -27,8 +27,10 @@ class TagScenesMessageHandler
 
     public function __invoke(TagScenesMessage $message): void
     {
+        fwrite(STDOUT, "[TagScenes] Starte für Video {$message->getVideoId()}." . PHP_EOL);
         $video = $this->videoRepository->find($message->getVideoId());
         if (!$video) {
+            fwrite(STDOUT, "[TagScenes] Video {$message->getVideoId()} nicht gefunden." . PHP_EOL);
             return;
         }
 
@@ -38,11 +40,18 @@ class TagScenesMessageHandler
         }
 
         $scenes = $video->getScenes();
-        $this->logger->info("Dispatching " . count($scenes) . " scenes for video " . $video->getId());
-        
-        foreach ($scenes as $scene) {
-            $this->logger->info("Dispatching AnalyzeSceneMessage for scene " . $scene->getId());
-            $this->messageBus->dispatch(new AnalyzeSceneMessage($scene->getId()));
+        $sceneCount = count($scenes);
+        $this->logger->info("Dispatching {$sceneCount} scenes for video " . $video->getId());
+
+        $sceneIds = array_values(array_map(fn($s) => $s->getId(), $scenes->toArray()));
+
+        if (empty($sceneIds)) {
+            fwrite(STDOUT, "[TagScenes] Keine Szenen für Video {$video->getId()} – überspringe Tagging." . PHP_EOL);
+            return;
         }
+
+        $firstId = array_shift($sceneIds);
+        $this->messageBus->dispatch(new AnalyzeSceneMessage($firstId, $sceneIds));
+        fwrite(STDOUT, "[TagScenes] Starte Chain mit Szene $firstId, " . count($sceneIds) . " weitere für Video {$video->getId()}." . PHP_EOL);
     }
 }
