@@ -277,38 +277,8 @@ class VideoAnalyzer
                 $video->setErrorMessage($errorMessage);
             }
 
-            // Zeitstempel setzen und Dauer berechnen
-            $now = new \DateTimeImmutable();
-            $this->calculateDuration($video, $oldStatus, $now);
-
-            match ($status) {
-                VideoStatus::CONVERTING => $video->setDownloadedAt($video->getDownloadedAt() ?? $now),
-                VideoStatus::SCENE_DETECTION => $video->setConvertedAt($video->getConvertedAt() ?? $video->getDownloadedAt() ?? $now),
-                VideoStatus::SPLITTING => $video->setScenesDetectedAt($video->getScenesDetectedAt() ?? $now),
-                VideoStatus::ANALYZING_FACES => $video->setFramesExtractedAt($video->getFramesExtractedAt() ?? $now),
-                VideoStatus::REFINING_EXTRACTION => $video->setFacesAnalyzedAt($video->getFacesAnalyzedAt() ?? $now),
-                VideoStatus::REFINING_ANALYSIS => $video->setRefiningExtractionFinishedAt($video->getRefiningExtractionFinishedAt() ?? $now),
-                VideoStatus::MERGING_SCENES => $video->setRefiningAnalysisFinishedAt($video->getRefiningAnalysisFinishedAt() ?? $now),
-                VideoStatus::COMPLETED => $video->setCompletedAt($now),
-                default => null,
-            };
-
-            // Spezialfall: Wenn direkt COMPLETED ohne REFINING/MERGING
-            if ($status === VideoStatus::COMPLETED) {
-                if ($video->getFacesAnalyzedAt() === null) {
-                    $video->setFacesAnalyzedAt($now);
-                }
-                if ($video->getRefiningAnalysisFinishedAt() === null) {
-                    $video->setRefiningAnalysisFinishedAt($now);
-                }
-                if ($video->getMergingScenesAt() === null) {
-                    $video->setMergingScenesAt($now);
-                }
-            }
-
-            if ($status === VideoStatus::MERGING_SCENES) {
-                $video->setMergingScenesAt($now);
-            }
+            // Zeitstempel werden jetzt in VideoProcessingSteps verwaltet.
+            // (calculateDuration entfernt)
 
             $this->entityManager->flush();
         }
@@ -329,36 +299,7 @@ class VideoAnalyzer
         ], true);
     }
 
-    private function calculateDuration(Video $video, VideoStatus $oldStatus, \DateTimeImmutable $now): void
-    {
-        $startTime = match ($oldStatus) {
-            VideoStatus::CONVERTING => $video->getDownloadedAt(),
-            VideoStatus::SCENE_DETECTION => $video->getConvertedAt() ?? $video->getDownloadedAt(),
-            VideoStatus::SPLITTING => $video->getScenesDetectedAt(),
-            VideoStatus::ANALYZING_FACES => $video->getFramesExtractedAt(),
-            VideoStatus::REFINING_EXTRACTION => $video->getFacesAnalyzedAt(),
-            VideoStatus::REFINING_ANALYSIS => $video->getRefiningExtractionFinishedAt(),
-            VideoStatus::MERGING_SCENES => $video->getRefiningAnalysisFinishedAt(),
-            default => null,
-        };
-
-        if ($startTime === null) {
-            return;
-        }
-
-        $duration = $now->getTimestamp() - $startTime->getTimestamp();
-
-        match ($oldStatus) {
-            VideoStatus::CONVERTING => $video->setConversionDuration($duration),
-            VideoStatus::SCENE_DETECTION => $video->setSceneDetectionDuration($duration),
-            VideoStatus::SPLITTING => $video->setFrameExtractionDuration($duration),
-            VideoStatus::ANALYZING_FACES => $video->setFaceAnalysisDuration($duration),
-            VideoStatus::REFINING_EXTRACTION => $video->setRefiningExtractionDuration($duration),
-            VideoStatus::REFINING_ANALYSIS => $video->setRefiningAnalysisDuration($duration),
-            VideoStatus::MERGING_SCENES => $video->setMergingScenesDuration($duration),
-            default => null,
-        };
-    }
+    // (calculateDuration entfernt)
 
 
     public function convertToMp4(string $sourcePath, string $targetPath): bool
@@ -1045,7 +986,12 @@ class VideoAnalyzer
                     // Falls wir die Person nicht über matchedFaceId finden, schauen wir, ob wir sie über den Namen finden (unknown_...)
                     // Das ist aber unzuverlässig. Besser: Neue Person anlegen.
                     $person = new Person();
-                    $person->setName('unknown_' . substr($faceData['faceId'], 0, 8));
+                    $faceId = $faceData['faceId'] ?? 'unknown';
+                    // Defensive: Ensure we have a string
+                    if ($faceId === null) {
+                        $faceId = 'unknown';
+                    }
+                    $person->setName('unknown_' . substr((string) $faceId, 0, 8));
                     $person->setIdentified(false);
                     $this->entityManager->persist($person);
                     // Flush ist hier wichtig, damit die Person eine ID bekommt, falls wir sie später im Loop brauchen

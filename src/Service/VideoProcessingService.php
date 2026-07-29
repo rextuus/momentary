@@ -40,7 +40,11 @@ class VideoProcessingService
     {
         $stepEntity = $this->repository->findOneBy(['video' => $video, 'step' => $step]);
         if ($stepEntity) {
-            $stepEntity->setFinishedAt(new \DateTimeImmutable());
+            $finishedAt = new \DateTimeImmutable();
+            $stepEntity->setFinishedAt($finishedAt);
+            if ($stepEntity->getStartedAt()) {
+                $stepEntity->setDuration($finishedAt->getTimestamp() - $stepEntity->getStartedAt()->getTimestamp());
+            }
             $stepEntity->setErrorMessage(null);
             $this->entityManager->flush();
         }

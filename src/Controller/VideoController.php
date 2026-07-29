@@ -137,23 +137,14 @@ final class VideoController extends AbstractController
             match ($step) {
                 'convert'  => [
                     $this->ensureStepAccessible($video, 'start_conversion', $workflowMachine),
-                    $video->setConvertedAt(null),
-                    $video->setCompletedAt(null),
                     $this->messageBus->dispatch(new ConvertVideoMessage($video->getId()))
                 ],
                 'optimize' => [
                     $this->ensureStepAccessible($video, 'start_optimization', $workflowMachine),
-                    $video->setCompletedAt(null),
                     $this->messageBus->dispatch(new OptimizeVideoForJellyfinMessage($video->getId()))
                 ],
                 'scenes'   => [
                     $this->ensureStepAccessible($video, 'start_scene_detection', $workflowMachine),
-                    $video->setConvertedAt($video->getConvertedAt() ?? new \DateTimeImmutable()),
-                    $video->setScenesDetectedAt(null),
-                    $video->setFramesExtractedAt(null),
-                    $video->setFacesAnalyzedAt(null),
-                    $video->setRefinedAt(null),
-                    $video->setCompletedAt(null),
                     $this->messageBus->dispatch(new DetectVideoScenesMessage($video->getId(), (string)$video->getLocalPath()))
                 ],
                 'thumbnails' => [
@@ -162,39 +153,14 @@ final class VideoController extends AbstractController
                 ],
                 'split'    => [
                     $this->ensureStepAccessible($video, 'start_splitting', $workflowMachine),
-                    $video->setFramesExtractedAt(null),
-                    $video->setFacesAnalyzedAt(null),
-                    $video->setRefinedAt(null),
-                    $video->setCompletedAt(null),
                     $this->messageBus->dispatch(new SplitVideoIntoFramesMessage($video->getId(), (string)$video->getLocalPath()))
                 ],
                 'refine'   => [
                     $this->ensureStepAccessible($video, 'start_refining_extraction', $workflowMachine),
-                    $video->setRefinedAt(null),
-                    $video->setRefiningExtractionFinishedAt(null),
-                    $video->setRefiningAnalysisFinishedAt(null),
-                    $video->setCompletedAt(null),
                     $videoAnalyzer->refineSceneAnalysis($video)
                 ],
                 'reset'    => [
                     $workflowMachine->apply($video, 'reset'),
-                    $video->setDownloadedAt(null),
-                    $video->setConvertedAt(null),
-                    $video->setScenesDetectedAt(null),
-                    $video->setFramesExtractedAt(null),
-                    $video->setFacesAnalyzedAt(null),
-                    $video->setRefiningExtractionFinishedAt(null),
-                    $video->setRefiningAnalysisFinishedAt(null),
-                    $video->setRefinedAt(null),
-                    $video->setCompletedAt(null),
-                    $video->setDownloadDuration(null),
-                    $video->setConversionDuration(null),
-                    $video->setSceneDetectionDuration(null),
-                    $video->setFrameExtractionDuration(null),
-                    $video->setFaceAnalysisDuration(null),
-                    $video->setRefiningExtractionDuration(null),
-                    $video->setRefiningAnalysisDuration(null),
-                    $video->setRefinementDuration(null),
                     $videoAnalyzer->clearOldScenes($video),
                     $videoAnalyzer->clearSteps($video),
                     $this->triggerFirstStep($video, $workflowMachine)

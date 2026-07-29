@@ -35,16 +35,13 @@ Das zentrale Element, das eine Videodatei und deren Analyse-Metadaten repräsent
 - `errorMessage`: Text (optional)
 - `jellyfinPath`, `jellyfinItemId`: String (Export-Metadaten)
 - `createdAt`: DateTimeImmutable
-- `downloadedAt`, `convertedAt`, `scenesDetectedAt`, `framesExtractedAt`, `facesAnalyzedAt`, `refinedAt`, `completedAt`: DateTimeImmutable (Workflow-Timestamps)
-- `refiningExtractionFinishedAt`, `refiningAnalysisFinishedAt`, `mergingScenesAt`: DateTimeImmutable (Detaillierte Workflow-Schritte)
-- `downloadDuration`, `conversionDuration`, `sceneDetectionDuration`, `frameExtractionDuration`, `faceAnalysisDuration`, `refinementDuration`, `refiningExtractionDuration`, `refiningAnalysisDuration`, `mergingScenesDuration`: Integer (Dauer der Schritte in Sekunden)
-- `estimatedConversionDuration`, `estimatedSceneDetectionDuration`, `estimatedFrameExtractionDuration`, `estimatedFaceAnalysisDuration`: Integer (Schätzwerte)
 - `currentFrameDirectory`, `currentRefinementFrameDirectory`: String (Interne Pfade während der Verarbeitung)
 
 ### Relationen
 - `scenes`: OneToMany -> **VideoScene** (Inversed by `video`)
 - `videoFaces`: OneToMany -> **VideoFace** (Inversed by `video`)
 - `chapters`: OneToMany -> **VideoChapter** (Inversed by `video`)
+- `processingSteps`: OneToMany -> **VideoProcessingStep** (Inversed by `video`)
 - `thumbnailUrl`: Transient (Generiert via `VideoNormalizer` & Imgproxy)
 
 ---
@@ -150,6 +147,24 @@ Strukturierte Kapitel für den Export (z.B. an Jellyfin).
 - `startSeconds`: Float
 - `endSeconds`: Float
 - `description`: Text (optional)
+
+### Relationen
+- `video`: ManyToOne -> **Video** (Owning side)
+
+---
+
+## 7. VideoProcessingStep
+Repräsentiert einen Verarbeitungsschritt eines Videos.
+
+### Properties
+- `id`: Integer (PK)
+- `step`: VideoStatus (Enum)
+- `createdAt`: DateTimeImmutable
+- `startedAt`: DateTimeImmutable (optional)
+- `processedAt`: DateTimeImmutable (optional)
+- `finishedAt`: DateTimeImmutable (optional)
+- `duration`: Integer (Dauer des Schrittes in Sekunden)
+- `errorMessage`: Text (optional)
 
 ### Relationen
 - `video`: ManyToOne -> **Video** (Owning side)

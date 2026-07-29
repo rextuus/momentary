@@ -38,6 +38,9 @@ class VideoProcessingStep
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $errorMessage = null;
 
+    #[ORM\Column(nullable: true)]
+    private ?int $duration = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
@@ -116,6 +119,18 @@ class VideoProcessingStep
     public function setFinishedAt(?\DateTimeImmutable $finishedAt): self
     {
         $this->finishedAt = $finishedAt;
+
+        return $this;
+    }
+
+    public function getDuration(): ?int
+    {
+        return $this->duration;
+    }
+
+    public function setDuration(?int $duration): self
+    {
+        $this->duration = $duration;
 
         return $this;
     }

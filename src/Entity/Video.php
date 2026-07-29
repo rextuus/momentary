@@ -127,80 +127,8 @@ class Video
     private int $processedFrames = 0;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?\DateTimeImmutable $downloadedAt = null;
-
-    #[ORM\Column(nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?\DateTimeImmutable $convertedAt = null;
-
-    #[ORM\Column(nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?\DateTimeImmutable $scenesDetectedAt = null;
-
-    #[ORM\Column(nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?\DateTimeImmutable $framesExtractedAt = null;
-
-    #[ORM\Column(nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?\DateTimeImmutable $facesAnalyzedAt = null;
-
-    #[ORM\Column(nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?\DateTimeImmutable $refiningExtractionFinishedAt = null;
-
-    #[ORM\Column(nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?\DateTimeImmutable $refiningAnalysisFinishedAt = null;
-
-    #[ORM\Column(nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?\DateTimeImmutable $mergingScenesAt = null;
-
-    #[ORM\Column(nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?\DateTimeImmutable $refinedAt = null;
-
-    #[ORM\Column(nullable: true)]
-    #[Groups(['video:list', 'video:detail'])]
-    private ?\DateTimeImmutable $completedAt = null;
-
-    #[ORM\Column(nullable: true)]
     #[Groups(['video:list', 'video:detail'])]
     private ?float $duration = null;
-
-    #[ORM\Column(nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?int $downloadDuration = null;
-
-    #[ORM\Column(nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?int $conversionDuration = null;
-
-    #[ORM\Column(nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?int $sceneDetectionDuration = null;
-
-    #[ORM\Column(nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?int $frameExtractionDuration = null;
-
-    #[ORM\Column(nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?int $faceAnalysisDuration = null;
-
-    #[ORM\Column(nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?int $refiningExtractionDuration = null;
-
-    #[ORM\Column(nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?int $refiningAnalysisDuration = null;
-
-    #[ORM\Column(nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?int $mergingScenesDuration = null;
 
     #[ORM\Column(length: 500, nullable: true)]
     #[Groups(['video:detail'])]
@@ -210,25 +138,6 @@ class Video
     #[Groups(['video:detail'])]
     private ?string $currentRefinementFrameDirectory = null;
 
-    #[ORM\Column(nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?int $refinementDuration = null;
-
-    #[ORM\Column(nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?int $estimatedConversionDuration = null;
-
-    #[ORM\Column(nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?int $estimatedSceneDetectionDuration = null;
-
-    #[ORM\Column(nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?int $estimatedFrameExtractionDuration = null;
-
-    #[ORM\Column(nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?int $estimatedFaceAnalysisDuration = null;
 
     #[ORM\Column(length: 511, nullable: true)]
     #[Groups(['video:detail'])]
@@ -350,71 +259,8 @@ class Video
         return $this;
     }
 
-    public function getRefiningExtractionFinishedAt(): ?\DateTimeImmutable
-    {
-        return $this->refiningExtractionFinishedAt;
-    }
 
-    public function setRefiningExtractionFinishedAt(?\DateTimeImmutable $refiningExtractionFinishedAt): self
-    {
-        $this->refiningExtractionFinishedAt = $refiningExtractionFinishedAt;
-        return $this;
-    }
 
-    public function getRefiningAnalysisFinishedAt(): ?\DateTimeImmutable
-    {
-        return $this->refiningAnalysisFinishedAt;
-    }
-
-    public function setRefiningAnalysisFinishedAt(?\DateTimeImmutable $refiningAnalysisFinishedAt): self
-    {
-        $this->refiningAnalysisFinishedAt = $refiningAnalysisFinishedAt;
-        return $this;
-    }
-
-    public function getRefiningExtractionDuration(): ?int
-    {
-        return $this->refiningExtractionDuration;
-    }
-
-    public function setRefiningExtractionDuration(?int $refiningExtractionDuration): self
-    {
-        $this->refiningExtractionDuration = $refiningExtractionDuration;
-        return $this;
-    }
-
-    public function getRefiningAnalysisDuration(): ?int
-    {
-        return $this->refiningAnalysisDuration;
-    }
-
-    public function setRefiningAnalysisDuration(?int $refiningAnalysisDuration): self
-    {
-        $this->refiningAnalysisDuration = $refiningAnalysisDuration;
-        return $this;
-    }
-
-    public function getMergingScenesAt(): ?\DateTimeImmutable
-    {
-        return $this->mergingScenesAt;
-    }
-
-    public function setMergingScenesAt(?\DateTimeImmutable $mergingScenesAt): self
-    {
-        $this->mergingScenesAt = $mergingScenesAt;
-        return $this;
-    }
-
-    public function getMergingScenesDuration(): ?int
-    {
-        return $this->mergingScenesDuration;
-    }
-
-    public function setMergingScenesDuration(?int $mergingScenesDuration): self
-    {
-        $this->mergingScenesDuration = $mergingScenesDuration;
-        return $this;
-    }
 
     public function getLocalPath(): ?string
     {
@@ -504,83 +350,6 @@ class Video
         return $this;
     }
 
-    public function getDownloadedAt(): ?\DateTimeImmutable
-    {
-        return $this->downloadedAt;
-    }
-
-    public function setDownloadedAt(?\DateTimeImmutable $downloadedAt): self
-    {
-        $this->downloadedAt = $downloadedAt;
-        return $this;
-    }
-
-    public function getScenesDetectedAt(): ?\DateTimeImmutable
-    {
-        return $this->scenesDetectedAt;
-    }
-
-    public function setScenesDetectedAt(?\DateTimeImmutable $scenesDetectedAt): self
-    {
-        $this->scenesDetectedAt = $scenesDetectedAt;
-        return $this;
-    }
-
-    public function getFramesExtractedAt(): ?\DateTimeImmutable
-    {
-        return $this->framesExtractedAt;
-    }
-
-    public function setFramesExtractedAt(?\DateTimeImmutable $framesExtractedAt): self
-    {
-        $this->framesExtractedAt = $framesExtractedAt;
-        return $this;
-    }
-
-    public function getFacesAnalyzedAt(): ?\DateTimeImmutable
-    {
-        return $this->facesAnalyzedAt;
-    }
-
-    public function setFacesAnalyzedAt(?\DateTimeImmutable $facesAnalyzedAt): self
-    {
-        $this->facesAnalyzedAt = $facesAnalyzedAt;
-        return $this;
-    }
-
-    public function getRefinedAt(): ?\DateTimeImmutable
-    {
-        return $this->refinedAt;
-    }
-
-    public function setRefinedAt(?\DateTimeImmutable $refinedAt): self
-    {
-        $this->refinedAt = $refinedAt;
-        return $this;
-    }
-
-    public function getCompletedAt(): ?\DateTimeImmutable
-    {
-        return $this->completedAt;
-    }
-
-    public function setCompletedAt(?\DateTimeImmutable $completedAt): self
-    {
-        $this->completedAt = $completedAt;
-        return $this;
-    }
-
-    public function getConvertedAt(): ?\DateTimeImmutable
-    {
-        return $this->convertedAt;
-    }
-
-    public function setConvertedAt(?\DateTimeImmutable $convertedAt): self
-    {
-        $this->convertedAt = $convertedAt;
-        return $this;
-    }
-
     public function getDuration(): ?float
     {
         return $this->duration;
@@ -589,72 +358,6 @@ class Video
     public function setDuration(?float $duration): self
     {
         $this->duration = $duration;
-        return $this;
-    }
-
-    public function getDownloadDuration(): ?int
-    {
-        return $this->downloadDuration;
-    }
-
-    public function setDownloadDuration(?int $downloadDuration): self
-    {
-        $this->downloadDuration = $downloadDuration;
-        return $this;
-    }
-
-    public function getConversionDuration(): ?int
-    {
-        return $this->conversionDuration;
-    }
-
-    public function setConversionDuration(?int $conversionDuration): self
-    {
-        $this->conversionDuration = $conversionDuration;
-        return $this;
-    }
-
-    public function getSceneDetectionDuration(): ?int
-    {
-        return $this->sceneDetectionDuration;
-    }
-
-    public function setSceneDetectionDuration(?int $sceneDetectionDuration): self
-    {
-        $this->sceneDetectionDuration = $sceneDetectionDuration;
-        return $this;
-    }
-
-    public function getFrameExtractionDuration(): ?int
-    {
-        return $this->frameExtractionDuration;
-    }
-
-    public function setFrameExtractionDuration(?int $frameExtractionDuration): self
-    {
-        $this->frameExtractionDuration = $frameExtractionDuration;
-        return $this;
-    }
-
-    public function getFaceAnalysisDuration(): ?int
-    {
-        return $this->faceAnalysisDuration;
-    }
-
-    public function setFaceAnalysisDuration(?int $faceAnalysisDuration): self
-    {
-        $this->faceAnalysisDuration = $faceAnalysisDuration;
-        return $this;
-    }
-
-    public function getRefinementDuration(): ?int
-    {
-        return $this->refinementDuration;
-    }
-
-    public function setRefinementDuration(?int $refinementDuration): self
-    {
-        $this->refinementDuration = $refinementDuration;
         return $this;
     }
 
@@ -677,50 +380,6 @@ class Video
     public function setCurrentRefinementFrameDirectory(?string $currentRefinementFrameDirectory): self
     {
         $this->currentRefinementFrameDirectory = $currentRefinementFrameDirectory;
-        return $this;
-    }
-
-    public function getEstimatedConversionDuration(): ?int
-    {
-        return $this->estimatedConversionDuration;
-    }
-
-    public function setEstimatedConversionDuration(?int $estimatedConversionDuration): self
-    {
-        $this->estimatedConversionDuration = $estimatedConversionDuration;
-        return $this;
-    }
-
-    public function getEstimatedSceneDetectionDuration(): ?int
-    {
-        return $this->estimatedSceneDetectionDuration;
-    }
-
-    public function setEstimatedSceneDetectionDuration(?int $estimatedSceneDetectionDuration): self
-    {
-        $this->estimatedSceneDetectionDuration = $estimatedSceneDetectionDuration;
-        return $this;
-    }
-
-    public function getEstimatedFrameExtractionDuration(): ?int
-    {
-        return $this->estimatedFrameExtractionDuration;
-    }
-
-    public function setEstimatedFrameExtractionDuration(?int $estimatedFrameExtractionDuration): self
-    {
-        $this->estimatedFrameExtractionDuration = $estimatedFrameExtractionDuration;
-        return $this;
-    }
-
-    public function getEstimatedFaceAnalysisDuration(): ?int
-    {
-        return $this->estimatedFaceAnalysisDuration;
-    }
-
-    public function setEstimatedFaceAnalysisDuration(?int $estimatedFaceAnalysisDuration): self
-    {
-        $this->estimatedFaceAnalysisDuration = $estimatedFaceAnalysisDuration;
         return $this;
     }
 
@@ -836,5 +495,27 @@ class Video
         }
 
         return $this;
+    }
+
+    public function getProcessingStepFinishedAt(VideoStatus $status): ?\DateTimeImmutable
+    {
+        foreach ($this->processingSteps as $step) {
+            if ($step->getStep() === $status) {
+                return $step->getFinishedAt();
+            }
+        }
+
+        return null;
+    }
+
+    public function getProcessingStepStartedAt(VideoStatus $status): ?\DateTimeImmutable
+    {
+        foreach ($this->processingSteps as $step) {
+            if ($step->getStep() === $status) {
+                return $step->getStartedAt();
+            }
+        }
+
+        return null;
     }
 }

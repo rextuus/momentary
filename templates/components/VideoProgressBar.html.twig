@@ -9,13 +9,7 @@
                 ({{ video.processedFrames }}/{{ video.totalFrames }} Frames)
             {% endif %}
 
-            {% set est = null %}
-            {% if video.status.value == 'converting' %}{% set est = video.estimatedConversionDuration %}
-            {% elseif video.status.value == 'scene_detection' %}{% set est = video.estimatedSceneDetectionDuration %}
-            {% elseif video.status.value == 'splitting' %}{% set est = video.estimatedFrameExtractionDuration %}
-            {% elseif video.status.value == 'analyzing_faces' %}{% set est = video.estimatedFaceAnalysisDuration %}
-            {% elseif video.status.value == 'tagging_scenes' %}
-            {% endif %}
+            {% set est = this.estimatedDuration %}
 
             {% if est %}
                 <span class="ms-1">(~{{ (est / 60)|round(0, 'floor') }}:{{ (est % 60)|format('%02d') }} min)</span>

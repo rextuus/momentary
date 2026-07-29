@@ -7,6 +7,7 @@ namespace App\Twig\Components;
 use App\Entity\Video;
 use App\Enum\VideoStatus;
 use App\Repository\VideoRepository;
+use App\Repository\VideoProcessingStepRepository;
 use Symfony\UX\LiveComponent\Attribute\AsLiveComponent;
 use Symfony\UX\LiveComponent\Attribute\LiveProp;
 use Symfony\UX\LiveComponent\DefaultActionTrait;
@@ -19,12 +20,21 @@ class VideoProgressBar
     #[LiveProp]
     public Video $video;
 
-    public function __construct(private VideoRepository $videoRepository) {}
+    public function __construct(
+        private VideoRepository $videoRepository,
+        private VideoProcessingStepRepository $stepRepository
+    ) {}
 
     public function getVideo(): Video
     {
         // Refresh the video entity to get the latest progress
         return $this->videoRepository->find($this->video->getId());
+    }
+
+    public function getEstimatedDuration(): ?int
+    {
+        $status = $this->getVideo()->getStatus();
+        return $this->stepRepository->getAverageDurationForStep($status);
     }
 
     public function getPercentage(): int
