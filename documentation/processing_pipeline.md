@@ -7,12 +7,10 @@ All status changes are handled by the `App\Service\WorkflowMachine`. It uses tra
 
 ## Step 1: Initialization & Upload
 When a video is submitted via the web interface:
--   **If YouTube URL provided**: Transition `start_download` is applied and a `DownloadVideoMessage` is dispatched.
 -   **If local file selected**: Transition `start_conversion` is applied and a `ConvertVideoMessage` is dispatched.
 -   **Direct Upload**: Files can be uploaded via the "Upload" page directly into `public/uploads/import`, making them available for selection.
 
 ## Step 2: Downloading & Scene Detection (or just Scene Detection)
--   **Download**: (If via YouTube) `download_video.py` uses `yt-dlp` to fetch the video. Status changes to `DOWNLOADING`.
 -   **Scenes**: `detect_scenes.py` uses `PySceneDetect` to identify transitions. Status changes to `SCENE_DETECTION`. Scenes are stored in the `video_scene` table.
 
 ## Step 3: Frame Extraction
@@ -31,12 +29,10 @@ The `FrameAnalyzerMessageHandler` processes each frame:
 
 ## Step 5: Completion & Cleanup
 Once the last frame is processed, the transition `complete` is applied and the video status is set to `COMPLETED`.
-If a `youtubeUrl` is present, the local video file is deleted to save space. If the `youtubeUrl` is added after the analysis is complete, the cleanup is triggered at that moment.
 
 ## Workflow Transitions
 The workflow supports the following main transitions:
-- `start_download`: PENDING -> DOWNLOADING
-- `start_conversion`: DOWNLOADING/PENDING -> CONVERTING
+- `start_conversion`: PENDING -> CONVERTING
 - `start_scene_detection`: CONVERTING/PENDING/DOWNLOADING -> SCENE_DETECTION
 - `start_splitting`: SCENE_DETECTION -> SPLITTING
 - `start_analyzing`: SPLITTING -> ANALYZING_FACES

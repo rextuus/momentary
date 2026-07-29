@@ -20,8 +20,8 @@ Das Ziel ist es, große Mengen an Videomaterial durchsuchbar zu machen, indem au
 - **Integrationen:** Jellyfin (Video-Streaming-Server) als Exportziel für Metadaten.
 
 ## 3. Hauptfunktionen
-- **Video-Import:** Upload von lokalen Dateien oder Download via YouTube-URL.
-- **Workflow-Management:** Ein zustandsbasierter Prozess (Symfony Workflow), der Videos durch verschiedene Stadien leitet (Downloading -> Scene Detection -> Analyzing Faces -> Completed).
+- **Video-Import:** Upload von lokalen Dateien.
+- **Workflow-Management:** Ein zustandsbasierter Prozess (Symfony Workflow), der Videos durch verschiedene Stadien leitet (Scene Detection -> Analyzing Faces -> Completed).
 - **Szenenerkennung:** Automatisches Splitten von Videos in logische Szenen.
 - **Gesichtserkennung:** Extraktion von Frames aus Szenen und Analyse durch AWS Rekognition.
 - **Personen-Management:**
@@ -41,7 +41,7 @@ Das Ziel ist es, große Mengen an Videomaterial durchsuchbar zu machen, indem au
 
 ## 5. Workflow eines Videos
 1. **Pending:** Video ist registriert.
-2. **Downloading / Converting:** Rohmaterial wird beschafft und in ein bearbeitbares Format gebracht.
+2. **Converting:** Rohmaterial wird in ein bearbeitbares Format gebracht.
 3. **Scene Detection:** PySceneDetect markiert Starts und Enden von Szenen.
 4. **Splitting / Analyzing:** Frames werden extrahiert und an AWS Rekognition gesendet.
 5. **Refining:** (Optional) Höher auflösende Analyse bei Bedarf.

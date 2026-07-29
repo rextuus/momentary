@@ -50,11 +50,6 @@ class VideoType extends AbstractType
                 'required' => false,
                 'attr' => ['class' => 'form-select'],
             ])
-            ->add('youtubeUrl', UrlType::class, [
-                'label' => 'YouTube-Link (optional)',
-                'required' => false,
-                'attr' => ['class' => 'form-control'],
-            ])
             ->add('analysisFps', NumberType::class, [
                 'label' => 'Standard-FPS',
                 'data' => $this->defaultFps,

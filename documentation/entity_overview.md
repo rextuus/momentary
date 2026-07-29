@@ -22,7 +22,6 @@ Das zentrale Element, das eine Videodatei und deren Analyse-Metadaten repräsent
 ### Properties
 - `id`: Integer (PK)
 - `title`: String
-- `youtubeUrl`: String (optional)
 - `sourceFile`: String
 - `localPath`: String (Relativer Pfad zur aktuell genutzten Datei, z.B. optimiertes MP4)
 - `convertedVideoPath`: String (Veraltet/Optional)

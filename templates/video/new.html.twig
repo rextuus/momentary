@@ -28,16 +28,6 @@
                             </div>
                         </div>
 
-                        <div class="text-center my-3 position-relative">
-                            <hr>
-                            <span class="position-absolute top-50 start-50 translate-middle badge bg-light text-muted border px-3">ODER</span>
-                        </div>
-
-                        <div class="mb-0">
-                            {{ form_label(form.youtubeUrl, 'YouTube URL (direkte Analyse)', {'label_attr': {'class': 'form-label fw-bold small text-uppercase text-muted'}}) }}
-                            {{ form_widget(form.youtubeUrl, {'attr': {'class': 'form-control shadow-sm', 'placeholder': 'https://www.youtube.com/watch?v=...'}}) }}
-                            {{ form_errors(form.youtubeUrl) }}
-                        </div>
                     </div>
 
                     <div class="accordion mb-4 shadow-sm" id="advancedOptions">

@@ -31,7 +31,7 @@ services:
     volumes:
       # Code-Mount: Nur in DEV aktiv (wird via ENV überschrieben)
       - ${APP_CODE_VOLUME:-./:/var/www/html:rw}
-      - app_uploads:/var/www/html/public/uploads
+      - ./public/uploads:/var/www/html/public/uploads
       - app_var:/var/www/html/var
       - ./docker/jellyfin/uploads:/var/www/html/docker/jellyfin/uploads:rw
     depends_on:
@@ -67,7 +67,7 @@ services:
       PYTHON_BINARY: ${PYTHON_BINARY:-/usr/bin/python3}      # <-- Neu hinzugefügt
     volumes:
       - ${APP_CODE_VOLUME:-./:/var/www/html:rw}
-      - app_uploads:/var/www/html/public/uploads
+      - ./public/uploads:/var/www/html/public/uploads
       - app_var:/var/www/html/var
       - ./docker/jellyfin/uploads:/var/www/html/docker/jellyfin/uploads:rw # <-- Neu hinzugefügt
     depends_on:
@@ -146,7 +146,7 @@ services:
     ports:
       - "${IMGPROXY_HOST_BINDING:-127.0.0.1}:${IMGPROXY_PORT:-8081}:8080"
     volumes:
-      - app_uploads:/public/uploads:ro
+      - ./public/uploads:/public/uploads:ro
     networks:
       - momentary-network
 

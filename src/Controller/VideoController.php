@@ -10,6 +10,8 @@ use App\Message\ConvertVideoMessage;
 use App\Message\DetectVideoScenesMessage;
 use App\Message\ExtractThumbnailMessage;
 use App\Message\ExtractAllSceneThumbnailsMessage;
+use App\Message\OptimizeVideoForJellyfinMessage;
+use App\Message\SplitVideoIntoFramesMessage;
 use App\Message\TagScenesMessage;
 use App\Message\GenerateChaptersMessage;
 use App\Repository\VideoRepository;
@@ -30,13 +32,11 @@ use Symfony\Component\Routing\Attribute\Route;
 final class VideoController extends AbstractController
 {
     public function __construct(
-        private MessageBusInterface $messageBus,
-        private VideoRepository $videoRepository,
-        private EntityManagerInterface $entityManager,
-        private WorkflowMachine $workflowMachine,
-        private LoggerInterface $logger,
-        #[Autowire('%kernel.project_dir%/public/uploads/import')]
-        private string $importDir
+        private readonly MessageBusInterface $messageBus,
+        private readonly VideoRepository $videoRepository,
+        private readonly EntityManagerInterface $entityManager,
+        private readonly WorkflowMachine $workflowMachine,
+        private readonly LoggerInterface $logger
     ) {}
 
     /**
@@ -73,9 +73,7 @@ final class VideoController extends AbstractController
             $this->entityManager->persist($video);
             $this->entityManager->flush();
 
-            if ($video->getYoutubeUrl()) {
-                // Download wurde entfernt
-            } elseif ($video->getLocalPath()) {
+            if ($video->getLocalPath()) {
                 if ($this->workflowMachine->can($video, 'start_conversion')) {
                     $this->workflowMachine->apply($video, 'start_conversion');
                     $this->messageBus->dispatch(new ConvertVideoMessage($video->getId()));
@@ -111,24 +109,6 @@ final class VideoController extends AbstractController
         return $this->redirectToRoute('app_video_index');
     }
 
-    #[Route('/{id}/set-youtube-url', name: 'video_set_youtube_url', methods: ['POST'])]
-    public function setYoutubeUrl(Video $video, Request $request, VideoAnalyzer $videoAnalyzer): RedirectResponse
-    {
-        $url = $request->request->get('youtube_url');
-        if ($url) {
-            $video->setYoutubeUrl($url);
-            $this->entityManager->flush();
-
-            // Trigger cleanup if completed
-            if ($video->getStatus() === VideoStatus::COMPLETED) {
-                $videoAnalyzer->cleanupLocalFile($video->getId());
-            }
-
-            $this->addFlash('success', 'YouTube-Link wurde gespeichert.');
-        }
-
-        return $this->redirectToRoute('app_video_index');
-    }
 
     #[Route('/{id}/extract-thumbnail', name: 'video_extract_thumbnail', methods: ['POST'])]
     public function extractThumbnail(Video $video, Request $request): RedirectResponse

@@ -13,12 +13,10 @@ Der Kern des Systems. Er steuert:
 
 ### 2. Python Processing Service (`video-analyzer/python/`)
 Spezialisierte Skripte für die Medienverarbeitung, die von Symfony via `Process`-Komponente aufgerufen werden:
--   `download_video.py`: Download von Videomaterial (z.B. YouTube-URLs).
 -   `convert_to_mp4.py`: Umwandlung von Videodateien in kompatible Formate.
 -   `detect_scenes.py`: Analyse des Videostreams zur automatischen Szenenerkennung.
 -   `extract_frames.py`: Extraktion von Frames für die Analyse.
 -   `analyze_frame.py`: Analyse einzelner Bilder, z.B. für Gesichtsanalysen.
--   `download_and_extract.py`: Kombinierter Workflow für Download und Extraktion.
 
 ### 3. Jellyfin Media Server
 Ermöglicht das Streamen und Betrachten der verarbeiteten Videos:

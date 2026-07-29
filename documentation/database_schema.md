@@ -14,7 +14,6 @@ The system uses four main entities to manage video data and recognized faces.
 ### Video
 Stores general information about the video source.
 -   `title`: Name of the video.
--   `youtubeUrl`: Source link (nullable).
 -   `sourceFile`: Name of the local file for import (nullable).
 -   `localPath`: Path to the downloaded or imported file.
 -   `status`: Current processing state (PENDING, DOWNLOADING, ANALYZING, COMPLETED, etc.).

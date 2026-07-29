@@ -42,9 +42,6 @@ class Video
     #[Groups(['video:list', 'video:detail'])]
     private ?string $title = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['video:list', 'video:detail'])]
-    private ?string $youtubeUrl = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     #[Groups(['video:detail'])]
@@ -266,17 +263,6 @@ class Video
         return $this;
     }
 
-    public function getYoutubeUrl(): ?string
-    {
-        return $this->youtubeUrl;
-    }
-
-    public function setYoutubeUrl(?string $youtubeUrl): static
-    {
-        $this->youtubeUrl = $youtubeUrl;
-
-        return $this;
-    }
 
     public function getSourceFile(): ?string
     {

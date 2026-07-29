@@ -155,11 +155,6 @@
                                                             <span class="badge rounded-pill bg-{{ statusInfo.color }} bg-opacity-10 text-{{ statusInfo.color }} border border-{{ statusInfo.color }} px-1 py-0" style="font-size: 0.6rem;">
                                                                 {{ video.status.value|upper }}
                                                             </span>
-                                                            {% if video.youtubeUrl %}
-                                                                <span class="text-muted text-truncate" style="font-size: 0.65rem;">
-                                                                    <i class="fab fa-youtube text-danger me-1"></i> {{ video.youtubeUrl|slice(0, 30) }}...
-                                                                </span>
-                                                            {% endif %}
                                                         </div>
                                                     </div>
                                                     <div class="col-auto">
