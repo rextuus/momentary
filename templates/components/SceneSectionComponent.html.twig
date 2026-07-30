@@ -21,9 +21,20 @@
         <div class="card-header bg-white p-3 d-flex justify-content-between align-items-center" style="border-radius: 12px 12px 0 0; position: relative;">
 
             <div class="d-flex align-items-center flex-grow-1">
-                {% if scene.thumbnailUrl %}
-                    <img src="{{ imgproxy_url(scene.thumbnailUrl, 320, 180) }}" alt="Szene {{ sceneNumber }}" class="rounded shadow-sm me-3" style="width: 80px; height: 45px; object-fit: cover;">
-                {% endif %}
+                <div class="d-flex flex-column gap-2 me-3">
+                    {% if scene.thumbnailUrl %}
+                        <img src="{{ imgproxy_url(scene.thumbnailUrl, 640, 360) }}" alt="Szene {{ sceneNumber }}" class="rounded shadow-sm" style="width: 200px; height: 112px; object-fit: cover;">
+                    {% endif %}
+
+                    {% set frames = this.getFramesForScene() %}
+                    {% if frames|length > 0 %}
+                        <div class="d-flex overflow-auto gap-1" style="max-width: 200px;">
+                            {% for frame in frames %}
+                                <img src="{{ asset(frame.path) }}" class="rounded" style="height: 40px; width: auto; object-fit: cover;" alt="Frame {{ frame.timestamp }}s">
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
                 <div class="scene-badge me-3 shadow-sm">{{ sceneNumber }}</div>
                 <div class="flex-grow-1">
                     {# INPUT FÜR DEN TITEL #}

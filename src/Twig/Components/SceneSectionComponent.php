@@ -64,6 +64,47 @@ class SceneSectionComponent extends AbstractController
         return $this->entityManager->getRepository(\App\Entity\VideoChapter::class)->findBy(['video' => $this->scene->getVideo()]);
     }
 
+    public function getFramesForScene(): array
+    {
+        $video = $this->scene->getVideo();
+        $dir = $video->getCurrentFrameDirectory();
+
+        if (!$dir || !is_dir($dir)) {
+            return [];
+        }
+
+        $fps = $video->getAnalysisFps() ?? 0.2;
+        if ($fps <= 0) {
+            $fps = 0.2;
+        }
+
+        $frames = [];
+        $files = glob($dir . '/frame_*.jpg');
+        if (!$files) {
+            return [];
+        }
+        sort($files);
+
+        foreach ($files as $file) {
+            $stem = pathinfo($file, PATHINFO_FILENAME);
+            $parts = explode('_', $stem);
+            if (count($parts) < 2) continue;
+            
+            $number = (int) $parts[1];
+            $timestamp = $number * (1 / $fps);
+
+            if ($timestamp >= $this->scene->getStartSeconds() && $timestamp <= $this->scene->getEndSeconds()) {
+                $relativePath = str_replace($this->getParameter('kernel.project_dir') . '/public/', '', $file);
+                $frames[] = [
+                    'path' => $relativePath,
+                    'timestamp' => $timestamp
+                ];
+            }
+        }
+
+        return $frames;
+    }
+
     #[LiveAction]
     public function assignToChapter(): ?Response
     {
