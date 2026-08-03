@@ -1,0 +1,40 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Mitglieder von {{ group.name }}{% endblock %}
+
+{% block body %}
+    <h1>Mitglieder von "{{ group.name }}"</h1>
+    
+    <a href="{{ path('app_admin_groups') }}" class="btn btn-secondary">Zurück zur Gruppenliste</a>
+
+    <table class="table mt-3">
+        <thead>
+            <tr>
+                <th>Benutzer</th>
+                <th>Aktionen</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for member in group.members %}
+                <tr>
+                    <td>{{ member.user.email }}</td>
+                    <td>
+                        <form action="{{ path('app_admin_groups_remove_member', {'id': group.id, 'memberId': member.id}) }}" method="post" onsubmit="return confirm('Wirklich entfernen?');">
+                            <button type="submit" class="btn btn-danger btn-sm">Entfernen</button>
+                        </form>
+                    </td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="2">Keine Mitglieder in dieser Gruppe.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h3>Benutzer hinzufügen</h3>
+    {{ form_start(form) }}
+        {{ form_widget(form) }}
+        <button type="submit" class="btn btn-primary mt-2">Hinzufügen</button>
+    {{ form_end(form) }}
+{% endblock %}

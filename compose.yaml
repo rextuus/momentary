@@ -34,6 +34,7 @@ services:
       - ./public/uploads:/var/www/html/public/uploads
       - app_var:/var/www/html/var
       - ./docker/jellyfin/uploads:/var/www/html/docker/jellyfin/uploads:rw
+      - app_uploads:/var/www/html/var/uploads/app_uploads
     depends_on:
       database:
         condition: service_healthy
@@ -70,6 +71,7 @@ services:
       - ./public/uploads:/var/www/html/public/uploads
       - app_var:/var/www/html/var
       - ./docker/jellyfin/uploads:/var/www/html/docker/jellyfin/uploads:rw # <-- Neu hinzugefügt
+      - app_uploads:/var/www/html/var/uploads/app_uploads
     depends_on:
       database:
         condition: service_healthy
@@ -147,6 +149,22 @@ services:
       - "${IMGPROXY_HOST_BINDING:-127.0.0.1}:${IMGPROXY_PORT:-8081}:8080"
     volumes:
       - ./public/uploads:/public/uploads:ro
+    networks:
+      - momentary-network
+
+  sftp:
+    image: atmoz/sftp
+    container_name: momentary_sftp
+    restart: unless-stopped
+    ports:
+      - "2222:22"
+    environment:
+      # Format: benutzername:passwort:uid:gid:ordner
+      SFTP_USERS: "uploaduser:MeinSicheresPasswort123:1000:1000:upload"
+    volumes:
+      # Bindet das Upload-Verzeichnis direkt in den SFTP-Ordner des Benutzers ein
+      - ./docker/jellyfin/uploads:/home/uploaduser/upload/jellyfin_uploads
+      - app_uploads:/home/uploaduser/upload/app_uploads
     networks:
       - momentary-network
 
