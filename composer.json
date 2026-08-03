@@ -16,6 +16,7 @@
         "google-gemini-php/client": "^2.7",
         "google/cloud-vision": "^2.2.1",
         "league/flysystem-bundle": "^3.7",
+        "lexik/jwt-authentication-bundle": "^3.2",
         "meilisearch/meilisearch-php": "*",
         "onliner/imgproxy-php": "^0.2.6",
         "phpdocumentor/reflection-docblock": "^5.6.7",

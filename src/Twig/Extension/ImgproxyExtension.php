@@ -20,12 +20,12 @@ class ImgproxyExtension extends AbstractExtension
         ];
     }
 
-    public function generateUrl(?string $source, int $width = 300, int $height = 300, string $resizingType = 'fill'): string
+    public function generateUrl(?string $source, int $width = 300, int $height = 300, string $resizingType = 'fill', int $blur = 0): string
     {
         if (!$source) {
             return '';
         }
 
-        return $this->imgproxyService->generateUrl($source, $width, $height, $resizingType);
+        return $this->imgproxyService->generateUrl($source, $width, $height, $resizingType, $blur);
     }
 }

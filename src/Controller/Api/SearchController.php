@@ -27,10 +27,6 @@ class SearchController extends AbstractController
         $persons = $request->query->all('persons');
         $tags = $request->query->all('tags');
         
-        if (empty($query) && empty($persons) && empty($tags)) {
-            return new JsonResponse([]);
-        }
-
         // Build filter
         $filters = [];
         foreach ($persons as $person) {
@@ -57,9 +53,18 @@ class SearchController extends AbstractController
 
         $videos = $this->videoRepository->findBy(['id' => $videoIds]);
 
+        // Videos nach ID mappen
+        $videoMap = [];
+        foreach ($videos as $video) {
+            $videoMap[$video->getId()] = $video;
+        }
+
         // MeiliSearch-Hits nach ID mappen
         $hitDataMap = [];
         foreach ($hits as $hit) {
+            $video = $videoMap[(int)$hit['id']] ?? null;
+            $blur = ($video && $this->isGranted('VIDEO_VIEW', $video)) ? 0 : 5;
+
             $personsWithScenes = $hit['persons_with_scenes'] ?? [];
             $tagsWithScenes = $hit['tags_with_scenes'] ?? [];
 
@@ -73,7 +78,7 @@ class SearchController extends AbstractController
             // Transform thumbnailUrl in personsWithScenes
             foreach ($personsWithScenes as &$item) {
                 if (isset($item['thumbnailUrl'])) {
-                    $item['thumbnailUrl'] = $this->imgproxyService->generateUrl($item['thumbnailUrl'], 320, 180);
+                    $item['thumbnailUrl'] = $this->imgproxyService->generateUrl($item['thumbnailUrl'], 320, 180, 'fill', $blur);
                 }
             }
             unset($item);
@@ -88,7 +93,7 @@ class SearchController extends AbstractController
             // Transform thumbnailUrl in tagsWithScenes
             foreach ($tagsWithScenes as &$item) {
                 if (isset($item['thumbnailUrl'])) {
-                    $item['thumbnailUrl'] = $this->imgproxyService->generateUrl($item['thumbnailUrl'], 320, 180);
+                    $item['thumbnailUrl'] = $this->imgproxyService->generateUrl($item['thumbnailUrl'], 320, 180, 'fill', $blur);
                 }
             }
             unset($item);
@@ -96,13 +101,23 @@ class SearchController extends AbstractController
             $hitDataMap[(int)$hit['id']] = [
                 'persons_with_scenes' => array_values($personsWithScenes),
                 'tags_with_scenes' => array_values($tagsWithScenes),
+                'blur' => $blur,
             ];
         }
 
         $result = [];
         foreach ($videos as $video) {
             $data = json_decode($this->serializer->serialize($video, 'json', ['groups' => ['video:list']]), true);
-            $hitData = $hitDataMap[$video->getId()] ?? ['persons_with_scenes' => [], 'tags_with_scenes' => []];
+            $hitData = $hitDataMap[$video->getId()] ?? ['persons_with_scenes' => [], 'tags_with_scenes' => [], 'blur' => 5];
+            
+            $blur = $hitData['blur'] ?? 5;
+            
+            // Auch das Haupt-Thumbnail des Videos bluren
+            if (isset($data['thumbnailUrl'])) {
+                $data['thumbnailUrl'] = $this->imgproxyService->generateUrl($data['thumbnailUrl'], 320, 180, 'fill', $blur);
+            }
+            
+            unset($hitData['blur']);
             
             $result[] = array_merge($data, $hitData);
         }

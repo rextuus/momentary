@@ -26,6 +26,7 @@ use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/video')]
 final class VideoController extends AbstractController
@@ -253,6 +254,8 @@ final class VideoController extends AbstractController
             throw $this->createNotFoundException('Video nicht gefunden');
         }
 
+        $this->denyAccessUnlessGranted('VIDEO_VIEW', $video);
+
         return $this->render('video/timeline.html.twig', [
             'video' => $video,
         ]);
@@ -262,6 +265,7 @@ final class VideoController extends AbstractController
      * Detail Ansicht
      */
     #[Route('/{id}', name: 'app_video_show', methods: ['GET'])]
+    #[IsGranted('VIDEO_VIEW', subject: 'video')]
     public function show(
         Video $video,
         #[Autowire('%env(JELLYFIN_HOST)%')] string $jellyfinHost,
@@ -290,7 +294,10 @@ final class VideoController extends AbstractController
     #[Route('/chapter/{id}', name: 'app_chapter_show', methods: ['GET'])]
     public function chapterShow(VideoChapter $chapter): Response
     {
-        $scenes = $chapter->getVideo()->getScenes()->filter(function(\App\Entity\VideoScene $scene) use ($chapter) {
+        $video = $chapter->getVideo();
+        $this->denyAccessUnlessGranted('VIDEO_VIEW', $video);
+
+        $scenes = $video->getScenes()->filter(function(\App\Entity\VideoScene $scene) use ($chapter) {
             return $scene->getStartSeconds() >= $chapter->getStartSeconds() && $scene->getEndSeconds() <= $chapter->getEndSeconds();
         });
 

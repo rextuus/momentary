@@ -32,7 +32,9 @@
 
                             <div class="col-md-auto position-relative bg-light d-flex align-items-center justify-content-center overflow-hidden" style="width: 200px; min-height: 120px;">
                                 {% if video.thumbnailUrl %}
-                                    <img src="{{ imgproxy_url(video.thumbnailUrl, 200, 120) }}" alt="{{ video.title }}" class="w-100 h-100 object-fit-cover position-absolute top-0 start-0">
+                                    {% set is_allowed = is_granted('VIDEO_VIEW', video) %}
+                                    {% set blur = (not is_allowed and (app.user is null or (app.user.settings and app.user.settings.blurForbiddenContent))) ? 5 : 0 %}
+                                    <img src="{{ imgproxy_url(video.thumbnailUrl, 200, 120, 'fill', blur) }}" alt="{{ video.title }}" class="w-100 h-100 object-fit-cover position-absolute top-0 start-0">
                                 {% endif %}
                                 <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-{{ statusInfo.color }} bg-opacity-25" style="z-index: 1;">
                                     <i class="fas fa-{{ statusInfo.icon }} text-white fa-lg shadow-sm"></i>
@@ -58,6 +60,24 @@
                                                 <code class="small text-muted" style="font-size: 0.75rem;">{{ video.localPath|split('/')|last }}</code>
                                             </div>
                                         {% endif %}
+
+                                        <div class="mt-2 mb-2">
+                                            {% if video.isPublic %}
+                                                <span class="badge rounded-pill bg-success bg-opacity-10 text-success border border-success" title="Öffentlich">
+                                                    <i class="fas fa-globe me-1"></i> Öffentlich
+                                                </span>
+                                            {% else %}
+                                                <span class="badge rounded-pill bg-warning bg-opacity-10 text-warning border border-warning" title="Eingeschränkter Zugriff">
+                                                    <i class="fas fa-lock me-1"></i> {{ video.allowedGroups|length }} Gruppe(n)
+                                                </span>
+                                            {% endif %}
+
+                                            {% if is_granted('ROLE_ADMIN') %}
+                                                <a href="{{ path('app_admin_video_groups', {id: video.id}) }}" class="btn btn-sm btn-outline-secondary rounded-pill px-2 ms-2" title="Zugriff verwalten">
+                                                    <i class="fas fa-shield-alt"></i>
+                                                </a>
+                                            {% endif %}
+                                        </div>
 
                                         {% if video.status.value != 'completed' and video.status.value != 'pending' and video.status.value != 'error' %}
                                             <div class="mt-3" style="max-width: 400px;">

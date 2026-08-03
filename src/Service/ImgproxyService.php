@@ -6,6 +6,7 @@ use Onliner\ImgProxy\UrlBuilder;
 use Onliner\ImgProxy\Options\Width;
 use Onliner\ImgProxy\Options\Height;
 use Onliner\ImgProxy\Options\ResizingType;
+use Onliner\ImgProxy\Options\Blur;
 
 class ImgproxyService
 {
@@ -21,14 +22,34 @@ class ImgproxyService
         $this->publicHost = $publicHost;
     }
 
-    public function generateUrl(string $sourceUrl, int $width = 300, int $height = 300, string $resizingType = 'fill'): string
+    public function generateUrl(string $sourceUrl, int $width = 300, int $height = 300, string $resizingType = 'fill', int $blur = 0): string
     {
         // Cache-Buster entfernen, falls vorhanden, für das imgproxy-Mapping
         $pureSourceUrl = $sourceUrl;
+        
+        // Falls die URL bereits den publicHost enthält, entfernen wir ihn, um den Pfad zu erhalten
+        if (str_starts_with($pureSourceUrl, $this->publicHost)) {
+            $pureSourceUrl = str_replace($this->publicHost, '', $pureSourceUrl);
+        }
+
+        // Falls es sich bereits um eine Imgproxy-URL handelt, versuchen wir die originale URL zu extrahieren
+        if (str_starts_with($pureSourceUrl, '/') && (str_contains($pureSourceUrl, '/w:') || str_contains($pureSourceUrl, '/h:'))) {
+             $parts = explode('/', trim($pureSourceUrl, '/'));
+             
+             // The structure is {signature}/{w:XXX}/{h:XXX}/{rt:XXX}/{encoded_url}
+             // So {encoded_url} is the 5th element, or everything after {rt:XXX}.
+             
+             $encodedUrl = implode('/', array_slice($parts, 4));
+             $decodedSourceUrl = $this->base64UrlDecode($encodedUrl);
+             
+             // Rekursiver Aufruf mit der dekodierten URL, diese wird dann neu signiert
+             return $this->generateUrl($decodedSourceUrl, $width, $height, $resizingType, $blur);
+        }
+
         $queryString = '';
-        if (($pos = strpos($sourceUrl, '?')) !== false) {
-            $pureSourceUrl = substr($sourceUrl, 0, $pos);
-            $queryString = substr($sourceUrl, $pos);
+        if (($pos = strpos($pureSourceUrl, '?')) !== false) {
+            $pureSourceUrl = substr($pureSourceUrl, 0, $pos);
+            $queryString = substr($pureSourceUrl, $pos);
         }
 
         // Mapping für lokale Pfade: imgproxy sieht /public als Root (siehe compose.yaml)
@@ -62,8 +83,13 @@ class ImgproxyService
         // damit imgproxy selbst seinen Cache umgeht (falls konfiguriert)
         $finalSourceUrl = $pureSourceUrl . $queryString;
 
+        $options = [new Width($width), new Height($height), new ResizingType($resizingType)];
+        if ($blur > 0) {
+            $options[] = new Blur($blur);
+        }
+
         $generatedUrl = $this->publicHost . $this->builder
-            ->with(new Width($width), new Height($height), new ResizingType($resizingType))
+            ->with(...$options)
             ->url($finalSourceUrl, 'jpg');
 
         // Auch an die generierte URL den Cache-Buster hängen für den Browser
@@ -77,5 +103,10 @@ class ImgproxyService
     public function getPublicHost(): string
     {
         return $this->publicHost;
+    }
+
+    private function base64UrlDecode(string $data): string
+    {
+        return base64_decode(strtr($data, '-_', '+/') . str_repeat('=', 3 - (3 + strlen($data)) % 4));
     }
 }

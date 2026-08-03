@@ -37,16 +37,8 @@ class VideoNormalizer implements NormalizerInterface, NormalizerAwareInterface
             $groups = (array) ($context['groups'] ?? []);
 
             // ImgProxy URL generieren (Thumbnail)
-            if (isset($data['thumbnailUrl'])) {
-                $width = in_array('video:list', $groups) ? 320 : 640;
-                $height = in_array('video:list', $groups) ? 180 : 360;
-
-                $data['thumbnailUrl'] = $this->imgproxyService->generateUrl(
-                    $data['thumbnailUrl'],
-                    $width,
-                    $height
-                );
-            }
+            // Wir entfernen die automatische Signierung hier, damit wir in den Controllern 
+            // die URLs dynamisch mit Parametern (wie blur) signieren können.
         }
 
         return $data;

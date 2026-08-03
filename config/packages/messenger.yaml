@@ -9,7 +9,7 @@ framework:
                 retry_strategy:
                     max_retries: 3
                     multiplier: 2
-            failed: 'amqp://guest:guest@rabbitmq:5672/%2f/messages_failed'
+            failed: '%env(MESSENGER_TRANSPORT_DSN)%'
             # sync: 'sync://'
 
         default_bus: messenger.bus.default

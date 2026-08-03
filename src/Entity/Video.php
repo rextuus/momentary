@@ -7,6 +7,8 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use App\Enum\VideoStatus;
 use App\Repository\VideoRepository;
+use App\Entity\User;
+use App\Entity\UserGroup;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -151,12 +153,36 @@ class Video
     #[Groups(['video:list', 'video:detail'])]
     private ?string $directoryHash = null;
 
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    private ?User $owner = null;
+
+    #[ORM\Column(options: ["default" => false])]
+    private bool $isPublic = false;
+
+    /**
+     * @var Collection<int, UserGroup>
+     */
+    #[ORM\ManyToMany(targetEntity: UserGroup::class)]
+    private Collection $allowedGroups;
+
     public function __construct()
     {
         $this->videoFaces = new ArrayCollection();
         $this->scenes = new ArrayCollection();
         $this->chapters = new ArrayCollection();
         $this->processingSteps = new ArrayCollection();
+        $this->allowedGroups = new ArrayCollection();
+    }
+
+    public function isPublic(): bool
+    {
+        return $this->isPublic;
+    }
+
+    public function setIsPublic(bool $isPublic): static
+    {
+        $this->isPublic = $isPublic;
+        return $this;
     }
 
     public function getId(): ?int
@@ -445,6 +471,39 @@ class Video
     public function setDirectoryHash(?string $directoryHash): self
     {
         $this->directoryHash = $directoryHash;
+        return $this;
+    }
+
+    public function getOwner(): ?User
+    {
+        return $this->owner;
+    }
+
+    public function setOwner(?User $owner): static
+    {
+        $this->owner = $owner;
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, UserGroup>
+     */
+    public function getAllowedGroups(): Collection
+    {
+        return $this->allowedGroups;
+    }
+
+    public function addAllowedGroup(UserGroup $group): static
+    {
+        if (!$this->allowedGroups->contains($group)) {
+            $this->allowedGroups->add($group);
+        }
+        return $this;
+    }
+
+    public function removeAllowedGroup(UserGroup $group): static
+    {
+        $this->allowedGroups->removeElement($group);
         return $this;
     }
 

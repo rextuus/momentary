@@ -2,6 +2,8 @@
 
 namespace App\Controller;
 
+use App\Entity\Video;
+use Symfony\Component\HttpFoundation\Request;
 use App\Repository\VideoRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -23,6 +25,23 @@ class VideoAdminController extends AbstractController
     {
         return $this->render('video/index.html.twig', [
             'videos' => $repo->findAll(),
+        ]);
+    }
+
+    #[Route('/{id}/groups', name: 'app_admin_video_groups', methods: ['GET', 'POST'])]
+    public function editGroups(Video $video, Request $request): Response
+    {
+        $form = $this->createForm(\App\Form\VideoGroupsType::class, $video);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $this->entityManager->flush();
+            return $this->redirectToRoute('app_video_index');
+        }
+
+        return $this->render('admin/video/groups.html.twig', [
+            'video' => $video,
+            'form' => $form,
         ]);
     }
 }

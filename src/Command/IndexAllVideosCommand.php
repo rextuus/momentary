@@ -41,7 +41,16 @@ class IndexAllVideosCommand extends Command
         $progressBar = new ProgressBar($output, $total);
         $progressBar->start();
 
-        $index = $this->meiliSearchClient->index('videos');
+        $indexName = 'videos';
+        try {
+            $index = $this->meiliSearchClient->getIndex($indexName);
+        } catch (\Meilisearch\Exceptions\ApiException $e) {
+            $task = $this->meiliSearchClient->createIndex($indexName, ['primaryKey' => 'id']);
+            $this->meiliSearchClient->waitForTask($task['taskUid']);
+            $index = $this->meiliSearchClient->getIndex($indexName);
+        }
+        
+        $index->updateFilterableAttributes(['tags', 'persons']);
         
         $batch = [];
         foreach ($videos as $video) {

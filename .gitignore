@@ -57,3 +57,7 @@ Thumbs.db
 /.env.prod
 /.env
 /docker/meilisearch/
+
+###> lexik/jwt-authentication-bundle ###
+/config/jwt/*.pem
+###< lexik/jwt-authentication-bundle ###

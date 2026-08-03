@@ -9,7 +9,9 @@ framework:
         enabled: true
 
     # Note that the session will be started ONLY if you read or write from it.
-    session: true
+    session:
+        cookie_lifetime: 604800
+        gc_maxlifetime: 604800
 
     #esi: true
     #fragments: true
