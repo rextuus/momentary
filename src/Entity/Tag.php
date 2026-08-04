@@ -17,6 +17,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ApiResource(
     operations: [
         new GetCollection(
+            uriTemplate: '/tags',
             normalizationContext: ['groups' => ['tag:read']]
         ),
         new Get(

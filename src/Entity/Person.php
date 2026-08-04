@@ -7,6 +7,7 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use App\Enum\PersonStatus;
 use App\Repository\PersonRepository;
+use App\State\PersonCollectionProvider;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
@@ -17,7 +18,9 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ApiResource(
     operations: [
         new GetCollection(
-            normalizationContext: ['groups' => ['person:list']]
+            uriTemplate: '/persons',
+            normalizationContext: ['groups' => ['person:list']],
+            provider: PersonCollectionProvider::class
         ),
         new Get(
             normalizationContext: ['groups' => ['person:detail']]

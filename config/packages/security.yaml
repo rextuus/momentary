@@ -42,6 +42,8 @@ security:
     access_control:
         - { path: ^/api/login_check, roles: PUBLIC_ACCESS }
         - { path: ^/api/search, roles: PUBLIC_ACCESS }
+        - { path: ^/api/persons, roles: PUBLIC_ACCESS }
+        - { path: ^/api/tags, roles: PUBLIC_ACCESS }
         - { path: ^/login, roles: PUBLIC_ACCESS }
         - { path: ^/token, roles: PUBLIC_ACCESS }
         - { path: ^/authorize, roles: PUBLIC_ACCESS }

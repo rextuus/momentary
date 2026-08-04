@@ -34,6 +34,21 @@ class PersonRepository extends ServiceEntityRepository
     /**
      * @return Person[]
      */
+    public function findActiveKnown(): array
+    {
+        return $this->createQueryBuilder('p')
+            ->where('p.wasted = :wasted')
+            ->andWhere('p.name NOT LIKE :unknownPrefix')
+            ->setParameter('wasted', false)
+            ->setParameter('unknownPrefix', 'unknown_%')
+            ->orderBy('p.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * @return Person[]
+     */
     public function findIdentifiedWithUnverifiedFaces(): array
     {
         return $this->createQueryBuilder('p')
