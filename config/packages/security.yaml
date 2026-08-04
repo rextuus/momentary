@@ -18,22 +18,10 @@ security:
         dev:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
-        login:
-            pattern: ^/api/login_check
-            stateless: true
-            json_login:
-                check_path: /api/login_check
-                success_handler: lexik_jwt_authentication.handler.authentication_success
-                failure_handler: lexik_jwt_authentication.handler.authentication_failure
         api:
             pattern: ^/api
-            stateless: false
-            context: main
-            jwt: ~
-            remember_me:
-                secret: '%kernel.secret%'
-                lifetime: 604800 # 1 week
-                path: /
+            stateless: true
+            oauth2: true
         main:
             lazy: true
             context: main
@@ -55,6 +43,8 @@ security:
         - { path: ^/api/login_check, roles: PUBLIC_ACCESS }
         - { path: ^/api/search, roles: PUBLIC_ACCESS }
         - { path: ^/login, roles: PUBLIC_ACCESS }
+        - { path: ^/token, roles: PUBLIC_ACCESS }
+        - { path: ^/authorize, roles: PUBLIC_ACCESS }
         - { path: ^/search-test, roles: PUBLIC_ACCESS }
         - { path: ^/api,       roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/, roles: ROLE_USER }

@@ -62,6 +62,19 @@
             "var/storage/.gitignore"
         ]
     },
+    "league/oauth2-server-bundle": {
+        "version": "1.2",
+        "recipe": {
+            "repo": "github.com/symfony/recipes",
+            "branch": "main",
+            "version": "0.11",
+            "ref": "b40f5dd1cb1761570881520b9d3d7edae9c220cc"
+        },
+        "files": [
+            "config/packages/league_oauth2_server.yaml",
+            "config/routes/league_oauth2_server.yaml"
+        ]
+    },
     "lexik/jwt-authentication-bundle": {
         "version": "3.2",
         "recipe": {
