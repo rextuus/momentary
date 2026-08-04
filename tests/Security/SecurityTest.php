@@ -112,6 +112,6 @@ class SecurityTest extends WebTestCase
         
         $this->client->request('GET', '/');
         
-        $this->assertSelectorExists('img[src*="bl:5"]');
+        $this->assertResponseRedirects('/login');
     }
 }

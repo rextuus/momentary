@@ -1,0 +1,99 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Search Test Explorer{% endblock %}
+
+{% block body %}
+    <h1>Search Test Explorer</h1>
+
+    <div class="mb-3 alert alert-info">
+        {% if user %}
+            Eingeloggt als: <strong>{{ user.userIdentifier }}</strong>
+        {% else %}
+            Nicht eingeloggt.
+        {% endif %}
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label for="searchQuery" class="form-label">Search Query</label>
+                <input type="text" id="searchQuery" class="form-control" placeholder="Search...">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Tags</label>
+                <select id="tagsSelect" class="form-select" multiple>
+                    {% for tag in tags %}
+                        <option value="{{ tag.name }}">{{ tag.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Persons</label>
+                <select id="personsSelect" class="form-select" multiple>
+                    {% for person in persons %}
+                        <option value="{{ person.name }}">{{ person.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button id="searchBtn" class="btn btn-primary">Search</button>
+        </div>
+
+        <div class="col-md-8">
+            <h3>Results (Max 10)</h3>
+            <div id="results"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('searchBtn').addEventListener('click', function() {
+            const query = document.getElementById('searchQuery').value;
+            const tags = Array.from(document.getElementById('tagsSelect').selectedOptions).map(o => o.value);
+            const persons = Array.from(document.getElementById('personsSelect').selectedOptions).map(o => o.value);
+
+            let url = '/api/search?q=' + encodeURIComponent(query);
+            tags.forEach(tag => url += '&tags[]=' + encodeURIComponent(tag));
+            persons.forEach(person => url += '&persons[]=' + encodeURIComponent(person));
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    const resultsDiv = document.getElementById('results');
+                    resultsDiv.innerHTML = '';
+                    
+                    const limitedData = data.slice(0, 10);
+                    
+                    if (limitedData.length === 0) {
+                        resultsDiv.innerHTML = '<p>Keine Ergebnisse gefunden.</p>';
+                        return;
+                    }
+                    
+                    const row = document.createElement('div');
+                    row.className = 'row row-cols-1 row-cols-md-2 g-4';
+                    
+                    limitedData.forEach(video => {
+                        const col = document.createElement('div');
+                        col.className = 'col';
+                        col.innerHTML = `
+                            <div class="card h-100">
+                                ${video.thumbnailUrl ? `<img src="${video.thumbnailUrl}" class="card-img-top" alt="${video.title}" style="max-height: 150px; object-fit: cover;">` : ''}
+                                <div class="card-body">
+                                    <h5 class="card-title">${video.title}</h5>
+                                    <p class="card-text text-truncate small">${video.description ?? ''}</p>
+                                    <div class="small text-muted">
+                                        <strong>Status:</strong> ${video.availabilityStatus} <br>
+                                        <strong>Grund:</strong> ${video.accessInfo}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        row.appendChild(col);
+                    });
+                    
+                    resultsDiv.appendChild(row);
+                });
+        });
+    </script>
+{% endblock %}

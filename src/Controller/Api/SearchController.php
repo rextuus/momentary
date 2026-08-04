@@ -64,6 +64,29 @@ class SearchController extends AbstractController
         foreach ($hits as $hit) {
             $video = $videoMap[(int)$hit['id']] ?? null;
             $blur = ($video && $this->isGranted('VIDEO_VIEW', $video)) ? 0 : 5;
+            
+            $accessInfo = 'Nicht sichtbar';
+            if ($this->isGranted('ROLE_ADMIN')) {
+                $accessInfo = 'Sichtbar (Admin)';
+            } elseif ($video && $video->isPublic()) {
+                $accessInfo = 'Öffentlich sichtbar';
+            } elseif ($video && $video->getOwner() && $video->getOwner()->getId() === $this->getUser()?->getId()) {
+                $accessInfo = 'Sichtbar (Eigentümer)';
+            } elseif ($video) {
+                $user = $this->getUser();
+                if ($user instanceof \App\Entity\User) {
+                    foreach ($video->getAllowedGroups() as $group) {
+                        foreach ($group->getMembers() as $member) {
+                            if ($member->getUser() && $member->getUser()->getId() === $user->getId()) {
+                                $accessInfo = 'Sichtbar (Mitglied in Gruppe ' . $group->getName() . ')';
+                                break 2;
+                            }
+                        }
+                    }
+                }
+            }
+
+            $availabilityStatus = $video ? ($video->isPublic() ? 'Öffentlich' : 'Privat') : 'N/A';
 
             $personsWithScenes = $hit['persons_with_scenes'] ?? [];
             $tagsWithScenes = $hit['tags_with_scenes'] ?? [];
@@ -78,7 +101,7 @@ class SearchController extends AbstractController
             // Transform thumbnailUrl in personsWithScenes
             foreach ($personsWithScenes as &$item) {
                 if (isset($item['thumbnailUrl'])) {
-                    $item['thumbnailUrl'] = $this->imgproxyService->generateUrl($item['thumbnailUrl'], 320, 180, 'fill', $blur);
+                    $item['thumbnailUrl'] = $this->imgproxyService->generateUrl($item['thumbnailUrl'], 160, 90, 'fill', $blur);
                 }
             }
             unset($item);
@@ -93,7 +116,7 @@ class SearchController extends AbstractController
             // Transform thumbnailUrl in tagsWithScenes
             foreach ($tagsWithScenes as &$item) {
                 if (isset($item['thumbnailUrl'])) {
-                    $item['thumbnailUrl'] = $this->imgproxyService->generateUrl($item['thumbnailUrl'], 320, 180, 'fill', $blur);
+                    $item['thumbnailUrl'] = $this->imgproxyService->generateUrl($item['thumbnailUrl'], 160, 90, 'fill', $blur);
                 }
             }
             unset($item);
@@ -102,22 +125,22 @@ class SearchController extends AbstractController
                 'persons_with_scenes' => array_values($personsWithScenes),
                 'tags_with_scenes' => array_values($tagsWithScenes),
                 'blur' => $blur,
+                'accessInfo' => $accessInfo,
+                'availabilityStatus' => $availabilityStatus,
             ];
         }
 
         $result = [];
         foreach ($videos as $video) {
             $data = json_decode($this->serializer->serialize($video, 'json', ['groups' => ['video:list']]), true);
-            $hitData = $hitDataMap[$video->getId()] ?? ['persons_with_scenes' => [], 'tags_with_scenes' => [], 'blur' => 5];
+            $hitData = $hitDataMap[$video->getId()] ?? ['persons_with_scenes' => [], 'tags_with_scenes' => [], 'blur' => 5, 'accessInfo' => 'Nicht sichtbar', 'availabilityStatus' => 'N/A'];
             
             $blur = $hitData['blur'] ?? 5;
             
             // Auch das Haupt-Thumbnail des Videos bluren
             if (isset($data['thumbnailUrl'])) {
-                $data['thumbnailUrl'] = $this->imgproxyService->generateUrl($data['thumbnailUrl'], 320, 180, 'fill', $blur);
+                $data['thumbnailUrl'] = $this->imgproxyService->generateUrl($data['thumbnailUrl'], 160, 90, 'fill', $blur);
             }
-            
-            unset($hitData['blur']);
             
             $result[] = array_merge($data, $hitData);
         }

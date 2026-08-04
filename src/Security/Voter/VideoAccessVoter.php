@@ -26,7 +26,7 @@ class VideoAccessVoter extends Voter
     protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token, ?Vote $vote = null): bool
     {
         $user = $token->getUser();
-
+        
         // Admin always has access
         if ($this->security->isGranted('ROLE_ADMIN')) {
             return true;
@@ -41,7 +41,7 @@ class VideoAccessVoter extends Voter
         }
 
         // Owner check
-        if ($user instanceof User && $video->getOwner() === $user) {
+        if ($user instanceof User && $video->getOwner() && $video->getOwner()->getId() === $user->getId()) {
             return true;
         }
 
@@ -49,7 +49,7 @@ class VideoAccessVoter extends Voter
         if ($user instanceof User) {
             foreach ($video->getAllowedGroups() as $group) {
                 foreach ($group->getMembers() as $member) {
-                    if ($member->getUser() === $user) {
+                    if ($member->getUser() && $member->getUser()->getId() === $user->getId()) {
                         return true;
                     }
                 }
