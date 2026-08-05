@@ -32,12 +32,21 @@ class VideoSceneNormalizer implements NormalizerInterface, NormalizerAwareInterf
 
         $data = $this->normalizer->normalize($object, $format, $context);
 
+        if (is_array($data)) {
+            $data['isPublic'] = $object->isPublic();
+        }
+
         if (is_array($data) && isset($data['thumbnailUrl'])) {
             $isAllowed = $this->security->isGranted('SCENE_VIEW', $object);
             $blur = $isAllowed ? 0 : 5;
 
+            // Add cache buster based on public status to ensure fresh image generation on change
+            $thumbnailUrl = $data['thumbnailUrl'];
+            $cacheBuster = 'v=' . ($object->isPublic() ? 'p' : 'priv');
+            $thumbnailUrl .= (str_contains($thumbnailUrl, '?') ? '&' : '?') . $cacheBuster;
+
             $data['thumbnailUrl'] = $this->imgproxyService->generateUrl(
-                $data['thumbnailUrl'],
+                $thumbnailUrl,
                 320,
                 180,
                 'fill',

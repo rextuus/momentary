@@ -78,6 +78,15 @@ class SearchController extends AbstractController
             $videoMap[$video->getId()] = $video;
         }
 
+        // Build a map of scenes per video indexed by startSeconds for persons_with_scenes/tags_with_scenes lookup
+        $sceneByVideoAndStart = [];
+        foreach ($videos as $videoEntity) {
+            $videoScenes = $this->videoSceneRepository->findBy(['video' => $videoEntity]);
+            foreach ($videoScenes as $scene) {
+                $sceneByVideoAndStart[$videoEntity->getId()][(int)$scene->getStartSeconds()] = $scene;
+            }
+        }
+
         // MeiliSearch-Hits nach ID mappen
         $hitDataMap = [];
         foreach ($hits as $hit) {
@@ -122,9 +131,9 @@ class SearchController extends AbstractController
                 if (isset($item['thumbnailUrl'])) {
                     $itemBlur = $blur;
                     if (isset($item['id']) && isset($sceneMap[$item['id']])) {
-                        if (!$this->isGranted('SCENE_VIEW', $sceneMap[$item['id']])) {
-                            $itemBlur = 5;
-                        }
+                        $itemBlur = $this->isGranted('SCENE_VIEW', $sceneMap[$item['id']]) ? 0 : 5;
+                    } elseif (isset($item['start']) && isset($sceneByVideoAndStart[(int)$hit['id']][(int)$item['start']])) {
+                        $itemBlur = $this->isGranted('SCENE_VIEW', $sceneByVideoAndStart[(int)$hit['id']][(int)$item['start']]) ? 0 : 5;
                     }
                     $item['thumbnailUrl'] = $this->imgproxyService->generateUrl($item['thumbnailUrl'], 160, 90, 'fill', $itemBlur);
                 }
@@ -143,9 +152,9 @@ class SearchController extends AbstractController
                 if (isset($item['thumbnailUrl'])) {
                     $itemBlur = $blur;
                     if (isset($item['id']) && isset($sceneMap[$item['id']])) {
-                        if (!$this->isGranted('SCENE_VIEW', $sceneMap[$item['id']])) {
-                            $itemBlur = 5;
-                        }
+                        $itemBlur = $this->isGranted('SCENE_VIEW', $sceneMap[$item['id']]) ? 0 : 5;
+                    } elseif (isset($item['start']) && isset($sceneByVideoAndStart[(int)$hit['id']][(int)$item['start']])) {
+                        $itemBlur = $this->isGranted('SCENE_VIEW', $sceneByVideoAndStart[(int)$hit['id']][(int)$item['start']]) ? 0 : 5;
                     }
                     $item['thumbnailUrl'] = $this->imgproxyService->generateUrl($item['thumbnailUrl'], 160, 90, 'fill', $itemBlur);
                 }
@@ -165,6 +174,10 @@ class SearchController extends AbstractController
         foreach ($videos as $video) {
             $data = json_decode($this->serializer->serialize($video, 'json', ['groups' => ['video:list']]), true);
             $hitData = $hitDataMap[$video->getId()] ?? ['persons_with_scenes' => [], 'tags_with_scenes' => [], 'blur' => 5, 'accessInfo' => 'Nicht sichtbar', 'availabilityStatus' => 'N/A'];
+            
+            // $scenes = $video->getScenes();
+            $scenes = $this->videoSceneRepository->findBy(['video' => $video]);
+            $data['scenes'] = json_decode($this->serializer->serialize($scenes, 'json', ['groups' => ['video:detail']]), true);
             
             $blur = $hitData['blur'] ?? 5;
             

@@ -76,6 +76,26 @@
                     limitedData.forEach(video => {
                         const col = document.createElement('div');
                         col.className = 'col';
+                        
+                        let scenesHtml = '';
+                        if (video.scenes && video.scenes.length > 0) {
+                            scenesHtml = '<div class="mt-2"><strong>Szenen:</strong><ul class="list-unstyled">';
+                            video.scenes.forEach(scene => {
+                                scenesHtml += `
+                                    <li class="mb-2">
+                                        <div class="d-flex align-items-center">
+                                            ${scene.thumbnailUrl ? `<img src="${scene.thumbnailUrl}" style="width: 50px; height: 30px; object-fit: cover;" class="me-2">` : ''}
+                                            <span class="badge ${scene.isPublic ? 'bg-success' : 'bg-secondary'} me-2">
+                                                ${scene.isPublic ? 'Public' : 'Private'}
+                                            </span>
+                                            <span class="small">${scene.title || 'Ohne Titel'}</span>
+                                        </div>
+                                    </li>
+                                `;
+                            });
+                            scenesHtml += '</ul></div>';
+                        }
+                        
                         col.innerHTML = `
                             <div class="card h-100">
                                 ${video.thumbnailUrl ? `<img src="${video.thumbnailUrl}" class="card-img-top" alt="${video.title}" style="max-height: 150px; object-fit: cover;">` : ''}
@@ -86,6 +106,7 @@
                                         <strong>Status:</strong> ${video.availabilityStatus} <br>
                                         <strong>Grund:</strong> ${video.accessInfo}
                                     </div>
+                                    ${scenesHtml}
                                 </div>
                             </div>
                         `;
