@@ -6,6 +6,7 @@ namespace App\Twig\Components;
 
 use App\Entity\Tag;
 use App\Entity\TagCategory;
+use App\Entity\UserGroup;
 use App\Entity\VideoScene;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -44,6 +45,11 @@ class SceneSectionComponent extends AbstractController
         return $this->entityManager->getRepository(TagCategory::class)->findAll();
     }
 
+    public function getGroups(): array
+    {
+        return $this->entityManager->getRepository(UserGroup::class)->findAll();
+    }
+
     #[LiveAction]
     public function toggleTag(#[LiveArg] int $tagId): void
     {
@@ -56,6 +62,28 @@ class SceneSectionComponent extends AbstractController
             $this->scene->addTag($tag);
         }
 
+        $this->entityManager->flush();
+    }
+
+    #[LiveAction]
+    public function toggleGroup(#[LiveArg] int $groupId): void
+    {
+        $group = $this->entityManager->getRepository(UserGroup::class)->find($groupId);
+        if (!$group) return;
+
+        if ($this->scene->getAllowedGroups()->contains($group)) {
+            $this->scene->removeAllowedGroup($group);
+        } else {
+            $this->scene->addAllowedGroup($group);
+        }
+
+        $this->entityManager->flush();
+    }
+
+    #[LiveAction]
+    public function togglePublic(): void
+    {
+        $this->scene->setIsPublic(!$this->scene->isPublic());
         $this->entityManager->flush();
     }
 

@@ -3,6 +3,7 @@
 namespace App\Controller\Api;
 
 use App\Repository\VideoRepository;
+use App\Repository\VideoSceneRepository;
 use App\Service\ImgproxyService;
 use Meilisearch\Client as MeiliSearchClient;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -16,6 +17,7 @@ class SearchController extends AbstractController
     public function __construct(
         private MeiliSearchClient $meiliSearchClient,
         private VideoRepository $videoRepository,
+        private VideoSceneRepository $videoSceneRepository,
         private SerializerInterface $serializer,
         private ImgproxyService $imgproxyService
     ) {}
@@ -46,6 +48,23 @@ class SearchController extends AbstractController
         $searchResult = $this->meiliSearchClient->index('videos')->search(empty($query) ? null : $query, $options);
         $hits = $searchResult->getHits();
         $videoIds = array_map('intval', array_column($hits, 'id'));
+        
+        $sceneIds = [];
+        foreach ($hits as $hit) {
+            foreach ($hit['persons_with_scenes'] ?? [] as $item) {
+                if (isset($item['id'])) $sceneIds[] = (int)$item['id'];
+            }
+            foreach ($hit['tags_with_scenes'] ?? [] as $item) {
+                if (isset($item['id'])) $sceneIds[] = (int)$item['id'];
+            }
+        }
+        $sceneMap = [];
+        if (!empty($sceneIds)) {
+            $scenes = $this->videoSceneRepository->findBy(['id' => array_unique($sceneIds)]);
+            foreach ($scenes as $scene) {
+                $sceneMap[$scene->getId()] = $scene;
+            }
+        }
 
         if (empty($videoIds)) {
             return new JsonResponse([]);
@@ -101,7 +120,13 @@ class SearchController extends AbstractController
             // Transform thumbnailUrl in personsWithScenes
             foreach ($personsWithScenes as &$item) {
                 if (isset($item['thumbnailUrl'])) {
-                    $item['thumbnailUrl'] = $this->imgproxyService->generateUrl($item['thumbnailUrl'], 160, 90, 'fill', $blur);
+                    $itemBlur = $blur;
+                    if (isset($item['id']) && isset($sceneMap[$item['id']])) {
+                        if (!$this->isGranted('SCENE_VIEW', $sceneMap[$item['id']])) {
+                            $itemBlur = 5;
+                        }
+                    }
+                    $item['thumbnailUrl'] = $this->imgproxyService->generateUrl($item['thumbnailUrl'], 160, 90, 'fill', $itemBlur);
                 }
             }
             unset($item);
@@ -116,7 +141,13 @@ class SearchController extends AbstractController
             // Transform thumbnailUrl in tagsWithScenes
             foreach ($tagsWithScenes as &$item) {
                 if (isset($item['thumbnailUrl'])) {
-                    $item['thumbnailUrl'] = $this->imgproxyService->generateUrl($item['thumbnailUrl'], 160, 90, 'fill', $blur);
+                    $itemBlur = $blur;
+                    if (isset($item['id']) && isset($sceneMap[$item['id']])) {
+                        if (!$this->isGranted('SCENE_VIEW', $sceneMap[$item['id']])) {
+                            $itemBlur = 5;
+                        }
+                    }
+                    $item['thumbnailUrl'] = $this->imgproxyService->generateUrl($item['thumbnailUrl'], 160, 90, 'fill', $itemBlur);
                 }
             }
             unset($item);

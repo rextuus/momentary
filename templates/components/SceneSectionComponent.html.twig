@@ -76,6 +76,19 @@
                             {% endif %}
                         {% endfor %}
                     </div>
+                    
+                    {# GRUPPEN ANZEIGE #}
+                    {% if scene.isPublic or scene.allowedGroups|length > 0 %}
+                        <div class="mt-2 text-muted" style="font-size: 0.7rem;">
+                            <i class="fas fa-users me-1"></i> Zugriff:
+                            {% if scene.isPublic %}
+                                <span class="badge rounded-pill bg-success text-white me-1">Öffentlich</span>
+                            {% endif %}
+                            {% for group in scene.allowedGroups %}
+                                <span class="badge rounded-pill bg-light border text-dark me-1">{{ group.name }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -119,6 +132,48 @@
                                     <i class="fas fa-cog me-1"></i> Tag-Manager
                                 </a>
                             </li>
+                        </ul>
+                    </div>
+
+                    {# GRUPPEN ZUWEISUNG #}
+                    <div class="dropdown" style="position: static;">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle py-0 px-2" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                            <i class="fas fa-users me-1"></i> Zugriff
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="min-width: 250px; max-height: 400px; overflow-y: auto;">
+                            <li><h6 class="dropdown-header">Allgemeiner Zugriff</h6></li>
+                            <li>
+                                <button class="dropdown-item d-flex justify-content-between align-items-center"
+                                        data-action="live#action"
+                                        data-live-action-param="togglePublic">
+                                    <span>Öffentlich</span>
+                                    {% if scene.isPublic %}
+                                        <i class="fas fa-check-circle text-success ms-2"></i>
+                                    {% else %}
+                                        <i class="far fa-circle text-muted ms-2" style="opacity: 0.3;"></i>
+                                    {% endif %}
+                                </button>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header">Zugriff für Gruppen</h6></li>
+                            {% for group in this.groups %}
+                                <li>
+                                    <button class="dropdown-item d-flex justify-content-between align-items-center" 
+                                            data-action="live#action" 
+                                            data-live-action-param="toggleGroup"
+                                            data-live-group-id-param="{{ group.id }}">
+                                        <span>{{ group.name }}</span>
+                                        {% if scene.allowedGroups.contains(group) %}
+                                            <i class="fas fa-check-circle text-success ms-2"></i>
+                                        {% else %}
+                                            <i class="far fa-circle text-muted ms-2" style="opacity: 0.3;"></i>
+                                        {% endif %}
+                                    </button>
+                                </li>
+                            {% endfor %}
+                            {% if this.groups|length == 0 %}
+                                <li><span class="dropdown-item-text text-muted small italic text-center d-block">Keine Gruppen definiert.</span></li>
+                            {% endif %}
                         </ul>
                     </div>
 

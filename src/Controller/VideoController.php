@@ -109,6 +109,41 @@ final class VideoController extends AbstractController
         return $this->redirectToRoute('app_video_index');
     }
 
+    #[Route('/{id}/update-scenes-public', name: 'video_update_scenes_public', methods: ['POST'])]
+    public function updateScenesPublic(Request $request, Video $video): Response
+    {
+        if ($this->isCsrfTokenValid('update-scenes-public' . $video->getId(), $request->request->get('_token'))) {
+            $isPublic = $request->request->getBoolean('isPublic');
+            foreach ($video->getScenes() as $scene) {
+                $scene->setIsPublic($isPublic);
+            }
+            $this->entityManager->flush();
+            $this->addFlash('success', 'Szenen wurden aktualisiert.');
+        }
+
+        return $this->redirectToRoute('app_video_show', ['id' => $video->getId()]);
+    }
+
+    #[Route('/chapter/{id}/update-scenes-public', name: 'chapter_update_scenes_public', methods: ['POST'])]
+    public function updateChapterScenesPublic(Request $request, VideoChapter $chapter): Response
+    {
+        if ($this->isCsrfTokenValid('update-chapter-scenes-public' . $chapter->getId(), $request->request->get('_token'))) {
+            $isPublic = $request->request->getBoolean('isPublic');
+            $video = $chapter->getVideo();
+
+            foreach ($video->getScenes() as $scene) {
+                if ($scene->getStartSeconds() >= $chapter->getStartSeconds() && $scene->getEndSeconds() <= $chapter->getEndSeconds()) {
+                    $scene->setIsPublic($isPublic);
+                }
+            }
+
+            $this->entityManager->flush();
+            $this->addFlash('success', 'Szenen des Kapitels wurden aktualisiert.');
+        }
+
+        return $this->redirectToRoute('app_chapter_show', ['id' => $chapter->getId()]);
+    }
+
 
     #[Route('/{id}/extract-thumbnail', name: 'video_extract_thumbnail', methods: ['POST'])]
     public function extractThumbnail(Video $video, Request $request): RedirectResponse

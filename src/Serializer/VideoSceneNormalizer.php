@@ -6,6 +6,7 @@ namespace App\Serializer;
 
 use App\Entity\VideoScene;
 use App\Service\ImgproxyService;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Serializer\Normalizer\NormalizerAwareInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerAwareTrait;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
@@ -17,7 +18,8 @@ class VideoSceneNormalizer implements NormalizerInterface, NormalizerAwareInterf
     private const ALREADY_CALLED = 'VIDEO_SCENE_NORMALIZER_ALREADY_CALLED';
 
     public function __construct(
-        private ImgproxyService $imgproxyService
+        private ImgproxyService $imgproxyService,
+        private Security $security
     ) {}
 
     public function normalize($object, ?string $format = null, array $context = []): array|string|int|float|bool|\ArrayObject|null
@@ -31,10 +33,15 @@ class VideoSceneNormalizer implements NormalizerInterface, NormalizerAwareInterf
         $data = $this->normalizer->normalize($object, $format, $context);
 
         if (is_array($data) && isset($data['thumbnailUrl'])) {
+            $isAllowed = $this->security->isGranted('SCENE_VIEW', $object);
+            $blur = $isAllowed ? 0 : 5;
+
             $data['thumbnailUrl'] = $this->imgproxyService->generateUrl(
                 $data['thumbnailUrl'],
                 320,
-                180
+                180,
+                'fill',
+                $blur
             );
         }
 
