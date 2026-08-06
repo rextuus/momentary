@@ -41,6 +41,7 @@ readonly class GenerateChaptersMessageHandler
             $this->entityManager->remove($chapter);
         }
         $this->entityManager->flush();
+        $this->entityManager->refresh($video);
 
         $this->processingService->startStep($video, VideoStatus::CHAPTER_GENERATION);
 

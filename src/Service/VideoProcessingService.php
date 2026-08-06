@@ -12,10 +12,27 @@ use Doctrine\ORM\EntityManagerInterface;
 
 class VideoProcessingService
 {
+    /** @var array<int, bool> */
+    private static array $locks = [];
+
     public function __construct(
         private EntityManagerInterface $entityManager,
         private VideoProcessingStepRepository $repository
     ) {}
+
+    public function acquireLock(int $videoId): bool
+    {
+        if (!empty(self::$locks[$videoId])) {
+            return false;
+        }
+        self::$locks[$videoId] = true;
+        return true;
+    }
+
+    public function releaseLock(int $videoId): void
+    {
+        unset(self::$locks[$videoId]);
+    }
 
     public function startStep(Video $video, VideoStatus $step): void
     {

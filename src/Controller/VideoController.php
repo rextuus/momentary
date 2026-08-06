@@ -340,10 +340,26 @@ final class VideoController extends AbstractController
     public function chapterShow(VideoChapter $chapter): Response
     {
         $video = $chapter->getVideo();
+        $this->entityManager->refresh($video);
         $this->denyAccessUnlessGranted('VIDEO_VIEW', $video);
 
+        $this->logger->info('chapterShow', [
+            'chapterId' => $chapter->getId(),
+            'videoId' => $video->getId(),
+            'scenesCount' => $video->getScenes()->count(),
+        ]);
+
         $scenes = $video->getScenes()->filter(function(VideoScene $scene) use ($chapter) {
-            return $scene->getStartSeconds() >= $chapter->getStartSeconds() && $scene->getEndSeconds() <= $chapter->getEndSeconds();
+            $match = $scene->getStartSeconds() < $chapter->getEndSeconds() && $scene->getEndSeconds() > $chapter->getStartSeconds();
+            $this->logger->info('Scene filter', [
+                'sceneId' => $scene->getId(),
+                'sceneStart' => $scene->getStartSeconds(),
+                'sceneEnd' => $scene->getEndSeconds(),
+                'chapterStart' => $chapter->getStartSeconds(),
+                'chapterEnd' => $chapter->getEndSeconds(),
+                'match' => $match
+            ]);
+            return $match;
         });
 
         return $this->render('video/chapter_show.html.twig', [

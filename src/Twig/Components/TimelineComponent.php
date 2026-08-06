@@ -24,6 +24,12 @@ class TimelineComponent
     #[LiveProp]
     public Video $video;
 
+    public function mount(Video $video): void
+    {
+        $this->video = $video;
+        $this->entityManager->refresh($this->video);
+    }
+
     #[LiveProp]
     public int $page = 1;
 
@@ -52,9 +58,7 @@ class TimelineComponent
     #[LiveAction]
     public function loadMore(): void
     {
-        error_log('loadMore action called. Old page: ' . $this->page);
         $this->page++;
-        error_log('New page: ' . $this->page);
     }
 
     #[Computed]
@@ -126,7 +130,8 @@ class TimelineComponent
     private function getScenesForChapter(VideoChapter $chapter): array
     {
         return $this->video->getScenes()->filter(function(VideoScene $scene) use ($chapter) {
-            return $scene->getStartSeconds() >= $chapter->getStartSeconds() && $scene->getEndSeconds() <= $chapter->getEndSeconds();
+            // Überlappungsprüfung: Szene startet vor Kapitelende UND endet nach Kapitelstart
+            return $scene->getStartSeconds() < $chapter->getEndSeconds() && $scene->getEndSeconds() > $chapter->getStartSeconds();
         })->toArray();
     }
 }

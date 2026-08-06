@@ -138,7 +138,7 @@ class AnalyzeSceneMessageHandler
                 fwrite(STDOUT, "[AnalyzeScene] Szene {$scene->getId()} getaggt – nächste Szene $nextId, " . count($remaining) . " weitere." . PHP_EOL);
                 $this->messageBus->dispatch(new AnalyzeSceneMessage($nextId, $remaining));
             } else {
-                $this->processingService->finishStep($video, VideoStatus::TAGGING_SCENES);
+                $this->processingService->finishStep($video, VideoStatus::ANALYZING_SCENES);
                 $this->logger->info("All scenes tagged for video " . $video->getId());
                 fwrite(STDOUT, "[AnalyzeScene] Alle Szenen getaggt für Video {$video->getId()} – dispatche GenerateChaptersMessage." . PHP_EOL);
                 if ($this->workflowMachine->can($video, 'start_chapter_generation')) {

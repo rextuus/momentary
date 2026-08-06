@@ -4,6 +4,7 @@ namespace App\MessageHandler;
 
 use App\Message\TagScenesMessage;
 use App\Message\AnalyzeSceneMessage;
+use App\Message\GenerateChaptersMessage;
 use App\Repository\VideoRepository;
 use App\Service\WorkflowMachine;
 use App\Enum\VideoStatus;
@@ -48,17 +49,17 @@ class TagScenesMessageHandler
                 fwrite(STDOUT, "[TagScenes] Video {$message->getVideoId()} ist nicht im Status tagging_scenes (ist: $currentStatus) – überspringe." . PHP_EOL);
                 return;
             }
-            // Status auf analyzing_scenes setzen damit zweite Message abgeblockt wird
-            $this->entityManager->getConnection()->executeStatement(
-                "UPDATE video SET status = ? WHERE id = ?",
-                [VideoStatus::ANALYZING_SCENES->value, $video->getId()]
-            );
             $this->entityManager->getConnection()->commit();
         } catch (\Throwable $e) {
             $this->entityManager->getConnection()->rollBack();
             throw $e;
         }
         $this->entityManager->refresh($video);
+
+        // Workflow-Transition anwenden: tagging_scenes → analyzing_scenes
+        if ($this->workflowMachine->can($video, 'start_analyzing_scenes')) {
+            $this->workflowMachine->apply($video, 'start_analyzing_scenes');
+        }
 
         $scenes = $video->getScenes();
         $sceneCount = count($scenes);
@@ -67,7 +68,11 @@ class TagScenesMessageHandler
         $sceneIds = array_values(array_map(fn($s) => $s->getId(), $scenes->toArray()));
 
         if (empty($sceneIds)) {
-            fwrite(STDOUT, "[TagScenes] Keine Szenen für Video {$video->getId()} – überspringe Tagging." . PHP_EOL);
+            fwrite(STDOUT, "[TagScenes] Keine Szenen für Video {$video->getId()} – überspringe Tagging, starte Kapitelgenerierung." . PHP_EOL);
+            if ($this->workflowMachine->can($video, 'start_chapter_generation')) {
+                $this->workflowMachine->apply($video, 'start_chapter_generation');
+            }
+            $this->messageBus->dispatch(new GenerateChaptersMessage($video->getId()));
             return;
         }
 
