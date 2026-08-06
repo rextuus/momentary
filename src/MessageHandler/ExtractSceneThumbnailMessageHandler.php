@@ -35,6 +35,7 @@ final readonly class ExtractSceneThumbnailMessageHandler
         if (!$video) {
             return;
         }
+        $this->entityManager->refresh($video);
 
         // Extract thumbnail from the middle of the scene
         $time = ($scene->getStartSeconds() + $scene->getEndSeconds()) / 2;
@@ -43,6 +44,9 @@ final readonly class ExtractSceneThumbnailMessageHandler
         if ($thumbnailPath) {
             fwrite(STDOUT, "[ExtractSceneThumbnail] Thumbnail gespeichert: {$thumbnailPath}" . PHP_EOL);
             $scene->setThumbnailUrl($thumbnailPath);
+            if (!$video->getThumbnailPath()) {
+                $video->setThumbnailPath($thumbnailPath);
+            }
             $this->entityManager->flush();
         } else {
             fwrite(STDOUT, "[ExtractSceneThumbnail] Kein Thumbnail für Szene {$message->getSceneId()} erzeugt." . PHP_EOL);
