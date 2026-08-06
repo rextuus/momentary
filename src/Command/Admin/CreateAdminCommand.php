@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Command;
+namespace App\Command\Admin;
 
 use App\Entity\User;
 use App\Entity\UserSettings;
@@ -13,7 +13,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
-#[AsCommand(name: 'app:create-admin', description: 'Creates the initial admin user')]
+#[AsCommand(name: 'app:admin:create', description: 'Creates the initial admin user')]
 class CreateAdminCommand extends Command
 {
     public function __construct(

@@ -70,22 +70,13 @@ php bin/console app:video:analyze-scenes <videoId> [options]
 - Prompts to save the detected scenes to the database.
 - If only 1 scene is detected for a long video, try using `--convert` and `--detector adaptive`.
 
-### `app:test-analyze`
-Triggers the full download and frame splitting process for a given YouTube URL. Primarily used for development and testing.
 
-**Usage:**
-```bash
-php bin/console app:test-analyze <url> [videoId]
-```
--   `url`: The YouTube URL to process.
--   `videoId`: (Optional) The ID to associate with the process (defaults to 999).
-
-### `app:test-frame-analyze`
+### `app:test:frame-analyze`
 Analyzes a single specific frame. This is a hardcoded test command used to verify the AWS Rekognition integration for a single image file.
 
 **Usage:**
 ```bash
-php bin/console app:test-frame-analyze
+php bin/console app:test:frame-analyze
 ```
 
 ---

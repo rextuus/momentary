@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Command;
+namespace App\Command\Files;
 
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -10,7 +10,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Finder\Finder;
 
-#[AsCommand(name: 'app:move-uploaded-files', description: 'Moves files from SFTP upload directories to imports')]
+#[AsCommand(name: 'app:files:move-uploaded', description: 'Moves files from SFTP upload directories to imports')]
 class MoveUploadedFilesCommand extends Command
 {
     private const SOURCE_DIRS = [

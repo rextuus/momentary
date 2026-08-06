@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Command;
+namespace App\Command\RabbitMQ;
 
 use App\Message\TestMessage;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -10,7 +10,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\TransportNamesStamp;
 
-#[AsCommand(name: 'app:rabbitmq-test')]
+#[AsCommand(name: 'app:rabbitmq:test')]
 class RabbitMqTestCommand extends Command
 {
     public function __construct(private MessageBusInterface $bus)

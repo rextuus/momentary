@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Command;
+namespace App\Command\Rekognition;
 
 use App\Service\Aws\AmazonRekognitionService;
 use Symfony\Component\Console\Attribute\AsCommand;

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Command;
+namespace App\Command\Rekognition;
 
 use App\Service\Aws\AmazonRekognitionService;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -10,10 +10,10 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
-    name: 'app:rekognition:setup',
-    description: 'Erstellt die Amazon Rekognition Collection für das Projekt',
+    name: 'app:rekognition:list-faces',
+    description: 'Listet alle indizierten Gesichter in der AWS Rekognition Collection auf',
 )]
-class SetupRekognitionCommand extends Command
+class ListRekognitionFacesCommand extends Command
 {
     public function __construct(
         private AmazonRekognitionService $rekognitionService
@@ -24,25 +24,30 @@ class SetupRekognitionCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        $client = $this->rekognitionService->getClient();
         $collectionId = $this->rekognitionService->getCollectionId();
 
+        $io->title("Gesichter in Collection: {$collectionId}");
+
         try {
-            $io->info("Prüfe Collection '{$collectionId}'...");
-
-            $collections = $client->listCollections();
-            $ids = $collections['CollectionIds'] ?? [];
-
-            if (in_array($collectionId, $ids)) {
-                $io->success("Die Collection existiert bereits!");
+            $faces = $this->rekognitionService->listFaces();
+            
+            if (empty($faces)) {
+                $io->warning("Die Collection ist leer.");
                 return Command::SUCCESS;
             }
 
-            $client->createCollection(['CollectionId' => $collectionId]);
+            $io->table(
+                ['FaceId', 'ImageId', 'ExternalImageId', 'Confidence'],
+                array_map(fn($face) => [
+                    $face['FaceId'],
+                    $face['ImageId'],
+                    $face['ExternalImageId'] ?? 'N/A',
+                    $face['Confidence']
+                ], $faces)
+            );
 
-            $io->success("Collection '{$collectionId}' wurde erfolgreich erstellt.");
+            $io->success(sprintf("Es wurden %d Gesichter gefunden.", count($faces)));
             return Command::SUCCESS;
-
         } catch (\Exception $e) {
             $io->error("AWS Fehler: " . $e->getMessage());
             return Command::FAILURE;

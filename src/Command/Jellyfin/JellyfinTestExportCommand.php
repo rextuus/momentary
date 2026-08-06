@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Command;
+namespace App\Command\Jellyfin;
 
 use App\Repository\VideoRepository;
 use App\Service\JellyfinUploadService;

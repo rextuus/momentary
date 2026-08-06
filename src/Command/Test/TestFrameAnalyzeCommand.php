@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Command;
+namespace App\Command\Test;
 
 use App\Service\VideoAnalyzer;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -12,7 +12,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
-    name: 'app:test-frame-analyze',
+    name: 'app:test:frame-analyze',
     description: 'Add a short description for your command',
 )]
 class TestFrameAnalyzeCommand extends Command

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Command;
+namespace App\Command\Tags;
 
 use App\Entity\Tag;
 use App\Entity\TagCategory;
@@ -13,7 +13,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
-    name: 'app:cleanup-tags',
+    name: 'app:tags:cleanup',
     description: 'Merge duplicate tags and categories',
 )]
 class CleanupTagsCommand extends Command

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Command;
+namespace App\Command\Video;
 
 use App\Repository\VideoRepository;
 use App\Message\DetectVideoScenesMessage;

@@ -2,7 +2,3 @@ sentry:
     dsn: '%env(SENTRY_DSN)%'
     options:
         environment: '%env(APP_ENV)%'
-
-framework:
-    errorHandler:
-        callExisting: true

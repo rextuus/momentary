@@ -53,7 +53,7 @@ services:
             $salt: '%imgproxy_salt%'
             $publicHost: '%imgproxy_public_host%'
 
-    App\Command\InitProfileImagesCommand:
+    App\Command\Images\InitProfileImagesCommand:
         arguments:
             $internalApiHost: '%app.internal_api_host%'
 
