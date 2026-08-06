@@ -1,0 +1,16 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}FTP/SFTP Dateimanagement{% endblock %}
+
+{% block body %}
+    <h1>FTP/SFTP Dateimanagement</h1>
+    
+    <h2>Verfügbare Quellverzeichnisse</h2>
+    <ul>
+        {% for dir in sourceDirs %}
+            <li>
+                <a href="{{ path('admin_files_ftp_list', {dir: dir}) }}">{{ dir }}</a>
+            </li>
+        {% endfor %}
+    </ul>
+{% endblock %}

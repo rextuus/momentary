@@ -3,27 +3,26 @@
 namespace App\Form;
 
 use App\Entity\Video;
-use Symfony\Component\Form\AbstractType;
-use Symfony\Component\Form\Extension\Core\Type\DateTimeType;
-use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
-use Symfony\Component\Form\Extension\Core\Type\TextType;
-use Symfony\Component\Form\Extension\Core\Type\UrlType;
+use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
+use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\NumberType;
+use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 class VideoType extends AbstractType
 {
     public function __construct(
-        #[Autowire('%kernel.project_dir%/public/uploads/import')]
-        private string $importDir,
+        #[Autowire('/var/www/html/var/uploads/app_uploads')]
+        private readonly string $importDir,
         #[Autowire('%env(default:app.frame_analysis_fps:FRAME_ANALYSIS_FPS)%')]
-        private float $defaultFps,
+        private readonly float $defaultFps,
         #[Autowire('%env(default:app.min_scene_length_for_refinement:MIN_SCENE_LENGTH_FOR_REFINEMENT)%')]
-        private float $minSceneLengthForRefinement,
+        private readonly float $minSceneLengthForRefinement,
         #[Autowire('%env(default:app.refined_frame_analysis_fps:REFINED_FRAME_ANALYSIS_FPS)%')]
-        private float $refinedFps
+        private readonly float $refinedFps
     ) {}
 
     public function buildForm(FormBuilderInterface $builder, array $options): void
@@ -31,10 +30,17 @@ class VideoType extends AbstractType
         $files = [];
         if (is_dir($this->importDir)) {
             $foundFiles = scandir($this->importDir);
+            $allowedExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
+
             foreach ($foundFiles as $file) {
                 if ($file !== '.' && $file !== '..' && !is_dir($this->importDir . '/' . $file)) {
-                    if (str_ends_with(strtolower($file), '.mp4')) {
-                        $files[$file] = $file;
+                    $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+                    if (in_array($ext, $allowedExtensions, true)) {
+                        $path = $this->importDir . DIRECTORY_SEPARATOR . $file;
+                        $size = filesize($path);
+                        $mtime = filemtime($path);
+                        $label = sprintf('%s (%s, %s)', $file, $this->formatBytes($size), date('Y-m-d H:i', $mtime));
+                        $files[$label] = $file;
                     }
                 }
             }
@@ -46,7 +52,7 @@ class VideoType extends AbstractType
                 'attr' => ['class' => 'form-control'],
             ])
             ->add('sourceFile', ChoiceType::class, [
-                'label' => 'Lokale Videodatei (aus public/uploads/import)',
+                'label' => 'Lokale Videodatei (aus app_uploads)',
                 'choices' => $files,
                 'placeholder' => '-- Datei wählen --',
                 'required' => false,
@@ -67,11 +73,22 @@ class VideoType extends AbstractType
                 'data' => $this->refinedFps,
                 'attr' => ['class' => 'form-control form-control-sm', 'step' => '0.01'],
             ])
-            ->add('mergeEmptyScenesWithLastPersonScene', \Symfony\Component\Form\Extension\Core\Type\CheckboxType::class, [
+            ->add('mergeEmptyScenesWithLastPersonScene', CheckboxType::class, [
                 'label' => 'Leere Szenen mit der vorherigen Personen-Szene zusammenführen',
                 'required' => false,
                 'attr' => ['class' => 'form-check-input'],
             ]);
+    }
+
+    private function formatBytes(int $bytes, int $precision = 2): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $bytes = max($bytes, 0);
+        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+        $pow = min($pow, count($units) - 1);
+        $bytes /= pow(1024, $pow);
+
+        return round($bytes, $precision) . ' ' . $units[$pow];
     }
 
     public function configureOptions(OptionsResolver $resolver): void

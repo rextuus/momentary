@@ -15,6 +15,9 @@ parameters:
     imgproxy_salt: '%env(IMGPROXY_SALT)%'
     imgproxy_public_host: '%env(IMGPROXY_PUBLIC_HOST)%'
     app.internal_api_host: 'http://app'
+    app.ftp_source_dirs:
+        - '/var/www/html/docker/jellyfin/uploads'
+        - '/var/www/html/var/uploads/app_uploads'
 
 services:
     # default configuration for services in *this* file

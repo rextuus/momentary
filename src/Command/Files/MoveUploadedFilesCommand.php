@@ -7,17 +7,21 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Finder\Finder;
 
 #[AsCommand(name: 'app:files:move-uploaded', description: 'Moves files from SFTP upload directories to imports')]
 class MoveUploadedFilesCommand extends Command
 {
-    private const SOURCE_DIRS = [
-        '/var/www/html/docker/jellyfin/uploads',
-        '/var/www/html/var/uploads/app_uploads'
-    ];
     private const TARGET_DIR = '/var/www/html/public/uploads/import';
+
+    public function __construct(
+        #[Autowire(param: 'app.ftp_source_dirs')]
+        private array $sourceDirs
+    ) {
+        parent::__construct();
+    }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
@@ -29,7 +33,7 @@ class MoveUploadedFilesCommand extends Command
         }
 
         $count = 0;
-        foreach (self::SOURCE_DIRS as $sourceDir) {
+        foreach ($this->sourceDirs as $sourceDir) {
             if (!$fs->exists($sourceDir)) {
                 $io->warning('Source directory not found, skipping: ' . $sourceDir);
                 continue;

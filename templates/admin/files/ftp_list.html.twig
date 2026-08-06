@@ -1,0 +1,45 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Dateien in {{ dir }}{% endblock %}
+
+{% block body %}
+    <h1>Dateien in {{ dir }}</h1>
+    <a href="{{ path('admin_files_ftp') }}">Zurück zur Übersicht</a>
+    
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Dateiname</th>
+                <th>Größe</th>
+                <th>Aktion</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for file in files %}
+                <tr>
+                    <td>{{ file.filename }}</td>
+                    <td>{{ (file.size / 1024 / 1024)|number_format(2) }} MB</td>
+                    <td>
+                        <form action="{{ path('admin_files_ftp_move') }}" method="POST" class="d-inline">
+                            <input type="hidden" name="path" value="{{ file.path }}">
+                            <input type="hidden" name="dir" value="{{ dir }}">
+                            <button type="submit" class="btn btn-sm btn-primary">Verschieben</button>
+                        </form>
+                        {% if '/var/www/html/var/uploads/app_uploads' in dir %}
+                            <form action="{{ path('admin_files_ftp_rename') }}" method="POST" class="d-inline">
+                                <input type="hidden" name="path" value="{{ file.path }}">
+                                <input type="hidden" name="dir" value="{{ dir }}">
+                                <input type="text" name="new_name" placeholder="Neuer Name" required class="form-control form-control-sm d-inline-block" style="width: auto;">
+                                <button type="submit" class="btn btn-sm btn-secondary">Umbenennen</button>
+                            </form>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="3">Keine Dateien gefunden.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

@@ -13,9 +13,9 @@ use Symfony\Component\String\Slugger\SluggerInterface;
 class UploadController extends AbstractController
 {
     public function __construct(
-        #[Autowire('%kernel.project_dir%/public/uploads/import')]
+        #[Autowire('/var/www/html/var/uploads/app_uploads')]
         private string $importDir,
-        private SluggerInterface $slugger
+        private readonly SluggerInterface $slugger
     ) {}
 
     #[Route('/upload', name: 'app_upload', methods: ['GET', 'POST'])]

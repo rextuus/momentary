@@ -2,31 +2,30 @@
 
 namespace App\Controller;
 
-use App\Entity\VideoChapter;
 use App\Entity\Video;
+use App\Entity\VideoChapter;
 use App\Entity\VideoProcessingStep;
+use App\Entity\VideoScene;
 use App\Form\VideoType;
 use App\Message\ConvertVideoMessage;
 use App\Message\DetectVideoScenesMessage;
-use App\Message\ExtractThumbnailMessage;
 use App\Message\ExtractAllSceneThumbnailsMessage;
+use App\Message\ExtractThumbnailMessage;
+use App\Message\GenerateChaptersMessage;
 use App\Message\SplitVideoIntoFramesMessage;
 use App\Message\TagScenesMessage;
-use App\Message\GenerateChaptersMessage;
 use App\Repository\VideoRepository;
-use App\Service\WorkflowMachine;
 use App\Service\VideoAnalyzer;
-use App\Enum\VideoStatus;
+use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\HttpFoundation\RedirectResponse;
-use Psr\Log\LoggerInterface;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/video')]
 final class VideoController extends AbstractController
@@ -36,7 +35,9 @@ final class VideoController extends AbstractController
         private readonly VideoRepository $videoRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly WorkflowMachine $workflowMachine,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        #[Autowire('/var/www/html/var/uploads/app_uploads')]
+        private readonly string $importDir
     ) {}
 
     /**
@@ -64,10 +65,9 @@ final class VideoController extends AbstractController
             $video->setCreatedAt(new \DateTimeImmutable());
 
             if ($video->getSourceFile()) {
-                // Wir speichern den Pfad relativ zum Root des Projekts, ohne "public/" falls möglich,
-                // aber da resolvePath nun beides kann, bleiben wir bei einem konsistenten Format.
-                // Bisher wurde "public/uploads/import/" genutzt. Wir machen es expliziter.
-                $video->setLocalPath('public/uploads/import/' . $video->getSourceFile());
+                // Speichere den absoluten internen Container-Pfad konsistent ab
+                $fullPath = rtrim($this->importDir, '/') . '/' . $video->getSourceFile();
+                $video->setLocalPath($fullPath);
             }
 
             $this->entityManager->persist($video);
@@ -248,11 +248,11 @@ final class VideoController extends AbstractController
         }
     }
 
-    private function ensureStepAccessible(Video $video, string $transition, WorkflowMachine $workflowMachine): void
+    private function ensureStepAccessible(Video $video, string $transition, WorkflowMachine $workflowMachine): bool
     {
         if ($workflowMachine->can($video, $transition)) {
             $workflowMachine->apply($video, $transition);
-            return;
+            return true;
         }
 
         // Falls wir nicht direkt hinkönnen, schauen wir ob wir zurückspringen können
@@ -270,7 +270,7 @@ final class VideoController extends AbstractController
             $backTransition = $backTransitions[$transition];
             if ($workflowMachine->can($video, $backTransition)) {
                 $workflowMachine->apply($video, $backTransition);
-                return;
+                return true;
             }
         }
 
@@ -332,7 +332,7 @@ final class VideoController extends AbstractController
         $video = $chapter->getVideo();
         $this->denyAccessUnlessGranted('VIDEO_VIEW', $video);
 
-        $scenes = $video->getScenes()->filter(function(\App\Entity\VideoScene $scene) use ($chapter) {
+        $scenes = $video->getScenes()->filter(function(VideoScene $scene) use ($chapter) {
             return $scene->getStartSeconds() >= $chapter->getStartSeconds() && $scene->getEndSeconds() <= $chapter->getEndSeconds();
         });
 
