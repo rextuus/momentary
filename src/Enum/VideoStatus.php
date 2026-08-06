@@ -15,6 +15,7 @@ enum VideoStatus: string
     case REFINING_ANALYSIS = 'refining_analysis';
     case MERGING_SCENES = 'merging_scenes';
     case TAGGING_SCENES = 'tagging_scenes';
+    case ANALYZING_SCENES = 'analyzing_scenes';
     case EXTRACTING_THUMBNAILS = 'extracting_thumbnails';
     case CHAPTER_GENERATION = 'chapter_generation';
     case OPTIMIZING = 'optimizing';

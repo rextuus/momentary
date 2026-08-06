@@ -54,21 +54,21 @@ class ImgproxyService
 
         // Mapping für lokale Pfade: imgproxy sieht /public als Root (siehe compose.yaml)
         // Die Files liegen physisch unter:
-        // - Gesichter: public/uploads/faces/video_faces/ -> Mapping: local:///uploads/faces/video_faces/
-        // - Import-Videos: public/uploads/import/ -> Mapping: local:///uploads/import/
-        // - Flysystem-Pfade (z.B. SomeName_hash/thumbnails/...): public/uploads/{path} -> Mapping: local:///uploads/{path}
+        // - Gesichter: media/images/faces/video_faces/ -> Mapping: local:///media/images/faces/video_faces/
+        // - Import-Videos: media/images/import/ -> Mapping: local:///media/images/import/
+        // - Flysystem-Pfade (z.B. SomeName_hash/thumbnails/...): media/images/{path} -> Mapping: local:///media/images/{path}
 
         if (!str_starts_with($pureSourceUrl, 'http://') && !str_starts_with($pureSourceUrl, 'https://') && !str_starts_with($pureSourceUrl, 'local:///')) {
             
             $path = ltrim($pureSourceUrl, '/');
 
             if (str_starts_with($path, 'video_faces/')) {
-                $path = 'uploads/faces/' . $path;
+                $path = 'media/images/faces/' . $path;
             } elseif (str_starts_with($path, 'video_analyze_')) {
-                $path = 'uploads/import/' . $path;
-            } elseif (!str_starts_with($path, 'uploads/')) {
-                // Flysystem-Pfade (z.B. SomeName_hash/thumbnails/...) liegen unter public/uploads/
-                $path = 'uploads/' . $path;
+                $path = 'media/images/import/' . $path;
+            } elseif (!str_starts_with($path, 'media/images/')) {
+                // Flysystem-Pfade (z.B. SomeName_hash/thumbnails/...) liegen unter media/images/
+                $path = 'media/images/' . $path;
             }
 
             $pureSourceUrl = 'local:///' . $path;
@@ -76,7 +76,7 @@ class ImgproxyService
 
         // Falls wir eine URL haben, die bereits local:/// enthält, aber noch gemappt werden muss (Legacy/Alternativpfade)
         if (str_starts_with($pureSourceUrl, 'local:///video_faces/')) {
-            $pureSourceUrl = str_replace('local:///video_faces/', 'local:///uploads/faces/video_faces/', $pureSourceUrl);
+            $pureSourceUrl = str_replace('local:///video_faces/', 'local:///media/images/faces/video_faces/', $pureSourceUrl);
         }
 
         // Wir fügen den Cache-Buster wieder an die Source-URL an, die imgproxy erhält,

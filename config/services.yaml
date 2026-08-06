@@ -4,6 +4,8 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    app.path.media_images: '%kernel.project_dir%/media/images'
+    app.path.jellyfin_uploads: '%kernel.project_dir%/docker/jellyfin/uploads'
     env(JELLYFIN_HOST): 'http://localhost:8096'
     app.frame_analysis_fps: 0.2
     app.min_scene_length_for_refinement: 2.0

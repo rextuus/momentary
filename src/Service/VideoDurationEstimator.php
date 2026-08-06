@@ -14,9 +14,6 @@ class VideoDurationEstimator
 
     public function estimateDuration(Video $video, VideoStatus $status): int
     {
-        // Wenn bereits eine Schätzung existiert, nutze diese (aber überschreibe sie ggf. wenn wir eine neue berechnen)
-        // Eigentlich wollen wir aber einen Durchschnitt berechnen.
-        
         $averageSecondsPerVideoSecond = $this->getAverageSecondsPerVideoSecond($status);
         $videoDuration = $video->getDuration() ?? 60.0; // Fallback 60s
         
@@ -25,8 +22,13 @@ class VideoDurationEstimator
 
     private function getAverageSecondsPerVideoSecond(VideoStatus $status): float
     {
-        $durationField = $this->getDurationFieldForStatus($status);
-        if (!$durationField) {
+        // Whitelist of statuses that are supported for duration estimation
+        if (!in_array($status, [
+            VideoStatus::CONVERTING, 
+            VideoStatus::SCENE_DETECTION, 
+            VideoStatus::SPLITTING, 
+            VideoStatus::ANALYZING_FACES
+        ])) {
             return 1.0; // Fallback
         }
 
@@ -38,11 +40,16 @@ class VideoDurationEstimator
         $count = 0;
 
         foreach ($videos as $video) {
-            $getter = 'get' . ucfirst($durationField);
-            $duration = $video->$getter();
+            $duration = null;
+            foreach ($video->getProcessingSteps() as $step) {
+                if ($step->getStep() === $status) {
+                    $duration = $step->getDuration();
+                    break;
+                }
+            }
             
             if ($duration !== null && $video->getDuration() !== null && $video->getDuration() > 0) {
-                $totalSeconds += $duration;
+                $totalSeconds += (float)$duration;
                 $totalVideoSeconds += $video->getDuration();
                 $count++;
             }
@@ -53,16 +60,5 @@ class VideoDurationEstimator
         }
 
         return $totalSeconds / $totalVideoSeconds;
-    }
-
-    private function getDurationFieldForStatus(VideoStatus $status): ?string
-    {
-        return match ($status) {
-            VideoStatus::CONVERTING => 'conversionDuration',
-            VideoStatus::SCENE_DETECTION => 'sceneDetectionDuration',
-            VideoStatus::SPLITTING => 'frameExtractionDuration',
-            VideoStatus::ANALYZING_FACES => 'faceAnalysisDuration',
-            default => null,
-        };
     }
 }

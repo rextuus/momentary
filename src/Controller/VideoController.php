@@ -64,6 +64,16 @@ final class VideoController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             $video->setCreatedAt(new \DateTimeImmutable());
 
+            // Handle manual tags
+            $cameraTag = $form->get('cameraTags')->getData();
+            if ($cameraTag) {
+                $video->addTag($cameraTag);
+            }
+            $formatTag = $form->get('formatTags')->getData();
+            if ($formatTag) {
+                $video->addTag($formatTag);
+            }
+
             if ($video->getSourceFile()) {
                 // Speichere den absoluten internen Container-Pfad konsistent ab
                 $fullPath = rtrim($this->importDir, '/') . '/' . $video->getSourceFile();

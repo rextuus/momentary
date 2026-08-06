@@ -166,6 +166,14 @@ class Video
     #[ORM\ManyToMany(targetEntity: UserGroup::class)]
     private Collection $allowedGroups;
 
+    /**
+     * @var Collection<int, Tag>
+     */
+    #[ORM\ManyToMany(targetEntity: Tag::class)]
+    #[ORM\JoinTable(name: 'video_tags')]
+    #[Groups(['video:detail'])]
+    private Collection $tags;
+
     public function __construct()
     {
         $this->videoFaces = new ArrayCollection();
@@ -173,6 +181,7 @@ class Video
         $this->chapters = new ArrayCollection();
         $this->processingSteps = new ArrayCollection();
         $this->allowedGroups = new ArrayCollection();
+        $this->tags = new ArrayCollection();
     }
 
     public function isPublic(): bool
@@ -505,6 +514,28 @@ class Video
     public function removeAllowedGroup(UserGroup $group): static
     {
         $this->allowedGroups->removeElement($group);
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Tag>
+     */
+    public function getTags(): Collection
+    {
+        return $this->tags;
+    }
+
+    public function addTag(Tag $tag): static
+    {
+        if (!$this->tags->contains($tag)) {
+            $this->tags->add($tag);
+        }
+        return $this;
+    }
+
+    public function removeTag(Tag $tag): static
+    {
+        $this->tags->removeElement($tag);
         return $this;
     }
 

@@ -79,15 +79,35 @@ final class GeminiService
             ]);
 
         $text = $response->text();
+        fwrite(STDOUT, "[Gemini] Raw response: " . $text . PHP_EOL);
         $text = str_replace(['```json', '```'], '', $text);
         
-        return json_decode(trim($text), true) ?? [];
+        $decoded = json_decode(trim($text), true);
+        if ($decoded === null) {
+            fwrite(STDOUT, "[Gemini] JSON decode failed for: " . $text . PHP_EOL);
+        }
+        return $decoded ?? [];
     }
 
     public function suggestChapters(array $scenesData): array
     {
-        $prompt = 'Hier ist eine Übersicht über alle Szenen eines Videos mit ihren zugeordneten Tags/Kategorien: ' . json_encode($scenesData) . '.
+        // Shortcut: Wenn nur eine Szene vorhanden ist, direkt ein Kapitel zurückgeben.
+        if (count($scenesData) === 1) {
+            $scene = $scenesData[0];
+            return [[
+                'title' => $scene['title'] ?? 'Kapitel 1',
+                'startSeconds' => (int)$scene['start'],
+                'endSeconds' => (int)$scene['end'],
+                'description' => 'Zusammenfassung des gesamten Videos.',
+            ]];
+        }
+
+        $prompt = 'Hier ist eine Übersicht über alle Szenen eines Videos mit ihren zugeordneten Titeln und Tags/Kategorien: ' . json_encode($scenesData) . '.
             Bitte schlage basierend auf diesen Informationen sinnvolle Kapitel vor, um das Video zu strukturieren.
+            Wichtig:
+            - Wenn die Szenen inhaltlich sehr ähnlich oder identisch sind, oder wenn das Video insgesamt kurz ist, erstelle zwingend nur ein einziges, umfassendes Kapitel für das gesamte Video.
+            - Vermeide redundante oder sich stark überschneidende Kapitel strikt.
+            - Fasse inhaltlich ähnliche Szenen zu einem Kapitel zusammen.
             Jedes Kapitel sollte einen Titel, einen Start-Zeitpunkt, einen End-Zeitpunkt und eine kurze Beschreibung haben.
             Antworte ausschließlich im JSON-Format, z.B. 
             [

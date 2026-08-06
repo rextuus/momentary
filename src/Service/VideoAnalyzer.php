@@ -140,7 +140,7 @@ class VideoAnalyzer
         $process->setTimeout(60);
         $this->logger->info(sprintf('Running FFmpeg: ' . implode(' ', $command)));
         $process->run();
-
+        
         if (!$process->isSuccessful()) {
             $this->logger->error('Thumbnail extraction failed: ' . $process->getErrorOutput());
             $this->logger->error('Command used: ' . implode(' ', $command));
@@ -461,10 +461,18 @@ class VideoAnalyzer
         // Eindeutiges Verzeichnis für diese Extraktion (Video ID + Zeitstempel/Zufall)
         $dir = $this->videoFileService->getVideoDirectory($video, 'frames');
         $absoluteDir = $this->videoFileService->getAbsolutePath($dir);
-        if (!is_dir($absoluteDir)) {
-            mkdir($absoluteDir, 0777, true);
+        
+        // Fester Ordner für diese Extraktion (Video ID + Typ)
+        $subDir = $isRefinement ? 'refinement' : 'analysis';
+        $frameDirPath = $absoluteDir . '/' . $subDir;
+
+        if (!is_dir($frameDirPath)) {
+            mkdir($frameDirPath, 0777, true);
+        } else {
+            // Falls der Ordner schon existiert, leeren wir ihn sicherheitshalber
+            $fs = new \Symfony\Component\Filesystem\Filesystem();
+            $fs->remove(glob($frameDirPath . '/*'));
         }
-        $frameDirPath = $absoluteDir . '/' . uniqid();
 
         try {
             $command = [
@@ -514,16 +522,6 @@ class VideoAnalyzer
             $frameList = json_decode($process->getOutput(), true);
             $video = $this->videoRepository->find($videoId);
             if ($video) {
-                // Bereinigung des ALTEN Verzeichnisses, falls vorhanden
-                $oldFrameDir = $isRefinement 
-                    ? $video->getCurrentRefinementFrameDirectory() 
-                    : $video->getCurrentFrameDirectory();
-                
-                if ($oldFrameDir && is_dir($oldFrameDir) && $oldFrameDir !== $frameDirPath && str_contains($oldFrameDir, 'frames_')) {
-                    $fs = new \Symfony\Component\Filesystem\Filesystem();
-                    $fs->remove($oldFrameDir);
-                }
-
                 $video->setTotalFrames(count($frameList));
                 $video->setProcessedFrames(0);
                 
@@ -748,7 +746,12 @@ class VideoAnalyzer
                 // bereits verarbeitet wurde, aber noch andere Nachrichten ausstanden.
                 if ($video->getProcessedFrames() >= $video->getTotalFrames()) {
                     // Wir müssen prüfen, ob wir im Status ANALYZING_FACES oder REFINING_ANALYSIS hängen
-                    if ($video->getStatus() === VideoStatus::ANALYZING_FACES || $video->getStatus() === VideoStatus::REFINING_ANALYSIS) {
+                    if ($video->getStatus() === VideoStatus::ANALYZING_FACES || $video->getStatus() === VideoStatus::REFINING_ANALYSIS || $video->getStatus() === VideoStatus::MERGING_SCENES) {
+                        // Bereits in MERGING_SCENES – nichts tun, mergeEmptyScenes läuft bereits
+                        if ($video->getStatus() === VideoStatus::MERGING_SCENES) {
+                            $this->logger->info('Already in MERGING_SCENES, skipping duplicate trigger', ['videoId' => $videoId]);
+                            return;
+                        }
                         $this->logger->info('All frames processed but isLastFrame was already handled or not reached yet', [
                             'videoId' => $videoId,
                             'status' => $video->getStatus()->value
@@ -791,6 +794,30 @@ class VideoAnalyzer
 
     private function mergeEmptyScenes(Video $video): void
     {
+        // Atomares Update: Nur wenn Status MERGING_SCENES ist, auf TAGGING_SCENES wechseln.
+        // Verhindert doppelte Ausführung bei Race-Conditions in der Queue.
+        $this->entityManager->getConnection()->beginTransaction();
+        try {
+            $currentStatus = $this->entityManager->getConnection()->fetchOne(
+                "SELECT status FROM video WHERE id = ? FOR UPDATE",
+                [$video->getId()]
+            );
+            if ($currentStatus !== 'merging_scenes') {
+                $this->entityManager->getConnection()->rollBack();
+                $this->logger->info('mergeEmptyScenes: status is not merging_scenes, skipping', ['videoId' => $video->getId(), 'status' => $currentStatus]);
+                return;
+            }
+            $this->entityManager->getConnection()->executeStatement(
+                "UPDATE video SET status = 'tagging_scenes' WHERE id = ?",
+                [$video->getId()]
+            );
+            $this->entityManager->getConnection()->commit();
+        } catch (\Throwable $e) {
+            $this->entityManager->getConnection()->rollBack();
+            throw $e;
+        }
+        $this->entityManager->refresh($video);
+
         $this->logger->info('Merging empty scenes', ['videoId' => $video->getId()]);
         $scenes = $video->getScenes();
         if ($scenes->isEmpty()) {
@@ -808,9 +835,18 @@ class VideoAnalyzer
         $scenesWithPerson = [];
         foreach ($sceneArray as $scene) {
             $this->entityManager->refresh($scene);
+            $this->logger->info('Checking scene for faces', ['sceneId' => $scene->getId(), 'facesCount' => $scene->getVideoFaces()->count()]);
             if (!$scene->getVideoFaces()->isEmpty()) {
                 $scenesWithPerson[] = $scene;
             }
+        }
+        
+        $this->logger->info('Scenes with person found', ['count' => count($scenesWithPerson)]);
+        
+        // Edge-Case: Keine Person in irgendeiner Szene gefunden
+        if (empty($scenesWithPerson)) {
+            $this->mergeAllScenesIntoOne($video, $sceneArray);
+            return;
         }
         
         $currentPersonSceneIndex = 0;
@@ -839,6 +875,7 @@ class VideoAnalyzer
                 // Entferne die leere Szene
                 $video->removeScene($scene);
                 $this->entityManager->remove($scene);
+                $this->logger->info('Removed empty scene', ['sceneId' => $scene->getId()]);
             } elseif (isset($scenesWithPerson[$currentPersonSceneIndex])) {
                 $nextSceneWithPerson = $scenesWithPerson[$currentPersonSceneIndex];
                 
@@ -872,6 +909,29 @@ class VideoAnalyzer
 
         $this->processingService->finishStep($video, VideoStatus::MERGING_SCENES);
         fwrite(STDOUT, "[mergeEmptyScenes] Szenen gemergt für Video {$video->getId()} – dispatche TagScenesMessage." . PHP_EOL);
+        $this->bus->dispatch(new \App\Message\TagScenesMessage($video->getId()));
+    }
+
+    private function mergeAllScenesIntoOne(Video $video, array $scenes): void
+    {
+        if (count($scenes) <= 1) {
+            $this->processingService->finishStep($video, VideoStatus::MERGING_SCENES);
+            $this->bus->dispatch(new \App\Message\TagScenesMessage($video->getId()));
+            return;
+        }
+
+        $firstScene = $scenes[0];
+        $lastScene = end($scenes);
+
+        $firstScene->setEndSeconds($lastScene->getEndSeconds());
+
+        for ($i = 1; $i < count($scenes); $i++) {
+            $video->removeScene($scenes[$i]);
+            $this->entityManager->remove($scenes[$i]);
+        }
+
+        $this->entityManager->flush();
+        $this->processingService->finishStep($video, VideoStatus::MERGING_SCENES);
         $this->bus->dispatch(new \App\Message\TagScenesMessage($video->getId()));
     }
 

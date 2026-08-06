@@ -36,14 +36,41 @@ readonly class GenerateChaptersMessageHandler
             return;
         }
 
+        // Clear existing chapters
+        foreach ($video->getChapters() as $chapter) {
+            $this->entityManager->remove($chapter);
+        }
+        $this->entityManager->flush();
+
         $this->processingService->startStep($video, VideoStatus::CHAPTER_GENERATION);
 
         $scenes = $video->getScenes();
+        if ($scenes->isEmpty()) {
+            $chapter = new VideoChapter();
+            $chapter->setVideo($video);
+            $chapter->setTitle("Gesamtes Video");
+            $chapter->setStartSeconds(0);
+            $chapter->setEndSeconds((int)($video->getDuration() ?? 0));
+            $chapter->setDescription("Zusammenfassung des gesamten Videos.");
+            $this->entityManager->persist($chapter);
+            $this->entityManager->flush();
+
+            $this->processingService->finishStep($video, VideoStatus::CHAPTER_GENERATION);
+            $this->logger->info("Finished chapter generation for video " . $video->getId() . " (no scenes found, default chapter)");
+            fwrite(STDOUT, "[GenerateChapters] Kapitel generiert für Video {$video->getId()} – dispatche ExportVideoToJellyfinMessage." . PHP_EOL);
+            if ($this->workflowMachine->can($video, 'complete')) {
+                $this->workflowMachine->apply($video, 'complete');
+            }
+            $this->messageBus->dispatch(new ExportVideoToJellyfinMessage($video->getId()));
+            return;
+        }
+
         $scenesData = [];
         foreach ($scenes as $scene) {
             $scenesData[] = [
                 'start' => $scene->getStartSeconds(),
                 'end' => $scene->getEndSeconds(),
+                'title' => $scene->getTitle(),
                 'tags' => array_map(fn($tag) => $tag->getName(), $scene->getTags()->toArray()),
             ];
         }
@@ -52,11 +79,14 @@ readonly class GenerateChaptersMessageHandler
             $chaptersData = $this->geminiService->suggestChapters($scenesData);
 
             foreach ($chaptersData as $data) {
+                if (empty($data['title']) || !isset($data['startSeconds']) || !isset($data['endSeconds'])) {
+                    continue;
+                }
                 $chapter = new VideoChapter();
                 $chapter->setVideo($video);
                 $chapter->setTitle($data['title']);
-                $chapter->setStartSeconds($data['startSeconds']);
-                $chapter->setEndSeconds($data['endSeconds']);
+                $chapter->setStartSeconds((int)$data['startSeconds']);
+                $chapter->setEndSeconds((int)$data['endSeconds']);
                 $chapter->setDescription($data['description'] ?? null);
                 $this->entityManager->persist($chapter);
             }

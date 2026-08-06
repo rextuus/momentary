@@ -5,6 +5,7 @@ namespace App\Service;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use App\Service\PathConstants;
 
 class JellyfinUploadService
 {
@@ -13,13 +14,14 @@ class JellyfinUploadService
     private ?string $jellyfinApiKey;
 
     public function __construct(
-        #[Autowire('%kernel.project_dir%/docker/jellyfin/uploads')] string $uploadDir,
+        #[Autowire('%kernel.project_dir%')] string $projectDir,
         string $jellyfinHost,
         ?string $jellyfinApiKey,
         private readonly HttpClientInterface $httpClient,
         private readonly LoggerInterface $logger,
         private readonly VideoAnalyzer $videoAnalyzer
     ) {
+        $uploadDir = $projectDir . '/' . PathConstants::JELLYFIN_UPLOADS;
         $this->uploadDir = $this->videoAnalyzer->resolvePath($uploadDir);
         $this->jellyfinHost = rtrim($jellyfinHost, '/');
         $this->jellyfinApiKey = $jellyfinApiKey;

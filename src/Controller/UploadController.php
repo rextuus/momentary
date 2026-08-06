@@ -25,7 +25,8 @@ class UploadController extends AbstractController
             $videoFile = $request->files->get('video_file');
 
             if ($videoFile) {
-                $originalFilename = pathinfo($videoFile->getClientOriginalName(), PATHINFO_FILENAME);
+                $customFilename = $request->request->get('custom_filename');
+                $originalFilename = $customFilename ?: pathinfo($videoFile->getClientOriginalName(), PATHINFO_FILENAME);
                 $safeFilename = $this->slugger->slug($originalFilename);
                 $newFilename = $safeFilename . '-' . uniqid() . '.' . $videoFile->guessExtension();
 

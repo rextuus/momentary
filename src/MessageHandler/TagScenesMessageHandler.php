@@ -8,6 +8,7 @@ use App\Repository\VideoRepository;
 use App\Service\WorkflowMachine;
 use App\Enum\VideoStatus;
 use App\Service\VideoProcessingService;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -21,7 +22,8 @@ class TagScenesMessageHandler
         private readonly WorkflowMachine $workflowMachine,
         #[Target('tagging')] private readonly LoggerInterface $logger,
         private readonly MessageBusInterface $messageBus,
-        private readonly VideoProcessingService $processingService
+        private readonly VideoProcessingService $processingService,
+        private readonly EntityManagerInterface $entityManager
     ) {
     }
 
@@ -34,10 +36,29 @@ class TagScenesMessageHandler
             return;
         }
 
-        if ($this->workflowMachine->can($video, 'start_tagging')) {
-            $this->workflowMachine->apply($video, 'start_tagging');
-            $this->processingService->startStep($video, VideoStatus::TAGGING_SCENES);
+        // Atomarer Guard via DB-Lock: Verhindert doppelte Chain-Starts
+        $this->entityManager->getConnection()->beginTransaction();
+        try {
+            $currentStatus = $this->entityManager->getConnection()->fetchOne(
+                "SELECT status FROM video WHERE id = ? FOR UPDATE",
+                [$video->getId()]
+            );
+            if ($currentStatus !== VideoStatus::TAGGING_SCENES->value) {
+                $this->entityManager->getConnection()->rollBack();
+                fwrite(STDOUT, "[TagScenes] Video {$message->getVideoId()} ist nicht im Status tagging_scenes (ist: $currentStatus) – überspringe." . PHP_EOL);
+                return;
+            }
+            // Status auf analyzing_scenes setzen damit zweite Message abgeblockt wird
+            $this->entityManager->getConnection()->executeStatement(
+                "UPDATE video SET status = ? WHERE id = ?",
+                [VideoStatus::ANALYZING_SCENES->value, $video->getId()]
+            );
+            $this->entityManager->getConnection()->commit();
+        } catch (\Throwable $e) {
+            $this->entityManager->getConnection()->rollBack();
+            throw $e;
         }
+        $this->entityManager->refresh($video);
 
         $scenes = $video->getScenes();
         $sceneCount = count($scenes);

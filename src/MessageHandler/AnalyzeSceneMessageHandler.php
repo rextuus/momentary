@@ -64,16 +64,17 @@ class AnalyzeSceneMessageHandler
             $allTags = [];
             
             foreach ($timestamps as $time) {
-                $thumbnailPath = $this->videoAnalyzer->extractThumbnail($video, $time, sprintf('scene_analysis_%d.jpg', $scene->getId()));
-                $pathWithoutQuery = $thumbnailPath ? explode('?', $thumbnailPath)[0] : null;
-                $resolvedPath = $pathWithoutQuery ? $this->videoAnalyzer->resolvePath($pathWithoutQuery) : null;
-                $this->logger->info("Thumbnail path: " . ($thumbnailPath ?? 'null') . ", resolved: " . ($resolvedPath ?? 'null') . ", exists: " . ($resolvedPath && file_exists($resolvedPath) ? 'yes' : 'no'));
+                $thumbnailRelPath = $this->videoAnalyzer->extractThumbnail($video, $time, sprintf('scene_analysis_%d.jpg', $scene->getId()));
                 
-                if ($resolvedPath && file_exists($resolvedPath)) {
+                // Wir brauchen den absoluten Pfad zur Analyse
+                $basePath = $this->videoAnalyzer->getProjectDir() . '/' . \App\Service\PathConstants::MEDIA_IMAGES;
+                $resolvedPath = $basePath . '/' . explode('?', $thumbnailRelPath)[0];
+                
+                if (file_exists($resolvedPath)) {
                     $tagsData = $this->geminiService->analyzeImage($resolvedPath);
                     
                     $this->logger->info("Gemini analysis result: " . json_encode($tagsData));
-                    if (isset($tagsData['Titel'])) {
+                    if ($scene->getTitle() === null && isset($tagsData['Titel'])) {
                         $scene->setTitle($tagsData['Titel']);
                     }
 

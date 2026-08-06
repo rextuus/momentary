@@ -32,10 +32,10 @@ services:
     volumes:
       # Code-Mount: Nur in DEV aktiv (wird via ENV überschrieben)
       - ${APP_CODE_VOLUME:-./:/var/www/html:rw}
-      - ./public/uploads:/var/www/html/public/uploads
+      - ./media/images:/var/www/html/media/images
       - app_var:/var/www/html/var
       - ./docker/jellyfin/uploads:/var/www/html/docker/jellyfin/uploads:rw
-      - app_uploads:/var/www/html/var/uploads/app_uploads
+      - ./var/uploads/app_uploads:/var/www/html/var/uploads/app_uploads
     depends_on:
       database:
         condition: service_healthy
@@ -69,10 +69,10 @@ services:
       PYTHON_BINARY: ${PYTHON_BINARY:-/usr/bin/python3}      # <-- Neu hinzugefügt
     volumes:
       - ${APP_CODE_VOLUME:-./:/var/www/html:rw}
-      - ./public/uploads:/var/www/html/public/uploads
+      - ./media/images:/var/www/html/media/images
       - app_var:/var/www/html/var
       - ./docker/jellyfin/uploads:/var/www/html/docker/jellyfin/uploads:rw # <-- Neu hinzugefügt
-      - app_uploads:/var/www/html/var/uploads/app_uploads
+      - ./var/uploads/app_uploads:/var/www/html/var/uploads/app_uploads
     depends_on:
       database:
         condition: service_healthy
@@ -127,14 +127,14 @@ services:
       - momentary-network
 
   meilisearch:
-    image: getmeili/meilisearch:v1.6
+    image: getmeili/meilisearch:latest
     container_name: momentary_meilisearch
     restart: unless-stopped
     environment:
       - MEILI_MASTER_KEY=${MEILI_MASTER_KEY}
       - MEILI_ENV=${MEILI_ENV:-production}
     volumes:
-      - meilisearch_data:/meili_data
+      - ./docker/meilisearch/data:/meili_data
     networks:
       - momentary-network
 
@@ -149,7 +149,7 @@ services:
     ports:
       - "${IMGPROXY_HOST_BINDING:-127.0.0.1}:${IMGPROXY_PORT:-8081}:8080"
     volumes:
-      - ./public/uploads:/public/uploads:ro
+      - ./media/images:/public/media/images:ro
     networks:
       - momentary-network
 
@@ -161,19 +161,17 @@ services:
       - "2222:22"
     environment:
       # Format: benutzername:passwort:uid:gid:ordner
-      SFTP_USERS: "uploaduser:MeinSicheresPasswort123:1000:1000:upload"
+      SFTP_USERS: "uploaduser:MeinSicheresPasswort123:1000:33:upload"
     volumes:
       # Bindet das Upload-Verzeichnis direkt in den SFTP-Ordner des Benutzers ein
       - ./docker/jellyfin/uploads:/home/uploaduser/upload/jellyfin_uploads
-      - app_uploads:/home/uploaduser/upload/app_uploads
+      - ./var/uploads/app_uploads:/home/uploaduser/upload/app_uploads
     networks:
       - momentary-network
 
 volumes:
   database_data:
-  meilisearch_data:
   rabbitmq_data:
-  app_uploads:
   app_var:
 
 networks:

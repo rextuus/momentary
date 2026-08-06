@@ -4,7 +4,7 @@ flysystem:
         default.storage:
             adapter: 'local'
             options:
-                directory: '%kernel.project_dir%/public/uploads'
+                directory: '%kernel.project_dir%/media/images'
                 permissions:
                     file:
                         public: 0644

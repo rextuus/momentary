@@ -11,12 +11,16 @@ use Symfony\Component\String\Slugger\SluggerInterface;
 class VideoFileService
 {
     public function __construct(
-        private FilesystemOperator $filesystem,
-        private EntityManagerInterface $entityManager,
-        private SluggerInterface $slugger,
-        #[Autowire('%kernel.project_dir%/public/uploads')]
-        private string $basePath
-    ) {}
+        private readonly FilesystemOperator $filesystem,
+        private readonly EntityManagerInterface $entityManager,
+        private readonly SluggerInterface $slugger,
+        #[Autowire('%kernel.project_dir%')]
+        string $projectDir
+    ) {
+        $this->basePath = $projectDir . '/' . PathConstants::MEDIA_IMAGES;
+    }
+
+    private string $basePath;
 
     public function getVideoDirectory(Video $video, string $subFolder): string
     {

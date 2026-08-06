@@ -4,14 +4,19 @@ namespace App\Service;
 
 use League\Flysystem\FilesystemOperator;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use App\Service\PathConstants;
 
 class ImageFileService
 {
     public function __construct(
         private FilesystemOperator $filesystem,
-        #[Autowire('%kernel.project_dir%/public/uploads')]
-        private string $basePath
-    ) {}
+        #[Autowire('%kernel.project_dir%')]
+        private string $projectDir
+    ) {
+        $this->basePath = $projectDir . '/' . PathConstants::MEDIA_IMAGES;
+    }
+
+    private string $basePath;
 
     public function getFilesystem(): FilesystemOperator
     {

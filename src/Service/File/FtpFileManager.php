@@ -95,7 +95,15 @@ class FtpFileManager
         }
 
         $dir = dirname($oldPath);
-        $newPath = $dir . DIRECTORY_SEPARATOR . $newName;
+        $oldExtension = pathinfo($oldPath, PATHINFO_EXTENSION);
+        $newExtension = pathinfo($newName, PATHINFO_EXTENSION);
+        
+        $finalNewName = $newName;
+        if (empty($newExtension) && !empty($oldExtension)) {
+            $finalNewName = $newName . '.' . $oldExtension;
+        }
+
+        $newPath = $dir . DIRECTORY_SEPARATOR . $finalNewName;
 
         if ($fs->exists($newPath)) {
             throw new \RuntimeException('File already exists');

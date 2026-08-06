@@ -27,7 +27,16 @@
                                 oder nutze den <a href="{{ path('app_upload') }}" class="fw-bold">direkten Upload</a>.
                             </div>
                         </div>
-
+                        <div class="mb-3">
+                            {{ form_label(form.cameraTags, 'Kameramodell', {'label_attr': {'class': 'form-label fw-bold small text-uppercase text-muted'}}) }}
+                            {{ form_widget(form.cameraTags, {'attr': {'class': 'form-select shadow-sm'}}) }}
+                            {{ form_errors(form.cameraTags) }}
+                        </div>
+                        <div class="mb-3">
+                            {{ form_label(form.formatTags, 'Format', {'label_attr': {'class': 'form-label fw-bold small text-uppercase text-muted'}}) }}
+                            {{ form_widget(form.formatTags, {'attr': {'class': 'form-select shadow-sm'}}) }}
+                            {{ form_errors(form.formatTags) }}
+                        </div>
                     </div>
 
                     <div class="accordion mb-4 shadow-sm" id="advancedOptions">
@@ -76,7 +85,26 @@
                     {{ form_rest(form) }}
                     {{ form_end(form) }}
                 </div>
-            </div>
-        </div>
-    </div>
-{% endblock %}
+                </div>
+                </div>
+                </div>
+
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const sourceFileSelect = document.querySelector('select[name="video[sourceFile]"]');
+                        const titleInput = document.querySelector('input[name="video[title]"]');
+
+                        if (sourceFileSelect && titleInput) {
+                            sourceFileSelect.addEventListener('change', function() {
+                                if (!titleInput.value) { // Only set if empty
+                                    const selectedText = sourceFileSelect.options[sourceFileSelect.selectedIndex].text;
+                                    const filename = selectedText.split(' (')[0];
+                                    const lastDotIndex = filename.lastIndexOf('.');
+                                    const nameWithoutExtension = lastDotIndex !== -1 ? filename.substring(0, lastDotIndex) : filename;
+                                    titleInput.value = nameWithoutExtension;
+                                }
+                            });
+                        }
+                    });
+                </script>
+                {% endblock %}

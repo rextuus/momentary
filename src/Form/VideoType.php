@@ -2,6 +2,9 @@
 
 namespace App\Form;
 
+use App\Entity\Tag;
+use Symfony\Bridge\Doctrine\Form\Type\EntityType;
+use Doctrine\ORM\EntityRepository;
 use App\Entity\Video;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Form\AbstractType;
@@ -77,6 +80,36 @@ class VideoType extends AbstractType
                 'label' => 'Leere Szenen mit der vorherigen Personen-Szene zusammenführen',
                 'required' => false,
                 'attr' => ['class' => 'form-check-input'],
+            ])
+            ->add('cameraTags', EntityType::class, [
+                'class' => Tag::class,
+                'choice_label' => 'name',
+                'multiple' => false,
+                'expanded' => false,
+                'label' => 'Kameramodell',
+                'mapped' => false,
+                'attr' => ['class' => 'form-select'],
+                'query_builder' => function (EntityRepository $er) {
+                    return $er->createQueryBuilder('t')
+                        ->join('t.category', 'c')
+                        ->where('t.name IN (:tags)')
+                        ->setParameter('tags', ['Smartphone', 'Camera', 'Actioncam', 'Drohne']);
+                },
+            ])
+            ->add('formatTags', EntityType::class, [
+                'class' => Tag::class,
+                'choice_label' => 'name',
+                'multiple' => false,
+                'expanded' => false,
+                'label' => 'Format',
+                'mapped' => false,
+                'attr' => ['class' => 'form-select'],
+                'query_builder' => function (EntityRepository $er) {
+                    return $er->createQueryBuilder('t')
+                        ->join('t.category', 'c')
+                        ->where('t.name IN (:tags)')
+                        ->setParameter('tags', ['Hochkant', 'Querformat']);
+                },
             ]);
     }
 
