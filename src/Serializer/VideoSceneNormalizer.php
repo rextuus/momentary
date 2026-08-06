@@ -6,6 +6,7 @@ namespace App\Serializer;
 
 use App\Entity\VideoScene;
 use App\Service\ImgproxyService;
+use App\Service\JellyfinPlaybackService;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Serializer\Normalizer\NormalizerAwareInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerAwareTrait;
@@ -19,7 +20,8 @@ class VideoSceneNormalizer implements NormalizerInterface, NormalizerAwareInterf
 
     public function __construct(
         private ImgproxyService $imgproxyService,
-        private Security $security
+        private Security $security,
+        private JellyfinPlaybackService $jellyfinPlaybackService
     ) {}
 
     public function normalize($object, ?string $format = null, array $context = []): array|string|int|float|bool|\ArrayObject|null
@@ -34,6 +36,7 @@ class VideoSceneNormalizer implements NormalizerInterface, NormalizerAwareInterf
 
         if (is_array($data)) {
             $data['isPublic'] = $object->isPublic();
+            $data['playbackUrl'] = $this->jellyfinPlaybackService->generatePlaybackUrl($object);
         }
 
         if (is_array($data) && isset($data['thumbnailUrl'])) {

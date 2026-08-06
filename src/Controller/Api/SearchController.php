@@ -132,8 +132,10 @@ class SearchController extends AbstractController
                     $itemBlur = $blur;
                     if (isset($item['id']) && isset($sceneMap[$item['id']])) {
                         $itemBlur = $this->isGranted('SCENE_VIEW', $sceneMap[$item['id']]) ? 0 : 5;
+                        $item['endSeconds'] = $sceneMap[$item['id']]->getEndSeconds();
                     } elseif (isset($item['start']) && isset($sceneByVideoAndStart[(int)$hit['id']][(int)$item['start']])) {
                         $itemBlur = $this->isGranted('SCENE_VIEW', $sceneByVideoAndStart[(int)$hit['id']][(int)$item['start']]) ? 0 : 5;
+                        $item['endSeconds'] = $sceneByVideoAndStart[(int)$hit['id']][(int)$item['start']]->getEndSeconds();
                     }
                     $item['thumbnailUrl'] = $this->imgproxyService->generateUrl($item['thumbnailUrl'], 160, 90, 'fill', $itemBlur);
                 }
@@ -153,8 +155,10 @@ class SearchController extends AbstractController
                     $itemBlur = $blur;
                     if (isset($item['id']) && isset($sceneMap[$item['id']])) {
                         $itemBlur = $this->isGranted('SCENE_VIEW', $sceneMap[$item['id']]) ? 0 : 5;
+                        $item['endSeconds'] = $sceneMap[$item['id']]->getEndSeconds();
                     } elseif (isset($item['start']) && isset($sceneByVideoAndStart[(int)$hit['id']][(int)$item['start']])) {
                         $itemBlur = $this->isGranted('SCENE_VIEW', $sceneByVideoAndStart[(int)$hit['id']][(int)$item['start']]) ? 0 : 5;
+                        $item['endSeconds'] = $sceneByVideoAndStart[(int)$hit['id']][(int)$item['start']]->getEndSeconds();
                     }
                     $item['thumbnailUrl'] = $this->imgproxyService->generateUrl($item['thumbnailUrl'], 160, 90, 'fill', $itemBlur);
                 }

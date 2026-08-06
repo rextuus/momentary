@@ -34,6 +34,7 @@ class VideoNormalizer implements NormalizerInterface, NormalizerAwareInterface
 
         // 4. Sicherstellen, dass wir ein Array haben
         if (is_array($data)) {
+            $data['isPublic'] = $object->isPublic();
             $groups = (array) ($context['groups'] ?? []);
 
             // ImgProxy URL generieren (Thumbnail)

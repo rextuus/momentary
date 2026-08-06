@@ -157,6 +157,7 @@ class Video
     private ?User $owner = null;
 
     #[ORM\Column(options: ["default" => false])]
+    #[Groups(['video:list', 'video:detail'])]
     private bool $isPublic = false;
 
     /**
