@@ -71,7 +71,7 @@ class SearchController extends AbstractController
         }
 
         $videos = $this->videoRepository->findBy(['id' => $videoIds]);
-
+        
         // Videos nach ID mappen
         $videoMap = [];
         foreach ($videos as $video) {

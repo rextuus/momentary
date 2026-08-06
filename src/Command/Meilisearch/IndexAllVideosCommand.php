@@ -44,6 +44,9 @@ class IndexAllVideosCommand extends Command
         $indexName = 'videos';
         try {
             $index = $this->meiliSearchClient->getIndex($indexName);
+            // Index leeren, um verwaiste Daten zu entfernen
+            $task = $index->deleteAllDocuments();
+            $this->meiliSearchClient->waitForTask($task['taskUid']);
         } catch (\Meilisearch\Exceptions\ApiException $e) {
             $task = $this->meiliSearchClient->createIndex($indexName, ['primaryKey' => 'id']);
             $this->meiliSearchClient->waitForTask($task['taskUid']);
@@ -54,17 +57,23 @@ class IndexAllVideosCommand extends Command
         
         $batch = [];
         foreach ($videos as $video) {
-            $batch[] = $this->videoIndexer->transform($video);
+            $transformed = $this->videoIndexer->transform($video);
+            file_put_contents('/tmp/indexer_debug.log', 'Transforming video ' . $video->getId() . ': ' . json_encode($transformed) . PHP_EOL, FILE_APPEND);
+            $batch[] = $transformed;
             
             if (count($batch) >= 100) {
-                $index->addDocuments($batch);
+                file_put_contents('/tmp/indexer_debug.log', 'Adding batch to Meilisearch...' . PHP_EOL, FILE_APPEND);
+                $task = $index->addDocuments($batch);
+                $this->meiliSearchClient->waitForTask($task['taskUid']);
                 $batch = [];
             }
             $progressBar->advance();
         }
 
         if (count($batch) > 0) {
-            $index->addDocuments($batch);
+            file_put_contents('/tmp/indexer_debug.log', 'Adding final batch to Meilisearch...' . PHP_EOL, FILE_APPEND);
+            $task = $index->addDocuments($batch);
+            $this->meiliSearchClient->waitForTask($task['taskUid']);
         }
 
         $progressBar->finish();

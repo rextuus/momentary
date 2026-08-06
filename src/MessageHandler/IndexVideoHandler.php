@@ -5,6 +5,7 @@ namespace App\MessageHandler;
 use App\Message\IndexVideoMessage;
 use App\Repository\VideoRepository;
 use App\Service\VideoIndexer;
+use Doctrine\ORM\EntityManagerInterface;
 use Meilisearch\Client as MeiliSearchClient;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -14,7 +15,8 @@ final class IndexVideoHandler
     public function __construct(
         private VideoRepository $videoRepository,
         private VideoIndexer $videoIndexer,
-        private MeiliSearchClient $meiliSearchClient
+        private MeiliSearchClient $meiliSearchClient,
+        private EntityManagerInterface $entityManager
     ) {}
 
     public function __invoke(IndexVideoMessage $message): void
@@ -26,6 +28,7 @@ final class IndexVideoHandler
         if (!$video) {
             return;
         }
+        $this->entityManager->refresh($video);
 
         $data = $this->videoIndexer->transform($video);
         file_put_contents('var/log/handler_data.log', 'Transformed data: ' . json_encode($data) . PHP_EOL, FILE_APPEND);

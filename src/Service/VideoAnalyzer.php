@@ -22,6 +22,7 @@ use Psr\Log\LoggerInterface;
 use Ramsey\Uuid\Uuid;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Process\Exception\RuntimeException;
 use Symfony\Component\Process\Process;
 
 class VideoAnalyzer
@@ -123,7 +124,6 @@ class VideoAnalyzer
         $this->logger->info(sprintf('Thumbnail will be saved to: %s', $thumbnailPath));
 
         // FFmpeg Kommando um ein einzelnes Frame zu extrahieren
-        // -ss vor -i für schnelles Seek
         $command = [
             'ffmpeg',
             '-loglevel', 'error',
@@ -139,7 +139,13 @@ class VideoAnalyzer
         $process = new Process($command);
         $process->setTimeout(60);
         $this->logger->info(sprintf('Running FFmpeg: ' . implode(' ', $command)));
-        $process->run();
+        
+        try {
+            $process->run();
+        } catch (RuntimeException $e) {
+            $this->logger->error('FFmpeg could not be executed (maybe not installed?): ' . $e->getMessage());
+            return null;
+        }
         
         if (!$process->isSuccessful()) {
             $this->logger->error('Thumbnail extraction failed: ' . $process->getErrorOutput());

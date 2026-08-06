@@ -48,7 +48,8 @@ class ChapterManagerComponent
     {
         $count = 0;
         foreach ($this->video->getScenes() as $scene) {
-            if ($scene->getStartSeconds() >= $chapter->getStartSeconds() && $scene->getEndSeconds() <= $chapter->getEndSeconds()) {
+            // Überlappungsprüfung analog zur TimelineComponent
+            if ($scene->getStartSeconds() < $chapter->getEndSeconds() && $scene->getEndSeconds() > $chapter->getStartSeconds()) {
                 $count++;
             }
         }
