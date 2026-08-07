@@ -38,6 +38,7 @@ class VideoAnalyzer
         private LoggerInterface $logger,
         private WorkflowMachine $workflowMachine,
         private VideoProcessingService $processingService,
+        private VideoFileService $videoFileService,
         #[Autowire('%kernel.project_dir%')]
         private string $projectDir,
         #[Autowire('%env(PYTHON_BINARY)%')]
@@ -47,8 +48,7 @@ class VideoAnalyzer
         #[Autowire('%env(default:app.min_scene_length_for_refinement:MIN_SCENE_LENGTH_FOR_REFINEMENT)%')]
         private float $minSceneLengthForRefinement = 2.0,
         #[Autowire('%env(default:app.refined_frame_analysis_fps:REFINED_FRAME_ANALYSIS_FPS)%')]
-        private float $refinedFps = 1.0,
-        private VideoFileService $videoFileService
+        private float $refinedFps = 1.0
     ) {
         // Fallback für Docker: Wenn der konfigurierte Python-Pfad nicht existiert,
         // nutzen wir den systemweiten python3 Befehl.
