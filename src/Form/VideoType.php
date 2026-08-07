@@ -6,6 +6,7 @@ use App\Entity\Tag;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Doctrine\ORM\EntityRepository;
 use App\Entity\Video;
+use App\Repository\VideoRepository;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
@@ -25,7 +26,8 @@ class VideoType extends AbstractType
         #[Autowire('%env(default:app.min_scene_length_for_refinement:MIN_SCENE_LENGTH_FOR_REFINEMENT)%')]
         private readonly float $minSceneLengthForRefinement,
         #[Autowire('%env(default:app.refined_frame_analysis_fps:REFINED_FRAME_ANALYSIS_FPS)%')]
-        private readonly float $refinedFps
+        private readonly float $refinedFps,
+        private readonly VideoRepository $videoRepository
     ) {}
 
     public function buildForm(FormBuilderInterface $builder, array $options): void
@@ -37,6 +39,10 @@ class VideoType extends AbstractType
 
             foreach ($foundFiles as $file) {
                 if ($file !== '.' && $file !== '..' && !is_dir($this->importDir . '/' . $file)) {
+                    if ($this->videoRepository->findOneBy(['sourceFile' => $file])) {
+                        continue;
+                    }
+                    
                     $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
                     if (in_array($ext, $allowedExtensions, true)) {
                         $path = $this->importDir . DIRECTORY_SEPARATOR . $file;
