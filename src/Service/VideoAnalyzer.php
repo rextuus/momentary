@@ -59,6 +59,11 @@ class VideoAnalyzer
         }
     }
 
+    private function logIf(string $message): void
+    {
+        $this->logger->info(sprintf('[%s] %s', date('Y-m-d H:i:s'), $message));
+    }
+
     public function getProjectDir(): string
     {
         return $this->projectDir;
@@ -68,24 +73,28 @@ class VideoAnalyzer
     {
         $videoPath = $video->getConvertedVideoPath();
         if (!$videoPath || str_starts_with($videoPath, 'defaults/')) {
+            $this->logIf('extractThumbnail: videoPath empty or starts with defaults/');
             $videoPath = $video->getLocalPath();
         }
 
         $this->logger->info(sprintf('Extracting thumbnail for video %d at %fs. Original path: %s', $video->getId(), $timeInSeconds, $videoPath ?: 'NULL'));
 
         if (!$videoPath) {
+            $this->logIf('extractThumbnail: videoPath empty after fallback');
             return null;
         }
 
         $videoPath = $this->resolvePath($videoPath);
         $this->logger->info(sprintf('Resolved video path for thumbnail: %s', $videoPath));
         if (!file_exists($videoPath)) {
+            $this->logIf('extractThumbnail: file not found ' . $videoPath);
             $this->logger->error("Video file not found for thumbnail extraction: " . $videoPath);
             return null;
         }
 
         // Wenn Zeit 0.0 ist, versuchen wir eine sinnvollere Zeit zu finden (zufällig)
         if ($timeInSeconds <= 0.0) {
+            $this->logIf('extractThumbnail: timeInSeconds <= 0, getting duration');
             try {
                 $ffprobeProcess = new Process([
                     'ffprobe',
@@ -96,13 +105,16 @@ class VideoAnalyzer
                 ]);
                 $ffprobeProcess->run();
                 if ($ffprobeProcess->isSuccessful()) {
+                    $this->logIf('extractThumbnail: ffprobe successful');
                     $duration = (float) $ffprobeProcess->getOutput();
                     if ($duration > 0) {
+                        $this->logIf('extractThumbnail: duration > 0');
                         // Wähle einen zufälligen Zeitpunkt zwischen 10% und 90%
                         $timeInSeconds = $duration * (mt_rand(10, 90) / 100);
                         $this->logger->info(sprintf('Generated random thumbnail time %fs for video %d (duration %fs)', $timeInSeconds, $video->getId(), $duration));
                     }
                 } else {
+                    $this->logIf('extractThumbnail: ffprobe failed');
                     $this->logger->warning('ffprobe failed to get duration: ' . $ffprobeProcess->getErrorOutput());
                     $timeInSeconds = 1.0;
                 }
@@ -148,6 +160,7 @@ class VideoAnalyzer
         }
         
         if (!$process->isSuccessful()) {
+            $this->logIf('extractSceneThumbnail: FFmpeg process failed');
             $this->logger->error('Thumbnail extraction failed: ' . $process->getErrorOutput());
             $this->logger->error('Command used: ' . implode(' ', $command));
             return null;
@@ -155,9 +168,11 @@ class VideoAnalyzer
 
         // Verifizieren, dass die Datei existiert und aktualisiert wurde
         if (file_exists($thumbnailPath)) {
+            $this->logIf('extractSceneThumbnail: Thumbnail exists: ' . $thumbnailPath);
             $this->logger->info(sprintf('Thumbnail file successfully created/updated: %s (Size: %d bytes)', $thumbnailPath, filesize($thumbnailPath)));
             @touch($thumbnailPath); // Zeitstempel aktualisieren, falls Größe identisch war
         } else {
+            $this->logIf('extractSceneThumbnail: Thumbnail NOT found: ' . $thumbnailPath);
             $this->logger->error('FFmpeg reported success, but thumbnail file not found at: ' . $thumbnailPath);
             return null;
         }
@@ -168,6 +183,7 @@ class VideoAnalyzer
         $relativeThumbnailPath .= '?t=' . time();
         
         if ($customFilename === null) {
+            $this->logIf('extractSceneThumbnail: No custom filename, updating DB');
             $video->setThumbnailPath($relativeThumbnailPath);
             $this->entityManager->flush();
         }
@@ -189,15 +205,18 @@ class VideoAnalyzer
     {
         // Wenn der Pfad bereits existiert, ist alles gut
         if (file_exists($path)) {
+            $this->logIf('resolvePath: path exists ' . $path);
             return $path;
         }
 
         // Falls er absolut ist und aus Docker stammt
         if (str_starts_with($path, '/var/www/html/')) {
+            $this->logIf('resolvePath: path starts with /var/www/html/');
             $relativePath = str_replace('/var/www/html/', '', $path);
             $localPath = $this->projectDir . '/' . $relativePath;
             
             if (file_exists($localPath)) {
+                $this->logIf('resolvePath: localPath exists ' . $localPath);
                 return $localPath;
             }
         }
@@ -733,8 +752,10 @@ class VideoAnalyzer
                         // Nur wenn KEINE Verfeinerung gestartet wurde, setzen wir auf MERGING_SCENES
                         if (!$isRefiningStarted) {
                             $this->logger->info('No refinement needed or possible, merging scenes', ['videoId' => $videoId]);
+                        if ($video->getStatus() === VideoStatus::REFINING_ANALYSIS || $video->getStatus() === VideoStatus::ANALYZING_FACES) {
                             $this->updateStatus($videoId, VideoStatus::MERGING_SCENES);
                             $this->mergeEmptyScenes($video);
+                        }
                         } else {
                             $this->logger->info('Refinement process started', ['videoId' => $videoId]);
                             // Status wurde bereits in extractFrames auf REFINING_EXTRACTION gesetzt
@@ -768,7 +789,7 @@ class VideoAnalyzer
                             $this->logger->info('Finalizing refinement from out-of-order message', ['videoId' => $videoId]);
                             $this->updateStatus($videoId, VideoStatus::MERGING_SCENES);
                             $this->mergeEmptyScenes($video);
-                        } else {
+                        } else if ($video->getStatus() === VideoStatus::ANALYZING_FACES) {
                             $this->logger->info('Attempting to trigger refinement from out-of-order message', ['videoId' => $videoId]);
                             $isRefiningStarted = $this->refineSceneAnalysis($video);
                             if (!$isRefiningStarted) {
