@@ -4,7 +4,7 @@ namespace App\MessageHandler;
 
 use App\Entity\VideoChapter;
 use App\Enum\VideoStatus;
-use App\Message\ExportVideoToJellyfinMessage;
+use App\Message\IndexVideoMessage;
 use App\Message\GenerateChaptersMessage;
 use App\Repository\VideoRepository;
 use App\Service\Gemini\GeminiService;
@@ -58,11 +58,11 @@ readonly class GenerateChaptersMessageHandler
 
             $this->processingService->finishStep($video, VideoStatus::CHAPTER_GENERATION);
             $this->logger->info("Finished chapter generation for video " . $video->getId() . " (no scenes found, default chapter)");
-            fwrite(STDOUT, "[GenerateChapters] Kapitel generiert für Video {$video->getId()} – dispatche ExportVideoToJellyfinMessage." . PHP_EOL);
+            fwrite(STDOUT, "[GenerateChapters] Kapitel generiert für Video {$video->getId()} – dispatche IndexVideoMessage." . PHP_EOL);
             if ($this->workflowMachine->can($video, 'complete')) {
                 $this->workflowMachine->apply($video, 'complete');
             }
-            $this->messageBus->dispatch(new ExportVideoToJellyfinMessage($video->getId()));
+            $this->messageBus->dispatch(new IndexVideoMessage($video->getId()));
             return;
         }
 
@@ -95,11 +95,11 @@ readonly class GenerateChaptersMessageHandler
             $this->entityManager->flush();
             $this->processingService->finishStep($video, VideoStatus::CHAPTER_GENERATION);
             $this->logger->info("Finished chapter generation for video " . $video->getId());
-            fwrite(STDOUT, "[GenerateChapters] Kapitel generiert für Video {$video->getId()} – dispatche ExportVideoToJellyfinMessage." . PHP_EOL);
+            fwrite(STDOUT, "[GenerateChapters] Kapitel generiert für Video {$video->getId()} – dispatche IndexVideoMessage." . PHP_EOL);
             if ($this->workflowMachine->can($video, 'complete')) {
                 $this->workflowMachine->apply($video, 'complete');
             }
-            $this->messageBus->dispatch(new ExportVideoToJellyfinMessage($video->getId()));
+            $this->messageBus->dispatch(new IndexVideoMessage($video->getId()));
         } catch (\Exception $e) {
             $this->logger->error("Error generating chapters: " . $e->getMessage());
             $this->processingService->failStep($video, VideoStatus::CHAPTER_GENERATION, $e->getMessage());

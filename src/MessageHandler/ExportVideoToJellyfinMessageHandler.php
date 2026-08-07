@@ -11,7 +11,6 @@ use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
-use Symfony\Component\Messenger\MessageBusInterface;
 
 #[AsMessageHandler]
 class ExportVideoToJellyfinMessageHandler
@@ -22,8 +21,7 @@ class ExportVideoToJellyfinMessageHandler
         private readonly VideoAnalyzer $videoAnalyzer,
         private readonly EntityManagerInterface $entityManager,
         private readonly LoggerInterface $logger,
-        private readonly WorkflowMachine $workflowMachine,
-        private readonly MessageBusInterface $messageBus
+        private readonly WorkflowMachine $workflowMachine
     ) {
     }
 
@@ -90,10 +88,6 @@ class ExportVideoToJellyfinMessageHandler
                 $video->setJellyfinItemId($itemId);
                 $this->entityManager->flush();
                 $this->logger->info("Associated Jellyfin Item ID $itemId with video $videoId");
-                
-                // Dispatch IndexVideoMessage
-                $this->messageBus->dispatch(new IndexVideoMessage($videoId));
-                $this->logger->info("Dispatched IndexVideoMessage for video $videoId");
             } else {
                 $this->logger->warning("Could not find Jellyfin Item ID for video $videoId after several attempts.");
             }
