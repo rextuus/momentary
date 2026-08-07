@@ -49,7 +49,7 @@ services:
       context: .
       dockerfile: docker/php/Dockerfile
     restart: always
-    command: ["php", "bin/console", "messenger:consume", "async", "--time-limit=3600", "--memory-limit=512M"]
+    command: ["sh", "-c", "php bin/console cache:clear --env=prod && php bin/console cache:warmup --env=prod && php bin/console messenger:consume async --time-limit=3600 --memory-limit=512M"]
     environment:
       APP_ENV: ${APP_ENV:-prod}
       APP_SECRET: ${APP_SECRET}
