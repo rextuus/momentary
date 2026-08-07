@@ -17,7 +17,10 @@ docker compose exec -T app bin/console cache:warmup --env=prod
 # 4. Migrationen ausführen
 docker compose exec -T app bin/console doctrine:migrations:migrate --no-interaction
 
-# 5. Worker neu starten
+# 5. RabbitMQ Queue leeren
+docker compose exec -T rabbitmq rabbitmqctl purge_queue messages
+
+# 6. Worker neu starten
 docker compose restart messenger-worker
 
 echo "Deployment erfolgreich abgeschlossen."
