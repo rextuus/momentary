@@ -60,12 +60,24 @@ class ListIndexesCommand extends Command
                 if (empty($documents)) {
                     $io->text('No documents found.');
                 } else {
-                    $tableRows = [];
-                    foreach ($documents as $doc) {
-                        // Assuming documents can be converted to array
-                        $tableRows[] = [json_encode($doc)];
+                    if ($index->getUid() === 'videos') {
+                        $tableRows = [];
+                        foreach ($documents as $doc) {
+                            $tableRows[] = [
+                                $doc['id'] ?? 'N/A',
+                                $doc['title'] ?? 'N/A',
+                                implode(', ', $doc['tags'] ?? []),
+                                implode(', ', $doc['persons'] ?? []),
+                            ];
+                        }
+                        $io->table(['ID', 'Title', 'Tags', 'Persons'], $tableRows);
+                    } else {
+                        $tableRows = [];
+                        foreach ($documents as $doc) {
+                            $tableRows[] = [json_encode($doc)];
+                        }
+                        $io->table(['Document'], $tableRows);
                     }
-                    $io->table(['Document'], $tableRows);
                 }
             }
             $io->newLine();
