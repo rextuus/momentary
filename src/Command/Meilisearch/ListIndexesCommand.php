@@ -50,8 +50,8 @@ class ListIndexesCommand extends Command
         foreach ($indexes as $index) {
             $io->section(sprintf('Index: %s', $index->getUid()));
             $io->text(sprintf('Primary Key: %s', $index->getPrimaryKey() ?? 'Not set'));
-            $io->text(sprintf('Created at: %s', $index->getCreatedAt()));
-            $io->text(sprintf('Updated at: %s', $index->getUpdatedAt()));
+            $io->text(sprintf('Created at: %s', $index->getCreatedAt()?->format('Y-m-d H:i:s') ?? 'N/A'));
+            $io->text(sprintf('Updated at: %s', $index->getUpdatedAt()?->format('Y-m-d H:i:s') ?? 'N/A'));
 
             if ($showDocuments) {
                 $io->text('Documents (first 5):');
