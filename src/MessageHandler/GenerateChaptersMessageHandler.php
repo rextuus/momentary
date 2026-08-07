@@ -14,6 +14,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\Stamp\DelayStamp;
 
 #[AsMessageHandler]
 readonly class GenerateChaptersMessageHandler
@@ -64,7 +65,7 @@ readonly class GenerateChaptersMessageHandler
             if ($this->workflowMachine->can($video, 'complete')) {
                 $this->workflowMachine->apply($video, 'complete');
             }
-            $this->messageBus->dispatch(new IndexVideoMessage($video->getId()));
+            $this->messageBus->dispatch(new IndexVideoMessage($video->getId()), [new DelayStamp(2000)]);
             return;
         }
 
@@ -101,7 +102,7 @@ readonly class GenerateChaptersMessageHandler
             if ($this->workflowMachine->can($video, 'complete')) {
                 $this->workflowMachine->apply($video, 'complete');
             }
-            $this->messageBus->dispatch(new IndexVideoMessage($video->getId()));
+            $this->messageBus->dispatch(new IndexVideoMessage($video->getId()), [new DelayStamp(2000)]);
         } catch (\Exception $e) {
             $this->logger->error("Error generating chapters: " . $e->getMessage());
             $this->processingService->failStep($video, VideoStatus::CHAPTER_GENERATION, $e->getMessage());
