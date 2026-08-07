@@ -55,7 +55,7 @@ framework:
                     from: [!php/const App\Enum\VideoStatus::MERGING_SCENES]
                     to:   !php/const App\Enum\VideoStatus::OPTIMIZING
                 start_tagging:
-                    from: [!php/const App\Enum\VideoStatus::OPTIMIZING, !php/const App\Enum\VideoStatus::COMPLETED]
+                    from: [!php/const App\Enum\VideoStatus::OPTIMIZING, !php/const App\Enum\VideoStatus::COMPLETED, !php/const App\Enum\VideoStatus::MERGING_SCENES]
                     to:   !php/const App\Enum\VideoStatus::TAGGING_SCENES
                 start_chapter_generation:
                     from: [!php/const App\Enum\VideoStatus::TAGGING_SCENES, !php/const App\Enum\VideoStatus::ANALYZING_SCENES, !php/const App\Enum\VideoStatus::OPTIMIZING, !php/const App\Enum\VideoStatus::COMPLETED]

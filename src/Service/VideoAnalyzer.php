@@ -914,6 +914,9 @@ class VideoAnalyzer
         $this->entityManager->flush();
 
         $this->processingService->finishStep($video, VideoStatus::MERGING_SCENES);
+        if ($this->workflowMachine->can($video, 'start_tagging')) {
+            $this->workflowMachine->apply($video, 'start_tagging');
+        }
         fwrite(STDOUT, "[mergeEmptyScenes] Szenen gemergt für Video {$video->getId()} – dispatche TagScenesMessage." . PHP_EOL);
         $this->bus->dispatch(new \App\Message\TagScenesMessage($video->getId()));
     }
@@ -922,6 +925,9 @@ class VideoAnalyzer
     {
         if (count($scenes) <= 1) {
             $this->processingService->finishStep($video, VideoStatus::MERGING_SCENES);
+            if ($this->workflowMachine->can($video, 'start_tagging')) {
+                $this->workflowMachine->apply($video, 'start_tagging');
+            }
             $this->bus->dispatch(new \App\Message\TagScenesMessage($video->getId()));
             return;
         }
@@ -938,6 +944,9 @@ class VideoAnalyzer
 
         $this->entityManager->flush();
         $this->processingService->finishStep($video, VideoStatus::MERGING_SCENES);
+        if ($this->workflowMachine->can($video, 'start_tagging')) {
+            $this->workflowMachine->apply($video, 'start_tagging');
+        }
         $this->bus->dispatch(new \App\Message\TagScenesMessage($video->getId()));
     }
 
