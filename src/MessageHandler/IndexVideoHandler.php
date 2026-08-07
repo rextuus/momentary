@@ -2,8 +2,8 @@
 
 namespace App\MessageHandler;
 
+use App\Entity\Video;
 use App\Message\IndexVideoMessage;
-use App\Repository\VideoRepository;
 use App\Service\VideoIndexer;
 use Doctrine\ORM\EntityManagerInterface;
 use Meilisearch\Client as MeiliSearchClient;
@@ -14,10 +14,9 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 final class IndexVideoHandler
 {
     public function __construct(
-        private VideoRepository $videoRepository,
+        private EntityManagerInterface $entityManager,
         private VideoIndexer $videoIndexer,
         private MeiliSearchClient $meiliSearchClient,
-        private EntityManagerInterface $entityManager,
         private LoggerInterface $logger
     ) {}
 
@@ -26,13 +25,13 @@ final class IndexVideoHandler
         $videoId = $message->getVideoId();
         $this->logger->info("Starte Indexierung für Video $videoId");
 
-        $this->videoRepository->getEntityManager()->clear();
-        $video = $this->videoRepository->find($videoId);
+        $this->entityManager->clear();
+        $video = $this->entityManager->find(Video::class, $videoId);
+        
         if (!$video) {
-            $this->logger->error("Video $videoId nicht gefunden.");
-            return;
+            $this->logger->error("Video $videoId nicht gefunden in Datenbank.");
+            throw new \Exception("Video $videoId nicht gefunden in Datenbank. Retrying...");
         }
-        $this->entityManager->refresh($video);
 
         try {
             $this->logger->info("Kompiliere Dokument für Meilisearch für Video $videoId...");
