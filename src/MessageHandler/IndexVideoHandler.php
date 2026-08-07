@@ -4,7 +4,6 @@ namespace App\MessageHandler;
 
 use App\Entity\Video;
 use App\Message\IndexVideoMessage;
-use App\Message\ExportVideoToJellyfinMessage;
 use App\Service\VideoIndexer;
 use Doctrine\ORM\EntityManagerInterface;
 use Meilisearch\Client as MeiliSearchClient;
@@ -46,8 +45,6 @@ final class IndexVideoHandler
             
             $this->logger->info("Erfolgreich an Meilisearch gesendet: Video $videoId. Task ID: " . ($response['taskUid'] ?? 'N/A'));
             
-            $this->messageBus->dispatch(new ExportVideoToJellyfinMessage($videoId));
-            $this->logger->info("Dispatched ExportVideoToJellyfinMessage for video $videoId");
         } catch (\Exception $e) {
             $this->logger->error("Fehler bei der Indexierung von Video $videoId: " . $e->getMessage());
             throw $e;
