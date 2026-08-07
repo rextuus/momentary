@@ -35,10 +35,10 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# Create necessary directories and set permissions
-RUN mkdir -p var public/uploads/faces \
-    && chown -R www-data:www-data var public/uploads \
-    && chmod -R 777 var public/uploads
+# Create necessary directories (including app_uploads) and set permissions
+RUN mkdir -p var/uploads/app_uploads public/uploads/faces docker/jellyfin/uploads \
+    && chown -R www-data:www-data var public/uploads docker \
+    && chmod -R 777 var public/uploads docker
 
 # Adjust Apache document root for Symfony
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
