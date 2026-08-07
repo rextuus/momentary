@@ -813,122 +813,91 @@ class VideoAnalyzer
                 $this->logger->info('mergeEmptyScenes: status is not merging_scenes, skipping', ['videoId' => $video->getId(), 'status' => $currentStatus]);
                 return;
             }
-            $this->entityManager->getConnection()->executeStatement(
-                "UPDATE video SET status = 'tagging_scenes' WHERE id = ?",
+            $stmt = $this->entityManager->getConnection()->executeStatement(
+                "UPDATE video SET status = 'tagging_scenes' WHERE id = ? AND status = 'merging_scenes'",
                 [$video->getId()]
             );
             $this->entityManager->getConnection()->commit();
+
+            if ($stmt === 0) {
+                $this->logger->info('mergeEmptyScenes: status update failed or already done, skipping', ['videoId' => $video->getId()]);
+                return;
+            }
         } catch (\Throwable $e) {
             $this->entityManager->getConnection()->rollBack();
             throw $e;
         }
-        $this->entityManager->refresh($video);
+        $this->logger->info('Merging empty scenes, status updated to tagging_scenes', ['videoId' => $video->getId()]);
 
-        $this->logger->info('Merging empty scenes', ['videoId' => $video->getId()]);
         $scenes = $video->getScenes();
         if ($scenes->isEmpty()) {
-            fwrite(STDOUT, "[mergeEmptyScenes] Keine Szenen für Video {$video->getId()} – dispatche TagScenesMessage." . PHP_EOL);
-            $this->processingService->finishStep($video, VideoStatus::MERGING_SCENES);
-            $this->bus->dispatch(new \App\Message\TagScenesMessage($video->getId()));
-            return;
-        }
-
-        /** @var VideoScene[] $sceneArray */
-        $sceneArray = $scenes->toArray();
-        $lastSceneWithPerson = null;
-
-        // Collect all scenes with person to easily find next scene with person
-        $scenesWithPerson = [];
-        foreach ($sceneArray as $scene) {
-            $this->entityManager->refresh($scene);
-            $this->logger->info('Checking scene for faces', ['sceneId' => $scene->getId(), 'facesCount' => $scene->getVideoFaces()->count()]);
-            if (!$scene->getVideoFaces()->isEmpty()) {
-                $scenesWithPerson[] = $scene;
-            }
-        }
-        
-        $this->logger->info('Scenes with person found', ['count' => count($scenesWithPerson)]);
-        
-        // Edge-Case: Keine Person in irgendeiner Szene gefunden
-        if (empty($scenesWithPerson)) {
-            $this->mergeAllScenesIntoOne($video, $sceneArray);
-            return;
-        }
-        
-        $currentPersonSceneIndex = 0;
-        $extendedScenesWithPerson = [];
-
-        foreach ($sceneArray as $scene) {
-            // Wir müssen die Collection neu laden oder sicherstellen, dass wir die aktuellen Faces haben
-            $this->entityManager->refresh($scene);
+            $this->logger->info("[mergeEmptyScenes] Keine Szenen für Video {$video->getId()} – dispatche TagScenesMessage.");
+        } else {
+            /** @var VideoScene[] $sceneArray */
+            $sceneArray = $scenes->toArray();
             
-            if (!$scene->getVideoFaces()->isEmpty()) {
-                $lastSceneWithPerson = $scene;
-                $currentPersonSceneIndex++;
-                continue;
-            }
-
-            // Wenn es eine leere Szene ist...
-            if ($lastSceneWithPerson !== null) {
-                $this->logger->info('Merging scene into last person scene', [
-                    'videoId' => $video->getId(),
-                    'emptyScene' => $scene->getSceneNumber(),
-                    'targetScene' => $lastSceneWithPerson->getSceneNumber()
-                ]);
-                // Erweitere die letzte Szene mit Person bis zum Ende der aktuellen leeren Szene
-                $lastSceneWithPerson->setEndSeconds($scene->getEndSeconds());
-                
-                // Entferne die leere Szene
-                $video->removeScene($scene);
-                $this->entityManager->remove($scene);
-                $this->logger->info('Removed empty scene', ['sceneId' => $scene->getId()]);
-            } elseif (isset($scenesWithPerson[$currentPersonSceneIndex])) {
-                $nextSceneWithPerson = $scenesWithPerson[$currentPersonSceneIndex];
-                
-                $this->logger->info('Merging scene into next person scene', [
-                    'videoId' => $video->getId(),
-                    'emptyScene' => $scene->getSceneNumber(),
-                    'targetScene' => $nextSceneWithPerson->getSceneNumber()
-                ]);
-                
-                // Erweitere die nächste Szene mit Person bis zum Anfang der aktuellen leeren Szene
-                if (!isset($extendedScenesWithPerson[$nextSceneWithPerson->getId()])) {
-                    $nextSceneWithPerson->setStartSeconds($scene->getStartSeconds());
-                    $extendedScenesWithPerson[$nextSceneWithPerson->getId()] = true;
+            // Collect all scenes with person to easily find next scene with person
+            $scenesWithPerson = [];
+            foreach ($sceneArray as $scene) {
+                $this->entityManager->refresh($scene);
+                if (!$scene->getVideoFaces()->isEmpty()) {
+                    $scenesWithPerson[] = $scene;
                 }
-                
-                // Entferne die leere Szene
-                $video->removeScene($scene);
-                $this->entityManager->remove($scene);
+            }
+            
+            // Edge-Case: Keine Person in irgendeiner Szene gefunden
+            if (empty($scenesWithPerson)) {
+                $this->mergeAllScenesIntoOne($video, $sceneArray);
+            } else {
+                $lastSceneWithPerson = null;
+                $currentPersonSceneIndex = 0;
+                $extendedScenesWithPerson = [];
+    
+                foreach ($sceneArray as $scene) {
+                    $this->entityManager->refresh($scene);
+                    
+                    if (!$scene->getVideoFaces()->isEmpty()) {
+                        $lastSceneWithPerson = $scene;
+                        $currentPersonSceneIndex++;
+                        continue;
+                    }
+    
+                    if ($lastSceneWithPerson !== null) {
+                        $lastSceneWithPerson->setEndSeconds($scene->getEndSeconds());
+                        $video->removeScene($scene);
+                        $this->entityManager->remove($scene);
+                    } elseif (isset($scenesWithPerson[$currentPersonSceneIndex])) {
+                        $nextSceneWithPerson = $scenesWithPerson[$currentPersonSceneIndex];
+                        if (!isset($extendedScenesWithPerson[$nextSceneWithPerson->getId()])) {
+                            $nextSceneWithPerson->setStartSeconds($scene->getStartSeconds());
+                            $extendedScenesWithPerson[$nextSceneWithPerson->getId()] = true;
+                        }
+                        $video->removeScene($scene);
+                        $this->entityManager->remove($scene);
+                    }
+                }
+                $this->entityManager->flush();
+                // Szenen neu nummerieren
+                $remainingScenes = $video->getScenes();
+                $counter = 1;
+                foreach ($remainingScenes as $rs) {
+                    $rs->setSceneNumber($counter++);
+                }
+                $this->entityManager->flush();
             }
         }
-
-        $this->entityManager->flush();
-
-        // Szenen neu nummerieren
-        $remainingScenes = $video->getScenes();
-        $counter = 1;
-        foreach ($remainingScenes as $rs) {
-            $rs->setSceneNumber($counter++);
-        }
-        $this->entityManager->flush();
 
         $this->processingService->finishStep($video, VideoStatus::MERGING_SCENES);
         if ($this->workflowMachine->can($video, 'start_tagging')) {
             $this->workflowMachine->apply($video, 'start_tagging');
         }
-        fwrite(STDOUT, "[mergeEmptyScenes] Status vor workflow: " . $video->getStatus()->value . PHP_EOL); $this->workflowMachine->apply($video, "start_tagging"); fwrite(STDOUT, "[mergeEmptyScenes] Status nach workflow: " . $video->getStatus()->value . PHP_EOL); fwrite(STDOUT, "[mergeEmptyScenes] Szenen gemergt für Video {$video->getId()} – dispatche TagScenesMessage." . PHP_EOL);
+        $this->logger->info("[mergeEmptyScenes] Szenen gemergt für Video {$video->getId()} – dispatche TagScenesMessage.");
         $this->bus->dispatch(new \App\Message\TagScenesMessage($video->getId()));
     }
 
     private function mergeAllScenesIntoOne(Video $video, array $scenes): void
     {
         if (count($scenes) <= 1) {
-            $this->processingService->finishStep($video, VideoStatus::MERGING_SCENES);
-            if ($this->workflowMachine->can($video, 'start_tagging')) {
-                $this->workflowMachine->apply($video, 'start_tagging');
-            }
-            $this->bus->dispatch(new \App\Message\TagScenesMessage($video->getId()));
             return;
         }
 
@@ -943,11 +912,6 @@ class VideoAnalyzer
         }
 
         $this->entityManager->flush();
-        $this->processingService->finishStep($video, VideoStatus::MERGING_SCENES);
-        if ($this->workflowMachine->can($video, 'start_tagging')) {
-            $this->workflowMachine->apply($video, 'start_tagging');
-        }
-        $this->bus->dispatch(new \App\Message\TagScenesMessage($video->getId()));
     }
 
     public function refineSceneAnalysis(Video $video): bool
