@@ -31,6 +31,8 @@ readonly class GenerateChaptersMessageHandler
 
     public function __invoke(GenerateChaptersMessage $message): void
     {
+        $version = file_get_contents(__DIR__ . '/../../VERSION');
+        $this->logger->info("GenerateChaptersMessageHandler called. Version: " . trim($version));
         $video = $this->videoRepository->find($message->getVideoId());
         if (!$video) {
             return;
