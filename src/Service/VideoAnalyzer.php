@@ -917,7 +917,7 @@ class VideoAnalyzer
         if ($this->workflowMachine->can($video, 'start_tagging')) {
             $this->workflowMachine->apply($video, 'start_tagging');
         }
-        fwrite(STDOUT, "[mergeEmptyScenes] Szenen gemergt für Video {$video->getId()} – dispatche TagScenesMessage." . PHP_EOL);
+        fwrite(STDOUT, "[mergeEmptyScenes] Status vor workflow: " . $video->getStatus()->value . PHP_EOL); $this->workflowMachine->apply($video, "start_tagging"); fwrite(STDOUT, "[mergeEmptyScenes] Status nach workflow: " . $video->getStatus()->value . PHP_EOL); fwrite(STDOUT, "[mergeEmptyScenes] Szenen gemergt für Video {$video->getId()} – dispatche TagScenesMessage." . PHP_EOL);
         $this->bus->dispatch(new \App\Message\TagScenesMessage($video->getId()));
     }
 
