@@ -8,6 +8,7 @@ use App\Entity\Video;
 use App\Entity\VideoProcessingStep;
 use App\Enum\VideoStatus;
 use App\Repository\VideoProcessingStepRepository;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 
 class VideoProcessingService
@@ -41,11 +42,11 @@ class VideoProcessingService
             $existingStep = new VideoProcessingStep();
             $existingStep->setVideo($video);
             $existingStep->setStep($step);
-            $existingStep->setStartedAt(new \DateTimeImmutable());
+            $existingStep->setStartedAt(new DateTimeImmutable());
             $this->entityManager->persist($existingStep);
         } else {
             if ($existingStep->getStartedAt() === null) {
-                $existingStep->setStartedAt(new \DateTimeImmutable());
+                $existingStep->setStartedAt(new DateTimeImmutable());
             }
             $existingStep->setFinishedAt(null);
             $existingStep->setErrorMessage(null);
@@ -57,7 +58,7 @@ class VideoProcessingService
     {
         $stepEntity = $this->repository->findOneBy(['video' => $video, 'step' => $step]);
         if ($stepEntity) {
-            $finishedAt = new \DateTimeImmutable();
+            $finishedAt = new DateTimeImmutable();
             $stepEntity->setFinishedAt($finishedAt);
             if ($stepEntity->getStartedAt()) {
                 $stepEntity->setDuration($finishedAt->getTimestamp() - $stepEntity->getStartedAt()->getTimestamp());

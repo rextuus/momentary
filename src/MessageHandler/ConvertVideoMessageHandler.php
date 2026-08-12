@@ -2,17 +2,20 @@
 
 namespace App\MessageHandler;
 
+use App\Enum\VideoStatus;
 use App\Message\ConvertVideoMessage;
 use App\Message\DetectVideoScenesMessage;
 use App\Repository\VideoRepository;
 use App\Service\VideoAnalyzer;
+use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
+use Symfony\Component\Messenger\Exception\ExceptionInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 #[AsMessageHandler]
-final class ConvertVideoMessageHandler
+final readonly class ConvertVideoMessageHandler
 {
     public function __construct(
         private VideoAnalyzer $videoAnalyzer,
@@ -20,9 +23,12 @@ final class ConvertVideoMessageHandler
         private EntityManagerInterface $entityManager,
         private MessageBusInterface $bus,
         private WorkflowMachine $workflowMachine,
-        private \App\Service\VideoProcessingService $processingService
+        private VideoProcessingService $processingService
     ) {}
 
+    /**
+     * @throws ExceptionInterface
+     */
     public function __invoke(ConvertVideoMessage $message): void
     {
         $video = $this->videoRepository->find($message->getVideoId());
@@ -30,7 +36,7 @@ final class ConvertVideoMessageHandler
 
         if ($this->workflowMachine->can($video, 'start_conversion')) {
             $this->workflowMachine->apply($video, 'start_conversion');
-            $this->processingService->startStep($video, \App\Enum\VideoStatus::CONVERTING);
+            $this->processingService->startStep($video, VideoStatus::CONVERTING);
         }
         $video->setErrorMessage(null);
 
@@ -60,13 +66,13 @@ final class ConvertVideoMessageHandler
                 $video->setLocalPath($tempMp4);
                 $this->entityManager->persist($video);
                 $this->entityManager->flush();
-                $this->processingService->finishStep($video, \App\Enum\VideoStatus::CONVERTING);
+                $this->processingService->finishStep($video, VideoStatus::CONVERTING);
                 $localPath = $tempMp4;
                 echo "Konvertierung abgeschlossen." . PHP_EOL;
             } else {
                 echo "Konvertierung fehlgeschlagen." . PHP_EOL;
                 $video->setErrorMessage("Konvertierung fehlgeschlagen.");
-                $this->processingService->failStep($video, \App\Enum\VideoStatus::CONVERTING, "Konvertierung fehlgeschlagen.");
+                $this->processingService->failStep($video, VideoStatus::CONVERTING, "Konvertierung fehlgeschlagen.");
                 $this->entityManager->persist($video);
                 $this->entityManager->flush();
                 return;

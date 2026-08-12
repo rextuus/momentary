@@ -12,6 +12,8 @@ use App\Enum\VideoStatus;
 use App\Message\ExtractSceneThumbnailMessage;
 use App\Message\FrameAnalyzerMessage;
 use App\Repository\VideoRepository;
+use App\Service\Video\Analyze\FrameExtractionException;
+use App\Service\Video\Analyze\FrameSplittingResult;
 use App\Service\WorkflowMachine;
 use App\Service\Aws\AmazonRekognitionService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -21,6 +23,7 @@ use App\Service\ImageFileService;
 use Psr\Log\LoggerInterface;
 use Ramsey\Uuid\Uuid;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Process\Exception\RuntimeException;
 use Symfony\Component\Process\Process;
@@ -334,7 +337,7 @@ class VideoAnalyzer
 
     public function convertToMp4(string $sourcePath, string $targetPath): bool
     {
-        $process = new \Symfony\Component\Process\Process([
+        $process = new Process([
             'ffmpeg', '-y', '-i', $sourcePath, 
             '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23', 
             '-c:a', 'aac', $targetPath
@@ -457,12 +460,6 @@ class VideoAnalyzer
         }
 
         $this->entityManager->flush();
-
-        $sceneIds = array_values(array_map(fn($s) => $s->getId(), $video->getScenes()->toArray()));
-        if (!empty($sceneIds)) {
-            $firstId = array_shift($sceneIds);
-            $this->bus->dispatch(new ExtractSceneThumbnailMessage($firstId, $sceneIds));
-        }
     }
 
     public function extractFrames(
@@ -473,13 +470,7 @@ class VideoAnalyzer
         array|float|null $duration = null,
         bool $markLastAsFinal = true,
         bool $isRefinement = false
-    ): bool {
-        if ($isRefinement) {
-            $this->updateStatus($videoId, VideoStatus::REFINING_EXTRACTION);
-        } else {
-            $this->updateStatus($videoId, VideoStatus::SPLITTING);
-        }
-
+    ): FrameSplittingResult {
         $video = $this->videoRepository->find($videoId);
         $fps ??= $video?->getAnalysisFps() ?? $this->defaultFps;
 
@@ -495,7 +486,7 @@ class VideoAnalyzer
             mkdir($frameDirPath, 0777, true);
         } else {
             // Falls der Ordner schon existiert, leeren wir ihn sicherheitshalber
-            $fs = new \Symfony\Component\Filesystem\Filesystem();
+            $fs = new Filesystem();
             $fs->remove(glob($frameDirPath . '/*'));
         }
 
@@ -539,25 +530,12 @@ class VideoAnalyzer
             $process->run();
 
             if (!$process->isSuccessful()) {
-                $msg = 'Frame extraction failed: ' . $process->getErrorOutput();
-                $this->updateStatus($videoId, VideoStatus::ERROR, null, $msg);
-                return false;
+                throw new FrameExtractionException('extract_frames.py script dont run successfully.');
             }
 
             $frameList = json_decode($process->getOutput(), true);
-            $video = $this->videoRepository->find($videoId);
-            if ($video) {
-                $video->setTotalFrames(count($frameList));
-                $video->setProcessedFrames(0);
-                
-                if ($isRefinement) {
-                    $video->setCurrentRefinementFrameDirectory($frameDirPath);
-                } else {
-                    $video->setCurrentFrameDirectory($frameDirPath);
-                }
-                
-                $this->entityManager->flush();
-            }
+
+            return new FrameSplittingResult($frameList, $frameDirPath);
 
             // Chain-Strategie: nur die erste Message dispatchen, alle weiteren als remainingFrames mitgeben
             $preparedFrames = [];
@@ -586,15 +564,8 @@ class VideoAnalyzer
                 fwrite(STDOUT, "[extractFrames] Starte Frame-Chain für Video $videoId: 1 + " . count($preparedFrames) . " weitere Frames." . PHP_EOL);
             }
 
-            if ($isRefinement) {
-                $this->updateStatus($videoId, VideoStatus::REFINING_ANALYSIS);
-            } else {
-                $this->updateStatus($videoId, VideoStatus::ANALYZING_FACES);
-            }
-
             return true;
         } catch (\Throwable $e) {
-            $this->updateStatus($videoId, VideoStatus::ERROR, null, $e->getMessage());
             return false;
         }
     }
@@ -632,7 +603,10 @@ class VideoAnalyzer
         );
     }
 
-    public function analyzeFrame(int $videoId, string $framePath, int $timestamp, bool $isLastFrame, bool $isRefinement = false): void
+    /**
+     * @deprecated
+     */
+    public function analyzeFrameOld(int $videoId, string $framePath, int $timestamp, bool $isLastFrame, bool $isRefinement = false): void
     {
         try {
             if (!file_exists($framePath)) {
@@ -695,7 +669,6 @@ class VideoAnalyzer
                 'error' => $e->getMessage()
             ]);
 
-            $this->updateStatus($videoId, VideoStatus::ERROR, null, 'Frame analysis error: ' . $e->getMessage());
             return;
         }
 
@@ -816,6 +789,54 @@ class VideoAnalyzer
             ]);
 
             $this->updateStatus($videoId, VideoStatus::ERROR, null, 'Frame analysis error: ' . $e->getMessage());
+        }
+    }
+
+    public function analyzeFrame(int $videoId, string $framePath, int $timestamp): void
+    {
+        if (!file_exists($framePath)) {
+            throw new \RuntimeException("Frame file does not exist: {$framePath}");
+        }
+
+        $video = $this->videoRepository->find($videoId);
+        if (!$video) {
+            return;
+        }
+
+        $frameDirPath = $video->getCurrentFrameDirectory();
+        if ($frameDirPath && !str_starts_with($framePath, $frameDirPath)) {
+            return;
+        }
+
+        $currentScene = $this->entityManager->getRepository(VideoScene::class)
+            ->createQueryBuilder('s')
+            ->where('s.video = :video')
+            ->andWhere(':ts >= s.startSeconds')
+            ->andWhere(':ts < s.endSeconds')
+            ->setParameter('video', $video)
+            ->setParameter('ts', (float) $timestamp)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        $allFacesData = $this->rekognitionService->processAllFacesInImage($framePath);
+        if (empty($allFacesData)) {
+            return;
+        }
+
+        if (!file_exists($framePath)) {
+            throw new \RuntimeException("Frame file disappeared before processing: {$framePath}");
+        }
+
+        $imageContent = file_get_contents($framePath);
+        $uuid = Uuid::uuid4()->toString();
+        $dir = $this->videoFileService->getVideoDirectory($video, 'faces');
+        $storagePath = "{$dir}/{$uuid}.jpg";
+
+        $this->imageFileService->getFilesystem()->write($storagePath, $imageContent);
+
+        foreach ($allFacesData as $faceData) {
+            $this->saveFaceData($video, $faceData, $timestamp, $storagePath, $currentScene);
         }
     }
 
@@ -994,7 +1015,7 @@ class VideoAnalyzer
             return;
         }
 
-        $fs = new \Symfony\Component\Filesystem\Filesystem();
+        $fs = new Filesystem();
 
         // 1. Temporäre Frames löschen
         $dirs = [
