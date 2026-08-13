@@ -11,7 +11,7 @@ use App\Service\Video\Analyze\Result\FrameSplittingResult;
 use App\Service\Video\Processing\Handler\Abstract\AbstractVideoMessageHandler;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
-use App\Service\VideoAnalyzer;
+use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
@@ -27,7 +27,7 @@ abstract class AbstractSplitInFramesStepMessageHandler extends AbstractVideoMess
         VideoProcessMessageDispatcher $dispatcher,
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
-        protected readonly VideoAnalyzer $videoAnalyzer,
+        protected readonly BetterVideoAnalyzer $videoAnalyzer,
         protected readonly EntityManagerInterface $entityManager
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);

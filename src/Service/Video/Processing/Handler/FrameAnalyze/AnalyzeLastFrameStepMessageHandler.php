@@ -9,7 +9,7 @@ use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeLastFrameStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
-use App\Service\VideoAnalyzer;
+use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -23,7 +23,7 @@ class AnalyzeLastFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessage
         VideoProcessMessageDispatcher $dispatcher,
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
-        VideoAnalyzer $videoAnalyzer,
+        BetterVideoAnalyzer $videoAnalyzer,
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService, $videoAnalyzer);
     }
@@ -32,7 +32,7 @@ class AnalyzeLastFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessage
     {
         $this->setCurrentMessage($message);
         $video = $this->getVideo();
-
+        $this->startCurrentStep();
 
         // Special-Case: There is already no frame to analyze left
         $successMsg = sprintf(
@@ -40,18 +40,14 @@ class AnalyzeLastFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessage
             $video->getId()
         );
 
-        if ($message->getFramePath() !== null) {
-            $framePath = $this->videoAnalyzer->resolvePath($message->getFramePath());
+        if ($message->getCurrentFrame() !== null) {
+            $this->frame = $message->getCurrentFrame();
 
-            $this->videoAnalyzer->analyzeFrame(
-                $message->getVideoId(),
-                $framePath,
-                $message->getTimestamp()
-            );
+            $this->analyzeFrame($message);
 
             $successMsg = sprintf(
-                'Last frame for video %d analyzed successfully.',
-                $video->getId()
+                'Last frame #? for video "%d" analyzed successfully.',
+                $video->getTitle()
             );
         }
 

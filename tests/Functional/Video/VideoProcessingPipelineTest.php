@@ -6,35 +6,74 @@ namespace App\Tests\Functional\Video;
 
 use App\Entity\Video;
 use App\Enum\VideoStatus;
-use App\Service\Video\Analyze\Result\FrameSplittingResult;
-use App\Service\Video\Processing\Message\ConvertStepMessage;
-use App\Service\VideoAnalyzer;
-use App\Service\VideoProcessingService;
 use App\Repository\VideoRepository;
+use App\Service\Aws\AmazonRekognitionService;
+use App\Service\Video\Analyze\FrameAnalyzer;
+use App\Service\Video\Analyze\FrameExtractor;
+use App\Service\Video\Analyze\Mp4Converter;
+use App\Service\Video\Analyze\PathResolver;
+use App\Service\Video\Analyze\Result\FrameSplittingResult;
+use App\Service\Video\Analyze\SceneDetector;
+use App\Service\Video\Analyze\SceneThumbnailExtractor;
+use App\Service\Video\Processing\Message\ConvertStepMessage;
 use Doctrine\ORM\EntityManagerInterface;
+use Meilisearch\Client;
+use Meilisearch\Endpoints\Indexes;
 use PHPUnit\Framework\MockObject\MockObject;
+use Symfony\Component\Filesystem\Filesystem;
 
 class VideoProcessingPipelineTest extends VideoPipelineTestCase
 {
-    private MockObject $videoAnalyzerMock;
-    private MockObject $videoProcessingServiceMock;
+    private MockObject $rekognitionServiceMock;
     private MockObject $meiliSearchClientMock;
+    private MockObject $mp4Converter;
+    private MockObject $pathResolver;
+    private MockObject $sceneDetector;
+    private MockObject $sceneThumbnailExtractor;
+    private MockObject $frameExtractor;
+    private MockObject $frameAnalyzer;
     private VideoRepository $videoRepository;
     private EntityManagerInterface $entityManager;
+    private array $createdTempFiles = [];
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->videoAnalyzerMock = $this->createMock(VideoAnalyzer::class);
-        $this->meiliSearchClientMock = $this->createMock(\Meilisearch\Client::class);
-        $indexMock = $this->createMock(\Meilisearch\Endpoints\Indexes::class);
+        $this->rekognitionServiceMock = $this->createMock(AmazonRekognitionService::class);
+        $this->meiliSearchClientMock = $this->createMock(Client::class);
+        $this->mp4Converter = $this->createMock(Mp4Converter::class);
+        $this->pathResolver = $this->createMock(PathResolver::class);
+        $this->sceneDetector = $this->createMock(SceneDetector::class);
+        $this->sceneThumbnailExtractor = $this->createMock(SceneThumbnailExtractor::class);
+        $this->frameExtractor = $this->createMock(FrameExtractor::class);
+        $this->frameAnalyzer = $this->createMock(FrameAnalyzer::class);
+
+        $indexMock = $this->createMock(Indexes::class);
         $this->meiliSearchClientMock->method('index')->willReturn($indexMock);
 
-        static::getContainer()->set(VideoAnalyzer::class, $this->videoAnalyzerMock);
-        static::getContainer()->set(\Meilisearch\Client::class, $this->meiliSearchClientMock);
+        static::getContainer()->set(AmazonRekognitionService::class, $this->rekognitionServiceMock);
+        static::getContainer()->set(Client::class, $this->meiliSearchClientMock);
+        static::getContainer()->set(Mp4Converter::class, $this->mp4Converter);
+        static::getContainer()->set(PathResolver::class, $this->pathResolver);
+        static::getContainer()->set(SceneDetector::class, $this->sceneDetector);
+        static::getContainer()->set(SceneThumbnailExtractor::class, $this->sceneThumbnailExtractor);
+        static::getContainer()->set(FrameExtractor::class, $this->frameExtractor);
+        static::getContainer()->set(FrameAnalyzer::class, $this->frameAnalyzer);
 
         $this->videoRepository = static::getContainer()->get(VideoRepository::class);
         $this->entityManager = static::getContainer()->get(EntityManagerInterface::class);
+    }
+
+    protected function tearDown(): void
+    {
+        $filesystem = new Filesystem();
+        foreach ($this->createdTempFiles as $filePath) {
+            if ($filesystem->exists($filePath)) {
+                $filesystem->remove($filePath);
+            }
+        }
+
+        parent::tearDown();
     }
 
     public function testHappyPath(): void
@@ -48,12 +87,44 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         $this->entityManager->persist($video);
         $this->entityManager->flush();
 
-        // 2. Mock Success
-        $projectDir = static::getContainer()->getParameter('kernel.project_dir');
-        $this->videoAnalyzerMock->method('resolvePath')->willReturn('test.mov');
-        $this->videoAnalyzerMock->method('getProjectDir')->willReturn($projectDir);
-        $this->videoAnalyzerMock->method('convertToMp4')->willReturn(true);
-        $this->videoAnalyzerMock
+        // 2. Setup Dummy Frame Files
+        $framePaths = [
+            '/tmp/frames/analysis/frame_0001.jpg',
+            '/tmp/frames/analysis/frame_0002.jpg',
+            '/tmp/frames/analysis/frame_0003.jpg',
+            '/tmp/frames/analysis/frame_0004.jpg',
+            '/tmp/frames/analysis/frame_0005.jpg',
+            '/tmp/frames/analysis/frame_0006.jpg',
+            '/tmp/frames/analysis/frame_0007.jpg',
+            '/tmp/frames/analysis/frame_0008.jpg',
+            '/tmp/frames/refinement/frame_0009.jpg',
+            '/tmp/frames/refinement/frame_0010.jpg',
+        ];
+
+        $filesystem = new Filesystem();
+        foreach ($framePaths as $path) {
+            $filesystem->mkdir(dirname($path));
+            file_put_contents($path, 'fake-image-binary-content');
+            $this->createdTempFiles[] = $path;
+        }
+
+        // Mocks konfigurieren
+        $this->frameAnalyzer->method('analyzeFrame')->willReturn(true);
+        $this->mp4Converter->method('convertToMp4')->willReturn(true);
+        $this->pathResolver->method('resolvePath')->willReturn('test.mov');
+
+        // 3. Mock RekognitionService
+        $this->rekognitionServiceMock
+            ->method('processAllFacesInImage')
+            ->willReturn([
+                [
+                    'BoundingBox' => ['Width' => 0.2, 'Height' => 0.2, 'Left' => 0.4, 'Top' => 0.3],
+                    'Confidence' => 99.8,
+                ],
+            ]);
+
+        // 4. Mock SceneDetector & Extractor
+        $this->sceneDetector
             ->method('detectScenes')
             ->willReturn([
                 [
@@ -72,63 +143,56 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
                 ],
                 [
                     'scene_number' => 3,
-                    'start_seconds' => 10.0,
-                    'end_seconds' => 25.5,
-                    'start_frame' => 251,
-                    'end_frame' => 637,
+                    'start_seconds' => 25.5,
+                    'end_seconds' => 40.0,
+                    'start_frame' => 638,
+                    'end_frame' => 1000,
                 ],
                 [
                     'scene_number' => 4,
-                    'start_seconds' => 10.0,
-                    'end_seconds' => 25.5,
-                    'start_frame' => 251,
-                    'end_frame' => 637,
+                    'start_seconds' => 40.0,
+                    'end_seconds' => 60.0,
+                    'start_frame' => 1001,
+                    'end_frame' => 1500,
                 ],
             ]);
-        $this->videoAnalyzerMock
+
+        $this->sceneThumbnailExtractor
             ->method('extractThumbnail')
             ->willReturnCallback(function (Video $video, float $timeInSeconds = 0.0, ?string $customFilename = null): string {
                 $filename = $customFilename ?? sprintf('video_%d.jpg', $video->getId());
                 return sprintf('videos/%d/thumbnails/%s?t=%d', $video->getId(), $filename, time());
             });
-        $this->videoAnalyzerMock
+
+        $this->frameExtractor
             ->expects($this->exactly(4))
             ->method('extractFrames')
             ->willReturnOnConsecutiveCalls(
-            // 1. Aufruf mit 4 Frames
                 new FrameSplittingResult([
-                    ['path' => '/tmp/frames/analysis/frame_0001.jpg', 'timestamp' => 0.0],
-                    ['path' => '/tmp/frames/analysis/frame_0002.jpg', 'timestamp' => 1.0],
-                    ['path' => '/tmp/frames/analysis/frame_0003.jpg', 'timestamp' => 2.0],
-                    ['path' => '/tmp/frames/analysis/frame_0004.jpg', 'timestamp' => 3.0],
+                    ['path' => '/tmp/frames/analysis/frame_0001.jpg', 'timestamp' => 3.0],
+                    ['path' => '/tmp/frames/analysis/frame_0002.jpg', 'timestamp' => 5.0],
+                    ['path' => '/tmp/frames/analysis/frame_0003.jpg', 'timestamp' => 7.0],
+                    ['path' => '/tmp/frames/analysis/frame_0004.jpg', 'timestamp' => 9.0],
                 ], '/tmp/frames/analysis'),
-
-                // 2. Aufruf
                 new FrameSplittingResult([
                     ['path' => '/tmp/frames/analysis/frame_0005.jpg', 'timestamp' => 4.0],
                     ['path' => '/tmp/frames/analysis/frame_0006.jpg', 'timestamp' => 5.0],
                 ], '/tmp/frames/analysis'),
-
-                // 3. Aufruf
                 new FrameSplittingResult([
                     ['path' => '/tmp/frames/analysis/frame_0007.jpg', 'timestamp' => 6.0],
                     ['path' => '/tmp/frames/analysis/frame_0008.jpg', 'timestamp' => 7.0],
                 ], '/tmp/frames/analysis'),
-
-                // 4. Aufruf
                 new FrameSplittingResult([
                     ['path' => '/tmp/frames/refinement/frame_0009.jpg', 'timestamp' => 8.0],
                     ['path' => '/tmp/frames/refinement/frame_0010.jpg', 'timestamp' => 9.0],
                 ], '/tmp/frames/refinement')
             );
-        $this->videoAnalyzerMock->method('resolvePath')->willReturn('test.mov');
-        $this->videoAnalyzerMock->method('analyzeFrame');
 
-        // 3. Trigger Pipeline
+        // 5. Trigger Pipeline
         $bus = static::getContainer()->get('messenger.bus.default');
         $bus->dispatch(new ConvertStepMessage($video->getId()));
 
-        // 4. Assertions
+        // 6. Assertions
         $this->entityManager->clear();
         $updatedVideo = $this->videoRepository->find($video->getId());
         $this->assertEquals(VideoStatus::COMPLETED, $updatedVideo->getStatus());
@@ -146,10 +210,8 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         $this->entityManager->flush();
 
         // 2. Mock Error
-        $projectDir = static::getContainer()->getParameter('kernel.project_dir');
-        $this->videoAnalyzerMock->method('resolvePath')->willReturn('test.mov');
-        $this->videoAnalyzerMock->method('getProjectDir')->willReturn($projectDir);
-        $this->videoAnalyzerMock->method('convertToMp4')->willReturn(false);
+        $this->pathResolver->method('resolvePath')->willReturn('test.mov');
+        $this->mp4Converter->method('convertToMp4')->willReturn(false);
 
         // 3. Trigger Pipeline
         $bus = static::getContainer()->get('messenger.bus.default');

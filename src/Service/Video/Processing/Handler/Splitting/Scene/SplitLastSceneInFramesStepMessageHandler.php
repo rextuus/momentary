@@ -12,7 +12,7 @@ use App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeFirstFrameStepMessa
 use App\Service\Video\Processing\Message\Splitting\Scene\SplitLastSceneInFramesStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
-use App\Service\VideoAnalyzer;
+use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
@@ -27,7 +27,7 @@ class SplitLastSceneInFramesStepMessageHandler extends AbstractSplitInFramesStep
         VideoProcessMessageDispatcher $dispatcher,
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
-        VideoAnalyzer $videoAnalyzer,
+        BetterVideoAnalyzer $videoAnalyzer,
         EntityManagerInterface $entityManager,
         private readonly VideoSceneRepository $sceneRepository
     ) {
@@ -90,7 +90,7 @@ class SplitLastSceneInFramesStepMessageHandler extends AbstractSplitInFramesStep
     public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
     {
         /** @var AnalyzeFirstFrameStepMessage $nextStepMessage */
-        $nextStepMessage->setFramePath($this->firstFramePath);
-        $nextStepMessage->setRemainingFrames($this->remainingFramePaths);
+        $nextStepMessage->setCurrentFrame($this->firstFramePath);
+        $nextStepMessage->setRemainingFrames($this->framePathCollection);
     }
 }

@@ -11,7 +11,7 @@ use App\Service\Video\Processing\Message\Refinement\InitRefinementForEmptyScenes
 use App\Service\Video\Processing\Message\Splitting\Scene\SplitFirstSceneInFramesStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
-use App\Service\VideoAnalyzer;
+use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -28,7 +28,7 @@ class InitRefinementForEmptyScenesStepMessageHandler extends AbstractVideoMessag
         VideoProcessMessageDispatcher $dispatcher,
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
-        private readonly VideoAnalyzer $videoAnalyzer
+        private readonly BetterVideoAnalyzer $videoAnalyzer
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
     }

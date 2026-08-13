@@ -8,42 +8,31 @@ use App\Repository\VideoRepository;
 use App\Service\Video\Processing\Handler\Abstract\AbstractVideoMessageHandler;
 use App\Service\Video\Processing\Message\FrameAnalyze\AbstractAnalyzeFrameStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
-use App\Service\VideoAnalyzer;
+use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
+use Exception;
 
 abstract class AbstractAnalyzeFrameStepMessageHandler extends AbstractVideoMessageHandler
 {
-    protected ?string $framePath = null;
+    protected ?array $frame = null;
     protected array $remainingFrames = [];
     public function __construct(
         VideoRepository $videoRepository,
         VideoProcessMessageDispatcher $dispatcher,
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
-        protected VideoAnalyzer $videoAnalyzer,
+        protected BetterVideoAnalyzer $videoAnalyzer,
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
     }
 
     protected function analyzeFrame(AbstractAnalyzeFrameStepMessage $message): void
     {
-        $remainingFrames = $this->remainingFrames;
-        $this->framePath = array_shift($remainingFrames);
-        $this->remainingFrames = $remainingFrames;
-
         $this->videoAnalyzer->analyzeFrame(
             $message->getVideoId(),
-            $message->getFramePath(),
-            $message->getTimestamp()
+            $this->frame['path'],
+            (int) $this->frame['timestamp']
         );
-
-        $logMessage = sprintf(
-            'Analyzed frame at timestamp "%s". Remaining frames for video with id "%s": %d',
-            $message->getTimestamp(),
-            $this->getVideo()->getId(),
-            count($this->remainingFrames)
-        );
-        $this->dispatchNextMessageOfCurrentStep($logMessage);
     }
 }

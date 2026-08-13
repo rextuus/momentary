@@ -10,7 +10,7 @@ use App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeFirstFrameStepMessa
 use App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeFrameStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
-use App\Service\VideoAnalyzer;
+use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -24,7 +24,7 @@ class AnalyzeFirstFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessag
         VideoProcessMessageDispatcher $dispatcher,
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
-        VideoAnalyzer $videoAnalyzer,
+        BetterVideoAnalyzer $videoAnalyzer,
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService, $videoAnalyzer);
     }
@@ -52,20 +52,34 @@ class AnalyzeFirstFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessag
                 $framePath,
                 $message->getTimestamp()
             );
-
             $this->finishCurrentStep($successMsg);
 
             return;
         }
 
-        // go on with next ones otherwise
+        $this->frame = $message->getCurrentFrame();
+
+        // analyze the first frame
         $this->analyzeFrame($message);
+        $successMsg = sprintf(
+            'Frame #1 of Video "%s" at timestamp "%d" analyzed. %d left',
+            $video->getTitle(),
+            $this->frame['timestamp'],
+            count($message->getRemainingFrames())
+        );
+
+        // prepare the next
+        $remainingFrames = $message->getRemainingFrames();
+        $this->frame = array_shift($remainingFrames);
+        $this->remainingFrames = $remainingFrames;
+
+        $this->finishCurrentStep($successMsg);
     }
 
     public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
     {
         /** @var AnalyzeFrameStepMessage $nextStepMessage */
-        $nextStepMessage->setFramePath($this->framePath);
+        $nextStepMessage->setCurrentFrame($this->frame);
         $nextStepMessage->setRemainingFrames($this->remainingFrames);
     }
 }

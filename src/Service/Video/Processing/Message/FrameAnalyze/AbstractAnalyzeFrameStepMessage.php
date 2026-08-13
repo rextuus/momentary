@@ -13,7 +13,7 @@ abstract class AbstractAnalyzeFrameStepMessage extends AbstractVideoProcessStepM
 {
     use VideoMessageTrait;
 
-    private ?string $framePath = null;
+    private ?array $currentFrame = null;
 
     /**
      * @var array<string>
@@ -34,18 +34,17 @@ abstract class AbstractAnalyzeFrameStepMessage extends AbstractVideoProcessStepM
         throw new CommonProcessStepException('Implement getNextStepMessageClass');
     }
 
-    public function getFramePath(): ?string
+    public function getCurrentFrame(): ?array
     {
-        return $this->framePath;
+        return $this->currentFrame;
     }
 
-    public function setFramePath(?string $framePath): self
+    public function setCurrentFrame(?array $currentFrame): self
     {
-        $this->framePath = $framePath;
+        $this->currentFrame = $currentFrame;
 
         return $this;
     }
-
 
     /**
      * @return array<string>

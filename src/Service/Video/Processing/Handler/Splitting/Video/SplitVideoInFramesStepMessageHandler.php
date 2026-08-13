@@ -11,7 +11,7 @@ use App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeFirstFrameStepMessa
 use App\Service\Video\Processing\Message\Splitting\Video\SplitVideoInFramesStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
-use App\Service\VideoAnalyzer;
+use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
@@ -26,7 +26,7 @@ class SplitVideoInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
         VideoProcessMessageDispatcher $dispatcher,
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
-        VideoAnalyzer $videoAnalyzer,
+        BetterVideoAnalyzer $videoAnalyzer,
         EntityManagerInterface $entityManager
     ) {
         parent::__construct(
@@ -88,7 +88,12 @@ class SplitVideoInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
 
     public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
     {
+        $remainingFrames = $this->framePathCollection;
+        $nextFrame = array_shift($remainingFrames);
+        $this->framePathCollection = $remainingFrames;
+
         /** @var AnalyzeFirstFrameStepMessage $nextStepMessage */
-        $nextStepMessage->setRemainingFrames($this->framePathCollection);
+        $nextStepMessage->setCurrentFrame($nextFrame);
+        $nextStepMessage->setRemainingFrames($remainingFrames);
     }
 }

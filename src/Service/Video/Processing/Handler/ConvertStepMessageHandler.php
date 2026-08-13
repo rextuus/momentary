@@ -11,7 +11,7 @@ use App\Service\Video\Processing\Handler\Abstract\AbstractVideoMessageHandler;
 use App\Service\Video\Processing\Message\ConvertStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
-use App\Service\VideoAnalyzer;
+use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
@@ -26,7 +26,7 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
         VideoProcessMessageDispatcher $dispatcher,
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
-        private readonly VideoAnalyzer $videoAnalyzer,
+        private readonly BetterVideoAnalyzer $videoAnalyzer,
         private readonly EntityManagerInterface $entityManager,
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);

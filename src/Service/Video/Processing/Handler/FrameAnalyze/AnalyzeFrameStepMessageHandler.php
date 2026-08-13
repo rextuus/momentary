@@ -7,9 +7,10 @@ namespace App\Service\Video\Processing\Handler\FrameAnalyze;
 use App\Repository\VideoRepository;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeFrameStepMessage;
+use App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeLastFrameStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
-use App\Service\VideoAnalyzer;
+use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -23,7 +24,7 @@ class AnalyzeFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessageHand
         VideoProcessMessageDispatcher $dispatcher,
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
-        VideoAnalyzer $videoAnalyzer,
+        BetterVideoAnalyzer $videoAnalyzer,
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService, $videoAnalyzer);
     }
@@ -32,9 +33,10 @@ class AnalyzeFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessageHand
     {
         $this->setCurrentMessage($message);
         $video = $this->getVideo();
+        $this->startCurrentStep();
 
         // Special-Case: There was only one frame which was already analyzed in the firstFrameMessage
-        if ($message->getFramePath() === null){
+        if ($message->getCurrentFrame() === null){
             $successMsg = sprintf(
                 'Video %d contains only one frame. This is already analyzed. Go to final frame analyze step. Next message will be immediately set to finished',
                 $video->getId()
@@ -44,7 +46,6 @@ class AnalyzeFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessageHand
             return;
         }
 
-        $framePath = $this->videoAnalyzer->resolvePath($message->getFramePath());
 
         // Special-Case: This is already last frame
         if ($message->getRemainingFrames() === []) {
@@ -53,6 +54,7 @@ class AnalyzeFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessageHand
                 $video->getId()
             );
 
+            $framePath = $this->videoAnalyzer->resolvePath($message->getCurrentFrame()['path']);
             $this->videoAnalyzer->analyzeFrame(
                 $message->getVideoId(),
                 $framePath,
@@ -65,17 +67,54 @@ class AnalyzeFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessageHand
         }
 
         // go on with next ones otherwise
+
+        $this->frame = $message->getCurrentFrame();
+
         $this->analyzeFrame($message);
+        $oldFrame = $this->frame;
+
+
+        $remainingFrames = $message->getRemainingFrames();
+        $this->frame = array_shift($remainingFrames);
+        $this->remainingFrames = $remainingFrames;
+
+        if ($this->remainingFrames === []){
+            $successMsg = sprintf(
+                'Frame #? of Video "%s" at timestamp "%d" analyzed. Only 1 left. Dispatch final message',
+                $video->getTitle(),
+                $oldFrame['timestamp']
+            );
+            $remainingFrames = $message->getRemainingFrames();
+            $this->frame = array_shift($remainingFrames);
+            $this->remainingFrames = $remainingFrames;
+
+            $this->finishCurrentStep($successMsg);
+
+            return;
+        }
+
+
+        $successMsg = sprintf(
+            'Frame #? of Video "%s" at timestamp "%d" analyzed. %d left',
+            $video->getTitle(),
+            $oldFrame['timestamp'],
+            count($this->remainingFrames)
+        );
+
+        $this->dispatchNextMessageOfCurrentStep($successMsg);
     }
 
     public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
     {
+        /** @var AnalyzeLastFrameStepMessage $nextStepMessage */
+        $nextStepMessage->setCurrentFrame($this->frame);
+        $nextStepMessage->setRemainingFrames($this->remainingFrames);
     }
 
     public function decorateNextCurrentStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
     {
         /** @var AnalyzeFrameStepMessage $nextStepMessage */
-        $nextStepMessage->setFramePath($this->framePath);
+        $nextStepMessage->setCurrentFrame($this->frame);
         $nextStepMessage->setRemainingFrames($this->remainingFrames);
     }
 }

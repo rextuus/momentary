@@ -20,4 +20,9 @@ class AnalyzeFrameStepMessage extends AbstractAnalyzeFrameStepMessage
     {
         return AnalyzeLastFrameStepMessage::class;
     }
+
+    public function isIntermediateStep(): bool
+    {
+        return true;
+    }
 }

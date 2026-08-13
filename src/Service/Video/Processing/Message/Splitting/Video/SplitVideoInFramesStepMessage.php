@@ -13,7 +13,7 @@ use App\Service\Video\Processing\Message\Splitting\AbstractSplitInFramesStepMess
 #[StepOrder(stepNumber: 6)]
 class SplitVideoInFramesStepMessage extends AbstractSplitInFramesStepMessage
 {
-    protected const string MESSAGE_LOGGING_IDENT = 'SPLITTING COMPLETE VIDEO INTO FRAMES';
+    protected const string MESSAGE_LOGGING_IDENT = 'SPLITTING ENTIRE VIDEO INTO FRAMES';
 
     public function __construct(int $videoId)
     {

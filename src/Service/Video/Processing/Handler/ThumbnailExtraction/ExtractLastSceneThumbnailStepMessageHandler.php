@@ -11,7 +11,7 @@ use App\Service\Video\Processing\Message\Splitting\Video\SplitVideoInFramesStepM
 use App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractLastSceneThumbnailStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
-use App\Service\VideoAnalyzer;
+use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
@@ -29,7 +29,7 @@ class ExtractLastSceneThumbnailStepMessageHandler extends AbstractExtractSceneTh
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
         VideoSceneRepository $videoSceneRepository,
-        VideoAnalyzer $videoAnalyzer,
+        BetterVideoAnalyzer $videoAnalyzer,
         EntityManagerInterface $entityManager,
     ) {
         parent::__construct(

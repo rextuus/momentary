@@ -11,7 +11,7 @@ use App\Service\Video\Processing\Message\SceneDetectionStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
 use App\Service\Video\VideoSceneService;
-use App\Service\VideoAnalyzer;
+use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -25,7 +25,7 @@ class SceneDetectionStepMessageHandler extends AbstractVideoMessageHandler
         VideoProcessMessageDispatcher $dispatcher,
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
-        private readonly VideoAnalyzer $videoAnalyzer,
+        private readonly BetterVideoAnalyzer $videoAnalyzer,
         private readonly VideoSceneService $videoSceneService
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
@@ -45,7 +45,6 @@ class SceneDetectionStepMessageHandler extends AbstractVideoMessageHandler
 
             return;
         }
-
 
         $scenes = $this->videoAnalyzer->detectScenes(
             $videoPath,

@@ -12,7 +12,7 @@ use App\Service\Video\Processing\Message\Splitting\Scene\SplitLastSceneInFramesS
 use App\Service\Video\Processing\Message\Splitting\Scene\SplitSceneInFramesStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
-use App\Service\VideoAnalyzer;
+use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
@@ -27,7 +27,7 @@ class SplitSceneInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
         VideoProcessMessageDispatcher $dispatcher,
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
-        VideoAnalyzer $videoAnalyzer,
+        BetterVideoAnalyzer $videoAnalyzer,
         EntityManagerInterface $entityManager,
         private readonly VideoSceneRepository $sceneRepository
     ) {
