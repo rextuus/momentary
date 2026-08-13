@@ -9,6 +9,8 @@ use App\Service\Video\Processing\Attribute\StepOrder;
 #[StepOrder(stepNumber: 8)]
 class AnalyzeFrameStepMessage extends AbstractAnalyzeFrameStepMessage
 {
+    protected const string MESSAGE_LOGGING_IDENT = 'ANALYZE FRAME';
+
     public function __construct(int $videoId)
     {
         $this->videoId = $videoId;

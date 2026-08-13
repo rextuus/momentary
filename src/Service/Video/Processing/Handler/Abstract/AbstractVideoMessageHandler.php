@@ -52,7 +52,7 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
 
     protected function dispatchNextMessageOfCurrentStep(string $logMessage): void
     {
-        echo $logMessage . PHP_EOL;
+        echo '[i] ' . $logMessage . PHP_EOL;
 
         $nextCurrentStepMessage = $this->getCurrentStepMessageInstance($this->getCurrentMessage());
         $this->dispatcher->dispatch($nextCurrentStepMessage);
@@ -109,14 +109,25 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
         );
     }
 
+    protected function startCurrentStep(): void
+    {
+        $this->processingService->startStep(
+            $this->getVideo(),
+            $this->getCurrentMessage()->getVideoStatusForCurrentProcessStepEntity(),
+            $this->getCurrentMessage()
+        );
+    }
+
     protected function finishCurrentStep(string $successMessage): void
     {
-        echo $successMessage . PHP_EOL;
+        echo '[i] ' . $successMessage . PHP_EOL;
 
         $this->processingService->finishStep(
             $this->getVideo(),
-            $this->getCurrentMessage()->getVideoStatusForCurrentProcessStepEntity()
+            $this->getCurrentMessage()->getVideoStatusForCurrentProcessStepEntity(),
+            $this->getCurrentMessage()
         );
+
         $this->dispatchFirstMessageOfNextStep();
     }
 

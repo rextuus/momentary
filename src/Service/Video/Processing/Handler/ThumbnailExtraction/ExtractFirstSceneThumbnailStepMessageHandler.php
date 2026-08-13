@@ -21,6 +21,8 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 #[StepOrder(stepNumber: 3)]
 class ExtractFirstSceneThumbnailStepMessageHandler extends AbstractExtractSceneThumbnailStepMessageHandler
 {
+    protected const string MESSAGE_LOGGING_IDENT = 'EXTRACT_FIRST_SCENE_THUMBNAIL';
+
     public function __construct(
         VideoRepository $videoRepository,
         VideoProcessMessageDispatcher $dispatcher,
@@ -45,16 +47,14 @@ class ExtractFirstSceneThumbnailStepMessageHandler extends AbstractExtractSceneT
     {
         $this->setCurrentMessage($message);
         $video = $this->getVideo();
-        $processStepStatus = $message->getVideoStatusForCurrentProcessStepEntity();
 
-        $this->processingService->startStep($video, $processStepStatus);
+        $this->startCurrentStep();
 
-        echo "Starte Asynchrone Szenen-Thumbnail-Generierung für Video {$message->getVideoId()}..." . PHP_EOL;
         $sceneIds = array_values(array_map(fn($s) => $s->getId(), $video->getScenes()->toArray()));
 
         // should in fact never occur cause last step already marked chain as failed/stopped
         if ($sceneIds === []) {
-            $this->stopProcessing("Abbruch: Keine Szenen für Video {$message->getVideoId()} gefunden");
+            $this->stopProcessing(sprintf('[⚠] Not even one scene for video "%s" found', $video->getTitle()));
 
             return;
         }
@@ -64,8 +64,9 @@ class ExtractFirstSceneThumbnailStepMessageHandler extends AbstractExtractSceneT
         $this->remainingSceneIds = $sceneIds;
 
         $successMsg = sprintf(
-            'Dispatche erste message für %d Szenen',
-            count($sceneIds)
+            'Dispatched message to extract thumbnail for scene #%d of in total %d scenes',
+            $firstId,
+            count($sceneIds) + 1
         );
 
         $this->finishCurrentStep($successMsg);

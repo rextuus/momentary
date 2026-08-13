@@ -34,28 +34,22 @@ abstract class AbstractExtractSceneThumbnailStepMessageHandler extends AbstractV
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
     }
 
-    protected function generateThumbnail(AbstractExtractSceneThumbnailStepMessage $message): void
+    protected function generateThumbnail(AbstractExtractSceneThumbnailStepMessage $message): ?string
     {
         $scene = $this->videoSceneRepository->find($message->getCurrentSceneId());
         if ($scene === null){
-            $errorMsg = sprintf(
-                'Cant find scene with id "%s"',
+            return sprintf(
+                '[⚠] Cant find scene with id "%s"',
                 $message->getCurrentSceneId()
             );
-            $this->stopProcessing($errorMsg);
-
-            return;
         }
 
         $video = $scene->getVideo();
         if ($video === null) {
-            $errorMsg = sprintf(
-                'Scene with id "%s" has no video',
+            return sprintf(
+                '[⚠] Scene with id "%s" has no video',
                 $message->getCurrentSceneId()
             );
-            $this->stopProcessing($errorMsg);
-
-            return;
         }
 
         // Extract thumbnail from the middle of the scene
@@ -67,13 +61,10 @@ abstract class AbstractExtractSceneThumbnailStepMessageHandler extends AbstractV
         );
 
         if ($thumbnailPath === null) {
-            $errorMsg = sprintf(
-                'No thumbnail could be generated for scene id "%s"',
+            return sprintf(
+                '[⚠] No thumbnail could be generated for scene id "%s"',
                 $message->getCurrentSceneId()
             );
-            $this->stopProcessing($errorMsg);
-
-            return;
         }
 
         $scene->setThumbnailUrl($thumbnailPath);
@@ -83,5 +74,7 @@ abstract class AbstractExtractSceneThumbnailStepMessageHandler extends AbstractV
             $video->setThumbnailPath($thumbnailPath);
         }
         $this->entityManager->flush();
+
+        return null;
     }
 }

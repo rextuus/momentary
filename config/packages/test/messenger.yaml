@@ -2,4 +2,21 @@ framework:
     messenger:
         transports:
             async: 'sync://'
+            async_video_processing: 'sync://'
             failed: ~
+
+        routing:
+            App\Service\Video\Processing\Message\SceneDetectionStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\ConvertStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeFrameStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeLastFrameStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeFirstFrameStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractFirstSceneThumbnailStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractLastSceneThumbnailStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractSceneThumbnailStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\Refinement\InitRefinementForEmptyScenesStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\Splitting\Scene\SplitLastSceneInFramesStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\Splitting\Scene\SplitFirstSceneInFramesStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\Splitting\Scene\SplitSceneInFramesStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\Splitting\Video\SplitVideoInFramesStepMessage: async_video_processing
+            App\Message\IndexVideoMessage: async

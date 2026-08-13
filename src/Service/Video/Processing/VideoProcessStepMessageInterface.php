@@ -27,4 +27,8 @@ interface VideoProcessStepMessageInterface
      * @return class-string<VideoProcessStepMessageInterface>
      */
     public function getCurrentStepMessageClass(): string;
+
+    public function getMessageLoggingIdent(): string;
+
+    public function isIntermediateStep(): bool;
 }

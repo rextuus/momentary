@@ -14,6 +14,10 @@ abstract class AbstractAnalyzeFrameStepMessage extends AbstractVideoProcessStepM
     use VideoMessageTrait;
 
     private ?string $framePath = null;
+
+    /**
+     * @var array<string>
+     */
     private array $remainingFrames = [];
     private ?int $timestamp = null;
 
@@ -42,6 +46,10 @@ abstract class AbstractAnalyzeFrameStepMessage extends AbstractVideoProcessStepM
         return $this;
     }
 
+
+    /**
+     * @return array<string>
+     */
     public function getRemainingFrames(): array
     {
         return $this->remainingFrames;

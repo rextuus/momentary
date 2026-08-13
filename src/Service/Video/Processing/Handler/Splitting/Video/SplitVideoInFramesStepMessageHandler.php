@@ -44,8 +44,7 @@ class SplitVideoInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
         $this->setCurrentMessage($message);
 
         $video = $this->getVideo();
-        $processStepStatus = $message->getVideoStatusForCurrentProcessStepEntity();
-        $this->processingService->startStep($video, $processStepStatus);
+        $this->startCurrentStep();
 
         $localVideoPath = $this->resolveVideoPath($video);
 
@@ -77,19 +76,19 @@ class SplitVideoInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
         $this->entityManager->flush();
 
         $successMsg = sprintf(
-            'Split video with id "%s" into %d frames in path "%s"',
-            $video->getId(),
+            'Split video "%s" into %d frames in path "%s"',
+            $video->getTitle(),
             $video->getTotalFrames(),
             $frameSplitResult->getFrameDirPath()
         );
 
-        $this->prepareFirstFramesForAnalyzing($frameSplitResult, $startTime, $successMsg);
+        $this->prepareFirstFramesForAnalyzing($frameSplitResult, $startTime);
+        $this->finishCurrentStep($successMsg);
     }
 
     public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
     {
         /** @var AnalyzeFirstFrameStepMessage $nextStepMessage */
-        $nextStepMessage->setFramePath($this->firstFramePath);
-        $nextStepMessage->setRemainingFrames($this->remainingFramePaths);
+        $nextStepMessage->setRemainingFrames($this->framePathCollection);
     }
 }

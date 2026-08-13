@@ -36,14 +36,12 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
     {
         $this->setCurrentMessage($message);
         $video = $this->getVideo();
-        $processStepStatus = $message->getVideoStatusForCurrentProcessStepEntity();
-
-        $this->processingService->startStep($video, $processStepStatus);
+        $this->startCurrentStep();
 
         $localPath = $video->getLocalPath();
         if ($localPath === null) {
             $errorMsg = sprintf(
-                'Video %s ist wurde nicht gefunden am erwarteten Pfad: %s.',
+                '[⚠] Video "%s" could not be found in path: "%s".',
                 $video->getId(),
                 $localPath
             );
@@ -56,13 +54,12 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
 
         // if already mp4, skip conversion
         if (str_ends_with(strtolower($sourcePath), '.mp4')) {
-            $successMsg = sprintf('Video %s ist bereits MP4.', $video->getId());
+            $successMsg = sprintf('[i] Video "%s" is already MP4.', $video->getTitle());
             $this->finishCurrentStep($successMsg);
 
             return;
         }
 
-        echo "Starte Konvertierung für Video {$video->getId()}..." . PHP_EOL;
         $tempMp4Name = 'video_converted_' . $video->getId() . '.mp4';
         $tempMp4 = $this->videoAnalyzer->getProjectDir() . '/public/uploads/import/' . $tempMp4Name;
 
@@ -72,18 +69,14 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
             $this->entityManager->persist($video);
             $this->entityManager->flush();
 
-            $successMsg = sprintf('Konvertierung für Video %s abgeschlossen.', $video->getId());
+            $successMsg = sprintf('Conversion for video "%s" succeeded', $video->getTitle());
             $this->finishCurrentStep($successMsg);
 
             return;
         }
 
-        $errorMsg = sprintf('Konvertierung für Video %s fehlgeschlagen.', $video->getId());
+        $errorMsg = sprintf('[⚠] Conversion for video "%s" failed', $video->getTitle());
         $this->stopProcessing($errorMsg);
-
-        $this->processingService->failStep($video, VideoStatus::CONVERTING, "Konvertierung fehlgeschlagen.");
-        $this->entityManager->persist($video);
-        $this->entityManager->flush();
     }
 
     public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void

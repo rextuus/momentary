@@ -12,6 +12,8 @@ use App\Service\Video\Processing\Message\Abstract\AbstractVideoProcessStepMessag
 #[StepOrder(stepNumber: 1)]
 class ConvertStepMessage extends AbstractVideoProcessStepMessage
 {
+    protected const string MESSAGE_LOGGING_IDENT = 'CONVERSION TO MP4';
+
     public function __construct(int $videoId)
     {
         $this->videoId = $videoId;

@@ -11,6 +11,8 @@ use App\Service\Video\Processing\Message\Refinement\InitRefinementForEmptyScenes
 #[StepOrder(stepNumber: 9)]
 class AnalyzeLastFrameStepMessage extends AbstractAnalyzeFrameStepMessage
 {
+    protected const string MESSAGE_LOGGING_IDENT = 'ANALYZE LAST FRAME';
+
     public function __construct(int $videoId)
     {
         $this->videoId = $videoId;

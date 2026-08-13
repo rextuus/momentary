@@ -9,6 +9,8 @@ use App\Service\Video\Processing\Attribute\StepOrder;
 #[StepOrder(stepNumber: 3)]
 class ExtractFirstSceneThumbnailStepMessage extends AbstractExtractSceneThumbnailStepMessage
 {
+    protected const string MESSAGE_LOGGING_IDENT = 'EXTRACT FIRST SCENE THUMBNAIL';
+
     public function __construct(int $videoId)
     {
         $this->videoId = $videoId;

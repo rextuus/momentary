@@ -10,7 +10,19 @@ use App\Service\Video\Processing\VideoProcessStepMessageInterface;
 
 abstract class AbstractVideoProcessStepMessage implements VideoProcessStepMessageInterface
 {
+    protected const string MESSAGE_LOGGING_IDENT = 'NOT DECLARED';
+
     protected int $videoId;
+
+    public function getMessageLoggingIdent(): string
+    {
+        return static::MESSAGE_LOGGING_IDENT;
+    }
+
+    public function isIntermediateStep(): bool
+    {
+        return false;
+    }
 
     public function getCurrentStepMessageClass(): string
     {

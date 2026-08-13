@@ -35,8 +35,7 @@ abstract class AbstractSplitInFramesStepMessageHandler extends AbstractVideoMess
 
     protected function prepareFirstFramesForAnalyzing(
         FrameSplittingResult $frameSplitResult,
-        float $startTime,
-        string $successMsg
+        float $startTime
     ): void {
         $preparedFrames = [];
         foreach ($frameSplitResult->getFrameList() as $frame) {
@@ -50,8 +49,6 @@ abstract class AbstractSplitInFramesStepMessageHandler extends AbstractVideoMess
             ];
         }
         $this->framePathCollection = $preparedFrames;
-
-        $this->finishCurrentStep($successMsg);
     }
 
     protected function addFramesToAnalyzingStep(

@@ -11,6 +11,8 @@ use App\Service\Video\Processing\Message\Splitting\Video\SplitVideoInFramesStepM
 #[StepOrder(stepNumber: 5)]
 class ExtractLastSceneThumbnailStepMessage extends AbstractExtractSceneThumbnailStepMessage
 {
+    protected const string MESSAGE_LOGGING_IDENT = 'EXTRACT LAST SCENE THUMBNAIL';
+
     public function __construct(int $videoId)
     {
         $this->videoId = $videoId;

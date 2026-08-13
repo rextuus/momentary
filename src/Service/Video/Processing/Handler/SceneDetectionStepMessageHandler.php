@@ -10,6 +10,7 @@ use App\Service\Video\Processing\Handler\Abstract\AbstractVideoMessageHandler;
 use App\Service\Video\Processing\Message\SceneDetectionStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
+use App\Service\Video\VideoSceneService;
 use App\Service\VideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
@@ -24,7 +25,8 @@ class SceneDetectionStepMessageHandler extends AbstractVideoMessageHandler
         VideoProcessMessageDispatcher $dispatcher,
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
-        private readonly VideoAnalyzer $videoAnalyzer
+        private readonly VideoAnalyzer $videoAnalyzer,
+        private readonly VideoSceneService $videoSceneService
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
     }
@@ -33,11 +35,8 @@ class SceneDetectionStepMessageHandler extends AbstractVideoMessageHandler
     {
         $this->setCurrentMessage($message);
         $video = $this->getVideo();
-        $processStepStatus = $message->getVideoStatusForCurrentProcessStepEntity();
+        $this->startCurrentStep();
 
-        $this->processingService->startStep($video, $processStepStatus);
-
-        echo "Starte Asynchrone Szenenerkennung für Video {$message->getVideoId()}..." . PHP_EOL;
 
         $videoPath = $this->videoAnalyzer->resolvePath($video->getLocalPath());
 
@@ -54,12 +53,12 @@ class SceneDetectionStepMessageHandler extends AbstractVideoMessageHandler
         );
 
         // Save scenes
-        $this->videoAnalyzer->storeScenes($message->getVideoId(), $scenes);
+        $this->videoSceneService->storeScenes($video, $scenes);
 
         if($scenes === []){
             $errorMsg = sprintf(
-                'Szenen-Splitting für Video %s nicht erfolgreich abgeschlossen! 0 Szenen in DB verewigt.',
-                $video->getId()
+                '[⚠] Splitting Scenes for video "%s" failed! 0 scenes added to DB!',
+                $video->getTitle()
             );
             $this->stopProcessing($errorMsg);
 
@@ -67,8 +66,8 @@ class SceneDetectionStepMessageHandler extends AbstractVideoMessageHandler
         }
 
         $successMsg = sprintf(
-            'Szenen-Splitting für Video %s erfolgreich abgeschlossen! %d Szenen in DB verewigt.',
-            $video->getId(),
+            'Splitting Scenes for video "%s" successfully! %d scenes added to DB!',
+            $video->getTitle(),
             count($scenes)
         );
         $this->finishCurrentStep($successMsg);

@@ -13,6 +13,8 @@ use App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractFirstSceneTh
 #[StepOrder(stepNumber: 2)]
 class SceneDetectionStepMessage extends AbstractVideoProcessStepMessage
 {
+    protected const string MESSAGE_LOGGING_IDENT = 'SCENE DETECTION';
+
     public function __construct(int $videoId)
     {
         $this->videoId = $videoId;
@@ -30,7 +32,7 @@ class SceneDetectionStepMessage extends AbstractVideoProcessStepMessage
 
     public function getVideoStatusForCurrentProcessStepEntity(): VideoStatus
     {
-        return VideoStatus::ANALYZING_SCENES;
+        return VideoStatus::SPLITTING;
     }
 
     public function nextStepNeedsTransition(): bool
