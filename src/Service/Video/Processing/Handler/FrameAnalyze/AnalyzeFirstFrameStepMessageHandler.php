@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Service\Video\Processing\Handler;
+namespace App\Service\Video\Processing\Handler\FrameAnalyze;
 
 use App\Repository\VideoRepository;
 use App\Service\Video\Processing\Attribute\StepOrder;
-use App\Service\Video\Processing\Handler\Abstract\AbstractAnalyzeFrameStepMessageHandler;
-use App\Service\Video\Processing\Message\AnalyzeFrameStepMessage;
+use App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeFirstFrameStepMessage;
+use App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeFrameStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
 use App\Service\VideoAnalyzer;
@@ -17,7 +17,7 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
 #[StepOrder(stepNumber: 1)]
-class AnalyzeFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessageHandler
+class AnalyzeFirstFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessageHandler
 {
     public function __construct(
         VideoRepository $videoRepository,
@@ -29,28 +29,20 @@ class AnalyzeFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessageHand
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService, $videoAnalyzer);
     }
 
-    public function __invoke(AnalyzeFrameStepMessage $message): void
+    public function __invoke(AnalyzeFirstFrameStepMessage $message): void
     {
         $this->setCurrentMessage($message);
         $video = $this->getVideo();
+        $processStepStatus = $message->getVideoStatusForCurrentProcessStepEntity();
 
-        // Special-Case: There was only one frame which was already analyzed in the firstFrameMessage
-        if ($message->getFramePath() === null){
-            $successMsg = sprintf(
-                'Video %d contains only one frame. This is already analyzed. Go to final frame analyze step. Next message will be immediately set to finished',
-                $video->getId()
-            );
-            $this->finishCurrentStep($successMsg);
-
-            return;
-        }
+        $this->processingService->startStep($video, $processStepStatus);
 
         $framePath = $this->videoAnalyzer->resolvePath($message->getFramePath());
 
-        // Special-Case: This is already last frame
+        // Special-Case: This is the only Frame => Finish this step => next handler will immediately go on
         if ($message->getRemainingFrames() === []) {
             $successMsg = sprintf(
-                'All frames for video %d analyzed already successfully. Next message will be immediately set to finished',
+                'Video %d contains only one frame. Analyzed this successfully',
                 $video->getId()
             );
 
@@ -70,10 +62,6 @@ class AnalyzeFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessageHand
     }
 
     public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
-    {
-    }
-
-    public function decorateNextCurrentStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
     {
         /** @var AnalyzeFrameStepMessage $nextStepMessage */
         $nextStepMessage->setFramePath($this->framePath);

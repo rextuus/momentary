@@ -10,6 +10,8 @@ enum VideoWorkflowProcessTransition: string
     case START_SPLITTING = 'start_splitting';
     case START_ANALYZING = 'start_analyzing';
     case START_REFINING_EXTRACTION = 'start_refining_extraction';
+
+    case START_REFINING_SPLITTING = 'start_refining_splitting';
     case START_REFINING_ANALYSIS = 'start_refining_analysis';
     case START_MERGING = 'start_merging';
     case START_OPTIMIZATION = 'start_optimization';

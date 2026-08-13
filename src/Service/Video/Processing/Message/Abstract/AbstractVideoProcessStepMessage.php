@@ -31,4 +31,16 @@ abstract class AbstractVideoProcessStepMessage implements VideoProcessStepMessag
     {
         return $this->videoId;
     }
+
+    public function getSceneId(): ?int
+    {
+        return $this->sceneId;
+    }
+
+    public function setSceneId(?int $sceneId): self
+    {
+        $this->sceneId = $sceneId;
+
+        return $this;
+    }
 }

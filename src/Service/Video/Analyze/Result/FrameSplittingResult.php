@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Service\Video\Analyze;
+namespace App\Service\Video\Analyze\Result;
 
 readonly class FrameSplittingResult
 {

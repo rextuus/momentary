@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Service\Video\Processing\Message;
+namespace App\Service\Video\Processing\Message\ThumbnailExtraction;
 
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Enum\VideoWorkflowProcessTransition;
-use App\Service\Video\Processing\Message\Abstract\AbstractExtractSceneThumbnailStepMessage;
+use App\Service\Video\Processing\Message\Splitting\Video\SplitVideoInFramesStepMessage;
 
 #[StepOrder(stepNumber: 5)]
 class ExtractLastSceneThumbnailStepMessage extends AbstractExtractSceneThumbnailStepMessage
@@ -23,7 +23,7 @@ class ExtractLastSceneThumbnailStepMessage extends AbstractExtractSceneThumbnail
 
     public function getNextStepMessageClass(): string
     {
-        return SplitInFramesStepMessage::class;
+        return SplitVideoInFramesStepMessage::class;
     }
 
     public function nextStepNeedsTransition(): bool

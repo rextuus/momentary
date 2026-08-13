@@ -17,6 +17,7 @@ framework:
                 - !php/const App\Enum\VideoStatus::SPLITTING
                 - !php/const App\Enum\VideoStatus::ANALYZING_FACES
                 - !php/const App\Enum\VideoStatus::REFINING_EXTRACTION
+                - !php/const App\Enum\VideoStatus::REFINING_SPLITTING
                 - !php/const App\Enum\VideoStatus::REFINING_ANALYSIS
                 - !php/const App\Enum\VideoStatus::MERGING_SCENES
                 - !php/const App\Enum\VideoStatus::EXTRACTING_THUMBNAILS
@@ -45,8 +46,11 @@ framework:
                 start_refining_extraction:
                     from: !php/const App\Enum\VideoStatus::ANALYZING_FACES
                     to:   !php/const App\Enum\VideoStatus::REFINING_EXTRACTION
-                start_refining_analysis:
+                start_refining_splitting:
                     from: !php/const App\Enum\VideoStatus::REFINING_EXTRACTION
+                    to: !php/const App\Enum\VideoStatus::REFINING_SPLITTING
+                start_refining_analysis:
+                    from: !php/const App\Enum\VideoStatus::REFINING_SPLITTING
                     to:   !php/const App\Enum\VideoStatus::REFINING_ANALYSIS
                 start_merging:
                     from: !php/const App\Enum\VideoStatus::REFINING_ANALYSIS

@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Service\Video\Processing\Handler\Abstract;
+namespace App\Service\Video\Processing\Handler\ThumbnailExtraction;
 
 use App\Repository\VideoRepository;
 use App\Repository\VideoSceneRepository;
-use App\Service\Video\Processing\Message\Abstract\AbstractExtractSceneThumbnailStepMessage;
+use App\Service\Video\Processing\Handler\Abstract\AbstractVideoMessageHandler;
+use App\Service\Video\Processing\Message\ThumbnailExtraction\AbstractExtractSceneThumbnailStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\VideoAnalyzer;
 use App\Service\VideoProcessingService;

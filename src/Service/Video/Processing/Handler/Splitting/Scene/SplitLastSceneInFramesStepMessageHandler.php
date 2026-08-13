@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace App\Service\Video\Processing\Handler;
+namespace App\Service\Video\Processing\Handler\Splitting\Scene;
 
 use App\Repository\VideoRepository;
 use App\Service\Video\Processing\Attribute\StepOrder;
-use App\Service\Video\Processing\Handler\Abstract\AbstractVideoMessageHandler;
-use App\Service\Video\Processing\Message\AnalyzeFirstFrameStepMessage;
-use App\Service\Video\Processing\Message\SplitInFramesStepMessage;
+use App\Service\Video\Processing\Handler\Splitting\AbstractSplitInFramesStepMessageHandler;
+use App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeFirstFrameStepMessage;
+use App\Service\Video\Processing\Message\Splitting\Scene\SplitLastSceneInFramesStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
 use App\Service\VideoAnalyzer;
@@ -18,24 +18,28 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
-#[StepOrder(stepNumber: 6)]
-class SplitInFramesStepMessageHandler extends AbstractVideoMessageHandler
+#[StepOrder(stepNumber: 13)]
+class SplitLastSceneInFramesStepMessageHandler extends AbstractSplitInFramesStepMessageHandler
 {
-    private string $firstFramePath;
-    private array $remainingFramePaths;
-
     public function __construct(
         VideoRepository $videoRepository,
         VideoProcessMessageDispatcher $dispatcher,
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
-        private readonly VideoAnalyzer $videoAnalyzer,
-        private readonly EntityManagerInterface $entityManager
+        VideoAnalyzer $videoAnalyzer,
+        EntityManagerInterface $entityManager
     ) {
-        parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
+        parent::__construct(
+            $videoRepository,
+            $dispatcher,
+            $workflowMachine,
+            $processingService,
+            $videoAnalyzer,
+            $entityManager
+        );
     }
 
-    public function __invoke(SplitInFramesStepMessage $message): void
+    public function __invoke(SplitLastSceneInFramesStepMessage $message): void
     {
         $this->setCurrentMessage($message);
 
@@ -89,7 +93,6 @@ class SplitInFramesStepMessageHandler extends AbstractVideoMessageHandler
             $video->getTotalFrames(),
             $frameSplitResult->getFrameDirPath()
         );
-
         $preparedFrames = [];
         foreach ($frameSplitResult->getFrameList() as $index => $frame) {
             $timestamp = (int) $frame['timestamp'];

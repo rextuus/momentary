@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace App\Service\Video\Processing\Handler\Abstract;
+namespace App\Service\Video\Processing\Handler\FrameAnalyze;
 
 use App\Repository\VideoRepository;
-use App\Service\Video\Processing\Message\Abstract\AbstractAnalyzeFrameStepMessage;
+use App\Service\Video\Processing\Handler\Abstract\AbstractVideoMessageHandler;
+use App\Service\Video\Processing\Message\FrameAnalyze\AbstractAnalyzeFrameStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\VideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
-use Psr\Log\LoggerInterface;
 
 abstract class AbstractAnalyzeFrameStepMessageHandler extends AbstractVideoMessageHandler
 {

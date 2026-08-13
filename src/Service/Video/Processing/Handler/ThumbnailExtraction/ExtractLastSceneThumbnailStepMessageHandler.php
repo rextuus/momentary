@@ -2,14 +2,13 @@
 
 declare(strict_types=1);
 
-namespace App\Service\Video\Processing\Handler;
+namespace App\Service\Video\Processing\Handler\ThumbnailExtraction;
 
 use App\Repository\VideoRepository;
 use App\Repository\VideoSceneRepository;
 use App\Service\Video\Processing\Attribute\StepOrder;
-use App\Service\Video\Processing\Handler\Abstract\AbstractExtractSceneThumbnailStepMessageHandler;
-use App\Service\Video\Processing\Message\ExtractLastSceneThumbnailStepMessage;
-use App\Service\Video\Processing\Message\SplitInFramesStepMessage;
+use App\Service\Video\Processing\Message\Splitting\Video\SplitVideoInFramesStepMessage;
+use App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractLastSceneThumbnailStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
 use App\Service\VideoAnalyzer;
@@ -73,7 +72,7 @@ class ExtractLastSceneThumbnailStepMessageHandler extends AbstractExtractSceneTh
 
     public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
     {
-        /** @var SplitInFramesStepMessage $nextStepMessage */
+        /** @var SplitVideoInFramesStepMessage $nextStepMessage */
         $nextStepMessage->videoPath = "";
     }
 }

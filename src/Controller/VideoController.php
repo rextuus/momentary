@@ -15,6 +15,7 @@ use App\Message\GenerateChaptersMessage;
 use App\Message\SplitVideoIntoFramesMessage;
 use App\Message\TagScenesMessage;
 use App\Repository\VideoRepository;
+use App\Service\Video\Processing\Message\ConvertStepMessage;
 use App\Service\VideoAnalyzer;
 use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
@@ -86,12 +87,8 @@ final class VideoController extends AbstractController
             if ($video->getLocalPath()) {
                 if ($this->workflowMachine->can($video, 'start_conversion')) {
                     $this->workflowMachine->apply($video, 'start_conversion');
-                    $this->messageBus->dispatch(new ConvertVideoMessage($video->getId()));
+                    $this->messageBus->dispatch(new ConvertStepMessage($video->getId()));
                     $this->addFlash('success', 'Lokales Video hinzugefügt und Pipeline gestartet!');
-                } elseif ($this->workflowMachine->can($video, 'start_scene_detection')) {
-                    $this->workflowMachine->apply($video, 'start_scene_detection');
-                    $this->messageBus->dispatch(new DetectVideoScenesMessage($video->getId(), $video->getLocalPath()));
-                    $this->addFlash('success', 'Lokales Video hinzugefügt und Analyse gestartet!');
                 }
             }
 

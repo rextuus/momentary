@@ -2,10 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Service\Video\Processing\Message;
+namespace App\Service\Video\Processing\Message\FrameAnalyze;
 
 use App\Service\Video\Processing\Attribute\StepOrder;
-use App\Service\Video\Processing\Message\Abstract\AbstractAnalyzeFrameStepMessage;
 
 #[StepOrder(stepNumber: 8)]
 class AnalyzeFrameStepMessage extends AbstractAnalyzeFrameStepMessage

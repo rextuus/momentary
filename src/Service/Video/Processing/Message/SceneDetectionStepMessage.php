@@ -8,6 +8,7 @@ use App\Enum\VideoStatus;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Enum\VideoWorkflowProcessTransition;
 use App\Service\Video\Processing\Message\Abstract\AbstractVideoProcessStepMessage;
+use App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractFirstSceneThumbnailStepMessage;
 
 #[StepOrder(stepNumber: 2)]
 class SceneDetectionStepMessage extends AbstractVideoProcessStepMessage

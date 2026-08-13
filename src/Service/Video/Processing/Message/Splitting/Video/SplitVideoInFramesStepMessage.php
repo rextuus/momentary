@@ -2,15 +2,16 @@
 
 declare(strict_types=1);
 
-namespace App\Service\Video\Processing\Message;
+namespace App\Service\Video\Processing\Message\Splitting\Video;
 
 use App\Enum\VideoStatus;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Enum\VideoWorkflowProcessTransition;
-use App\Service\Video\Processing\Message\Abstract\AbstractVideoProcessStepMessage;
+use App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeFirstFrameStepMessage;
+use App\Service\Video\Processing\Message\Splitting\AbstractSplitInFramesStepMessage;
 
 #[StepOrder(stepNumber: 6)]
-class SplitInFramesStepMessage extends AbstractVideoProcessStepMessage
+class SplitVideoInFramesStepMessage extends AbstractSplitInFramesStepMessage
 {
     public function __construct(int $videoId)
     {
@@ -24,7 +25,7 @@ class SplitInFramesStepMessage extends AbstractVideoProcessStepMessage
 
     public function getNextStepMessageClass(): string
     {
-
+        return AnalyzeFirstFrameStepMessage::class;
     }
 
     public function getVideoStatusForCurrentProcessStepEntity(): VideoStatus

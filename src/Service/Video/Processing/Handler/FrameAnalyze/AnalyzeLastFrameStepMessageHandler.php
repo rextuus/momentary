@@ -2,12 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Service\Video\Processing\Handler;
+namespace App\Service\Video\Processing\Handler\FrameAnalyze;
 
 use App\Repository\VideoRepository;
 use App\Service\Video\Processing\Attribute\StepOrder;
-use App\Service\Video\Processing\Handler\Abstract\AbstractAnalyzeFrameStepMessageHandler;
-use App\Service\Video\Processing\Message\AnalyzeLastFrameStepMessage;
+use App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeLastFrameStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
 use App\Service\VideoAnalyzer;

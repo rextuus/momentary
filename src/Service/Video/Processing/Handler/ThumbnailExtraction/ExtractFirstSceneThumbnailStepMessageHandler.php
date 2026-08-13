@@ -2,14 +2,13 @@
 
 declare(strict_types=1);
 
-namespace App\Service\Video\Processing\Handler;
+namespace App\Service\Video\Processing\Handler\ThumbnailExtraction;
 
 use App\Repository\VideoRepository;
 use App\Repository\VideoSceneRepository;
 use App\Service\Video\Processing\Attribute\StepOrder;
-use App\Service\Video\Processing\Handler\Abstract\AbstractExtractSceneThumbnailStepMessageHandler;
-use App\Service\Video\Processing\Message\ExtractFirstSceneThumbnailStepMessage;
-use App\Service\Video\Processing\Message\ExtractSceneThumbnailStepMessage;
+use App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractFirstSceneThumbnailStepMessage;
+use App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractSceneThumbnailStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
 use App\Service\VideoAnalyzer;

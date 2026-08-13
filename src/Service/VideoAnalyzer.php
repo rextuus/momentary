@@ -9,17 +9,12 @@ use App\Entity\Video;
 use App\Entity\VideoFace;
 use App\Entity\VideoScene;
 use App\Enum\VideoStatus;
-use App\Message\ExtractSceneThumbnailMessage;
-use App\Message\FrameAnalyzerMessage;
 use App\Repository\VideoRepository;
-use App\Service\Video\Analyze\FrameExtractionException;
-use App\Service\Video\Analyze\FrameSplittingResult;
-use App\Service\WorkflowMachine;
 use App\Service\Aws\AmazonRekognitionService;
+use App\Service\Video\Analyze\FrameExtractionException;
+use App\Service\Video\Analyze\Result\FrameSplittingResult;
+use App\Service\Video\Analyze\Result\RefinementAnalyzeResult;
 use Doctrine\ORM\EntityManagerInterface;
-use App\Service\VideoProcessingService;
-use App\Service\VideoFileService;
-use App\Service\ImageFileService;
 use Psr\Log\LoggerInterface;
 use Ramsey\Uuid\Uuid;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -477,7 +472,7 @@ class VideoAnalyzer
         // Eindeutiges Verzeichnis für diese Extraktion (Video ID + Zeitstempel/Zufall)
         $dir = $this->videoFileService->getVideoDirectory($video, 'frames');
         $absoluteDir = $this->videoFileService->getAbsolutePath($dir);
-        
+
         // Fester Ordner für diese Extraktion (Video ID + Typ)
         $subDir = $isRefinement ? 'refinement' : 'analysis';
         $frameDirPath = $absoluteDir . '/' . $subDir;
@@ -490,84 +485,51 @@ class VideoAnalyzer
             $fs->remove(glob($frameDirPath . '/*'));
         }
 
-        try {
-            $command = [
-                $this->pythonBinaryPath,
-                $this->projectDir . '/video-analyzer/python/extract_frames.py',
-                $this->resolvePath($videoPath),
-                (string) $fps,
-                '--output-dir',
-                $frameDirPath
-            ];
+        $command = [
+            $this->pythonBinaryPath,
+            $this->projectDir . '/video-analyzer/python/extract_frames.py',
+            $this->resolvePath($videoPath),
+            (string) $fps,
+            '--output-dir',
+            $frameDirPath
+        ];
 
-            if ($startTime !== null) {
-                if (is_array($startTime)) {
-                    foreach ($startTime as $s) {
-                        $command[] = '--start-time';
-                        $command[] = (string) $s;
-                    }
-                } else {
+        if ($startTime !== null) {
+            if (is_array($startTime)) {
+                foreach ($startTime as $s) {
                     $command[] = '--start-time';
-                    $command[] = (string) $startTime;
+                    $command[] = (string) $s;
                 }
+            } else {
+                $command[] = '--start-time';
+                $command[] = (string) $startTime;
             }
-
-            if ($duration !== null) {
-                if (is_array($duration)) {
-                    foreach ($duration as $d) {
-                        $command[] = '--duration';
-                        $command[] = (string) $d;
-                    }
-                } else {
-                    $command[] = '--duration';
-                    $command[] = (string) $duration;
-                }
-            }
-
-            $process = new Process($command);
-
-            $process->setTimeout(600);
-            $process->run();
-
-            if (!$process->isSuccessful()) {
-                throw new FrameExtractionException('extract_frames.py script dont run successfully.');
-            }
-
-            $frameList = json_decode($process->getOutput(), true);
-
-            return new FrameSplittingResult($frameList, $frameDirPath);
-
-            // Chain-Strategie: nur die erste Message dispatchen, alle weiteren als remainingFrames mitgeben
-            $preparedFrames = [];
-            foreach ($frameList as $index => $frame) {
-                $timestamp = (int) $frame['timestamp'];
-                if ($startTime !== null) {
-                    $timestamp += (int) $startTime;
-                }
-                $preparedFrames[] = [
-                    'path' => $frame['path'],
-                    'timestamp' => $timestamp,
-                    'isLast' => $markLastAsFinal && $index === array_key_last($frameList),
-                ];
-            }
-
-            if (!empty($preparedFrames)) {
-                $first = array_shift($preparedFrames);
-                $this->bus->dispatch(new FrameAnalyzerMessage(
-                    $videoId,
-                    $first['path'],
-                    $first['timestamp'],
-                    $first['isLast'],
-                    $isRefinement,
-                    $preparedFrames
-                ));
-                fwrite(STDOUT, "[extractFrames] Starte Frame-Chain für Video $videoId: 1 + " . count($preparedFrames) . " weitere Frames." . PHP_EOL);
-            }
-
-            return true;
-        } catch (\Throwable $e) {
-            return false;
         }
+
+        if ($duration !== null) {
+            if (is_array($duration)) {
+                foreach ($duration as $d) {
+                    $command[] = '--duration';
+                    $command[] = (string) $d;
+                }
+            } else {
+                $command[] = '--duration';
+                $command[] = (string) $duration;
+            }
+        }
+
+        $process = new Process($command);
+
+        $process->setTimeout(600);
+        $process->run();
+
+        if (!$process->isSuccessful()) {
+            throw new FrameExtractionException('extract_frames.py script dont run successfully.');
+        }
+
+        $frameList = json_decode($process->getOutput(), true);
+
+        return new FrameSplittingResult($frameList, $frameDirPath);
     }
 
     public function clearOldScenes(Video $video): void
@@ -956,56 +918,21 @@ class VideoAnalyzer
         $this->entityManager->flush();
     }
 
-    public function refineSceneAnalysis(Video $video): bool
+    public function refineSceneAnalysis(Video $video): RefinementAnalyzeResult
     {
-        if (!$video->getLocalPath()) {
-            $this->logger->warning('Cannot refine analysis: No local path', ['videoId' => $video->getId()]);
-            return false;
-        }
-
         $minSceneLength = $video->getMinSceneLengthForRefinement() ?? $this->minSceneLengthForRefinement;
-        $refinedFps = $video->getRefinedAnalysisFps() ?? $this->refinedFps;
 
         $scenesToRefine = [];
         foreach ($video->getScenes() as $scene) {
             $duration = $scene->getEndSeconds() - $scene->getStartSeconds();
 
-            // Nur verfeinern, wenn keine Gesichter gefunden wurden und die Szene lang genug ist
+            // only refine scenes without faces and long enough
             if ($scene->getVideoFaces()->isEmpty() && $duration >= $minSceneLength) {
                 $scenesToRefine[] = $scene;
             }
         }
 
-        if (empty($scenesToRefine)) {
-            $this->logger->info('No scenes qualify for refinement', ['videoId' => $video->getId()]);
-            return false;
-        }
-
-        $this->logger->info('Refining {count} scenes', [
-            'videoId' => $video->getId(),
-            'count' => count($scenesToRefine)
-        ]);
-
-        $startTimes = [];
-        $durations = [];
-
-        foreach ($scenesToRefine as $scene) {
-            $startTimes[] = $scene->getStartSeconds();
-            $durations[] = $scene->getEndSeconds() - $scene->getStartSeconds();
-        }
-
-        // Wir rufen extractFrames EINMAL für ALLE Szenen auf
-        $this->extractFrames(
-            $video->getId(),
-            $video->getLocalPath(),
-            $refinedFps,
-            $startTimes,
-            $durations,
-            true, // markLastAsFinal
-            true // isRefinement
-        );
-
-        return true;
+        return RefinementAnalyzeResult::create($scenesToRefine);
     }
 
     public function cleanupLocalFile(int $videoId): void

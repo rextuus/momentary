@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
-namespace App\Service\Video\Processing\Message\Abstract;
+namespace App\Service\Video\Processing\Message\FrameAnalyze;
 
 use App\Enum\VideoStatus;
 use App\Service\Video\Processing\Exception\CommonProcessStepException;
+use App\Service\Video\Processing\Message\Abstract\AbstractVideoProcessStepMessage;
 use App\Service\Video\Processing\VideoMessageTrait;
 
-class AbstractAnalyzeFrameStepMessage extends AbstractVideoProcessStepMessage
+abstract class AbstractAnalyzeFrameStepMessage extends AbstractVideoProcessStepMessage
 {
     use VideoMessageTrait;
 
