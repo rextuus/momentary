@@ -7,8 +7,8 @@ namespace App\Service\Video\Processing\Handler\Refinement;
 use App\Repository\VideoRepository;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Handler\Abstract\AbstractVideoMessageHandler;
-use App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeFirstFrameStepMessage;
 use App\Service\Video\Processing\Message\Refinement\InitRefinementForEmptyScenesStepMessage;
+use App\Service\Video\Processing\Message\Splitting\Scene\SplitFirstSceneInFramesStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
 use App\Service\VideoAnalyzer;
@@ -20,7 +20,8 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 #[StepOrder(stepNumber: 10)]
 class InitRefinementForEmptyScenesStepMessageHandler extends AbstractVideoMessageHandler
 {
-    private array $scenes = [];
+    private array $sceneIds = [];
+    private ?int $firstSceneId = null;
 
     public function __construct(
         VideoRepository $videoRepository,
@@ -42,7 +43,8 @@ class InitRefinementForEmptyScenesStepMessageHandler extends AbstractVideoMessag
 
         $result = $this->videoAnalyzer->refineSceneAnalysis($video);
 
-        $this->scenes = $result->getSceneIds();
+        $this->sceneIds = $result->getSceneIds();
+        $this->firstSceneId = array_shift($this->sceneIds);
 
         $successMsg = sprintf(
             'Refinement für video mit id %s initiiert. Es gibt keine Szenen die erneut analysiert werden müssen',
@@ -61,8 +63,8 @@ class InitRefinementForEmptyScenesStepMessageHandler extends AbstractVideoMessag
 
     public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
     {
-        /** @var AnalyzeFirstFrameStepMessage $nextStepMessage */
-        $nextStepMessage->setFramePath($this->firstFramePath);
-        $nextStepMessage->setRemainingFrames($this->remainingFramePaths);
+        /** @var SplitFirstSceneInFramesStepMessage $nextStepMessage */
+        $nextStepMessage->setCurrentSceneId($this->firstSceneId);
+        $nextStepMessage->setRemainingSceneIds($this->sceneIds);
     }
 }

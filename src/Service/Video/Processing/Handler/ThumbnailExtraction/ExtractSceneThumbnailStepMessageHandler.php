@@ -62,7 +62,7 @@ class ExtractSceneThumbnailStepMessageHandler extends AbstractExtractSceneThumbn
         if ($sceneIds !== []){
             $logMessage = sprintf(
               'Decorated scene with id "%s" with thumbnail. Remaining Scenes for video with id "%s": %d',
-                $message->getSceneId(),
+                $message->getCurrentSceneId(),
                 $video->getId(),
                 count($sceneIds)
             );
@@ -91,7 +91,7 @@ class ExtractSceneThumbnailStepMessageHandler extends AbstractExtractSceneThumbn
     public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
     {
         /** @var ExtractLastSceneThumbnailStepMessage $nextStepMessage */
-        $nextStepMessage->setSceneId($this->nextSceneId);
+        $nextStepMessage->setCurrentSceneId($this->nextSceneId);
         $nextStepMessage->setTotalScenes($this->totalSceneNumber);
         $nextStepMessage->setProcessedScenes($this->currentSceneNumber);
     }
@@ -99,7 +99,7 @@ class ExtractSceneThumbnailStepMessageHandler extends AbstractExtractSceneThumbn
     public function decorateNextCurrentStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
     {
         /** @var ExtractSceneThumbnailStepMessage $nextStepMessage */
-        $nextStepMessage->setSceneId($this->nextSceneId);
+        $nextStepMessage->setCurrentSceneId($this->nextSceneId);
         $nextStepMessage->setRemainingSceneIds($this->remainingSceneIds);
         $nextStepMessage->setTotalScenes($this->totalSceneNumber);
         $nextStepMessage->setProcessedScenes($this->currentSceneNumber);

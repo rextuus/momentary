@@ -9,7 +9,10 @@ use App\Service\Video\Processing\Message\Abstract\AbstractVideoProcessStepMessag
 
 abstract class AbstractSplitInFramesStepMessage extends AbstractVideoProcessStepMessage
 {
-    protected ?int $sceneId = null;
+    protected ?int $currentSceneId = null;
+
+    private array $remainingSceneIds = [];
+    private array $framePathCollection = [];
 
     public function getVideoStatusForCurrentProcessStepEntity(): VideoStatus
     {
@@ -21,14 +24,40 @@ abstract class AbstractSplitInFramesStepMessage extends AbstractVideoProcessStep
         // TODO: Implement getNextStepMessageClass() method.
     }
 
-    public function getSceneId(): ?int
+    public function getCurrentSceneId(): ?int
     {
-        return $this->sceneId;
+        return $this->currentSceneId;
     }
 
-    public function setSceneId(?int $sceneId): self
+    public function setCurrentSceneId(?int $currentSceneId): self
     {
-        $this->sceneId = $sceneId;
+        $this->currentSceneId = $currentSceneId;
+
+        return $this;
+    }
+
+
+    public function getRemainingSceneIds(): array
+    {
+        return $this->remainingSceneIds;
+    }
+
+    public function setRemainingSceneIds(array $remainingSceneIds): self
+    {
+        $this->remainingSceneIds = $remainingSceneIds;
+
+        return $this;
+    }
+
+    public function getFramePathCollection(): array
+    {
+        return $this->framePathCollection;
+    }
+
+    public function setFramePathCollection(array $framePathCollection): self
+    {
+        $this->framePathCollection = $framePathCollection;
+
         return $this;
     }
 }

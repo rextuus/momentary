@@ -8,7 +8,7 @@ use App\Repository\VideoRepository;
 use App\Repository\VideoSceneRepository;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Handler\Splitting\AbstractSplitInFramesStepMessageHandler;
-use App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeFirstFrameStepMessage;
+use App\Service\Video\Processing\Message\Splitting\Scene\SplitLastSceneInFramesStepMessage;
 use App\Service\Video\Processing\Message\Splitting\Scene\SplitSceneInFramesStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
@@ -50,9 +50,9 @@ class SplitSceneInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
         $this->processingService->startStep($video, $processStepStatus);
 
         // there is no scene => no refinment needed
-        if ($message->getSceneId() === null) {
+        if ($message->getCurrentSceneId() === null) {
             $successMsg = sprintf(
-                'No scenes for refinement found for video with id %s. Next two steps will be skipped.',
+                'No more scenes for refinement found for video with id %s. Next step will be skipped.',
                 $video->getId()
             );
             $this->finishCurrentStep($successMsg);
@@ -60,65 +60,68 @@ class SplitSceneInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
             return;
         }
 
-        $localVideoPath = $this->videoAnalyzer->resolvePath($video->getLocalPath());
-
-        if (!file_exists($localVideoPath)) {
-            $errorMsg = sprintf(
-                'Video file for vide-entity with id "%s" not found at "%s"',
-                $video->getId(),
-                $localVideoPath
-            );
-            $this->stopProcessing($errorMsg);
-
-            return;
-        }
+        $localVideoPath = $this->resolveVideoPath($video);
 
         // split the current scene
-        $scene = $this->sceneRepository->find($message->getSceneId());
-        $startTime = $scene->getStartSeconds();
-        $endTime = $scene->getEndSeconds();
+        $scene = $this->sceneRepository->find($message->getCurrentSceneId());
 
-        $frameSplitResult = $this->videoAnalyzer->extractFrames(
-            $message->getVideoId(),
-            $localVideoPath,
-            $video->getAnalysisFps(),
-            $startTime,
-            $endTime - $startTime
-        );
-
+        $frameSplitResult = $this->splitSceneIntoFrames($scene, $video, $localVideoPath);
         $successMsg = sprintf(
             'Split scene with id "%s" into %d frames in path "%s"',
             $scene->getId(),
             $frameSplitResult->getFrameCount(),
             $frameSplitResult->getFrameDirPath()
         );
-        $this->prepareFramesForAnalyzing($frameSplitResult, $startTime, $successMsg);
+
+        // append the frames to list
+        $this->addFramesToAnalyzingStep($frameSplitResult, $scene->getStartSeconds(), $successMsg);
 
         // check if there are more scenes needing refining
-        $remainingScenes = $this->remainingScene;
-        $nextScene = array_shift($remainingScenes);
-        $this->remainingScene = $remainingScenes;
+        $remainingScenes = $this->remainingSceneIds;
+        $this->currentSceneId = array_shift($remainingScenes);
+        $this->remainingSceneIds = $remainingScenes;
 
-        $successMsg = sprintf(
-            'First scene (%d) for video with id %d split into frames. Go on with next one',
-            $scene->getId(),
-            $video->getId(),
-        );
-        if ($nextScene === null) {
+        if ($this->remainingSceneIds === []){
             $successMsg = sprintf(
-                'Last scene (%d) for video with id %d split into frames',
+                'Added %d frames for analysis for scene %d of video %d to global frame array. There are no more scenes to split. %',
+                $frameSplitResult->getFrameCount(),
                 $scene->getId(),
                 $video->getId(),
+                count($this->remainingSceneIds)
             );
+
+            $this->finishCurrentStep($successMsg);
+
+            return;
         }
 
-        $this->finishCurrentStep($successMsg);
+        $logMessage = sprintf(
+            'Added %d frames for analysis for scene %d of video %d to global frame array. There are still %d scenes we need to split. %',
+            $frameSplitResult->getFrameCount(),
+            $scene->getId(),
+            $video->getId(),
+            count($this->remainingSceneIds)
+        );
+
+        $this->dispatchNextMessageOfCurrentStep($logMessage);
+    }
+
+    public function decorateNextCurrentStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
+    {
+        /** @var SplitSceneInFramesStepMessage $nextStepMessage */
+        $nextStepMessage->setCurrentSceneId($this->currentSceneId);
+        $nextStepMessage->setRemainingSceneIds($this->remainingSceneIds);
+
+        // we will pack all the frames of all scenes into one big array
+        $nextStepMessage->setFramePathCollection($this->framePathCollection);
     }
 
     public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
     {
-        /** @var AnalyzeFirstFrameStepMessage $nextStepMessage */
-        $nextStepMessage->setFramePath($this->firstFramePath);
-        $nextStepMessage->setRemainingFrames($this->remainingFramePaths);
+        /** @var SplitLastSceneInFramesStepMessage $nextStepMessage */
+        $nextStepMessage->setCurrentSceneId($this->currentSceneId);
+
+        // we will pack all the frames of all scenes into one big array
+        $nextStepMessage->setFramePathCollection($this->framePathCollection);
     }
 }

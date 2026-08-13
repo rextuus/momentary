@@ -36,11 +36,11 @@ abstract class AbstractExtractSceneThumbnailStepMessageHandler extends AbstractV
 
     protected function generateThumbnail(AbstractExtractSceneThumbnailStepMessage $message): void
     {
-        $scene = $this->videoSceneRepository->find($message->getSceneId());
+        $scene = $this->videoSceneRepository->find($message->getCurrentSceneId());
         if ($scene === null){
             $errorMsg = sprintf(
                 'Cant find scene with id "%s"',
-                $message->getSceneId()
+                $message->getCurrentSceneId()
             );
             $this->stopProcessing($errorMsg);
 
@@ -51,7 +51,7 @@ abstract class AbstractExtractSceneThumbnailStepMessageHandler extends AbstractV
         if ($video === null) {
             $errorMsg = sprintf(
                 'Scene with id "%s" has no video',
-                $message->getSceneId()
+                $message->getCurrentSceneId()
             );
             $this->stopProcessing($errorMsg);
 
@@ -69,7 +69,7 @@ abstract class AbstractExtractSceneThumbnailStepMessageHandler extends AbstractV
         if ($thumbnailPath === null) {
             $errorMsg = sprintf(
                 'No thumbnail could be generated for scene id "%s"',
-                $message->getSceneId()
+                $message->getCurrentSceneId()
             );
             $this->stopProcessing($errorMsg);
 

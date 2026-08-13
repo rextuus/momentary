@@ -74,7 +74,7 @@ class ExtractFirstSceneThumbnailStepMessageHandler extends AbstractExtractSceneT
     public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
     {
         /** @var ExtractSceneThumbnailStepMessage $nextStepMessage */
-        $nextStepMessage->setSceneId($this->nextSceneId);
+        $nextStepMessage->setCurrentSceneId($this->nextSceneId);
         $nextStepMessage->setRemainingSceneIds($this->remainingSceneIds);
         // if we come to this there should be exactly 1 scene processed
         $nextStepMessage->setProcessedScenes(1);

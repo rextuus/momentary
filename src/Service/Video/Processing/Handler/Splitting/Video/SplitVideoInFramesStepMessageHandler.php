@@ -47,18 +47,7 @@ class SplitVideoInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
         $processStepStatus = $message->getVideoStatusForCurrentProcessStepEntity();
         $this->processingService->startStep($video, $processStepStatus);
 
-        $localVideoPath = $this->videoAnalyzer->resolvePath($video->getLocalPath());
-
-        if (!file_exists($localVideoPath)) {
-            $errorMsg = sprintf(
-                'Video file for vide-entity with id "%s" not found at "%s"',
-                $video->getId(),
-                $localVideoPath
-            );
-            $this->stopProcessing($errorMsg);
-
-            return;
-        }
+        $localVideoPath = $this->resolveVideoPath($video);
 
         // split the complete video
         $startTime = 0;
@@ -94,7 +83,7 @@ class SplitVideoInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
             $frameSplitResult->getFrameDirPath()
         );
 
-        $this->prepareFramesForAnalyzing($frameSplitResult, $startTime, $successMsg);
+        $this->prepareFirstFramesForAnalyzing($frameSplitResult, $startTime, $successMsg);
     }
 
     public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void

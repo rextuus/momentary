@@ -46,7 +46,7 @@ class ExtractLastSceneThumbnailStepMessageHandler extends AbstractExtractSceneTh
         $this->setCurrentMessage($message);
 
         // Special-Case Video has only one scene: Finish step immediately
-        if ($message->getSceneId() === null) {
+        if ($message->getCurrentSceneId() === null) {
             $video = $this->getVideo();
 
             $successMsg = sprintf(
@@ -65,7 +65,7 @@ class ExtractLastSceneThumbnailStepMessageHandler extends AbstractExtractSceneTh
         $successMsg = sprintf(
             'Video with id "%s" was completely decorated with scene thumbnail: %d scenes decorated!',
             $video->getId(),
-            $message->getSceneId()
+            $message->getCurrentSceneId()
         );
         $this->finishCurrentStep($successMsg);
     }
