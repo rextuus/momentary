@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Service\Video\Processing\Handler\Splitting\Video;
 
 use App\Repository\VideoRepository;
+use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Handler\Splitting\AbstractSplitInFramesStepMessageHandler;
-use App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeFirstFrameStepMessage;
+use App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeFirstFrameStepMessage;
 use App\Service\Video\Processing\Message\Splitting\Video\SplitVideoInFramesStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
-use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;

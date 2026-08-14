@@ -35,9 +35,9 @@ framework:
             App\Message\GenerateChaptersMessage: async
             App\Message\AnalyzeSceneMessage: async
             App\Message\TestMessage: async
-            App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeFirstFrameStepMessage: async
-            App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeFrameStepMessage: async
-            App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeLastFrameStepMessage: async
+            App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeFrameStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeLastFrameStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeFirstFrameStepMessage: async_video_processing
             App\Service\Video\Processing\Message\ConvertStepMessage: async
             App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractFirstSceneThumbnailStepMessage: async
             App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractLastSceneThumbnailStepMessage: async

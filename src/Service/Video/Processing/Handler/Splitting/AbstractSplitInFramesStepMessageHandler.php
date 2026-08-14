@@ -99,12 +99,14 @@ abstract class AbstractSplitInFramesStepMessageHandler extends AbstractVideoMess
         $startTime = $scene->getStartSeconds();
         $endTime = $scene->getEndSeconds();
 
-        return $this->videoAnalyzer->extractFrames(
+        $result =  $this->videoAnalyzer->extractFrames(
             $video->getId(),
             $localVideoPath,
             $video->getAnalysisFps(),
             $startTime,
             $endTime - $startTime
         );
+
+        return $result;
     }
 }

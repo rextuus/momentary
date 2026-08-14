@@ -46,8 +46,7 @@ class SplitFirstSceneInFramesStepMessageHandler extends AbstractSplitInFramesSte
         $this->setCurrentMessage($message);
 
         $video = $this->getVideo();
-        $processStepStatus = $message->getVideoStatusForCurrentProcessStepEntity();
-        $this->processingService->startStep($video, $processStepStatus);
+        $this->startCurrentStep();
 
         // there is no scene => no refinment needed
         if ($message->getCurrentSceneId() === null) {
@@ -74,23 +73,26 @@ class SplitFirstSceneInFramesStepMessageHandler extends AbstractSplitInFramesSte
         );
 
         // add the first frames to global array
-        $this->prepareFirstFramesForAnalyzing($frameSplitResult, $scene->getStartSeconds(), $successMsg);
+        $this->prepareFirstFramesForAnalyzing($frameSplitResult, $scene->getStartSeconds());
 
         // check if there are more scenes needing refining
-        $remainingScenes = $this->remainingSceneIds;
-        $this->currentSceneId = array_shift($remainingScenes);
+        $remainingScenes = $message->getRemainingSceneIds();
+        $this->currentSceneId = array_shift($remainingScenes)->getId();
         $this->remainingSceneIds = $remainingScenes;
 
         $successMsg = sprintf(
-            'First scene (%d) for video with id %d split into frames. Go on with next one',
+            'First Scene split. Added %d frames for analysis for scene %d of video "%s" to global frame array. There are still %d scenes we need to split. Collected already: %d frames',
+            $frameSplitResult->getFrameCount(),
             $scene->getId(),
-            $video->getId(),
+            $video->getTitle(),
+            count($this->remainingSceneIds) + 1,
+            count($this->framePathCollection)
         );
         if ($this->currentSceneId === null) {
             $successMsg = sprintf(
-                'Last scene (%d) for video with id %d split into frames',
+                'Last scene (%d) for video "%s" split into frames',
                 $scene->getId(),
-                $video->getId(),
+                $video->getTitle(),
             );
         }
 

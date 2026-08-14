@@ -13,6 +13,8 @@ use App\Service\Video\Processing\Message\Splitting\Scene\SplitFirstSceneInFrames
 #[StepOrder(stepNumber: 10)]
 class InitRefinementForEmptyScenesStepMessage extends AbstractVideoProcessStepMessage
 {
+    protected const string MESSAGE_LOGGING_IDENT = 'INIT REFINEMENT FOR EMPTY SCENES';
+
     public function __construct(int $videoId)
     {
         $this->videoId = $videoId;

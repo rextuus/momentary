@@ -44,11 +44,8 @@ class SplitSceneInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
     public function __invoke(SplitSceneInFramesStepMessage $message): void
     {
         $this->setCurrentMessage($message);
-
         $video = $this->getVideo();
-        $processStepStatus = $message->getVideoStatusForCurrentProcessStepEntity();
-        $this->processingService->startStep($video, $processStepStatus);
-
+        $this->startCurrentStep();
         // there is no scene => no refinment needed
         if ($message->getCurrentSceneId() === null) {
             $successMsg = sprintf(
@@ -66,28 +63,24 @@ class SplitSceneInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
         $scene = $this->sceneRepository->find($message->getCurrentSceneId());
 
         $frameSplitResult = $this->splitSceneIntoFrames($scene, $video, $localVideoPath);
-        $successMsg = sprintf(
-            'Split scene with id "%s" into %d frames in path "%s"',
-            $scene->getId(),
-            $frameSplitResult->getFrameCount(),
-            $frameSplitResult->getFrameDirPath()
-        );
 
+        // store collection form message in handler
+        $this->framePathCollection = $message->getFramePathCollection();
         // append the frames to list
-        $this->addFramesToAnalyzingStep($frameSplitResult, $scene->getStartSeconds(), $successMsg);
+        $this->addFramesToAnalyzingStep($frameSplitResult, $scene->getStartSeconds());
 
         // check if there are more scenes needing refining
-        $remainingScenes = $this->remainingSceneIds;
-        $this->currentSceneId = array_shift($remainingScenes);
+        $remainingScenes = $message->getRemainingSceneIds();
+        $this->currentSceneId = array_shift($remainingScenes)->getId();
         $this->remainingSceneIds = $remainingScenes;
 
-        if ($this->remainingSceneIds === []){
+        if ($this->remainingSceneIds === []) {
             $successMsg = sprintf(
-                'Added %d frames for analysis for scene %d of video %d to global frame array. There are no more scenes to split. %',
+                'Added %d frames for analysis for scene %d of video "%s" to global frame array.There are no more scenes to split. Collected already: %d frames',
                 $frameSplitResult->getFrameCount(),
                 $scene->getId(),
-                $video->getId(),
-                count($this->remainingSceneIds)
+                $video->getTitle(),
+                count($this->framePathCollection)
             );
 
             $this->finishCurrentStep($successMsg);
@@ -96,13 +89,13 @@ class SplitSceneInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
         }
 
         $logMessage = sprintf(
-            'Added %d frames for analysis for scene %d of video %d to global frame array. There are still %d scenes we need to split. %',
+            'Added %d frames for analysis for scene %d of video "%s" to global frame array. There are still %d scenes we need to split. Collected already: %d frames',
             $frameSplitResult->getFrameCount(),
             $scene->getId(),
-            $video->getId(),
-            count($this->remainingSceneIds)
+            $video->getTitle(),
+            count($this->remainingSceneIds) + 1,
+            count($this->framePathCollection)
         );
-
         $this->dispatchNextMessageOfCurrentStep($logMessage);
     }
 

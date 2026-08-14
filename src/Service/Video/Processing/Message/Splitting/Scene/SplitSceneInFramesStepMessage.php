@@ -11,6 +11,8 @@ use App\Service\Video\Processing\Message\Splitting\AbstractSplitInFramesStepMess
 #[StepOrder(stepNumber: 12)]
 class SplitSceneInFramesStepMessage extends AbstractSplitInFramesStepMessage
 {
+    protected const string MESSAGE_LOGGING_IDENT = 'SPLIT_SCENE_IN_FRAMES';
+
     public function __construct(int $videoId)
     {
         $this->videoId = $videoId;
@@ -24,5 +26,10 @@ class SplitSceneInFramesStepMessage extends AbstractSplitInFramesStepMessage
     public function getVideoStatusForCurrentProcessStepEntity(): VideoStatus
     {
         return VideoStatus::REFINING_EXTRACTION;
+    }
+
+    public function isIntermediateStep(): bool
+    {
+        return true;
     }
 }

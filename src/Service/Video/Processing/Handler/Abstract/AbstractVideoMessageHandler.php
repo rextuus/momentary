@@ -7,6 +7,7 @@ namespace App\Service\Video\Processing\Handler\Abstract;
 use App\Entity\Video;
 use App\Repository\VideoRepository;
 use App\Service\Video\Processing\Exception\StepMessageDecorationException;
+use App\Service\Video\Processing\Message\Splitting\Scene\SplitFirstSceneInFramesStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageHandlerInterface;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
@@ -121,6 +122,9 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
     protected function finishCurrentStep(string $successMessage): void
     {
         echo '[i] ' . $successMessage . PHP_EOL;
+
+        if ($successMessage instanceof SplitFirstSceneInFramesStepMessage){
+        }
 
         $this->processingService->finishStep(
             $this->getVideo(),

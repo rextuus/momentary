@@ -36,24 +36,28 @@ class InitRefinementForEmptyScenesStepMessageHandler extends AbstractVideoMessag
     public function __invoke(InitRefinementForEmptyScenesStepMessage $message): void
     {
         $this->setCurrentMessage($message);
+        $this->startCurrentStep();
 
         $video = $this->getVideo();
-        $processStepStatus = $message->getVideoStatusForCurrentProcessStepEntity();
-        $this->processingService->startStep($video, $processStepStatus);
 
         $result = $this->videoAnalyzer->refineSceneAnalysis($video);
 
         $this->sceneIds = $result->getSceneIds();
-        $this->firstSceneId = array_shift($this->sceneIds);
+        $firstScene = array_shift($this->sceneIds);
+        if ($firstScene !== null) {
+            $this->firstSceneId = $firstScene->getId();
+        }else {
+            $this->firstSceneId = null;
+        }
 
         $successMsg = sprintf(
-            'Refinement für video mit id %s initiiert. Es gibt keine Szenen die erneut analysiert werden müssen',
-            $video->getId()
+            'Refinement für video "%s" initiiert. Es gibt keine Szenen die erneut analysiert werden müssen',
+            $video->getTitle()
         );
         if ($result->getSceneCount() > 0){
             $successMsg = sprintf(
-                'Refinement für video mit id %s initiiert. Es müssen %d Szenen erneut analysiert werden.',
-                $video->getId(),
+                'Refinement für video "%s" initiiert. Es müssen %d Szenen erneut analysiert werden.',
+                $video->getTitle(),
                 $result->getSceneCount()
             );
         }

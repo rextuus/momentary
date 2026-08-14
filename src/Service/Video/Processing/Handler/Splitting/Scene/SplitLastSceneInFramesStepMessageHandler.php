@@ -6,13 +6,13 @@ namespace App\Service\Video\Processing\Handler\Splitting\Scene;
 
 use App\Repository\VideoRepository;
 use App\Repository\VideoSceneRepository;
+use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Handler\Splitting\AbstractSplitInFramesStepMessageHandler;
-use App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeFirstFrameStepMessage;
+use App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeFirstFrameStepMessage;
 use App\Service\Video\Processing\Message\Splitting\Scene\SplitLastSceneInFramesStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
-use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
@@ -46,8 +46,7 @@ class SplitLastSceneInFramesStepMessageHandler extends AbstractSplitInFramesStep
         $this->setCurrentMessage($message);
 
         $video = $this->getVideo();
-        $processStepStatus = $message->getVideoStatusForCurrentProcessStepEntity();
-        $this->processingService->startStep($video, $processStepStatus);
+        $this->startCurrentStep();
 
         // Special case < 2 scenes => here comes null as currentScene
         if ($message->getCurrentSceneId() === null) {
@@ -65,23 +64,19 @@ class SplitLastSceneInFramesStepMessageHandler extends AbstractSplitInFramesStep
 
         // split the current scene
         $scene = $this->sceneRepository->find($message->getCurrentSceneId());
-
         $frameSplitResult = $this->splitSceneIntoFrames($scene, $video, $localVideoPath);
-        $successMsg = sprintf(
-            'Split last scene with id "%s" into %d frames in path "%s"',
-            $scene->getId(),
-            $frameSplitResult->getFrameCount(),
-            $frameSplitResult->getFrameDirPath()
-        );
 
+        // store collection form message in handler
+        $this->framePathCollection = $message->getFramePathCollection();
         // append the frames to list
-        $this->addFramesToAnalyzingStep($frameSplitResult, $scene->getStartSeconds(), $successMsg);
+        $this->addFramesToAnalyzingStep($frameSplitResult, $scene->getStartSeconds());
 
         $successMsg = sprintf(
-            'Added %d frames for analysis for scene %d of video %d to global frame array. There are no more scenes to split. Go to refinement analyzing',
+            'Added %d frames for analysis for scene %d of video "%d" to global frame array. There are no more scenes to split. Go to refinement analyzing.  Collected already: %d frames',
             $frameSplitResult->getFrameCount(),
             $scene->getId(),
-            $video->getId()
+            $video->getTitle(),
+            count($this->framePathCollection)
         );
 
         $this->finishCurrentStep($successMsg);

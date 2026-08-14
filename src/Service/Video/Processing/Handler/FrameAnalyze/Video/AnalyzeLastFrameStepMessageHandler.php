@@ -2,14 +2,15 @@
 
 declare(strict_types=1);
 
-namespace App\Service\Video\Processing\Handler\FrameAnalyze;
+namespace App\Service\Video\Processing\Handler\FrameAnalyze\Video;
 
 use App\Repository\VideoRepository;
+use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\Video\Processing\Attribute\StepOrder;
-use App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeLastFrameStepMessage;
+use App\Service\Video\Processing\Handler\FrameAnalyze\AbstractAnalyzeFrameStepMessageHandler;
+use App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeLastFrameStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
-use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;

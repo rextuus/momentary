@@ -8,9 +8,9 @@ framework:
         routing:
             App\Service\Video\Processing\Message\SceneDetectionStepMessage: async_video_processing
             App\Service\Video\Processing\Message\ConvertStepMessage: async_video_processing
-            App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeFrameStepMessage: async_video_processing
-            App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeLastFrameStepMessage: async_video_processing
-            App\Service\Video\Processing\Message\FrameAnalyze\AnalyzeFirstFrameStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeFrameStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeLastFrameStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeFirstFrameStepMessage: async_video_processing
             App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractFirstSceneThumbnailStepMessage: async_video_processing
             App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractLastSceneThumbnailStepMessage: async_video_processing
             App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractSceneThumbnailStepMessage: async_video_processing

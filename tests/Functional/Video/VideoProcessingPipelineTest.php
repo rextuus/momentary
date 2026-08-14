@@ -165,7 +165,7 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
             });
 
         $this->frameExtractor
-            ->expects($this->exactly(4))
+            ->expects($this->exactly(5))
             ->method('extractFrames')
             ->willReturnOnConsecutiveCalls(
                 new FrameSplittingResult([
@@ -185,6 +185,22 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
                 new FrameSplittingResult([
                     ['path' => '/tmp/frames/refinement/frame_0009.jpg', 'timestamp' => 8.0],
                     ['path' => '/tmp/frames/refinement/frame_0010.jpg', 'timestamp' => 9.0],
+                ], '/tmp/frames/refinement'),
+                new FrameSplittingResult([
+                    ['path' => '/tmp/frames/refinement/frame_0011.jpg', 'timestamp' => 11.0],
+                    ['path' => '/tmp/frames/refinement/frame_0012.jpg', 'timestamp' => 13.0],
+                ], '/tmp/frames/refinement'),
+                new FrameSplittingResult([
+                    ['path' => '/tmp/frames/refinement/frame_0013.jpg', 'timestamp' => 15.0],
+                    ['path' => '/tmp/frames/refinement/frame_0014.jpg', 'timestamp' => 17.0],
+                ], '/tmp/frames/refinement'),
+                new FrameSplittingResult([
+                    ['path' => '/tmp/frames/refinement/frame_0013.jpg', 'timestamp' => 15.0],
+                    ['path' => '/tmp/frames/refinement/frame_0014.jpg', 'timestamp' => 17.0],
+                ], '/tmp/frames/refinement'),
+                new FrameSplittingResult([
+                    ['path' => '/tmp/frames/refinement/frame_0013.jpg', 'timestamp' => 15.0],
+                    ['path' => '/tmp/frames/refinement/frame_0014.jpg', 'timestamp' => 17.0],
                 ], '/tmp/frames/refinement')
             );
 

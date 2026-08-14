@@ -6,6 +6,8 @@ namespace App\Service\Video\Analyze;
 
 use App\Entity\Video;
 use App\Service\Video\Analyze\Result\FrameSplittingResult;
+use App\Service\Video\Analyze\Result\RefinementAnalyzeResult;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 readonly class BetterVideoAnalyzer
 {
@@ -16,7 +18,8 @@ readonly class BetterVideoAnalyzer
         private SceneDetector $sceneDetector,
         private SceneThumbnailExtractor $sceneThumbnailExtractor,
         private FrameExtractor $frameExtractor,
-
+        #[Autowire('%env(default:app.min_scene_length_for_refinement:MIN_SCENE_LENGTH_FOR_REFINEMENT)%')]
+        private float $minSceneLengthForRefinement = 2.0,
     ) {
     }
 
@@ -60,7 +63,6 @@ readonly class BetterVideoAnalyzer
         ?float $fps = null,
         array|float|null $startTime = null,
         array|float|null $duration = null,
-        bool $markLastAsFinal = true,
         bool $isRefinement = false
     ): FrameSplittingResult {
         return $this->frameExtractor->extractFrames(
@@ -69,8 +71,25 @@ readonly class BetterVideoAnalyzer
             $fps,
             $startTime,
             $duration,
-            $markLastAsFinal,
             $isRefinement
         );
+    }
+
+
+    public function refineSceneAnalysis(Video $video): RefinementAnalyzeResult
+    {
+        $minSceneLength = $video->getMinSceneLengthForRefinement() ?? $this->minSceneLengthForRefinement;
+
+        $scenesToRefine = [];
+        foreach ($video->getScenes() as $scene) {
+            $duration = $scene->getEndSeconds() - $scene->getStartSeconds();
+
+            // only refine scenes without faces and long enough
+            if ($scene->getVideoFaces()->isEmpty() && $duration >= $minSceneLength) {
+                $scenesToRefine[] = $scene;
+            }
+        }
+
+        return RefinementAnalyzeResult::create($scenesToRefine);
     }
 }

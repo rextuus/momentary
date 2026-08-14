@@ -42,7 +42,6 @@ class FrameExtractor
         ?float $fps = null,
         array|float|null $startTime = null,
         array|float|null $duration = null,
-        bool $markLastAsFinal = true,
         bool $isRefinement = false
     ): FrameSplittingResult {
         $video = $this->videoRepository->find($videoId);
