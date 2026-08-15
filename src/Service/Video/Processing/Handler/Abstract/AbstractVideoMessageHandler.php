@@ -7,7 +7,6 @@ namespace App\Service\Video\Processing\Handler\Abstract;
 use App\Entity\Video;
 use App\Repository\VideoRepository;
 use App\Service\Video\Processing\Exception\StepMessageDecorationException;
-use App\Service\Video\Processing\Message\Splitting\Scene\SplitFirstSceneInFramesStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageHandlerInterface;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
@@ -82,7 +81,11 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
     protected function getNextStepMessageInstance(VideoProcessStepMessageInterface $message): VideoProcessStepMessageInterface
     {
         $nextStepMessageClass = $message->getNextStepMessageClass();
-        $nextStepMessage = new $nextStepMessageClass($message->getVideoId());
+        $nextStepMessage = new $nextStepMessageClass(
+            $message->getVideoId(),
+            $message->getMessageNrInVideoStack() + 1,
+            get_class($message)
+        );
 
         $this->decorateNextStepMessage($nextStepMessage);
 
@@ -92,7 +95,11 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
     protected function getCurrentStepMessageInstance(VideoProcessStepMessageInterface $message): VideoProcessStepMessageInterface
     {
         $nextCurrentStepMessageClass = $message->getCurrentStepMessageClass();
-        $nextCurrentStepMessage = new $nextCurrentStepMessageClass($message->getVideoId());
+        $nextCurrentStepMessage = new $nextCurrentStepMessageClass(
+            $message->getVideoId(),
+            $message->getMessageNrInVideoStack() + 1,
+            get_class($message)
+    );
 
         $this->decorateNextCurrentStepMessage($nextCurrentStepMessage);
 
@@ -123,9 +130,7 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
     {
         echo '[i] ' . $successMessage . PHP_EOL;
 
-        if ($successMessage instanceof SplitFirstSceneInFramesStepMessage){
-        }
-
+//        dump($this->getCurrentMessage()->getMessageLoggingIdent());
         $this->processingService->finishStep(
             $this->getVideo(),
             $this->getCurrentMessage()->getVideoStatusForCurrentProcessStepEntity(),

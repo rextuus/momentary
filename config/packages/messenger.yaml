@@ -35,14 +35,17 @@ framework:
             App\Message\GenerateChaptersMessage: async
             App\Message\AnalyzeSceneMessage: async
             App\Message\TestMessage: async
-            App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeFrameStepMessage: async_video_processing
-            App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeLastFrameStepMessage: async_video_processing
-            App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeFirstFrameStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeVideoFrameStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeLastVideoFrameStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeFirstVideoFrameStepMessage: async_video_processing
             App\Service\Video\Processing\Message\ConvertStepMessage: async
             App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractFirstSceneThumbnailStepMessage: async
             App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractLastSceneThumbnailStepMessage: async
             App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractSceneThumbnailStepMessage: async
             App\Service\Video\Processing\Message\SceneDetectionStepMessage: async
+            App\Service\Video\Processing\Message\FrameAnalyze\Scene\AnalyzeFirstSceneFrameStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\FrameAnalyze\Scene\AnalyzeLastSceneFrameStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\FrameAnalyze\Scene\AnalyzeSceneFrameStepMessage: async_video_processing
 
             # Route your messages to the transports
             # 'App\Message\YourMessage': async

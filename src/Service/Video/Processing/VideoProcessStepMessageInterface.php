@@ -31,4 +31,8 @@ interface VideoProcessStepMessageInterface
     public function getMessageLoggingIdent(): string;
 
     public function isIntermediateStep(): bool;
+
+    public function getMessageNrInVideoStack(): int;
+
+    public function getComingFromStepMessageClass(): string;
 }

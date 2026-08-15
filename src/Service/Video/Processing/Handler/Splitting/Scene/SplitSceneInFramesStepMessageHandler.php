@@ -96,6 +96,10 @@ class SplitSceneInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
             count($this->remainingSceneIds) + 1,
             count($this->framePathCollection)
         );
+//
+//        dump('Weiter mit SCENS IN Frmes');
+//        dump($message->getMessageNrInVideoStack());
+//        dump($message->getComingFromStepMessageClass());
         $this->dispatchNextMessageOfCurrentStep($logMessage);
     }
 

@@ -13,6 +13,12 @@ abstract class AbstractVideoProcessStepMessage implements VideoProcessStepMessag
     protected const string MESSAGE_LOGGING_IDENT = 'NOT DECLARED';
 
     protected int $videoId;
+    protected int $messageNrInVideoStack;
+
+    /**
+     * @var class-string
+     */
+    protected string $comingFromStepMessageClass;
 
     public function getMessageLoggingIdent(): string
     {
@@ -53,6 +59,28 @@ abstract class AbstractVideoProcessStepMessage implements VideoProcessStepMessag
     {
         $this->currentSceneId = $currentSceneId;
 
+        return $this;
+    }
+
+    public function getMessageNrInVideoStack(): int
+    {
+        return $this->messageNrInVideoStack;
+    }
+
+    public function setMessageNrInVideoStack(int $messageNrInVideoStack): self
+    {
+        $this->messageNrInVideoStack = $messageNrInVideoStack;
+        return $this;
+    }
+
+    public function getComingFromStepMessageClass(): string
+    {
+        return $this->comingFromStepMessageClass;
+    }
+
+    public function setComingFromStepMessageClass(string $comingFromStepMessageClass): self
+    {
+        $this->comingFromStepMessageClass = $comingFromStepMessageClass;
         return $this;
     }
 }

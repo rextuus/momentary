@@ -12,11 +12,13 @@ use App\Service\Video\Processing\Message\Splitting\AbstractSplitInFramesStepMess
 #[StepOrder(stepNumber: 11)]
 class SplitFirstSceneInFramesStepMessage extends AbstractSplitInFramesStepMessage
 {
-    protected const string MESSAGE_LOGGING_IDENT = 'SPLIT_FIRST_SCENE_IN_FRAMES';
+    protected const string MESSAGE_LOGGING_IDENT = 'SPLIT FIRST SCENE IN FRAMES';
 
-    public function __construct(int $videoId)
+    public function __construct(int $videoId, int $messageNrInVideoStack, string $comingFromStepMessageClass)
     {
         $this->videoId = $videoId;
+        $this->messageNrInVideoStack = $messageNrInVideoStack;
+        $this->comingFromStepMessageClass = $comingFromStepMessageClass;
     }
 
     public function getNextStepMessageClass(): string

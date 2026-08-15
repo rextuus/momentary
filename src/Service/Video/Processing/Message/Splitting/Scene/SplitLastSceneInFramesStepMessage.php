@@ -7,19 +7,24 @@ namespace App\Service\Video\Processing\Message\Splitting\Scene;
 use App\Enum\VideoStatus;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Enum\VideoWorkflowProcessTransition;
+use App\Service\Video\Processing\Message\FrameAnalyze\Scene\AnalyzeFirstSceneFrameStepMessage;
 use App\Service\Video\Processing\Message\Splitting\AbstractSplitInFramesStepMessage;
 
 #[StepOrder(stepNumber: 13)]
 class SplitLastSceneInFramesStepMessage extends AbstractSplitInFramesStepMessage
 {
-    public function __construct(int $videoId)
+    protected const string MESSAGE_LOGGING_IDENT = 'SPLIT LAST SCENE IN FRAMES';
+
+    public function __construct(int $videoId, int $messageNrInVideoStack, string $comingFromStepMessageClass)
     {
         $this->videoId = $videoId;
+        $this->messageNrInVideoStack = $messageNrInVideoStack;
+        $this->comingFromStepMessageClass = $comingFromStepMessageClass;
     }
 
     public function getNextStepMessageClass(): string
     {
-        return SplitLastSceneInFramesStepMessage::class;
+        return AnalyzeFirstSceneFrameStepMessage::class;
     }
 
     public function getVideoStatusForCurrentProcessStepEntity(): VideoStatus

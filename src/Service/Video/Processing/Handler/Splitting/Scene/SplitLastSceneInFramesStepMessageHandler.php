@@ -9,7 +9,7 @@ use App\Repository\VideoSceneRepository;
 use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Handler\Splitting\AbstractSplitInFramesStepMessageHandler;
-use App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeFirstFrameStepMessage;
+use App\Service\Video\Processing\Message\FrameAnalyze\Scene\AnalyzeFirstSceneFrameStepMessage;
 use App\Service\Video\Processing\Message\Splitting\Scene\SplitLastSceneInFramesStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
@@ -84,8 +84,11 @@ class SplitLastSceneInFramesStepMessageHandler extends AbstractSplitInFramesStep
 
     public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
     {
-        /** @var AnalyzeFirstFrameStepMessage $nextStepMessage */
-        $nextStepMessage->setCurrentFrame($this->firstFramePath);
-        $nextStepMessage->setRemainingFrames($this->framePathCollection);
+        $frames = $this->framePathCollection;
+        $firstFrame = array_shift($frames);
+
+        /** @var AnalyzeFirstSceneFrameStepMessage $nextStepMessage */
+        $nextStepMessage->setCurrentFrame($firstFrame);
+        $nextStepMessage->setRemainingFrames($frames);
     }
 }

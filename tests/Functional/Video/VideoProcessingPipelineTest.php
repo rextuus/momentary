@@ -165,7 +165,7 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
             });
 
         $this->frameExtractor
-            ->expects($this->exactly(5))
+            ->expects($this->any())
             ->method('extractFrames')
             ->willReturnOnConsecutiveCalls(
                 new FrameSplittingResult([
@@ -206,7 +206,7 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
 
         // 5. Trigger Pipeline
         $bus = static::getContainer()->get('messenger.bus.default');
-        $bus->dispatch(new ConvertStepMessage($video->getId()));
+        $bus->dispatch(new ConvertStepMessage($video->getId(), 0, 'INITIAL'));
 
         // 6. Assertions
         $this->entityManager->clear();

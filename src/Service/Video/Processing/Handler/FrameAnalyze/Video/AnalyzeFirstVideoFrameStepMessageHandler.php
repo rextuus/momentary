@@ -8,8 +8,8 @@ use App\Repository\VideoRepository;
 use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Handler\FrameAnalyze\AbstractAnalyzeFrameStepMessageHandler;
-use App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeFirstFrameStepMessage;
-use App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeFrameStepMessage;
+use App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeFirstVideoFrameStepMessage;
+use App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeVideoFrameStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
 use App\Service\VideoProcessingService;
@@ -18,7 +18,7 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
 #[StepOrder(stepNumber: 1)]
-class AnalyzeFirstFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessageHandler
+class AnalyzeFirstVideoFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessageHandler
 {
     public function __construct(
         VideoRepository $videoRepository,
@@ -30,7 +30,7 @@ class AnalyzeFirstFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessag
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService, $videoAnalyzer);
     }
 
-    public function __invoke(AnalyzeFirstFrameStepMessage $message): void
+    public function __invoke(AnalyzeFirstVideoFrameStepMessage $message): void
     {
         $this->setCurrentMessage($message);
         $video = $this->getVideo();
@@ -79,7 +79,7 @@ class AnalyzeFirstFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessag
 
     public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
     {
-        /** @var AnalyzeFrameStepMessage $nextStepMessage */
+        /** @var AnalyzeVideoFrameStepMessage $nextStepMessage */
         $nextStepMessage->setCurrentFrame($this->frame);
         $nextStepMessage->setRemainingFrames($this->remainingFrames);
     }

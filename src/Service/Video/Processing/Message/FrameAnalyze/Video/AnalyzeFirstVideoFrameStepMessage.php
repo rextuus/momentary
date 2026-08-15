@@ -2,14 +2,15 @@
 
 declare(strict_types=1);
 
-namespace App\Service\Video\Processing\Message\ThumbnailExtraction;
+namespace App\Service\Video\Processing\Message\FrameAnalyze\Video;
 
 use App\Service\Video\Processing\Attribute\StepOrder;
+use App\Service\Video\Processing\Message\FrameAnalyze\AbstractAnalyzeFrameStepMessage;
 
-#[StepOrder(stepNumber: 3)]
-class ExtractFirstSceneThumbnailStepMessage extends AbstractExtractSceneThumbnailStepMessage
+#[StepOrder(stepNumber: 7)]
+class AnalyzeFirstVideoFrameStepMessage extends AbstractAnalyzeFrameStepMessage
 {
-    protected const string MESSAGE_LOGGING_IDENT = 'EXTRACT FIRST SCENE THUMBNAIL';
+    protected const string MESSAGE_LOGGING_IDENT = 'ANALYZE FIRST VIDEO FRAME';
 
     public function __construct(int $videoId, int $messageNrInVideoStack, string $comingFromStepMessageClass)
     {
@@ -20,6 +21,6 @@ class ExtractFirstSceneThumbnailStepMessage extends AbstractExtractSceneThumbnai
 
     public function getNextStepMessageClass(): string
     {
-        return ExtractSceneThumbnailStepMessage::class;
+        return AnalyzeVideoFrameStepMessage::class;
     }
 }
