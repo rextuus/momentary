@@ -20,7 +20,7 @@ class ExtractLastSceneThumbnailStepMessage extends AbstractExtractSceneThumbnail
         $this->comingFromStepMessageClass = $comingFromStepMessageClass;
     }
 
-    public function getTransitionToStatusNextStepIsExpecting(): VideoWorkflowProcessTransition
+    public function getTransitionToStatusNextStepIsBelonging(): VideoWorkflowProcessTransition
     {
         return VideoWorkflowProcessTransition::START_SPLITTING;
     }

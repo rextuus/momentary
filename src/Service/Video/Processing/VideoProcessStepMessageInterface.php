@@ -13,7 +13,7 @@ interface VideoProcessStepMessageInterface
     /**
      * @throws StepMessageTransitionException
      */
-    public function getTransitionToStatusNextStepIsExpecting(): VideoWorkflowProcessTransition;
+    public function getTransitionToStatusNextStepIsBelonging(): VideoWorkflowProcessTransition;
     public function nextStepNeedsTransition(): bool;
 
     public function getVideoStatusForCurrentProcessStepEntity(): VideoStatus;

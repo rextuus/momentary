@@ -279,7 +279,7 @@ class VideoAnalyzer
                 VideoStatus::CONVERTING => 'start_conversion',
                 VideoStatus::SCENE_DETECTION => 'start_scene_detection',
                 VideoStatus::EXTRACTING_THUMBNAILS => 'start_extracting_thumbnails',
-                VideoStatus::SPLITTING => 'start_splitting',
+                VideoStatus::VIDEO_SPLITTING => 'start_splitting',
                 VideoStatus::ANALYZING_FACES => 'start_analyzing',
                 VideoStatus::REFINING_EXTRACTION => 'start_refining_extraction',
                 VideoStatus::REFINING_ANALYSIS => 'start_refining_analysis',
@@ -317,7 +317,7 @@ class VideoAnalyzer
         return in_array($status, [
             VideoStatus::CONVERTING,
             VideoStatus::SCENE_DETECTION,
-            VideoStatus::SPLITTING,
+            VideoStatus::VIDEO_SPLITTING,
             VideoStatus::ANALYZING_FACES,
             VideoStatus::REFINING_EXTRACTION,
             VideoStatus::REFINING_ANALYSIS,

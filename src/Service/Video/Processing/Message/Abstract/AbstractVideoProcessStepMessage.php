@@ -40,7 +40,7 @@ abstract class AbstractVideoProcessStepMessage implements VideoProcessStepMessag
         return false;
     }
 
-    public function getTransitionToStatusNextStepIsExpecting(): VideoWorkflowProcessTransition
+    public function getTransitionToStatusNextStepIsBelonging(): VideoWorkflowProcessTransition
     {
         throw new StepMessageTransitionException('This message should not run a transition.');
     }

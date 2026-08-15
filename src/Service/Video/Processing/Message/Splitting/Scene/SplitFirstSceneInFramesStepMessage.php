@@ -30,14 +30,4 @@ class SplitFirstSceneInFramesStepMessage extends AbstractSplitInFramesStepMessag
     {
         return VideoStatus::REFINING_EXTRACTION;
     }
-
-    public function getTransitionToStatusNextStepIsExpecting(): VideoWorkflowProcessTransition
-    {
-        return VideoWorkflowProcessTransition::START_REFINING_SPLITTING;
-    }
-
-    public function nextStepNeedsTransition(): bool
-    {
-        return true;
-    }
 }

@@ -16,6 +16,7 @@ use App\Service\Video\Analyze\Result\FrameSplittingResult;
 use App\Service\Video\Analyze\SceneDetector;
 use App\Service\Video\Analyze\SceneThumbnailExtractor;
 use App\Service\Video\Processing\Message\ConvertStepMessage;
+use App\Service\VideoProcessingService;
 use Doctrine\ORM\EntityManagerInterface;
 use Meilisearch\Client;
 use Meilisearch\Endpoints\Indexes;
@@ -206,11 +207,15 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
 
         // 5. Trigger Pipeline
         $bus = static::getContainer()->get('messenger.bus.default');
+        $videoProcessingService = static::getContainer()->get(VideoProcessingService::class);
+
         $bus->dispatch(new ConvertStepMessage($video->getId(), 0, 'INITIAL'));
 
         // 6. Assertions
+        $this->entityManager->flush();
         $this->entityManager->clear();
         $updatedVideo = $this->videoRepository->find($video->getId());
+
         $this->assertEquals(VideoStatus::COMPLETED, $updatedVideo->getStatus());
     }
 
@@ -234,6 +239,7 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         $bus->dispatch(new ConvertStepMessage($video->getId()));
 
         // 4. Assertions
+        $this->entityManager->flush();
         $this->entityManager->clear();
         $updatedVideo = $this->videoRepository->find($video->getId());
         $this->assertEquals(VideoStatus::ERROR, $updatedVideo->getStatus());

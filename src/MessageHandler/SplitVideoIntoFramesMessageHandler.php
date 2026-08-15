@@ -23,7 +23,7 @@ final class SplitVideoIntoFramesMessageHandler
     {
         $video = $this->videoAnalyzer->getVideoRepository()->find($message->getVideoId());
         if ($video) {
-            $this->videoAnalyzer->updateStatus($video->getId(), \App\Enum\VideoStatus::SPLITTING);
+            $this->videoAnalyzer->updateStatus($video->getId(), \App\Enum\VideoStatus::VIDEO_SPLITTING);
             $video->setErrorMessage(null);
         }
 

@@ -9,7 +9,7 @@ enum VideoStatus: string
     case PENDING = 'pending';
     case CONVERTING = 'converting';
     case SCENE_DETECTION = 'scene_detection';
-    case SPLITTING = 'splitting';
+    case VIDEO_SPLITTING = 'video_splitting';
     case ANALYZING_FACES = 'analyzing_faces';
     case REFINING_EXTRACTION = 'refining_extraction';
     case REFINING_SPLITTING = 'refining_splitting';

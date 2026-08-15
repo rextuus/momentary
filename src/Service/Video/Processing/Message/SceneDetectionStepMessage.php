@@ -22,9 +22,9 @@ class SceneDetectionStepMessage extends AbstractVideoProcessStepMessage
         $this->comingFromStepMessageClass = $comingFromStepMessageClass;
     }
 
-    public function getTransitionToStatusNextStepIsExpecting(): VideoWorkflowProcessTransition
+    public function getTransitionToStatusNextStepIsBelonging(): VideoWorkflowProcessTransition
     {
-        return VideoWorkflowProcessTransition::START_EXTRACTING_THUMBNAILS;
+        return VideoWorkflowProcessTransition::START_SCENE_DETECTION;
     }
 
     public function getNextStepMessageClass(): string
@@ -34,7 +34,7 @@ class SceneDetectionStepMessage extends AbstractVideoProcessStepMessage
 
     public function getVideoStatusForCurrentProcessStepEntity(): VideoStatus
     {
-        return VideoStatus::SPLITTING;
+        return VideoStatus::VIDEO_SPLITTING;
     }
 
     public function nextStepNeedsTransition(): bool

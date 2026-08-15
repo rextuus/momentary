@@ -46,7 +46,7 @@ class VideoRepository extends ServiceEntityRepository
         $durationField = match($status) {
             \App\Enum\VideoStatus::CONVERTING => 'conversionDuration',
             \App\Enum\VideoStatus::SCENE_DETECTION => 'sceneDetectionDuration',
-            \App\Enum\VideoStatus::SPLITTING => 'frameExtractionDuration',
+            \App\Enum\VideoStatus::VIDEO_SPLITTING => 'frameExtractionDuration',
             \App\Enum\VideoStatus::ANALYZING_FACES => 'faceAnalysisDuration',
             default => null,
         };

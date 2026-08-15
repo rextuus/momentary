@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Video\Processing\Message\ThumbnailExtraction;
 
 use App\Service\Video\Processing\Attribute\StepOrder;
+use App\Service\Video\Processing\Enum\VideoWorkflowProcessTransition;
 
 #[StepOrder(stepNumber: 3)]
 class ExtractFirstSceneThumbnailStepMessage extends AbstractExtractSceneThumbnailStepMessage
@@ -21,5 +22,15 @@ class ExtractFirstSceneThumbnailStepMessage extends AbstractExtractSceneThumbnai
     public function getNextStepMessageClass(): string
     {
         return ExtractSceneThumbnailStepMessage::class;
+    }
+
+    public function getTransitionToStatusNextStepIsBelonging(): VideoWorkflowProcessTransition
+    {
+        return VideoWorkflowProcessTransition::START_EXTRACTING_THUMBNAILS;
+    }
+
+    public function nextStepNeedsTransition(): bool
+    {
+        return true;
     }
 }

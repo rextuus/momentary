@@ -66,11 +66,15 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
         // make sure we switch the state before dispatching the next message if necessary
         $currentMessage = $this->getCurrentMessage();
         if ($currentMessage->nextStepNeedsTransition()) {
-            $transition = $currentMessage->getTransitionToStatusNextStepIsExpecting()->value;
-            $video = $this->video;
+            // Re-fetch or refresh the video entity so we work with the up-to-date state from DB
+            $video = $this->videoRepository->find($currentMessage->getVideoId());
+            $this->video = $video;
+
+            $transition = $currentMessage->getTransitionToStatusNextStepIsBelonging()->value;
 
             if ($this->workflowMachine->can($video, $transition)) {
                 $this->workflowMachine->apply($video, $transition);
+                dump('Transition applied: ' . $transition);
             }
         }
 
@@ -99,7 +103,7 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
             $message->getVideoId(),
             $message->getMessageNrInVideoStack() + 1,
             get_class($message)
-    );
+        );
 
         $this->decorateNextCurrentStepMessage($nextCurrentStepMessage);
 
@@ -130,7 +134,6 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
     {
         echo '[i] ' . $successMessage . PHP_EOL;
 
-//        dump($this->getCurrentMessage()->getMessageLoggingIdent());
         $this->processingService->finishStep(
             $this->getVideo(),
             $this->getCurrentMessage()->getVideoStatusForCurrentProcessStepEntity(),

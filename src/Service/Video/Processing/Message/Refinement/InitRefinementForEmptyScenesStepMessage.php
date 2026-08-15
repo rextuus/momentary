@@ -32,7 +32,7 @@ class InitRefinementForEmptyScenesStepMessage extends AbstractVideoProcessStepMe
         return VideoStatus::REFINING_EXTRACTION;
     }
 
-    public function getTransitionToStatusNextStepIsExpecting(): VideoWorkflowProcessTransition
+    public function getTransitionToStatusNextStepIsBelonging(): VideoWorkflowProcessTransition
     {
         return VideoWorkflowProcessTransition::START_REFINING_SPLITTING;
     }

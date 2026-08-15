@@ -34,10 +34,9 @@ readonly class WorkflowMachine
     {
         try {
             $this->videoProcessingWorkflow->apply($video, $transition, $context);
+            $this->entityManager->persist($video);
             $this->entityManager->flush();
-            $this->logger->info(sprintf('Transition "%s" applied to video %d', $transition, $video->getId()));
         } catch (Exception $e) {
-            $this->logger->error(sprintf('Failed to apply transition "%s" to video %d: %s', $transition, $video->getId(), $e->getMessage()));
             throw $e;
         }
     }

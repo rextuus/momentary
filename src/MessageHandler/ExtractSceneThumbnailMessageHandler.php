@@ -60,9 +60,9 @@ final readonly class ExtractSceneThumbnailMessageHandler
             $this->bus->dispatch(new ExtractSceneThumbnailMessage($nextId, $remaining));
         } else {
             fwrite(STDOUT, "[ExtractSceneThumbnail] Alle Thumbnails fertig für Video {$video->getId()} – dispatche SplitVideoIntoFramesMessage." . PHP_EOL);
-            $this->videoAnalyzer->updateStatus($video->getId(), \App\Enum\VideoStatus::SPLITTING);
+            $this->videoAnalyzer->updateStatus($video->getId(), \App\Enum\VideoStatus::VIDEO_SPLITTING);
             $this->processingService->finishStep($video, \App\Enum\VideoStatus::EXTRACTING_THUMBNAILS);
-            $this->processingService->startStep($video, \App\Enum\VideoStatus::SPLITTING);
+            $this->processingService->startStep($video, \App\Enum\VideoStatus::VIDEO_SPLITTING);
 
             $localVideoPath = $video->getLocalPath() ?? $video->getConvertedVideoPath();
             if ($localVideoPath) {

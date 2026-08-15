@@ -22,7 +22,7 @@ class SplitVideoInFramesStepMessage extends AbstractSplitInFramesStepMessage
         $this->comingFromStepMessageClass = $comingFromStepMessageClass;
     }
 
-    public function getTransitionToStatusNextStepIsExpecting(): VideoWorkflowProcessTransition
+    public function getTransitionToStatusNextStepIsBelonging(): VideoWorkflowProcessTransition
     {
         return VideoWorkflowProcessTransition::START_ANALYZING;
     }
@@ -34,7 +34,7 @@ class SplitVideoInFramesStepMessage extends AbstractSplitInFramesStepMessage
 
     public function getVideoStatusForCurrentProcessStepEntity(): VideoStatus
     {
-        return VideoStatus::SPLITTING;
+        return VideoStatus::VIDEO_SPLITTING;
     }
 
     public function nextStepNeedsTransition(): bool

@@ -87,7 +87,7 @@ class VideoProgressBar
             VideoStatus::CONVERTING->value => 10,
             VideoStatus::SCENE_DETECTION->value => 20,
             VideoStatus::EXTRACTING_THUMBNAILS->value => 25,
-            VideoStatus::SPLITTING->value => 30,
+            VideoStatus::VIDEO_SPLITTING->value => 30,
             VideoStatus::ANALYZING_FACES->value => 40,
             VideoStatus::REFINING_EXTRACTION->value => 70,
             VideoStatus::REFINING_ANALYSIS->value => 80,

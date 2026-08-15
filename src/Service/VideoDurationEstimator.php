@@ -26,7 +26,7 @@ class VideoDurationEstimator
         if (!in_array($status, [
             VideoStatus::CONVERTING, 
             VideoStatus::SCENE_DETECTION, 
-            VideoStatus::SPLITTING, 
+            VideoStatus::VIDEO_SPLITTING,
             VideoStatus::ANALYZING_FACES
         ])) {
             return 1.0; // Fallback

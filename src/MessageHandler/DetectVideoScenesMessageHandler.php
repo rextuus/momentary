@@ -70,7 +70,7 @@ final class DetectVideoScenesMessageHandler
 
         if (empty($scenes)) {
             fwrite(STDOUT, "Keine Szenen erkannt – dispatche SplitVideoIntoFramesMessage für Video {$message->getVideoId()}." . PHP_EOL);
-            $this->videoAnalyzer->updateStatus($message->getVideoId(), \App\Enum\VideoStatus::SPLITTING);
+            $this->videoAnalyzer->updateStatus($message->getVideoId(), \App\Enum\VideoStatus::VIDEO_SPLITTING);
             $this->bus->dispatch(new SplitVideoIntoFramesMessage($message->getVideoId(), $currentVideoPath));
         } else {
             fwrite(STDOUT, "Dispatche ExtractAllSceneThumbnailsMessage für Video {$message->getVideoId()}." . PHP_EOL);
