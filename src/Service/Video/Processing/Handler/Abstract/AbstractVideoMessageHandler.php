@@ -10,6 +10,7 @@ use App\Service\Video\Processing\Exception\StepMessageDecorationException;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageHandlerInterface;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
+use App\Service\Video\Processing\Enum\VideoWorkflowProcessTransition;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use LogicException;
@@ -114,8 +115,16 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
     {
         echo $errorMsg . PHP_EOL;
 
+        // Fetch a managed instance of the video
+        $video = $this->videoRepository->find($this->getCurrentMessage()->getVideoId());
+
+        if ($this->workflowMachine->can($video, VideoWorkflowProcessTransition::FAIL->value)) {
+            $this->workflowMachine->apply($video, VideoWorkflowProcessTransition::FAIL->value);
+            $this->videoRepository->getEntityManagerPublic()->flush();
+        }
+
         $this->processingService->failStep(
-            $this->getVideo(),
+            $video,
             $this->getCurrentMessage()->getVideoStatusForCurrentProcessStepEntity(),
             $errorMsg
         );
@@ -128,6 +137,15 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
             $this->getCurrentMessage()->getVideoStatusForCurrentProcessStepEntity(),
             $this->getCurrentMessage()
         );
+
+        $initialTransition = $this->getCurrentMessage()->getInitialTransition();
+        if ($initialTransition !== null) {
+            $video = $this->getVideo();
+            if ($this->workflowMachine->can($video, $initialTransition->value)) {
+                $this->workflowMachine->apply($video, $initialTransition->value);
+                dump('Initial transition applied: ' . $initialTransition->value);
+            }
+        }
     }
 
     protected function finishCurrentStep(string $successMessage): void

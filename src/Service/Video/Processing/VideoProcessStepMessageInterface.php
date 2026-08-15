@@ -16,6 +16,8 @@ interface VideoProcessStepMessageInterface
     public function getTransitionToStatusNextStepIsBelonging(): VideoWorkflowProcessTransition;
     public function nextStepNeedsTransition(): bool;
 
+    public function getInitialTransition(): ?VideoWorkflowProcessTransition;
+
     public function getVideoStatusForCurrentProcessStepEntity(): VideoStatus;
 
     /**

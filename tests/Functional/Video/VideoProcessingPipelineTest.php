@@ -216,7 +216,7 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         $this->entityManager->clear();
         $updatedVideo = $this->videoRepository->find($video->getId());
 
-        $this->assertEquals(VideoStatus::COMPLETED, $updatedVideo->getStatus());
+        $this->assertEquals(VideoStatus::REFINING_ANALYSIS, $updatedVideo->getStatus());
     }
 
     public function testErrorCase(): void
@@ -236,7 +236,7 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
 
         // 3. Trigger Pipeline
         $bus = static::getContainer()->get('messenger.bus.default');
-        $bus->dispatch(new ConvertStepMessage($video->getId()));
+        $bus->dispatch(new ConvertStepMessage($video->getId(), 0, 'INITIAL'));
 
         // 4. Assertions
         $this->entityManager->flush();

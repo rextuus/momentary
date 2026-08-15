@@ -7,6 +7,7 @@ namespace App\Service\Video\Processing\Handler;
 use App\Enum\VideoStatus;
 use App\Repository\VideoRepository;
 use App\Service\Video\Processing\Attribute\StepOrder;
+use App\Service\Video\Processing\Enum\VideoWorkflowProcessTransition;
 use App\Service\Video\Processing\Handler\Abstract\AbstractVideoMessageHandler;
 use App\Service\Video\Processing\Message\ConvertStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;

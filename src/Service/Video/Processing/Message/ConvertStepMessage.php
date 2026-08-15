@@ -21,9 +21,14 @@ class ConvertStepMessage extends AbstractVideoProcessStepMessage
         $this->comingFromStepMessageClass = $comingFromStepMessageClass;
     }
 
-    public function getTransitionToStatusNextStepIsBelonging(): VideoWorkflowProcessTransition
+    public function getInitialTransition(): ?VideoWorkflowProcessTransition
     {
         return VideoWorkflowProcessTransition::START_CONVERSION;
+    }
+
+    public function getTransitionToStatusNextStepIsBelonging(): VideoWorkflowProcessTransition
+    {
+        return VideoWorkflowProcessTransition::START_SCENE_DETECTION;
     }
 
     public function getNextStepMessageClass(): string

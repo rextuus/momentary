@@ -16,7 +16,7 @@ class VideoProcessingStep
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(inversedBy: 'processingSteps')]
+    #[ORM\ManyToOne(cascade: ['persist'], inversedBy: 'processingSteps')]
     #[ORM\JoinColumn(nullable: false)]
     private ?Video $video = null;
 

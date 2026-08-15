@@ -74,4 +74,8 @@ class VideoRepository extends ServiceEntityRepository
             ->getQuery()
             ->getOneOrNullResult();
     }
+    public function getEntityManagerPublic(): \Doctrine\ORM\EntityManagerInterface
+    {
+        return $this->getEntityManager();
+    }
 }
