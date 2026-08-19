@@ -7,25 +7,25 @@ namespace App\Service\Video\Analyze;
 use App\Entity\Video;
 use App\Service\JellyfinUploadService;
 use App\Service\Video\Analyze\Result\JellyfinExportResult;
-use App\Service\VideoAnalyzer;
+use App\Service\VideoFileService;
 use Doctrine\ORM\EntityManagerInterface;
 
 class JellyfinUploader
 {
     public function __construct(
         private readonly JellyfinUploadService $jellyfinUploadService,
-        private readonly VideoAnalyzer $videoAnalyzer,
+        private readonly VideoFileService $videoFileService,
         private readonly EntityManagerInterface $entityManager
     ) {}
 
     public function exportVideo(Video $video): JellyfinExportResult
     {
-        $localPath = $video->getLocalPath();
-        if (!$localPath) {
-            return new JellyfinExportResult(false, null, null, 'Video has no local path specified.');
+        $sourceFile = $video->getConvertedFilename() ?? $video->getSourceFile();
+        if (!$sourceFile) {
+            return new JellyfinExportResult(false, null, null, 'Video has no source file specified.');
         }
 
-        $sourcePath = $this->videoAnalyzer->resolvePath($localPath);
+        $sourcePath = $this->videoFileService->getAbsolutePath($sourceFile);
         if (!file_exists($sourcePath)) {
             return new JellyfinExportResult(false, null, null, sprintf('Local file "%s" does not exist.', $sourcePath));
         }

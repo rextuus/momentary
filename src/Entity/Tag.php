@@ -43,12 +43,15 @@ class Tag
     #[Groups(['tag:read'])]
     private ?TagCategory $category = null;
 
-    #[ORM\ManyToMany(targetEntity: VideoScene::class, mappedBy: 'tags')]
-    private Collection $scenes;
+    /**
+     * @var Collection<int, VideoSceneTag>
+     */
+    #[ORM\OneToMany(targetEntity: VideoSceneTag::class, mappedBy: 'tag', orphanRemoval: true)]
+    private Collection $sceneTags;
 
     public function __construct()
     {
-        $this->scenes = new ArrayCollection();
+        $this->sceneTags = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -79,27 +82,29 @@ class Tag
     }
 
     /**
-     * @return Collection<int, VideoScene>
+     * @return Collection<int, VideoSceneTag>
      */
-    public function getScenes(): Collection
+    public function getSceneTags(): Collection
     {
-        return $this->scenes;
+        return $this->sceneTags;
     }
 
-    public function addScene(VideoScene $scene): static
+    public function addSceneTag(VideoSceneTag $sceneTag): static
     {
-        if (!$this->scenes->contains($scene)) {
-            $this->scenes->add($scene);
-            $scene->addTag($this);
+        if (!$this->sceneTags->contains($sceneTag)) {
+            $this->sceneTags->add($sceneTag);
+            $sceneTag->setTag($this);
         }
 
         return $this;
     }
 
-    public function removeScene(VideoScene $scene): static
+    public function removeSceneTag(VideoSceneTag $sceneTag): static
     {
-        if ($this->scenes->removeElement($scene)) {
-            $scene->removeTag($this);
+        if ($this->sceneTags->removeElement($sceneTag)) {
+            if ($sceneTag->getTag() === $this) {
+                $sceneTag->setTag(null);
+            }
         }
 
         return $this;

@@ -7,6 +7,7 @@ namespace App\Service\Video\Processing\Handler\Tagging;
 use App\Entity\VideoScene;
 use App\Repository\VideoRepository;
 use App\Repository\VideoSceneRepository;
+use App\Service\Video\Analyze\Result\TaggingResult;
 use App\Service\Video\Analyze\TaggingService;
 use App\Service\Video\Processing\Handler\Abstract\AbstractVideoMessageHandler;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
@@ -30,10 +31,15 @@ abstract class AbstractTagSceneStepMessageHandler extends AbstractVideoMessageHa
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
     }
 
-    protected function processSceneTagging(?int $sceneId): void
+    protected function processSceneTagging(?int $sceneId): TaggingResult
     {
         if ($sceneId === null) {
-            return;
+            return new TaggingResult(
+                false,
+                true,
+                [],
+                'No Scene given'
+            );
         }
 
         $scene = $this->videoSceneRepository->find($sceneId);
@@ -41,9 +47,14 @@ abstract class AbstractTagSceneStepMessageHandler extends AbstractVideoMessageHa
         if (!$scene instanceof VideoScene) {
             $this->stopProcessing(sprintf('Scene with ID %d not found for tagging.', $sceneId));
 
-            return;
+            return new TaggingResult(
+                false,
+                true,
+                [],
+                sprintf('Scene with ID %d not found for tagging.', $sceneId)
+            );
         }
 
-        $this->taggingService->tagScene($scene);
+        return $this->taggingService->tagScene($scene);
     }
 }

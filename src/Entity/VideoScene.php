@@ -7,7 +7,6 @@ use App\Entity\UserGroup;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-
 use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: VideoSceneRepository::class)]
@@ -54,10 +53,11 @@ class VideoScene
     private Collection $videoFaces;
 
     /**
-     * @var Collection<int, Tag>
+     * @var Collection<int, VideoSceneTag>
      */
-    #[ORM\ManyToMany(targetEntity: Tag::class, inversedBy: 'scenes')]
-    private Collection $tags;
+    #[ORM\OneToMany(targetEntity: VideoSceneTag::class, mappedBy: 'videoScene', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[Groups(['video:detail'])]
+    private Collection $sceneTags;
 
     /**
      * @var Collection<int, UserGroup>
@@ -68,32 +68,64 @@ class VideoScene
     public function __construct()
     {
         $this->videoFaces = new ArrayCollection();
-        $this->tags = new ArrayCollection();
+        $this->sceneTags = new ArrayCollection();
         $this->allowedGroups = new ArrayCollection();
     }
 
     /**
-     * @return Collection<int, Tag>
+     * @return Collection<int, VideoSceneTag>
      */
-    public function getTags(): Collection
+    public function getSceneTags(): Collection
     {
-        return $this->tags;
+        return $this->sceneTags;
     }
 
-    public function addTag(Tag $tag): static
+    public function addSceneTag(Tag $tag, bool $isAiGenerated = false, ?float $confidence = null): static
     {
-        if (!$this->tags->contains($tag)) {
-            $this->tags->add($tag);
+        foreach ($this->sceneTags as $sceneTag) {
+            if ($sceneTag->getTag() === $tag) {
+                $sceneTag->setIsAiGenerated($isAiGenerated);
+                $sceneTag->setConfidence($confidence);
+                return $this;
+            }
         }
 
+        $sceneTag = new VideoSceneTag();
+        $sceneTag->setVideoScene($this);
+        $sceneTag->setTag($tag);
+        $sceneTag->setIsAiGenerated($isAiGenerated);
+        $sceneTag->setConfidence($confidence);
+
+        $this->sceneTags->add($sceneTag);
         return $this;
     }
 
     public function removeTag(Tag $tag): static
     {
-        $this->tags->removeElement($tag);
+        foreach ($this->sceneTags as $sceneTag) {
+            if ($sceneTag->getTag() === $tag) {
+                $this->sceneTags->removeElement($sceneTag);
+                break;
+            }
+        }
 
         return $this;
+    }
+
+    /**
+     * Kompatibilitäts-Methode, falls du an manchen Stellen direkt die Tags brauchst.
+     *
+     * @return array<Tag>
+     */
+    public function getTags(): array
+    {
+        $tags = [];
+        foreach ($this->sceneTags as $sceneTag) {
+            if ($sceneTag->getTag() !== null) {
+                $tags[] = $sceneTag->getTag();
+            }
+        }
+        return $tags;
     }
 
     /**
@@ -142,8 +174,6 @@ class VideoScene
         $this->videoFaces = $videoFaces;
         return $this;
     }
-
-
 
     public function getTitle(): ?string
     {
