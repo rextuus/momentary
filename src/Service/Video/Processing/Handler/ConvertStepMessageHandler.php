@@ -13,6 +13,7 @@ use App\Service\Video\Processing\Message\ConvertStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
 use App\Service\Video\Analyze\BetterVideoAnalyzer;
+use App\Service\VideoFileService;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
@@ -28,6 +29,7 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
         private readonly BetterVideoAnalyzer $videoAnalyzer,
+        private readonly VideoFileService $videoFileService,
         private readonly EntityManagerInterface $entityManager,
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
@@ -39,19 +41,20 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
         $video = $this->getVideo();
         $this->startCurrentStep();
 
-        $localPath = $video->getLocalPath();
-        if ($localPath === null) {
+        $sourceFile = $video->getSourceFile();
+        if ($sourceFile === null || !$this->videoFileService->getFilesystem()->fileExists($sourceFile)) {
             $errorMsg = sprintf(
-                '[⚠] Video "%s" could not be found in path: "%s".',
+                '[⚠] Video "%s" source file could not be found in storage: "%s".',
                 $video->getId(),
-                $localPath
+                $sourceFile ?? 'null'
             );
             $this->stopProcessing($errorMsg);
 
             return;
         }
 
-        $sourcePath = $this->videoAnalyzer->resolvePath($localPath);
+        // Absoluten Pfad für FFMpeg etc. über den VideoFileService holen
+        $sourcePath = $this->videoFileService->getAbsolutePath($sourceFile);
 
         // if already mp4, skip conversion
         if (str_ends_with(strtolower($sourcePath), '.mp4')) {
@@ -62,11 +65,16 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
         }
 
         $tempMp4Name = 'video_converted_' . $video->getId() . '.mp4';
-        $tempMp4 = $this->videoAnalyzer->getProjectDir() . '/public/uploads/import/' . $tempMp4Name;
+        // Für temporäre Konvertierungen nutzen wir ebenfalls den VideoFileService oder den Projektpfad
+        $tempMp4 = $this->videoFileService->getAbsolutePath($tempMp4Name);
 
         if ($this->videoAnalyzer->convertToMp4($sourcePath, $tempMp4)) {
-            $video->setConvertedVideoPath($tempMp4);
-            $video->setLocalPath($tempMp4);
+            // Speichere den neuen Dateinamen als konvertierte Datei (nur Key, kein absoluter Pfad)
+            $video->setConvertedFilename($tempMp4Name);
+            // Wenn das konvertierte Video ab jetzt die Quelle ist, können wir sourceFile anpassen
+            // oder den Pfad im FileService verwalten. Hier setzen wir den neuen Dateinamen als sourceFile:
+            $video->setSourceFile($tempMp4Name);
+
             $this->entityManager->persist($video);
             $this->entityManager->flush();
 

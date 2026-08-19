@@ -19,7 +19,6 @@ class FrameExtractor
     public function __construct(
         private readonly VideoRepository $videoRepository,
         private readonly VideoFileService $videoFileService,
-        private readonly PathResolver $pathResolver,
         #[Autowire('%kernel.project_dir%')]
         private readonly string $projectDir,
         #[Autowire('%env(default:app.frame_analysis_fps:FRAME_ANALYSIS_FPS)%')]
@@ -27,8 +26,6 @@ class FrameExtractor
         #[Autowire('%env(PYTHON_BINARY)%')]
         string $pythonBinary = '/usr/bin/python3',
     ) {
-        // Fallback für Docker: Wenn der konfigurierte Python-Pfad nicht existiert,
-        // nutzen wir den systemweiten python3 Befehl.
         if (!file_exists($pythonBinary)) {
             $this->pythonBinaryPath = 'python3';
         } else {
@@ -47,26 +44,29 @@ class FrameExtractor
         $video = $this->videoRepository->find($videoId);
         $fps ??= $video?->getAnalysisFps() ?? $this->defaultFps;
 
-        // Eindeutiges Verzeichnis für diese Extraktion (Video ID + Zeitstempel/Zufall)
-        $dir = $this->videoFileService->getVideoDirectory($video, 'frames');
+        // Verzeichnis über VideoFileService ermitteln
+        $dir = 'frames/' . $videoId;
         $absoluteDir = $this->videoFileService->getAbsolutePath($dir);
 
-        // Fester Ordner für diese Extraktion (Video ID + Typ)
         $subDir = $isRefinement ? 'refinement' : 'analysis';
         $frameDirPath = $absoluteDir . '/' . $subDir;
 
         if (!is_dir($frameDirPath)) {
             mkdir($frameDirPath, 0777, true);
         } else {
-            // Falls der Ordner schon existiert, leeren wir ihn sicherheitshalber
             $fs = new Filesystem();
             $fs->remove(glob($frameDirPath . '/*'));
         }
 
+        // Sicherstellen, dass der übergebene Pfad absolut ist
+        $resolvedVideoPath = str_starts_with($videoPath, '/')
+            ? $videoPath
+            : $this->videoFileService->getAbsolutePath($videoPath);
+
         $command = [
             $this->pythonBinaryPath,
             $this->projectDir . '/video-analyzer/python/extract_frames.py',
-            $this->pathResolver->resolvePath($videoPath),
+            $resolvedVideoPath,
             (string) $fps,
             '--output-dir',
             $frameDirPath
@@ -97,7 +97,6 @@ class FrameExtractor
         }
 
         $process = new Process($command);
-
         $process->setTimeout(600);
         $process->run();
 

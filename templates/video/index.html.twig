@@ -54,10 +54,10 @@
                                                 {{ video.status.value|upper }}
                                             </span>
                                         </div>
-                                        {% if video.localPath %}
+                                        {% if video.sourceFile %}
                                             <div class="d-flex align-items-center text-truncate mb-2" style="max-width: 400px;">
                                                 <i class="fas fa-file-video small me-2 text-muted"></i>
-                                                <code class="small text-muted" style="font-size: 0.75rem;">{{ video.localPath|split('/')|last }}</code>
+                                                <code class="small text-muted" style="font-size: 0.75rem;">{{ video.sourceFile }}</code>
                                             </div>
                                         {% endif %}
 

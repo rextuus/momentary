@@ -16,6 +16,7 @@ use App\Service\Video\Processing\Message\Tagging\TagFirstSceneStepMessage;
 use App\Service\Video\Processing\Message\GenerateChapterStepMessage;
 use App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractSceneThumbnailStepMessage;
 use App\Service\VideoAnalyzer;
+use App\Service\VideoFileService;
 use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -56,8 +57,10 @@ final class VideoController extends AbstractController
      * Neues Video hinzufügen
      */
     #[Route('/new', name: 'video_new', methods: ['GET', 'POST'])]
-    public function new(Request $request): Response
-    {
+    public function new(
+        Request $request,
+        VideoFileService $videoFileService
+    ): Response {
         $video = new Video();
         $form = $this->createForm(VideoType::class, $video);
         $form->handleRequest($request);
@@ -75,16 +78,23 @@ final class VideoController extends AbstractController
                 $video->addTag($formatTag);
             }
 
-            if ($video->getSourceFile()) {
-                // Speichere den absoluten internen Container-Pfad konsistent ab
-                $fullPath = rtrim($this->importDir, '/') . '/' . $video->getSourceFile();
-                $video->setLocalPath($fullPath);
+            // $video->getSourceFile() enthält bereits den reinen Dateinamen aus dem Formular-ChoiceType
+            $sourceFile = $video->getSourceFile();
+
+            if ($sourceFile) {
+                // Überprüfung über Flysystem, ob die Datei im Storage existiert
+                if (!$videoFileService->getFilesystem()->fileExists($sourceFile)) {
+                    $this->addFlash('error', sprintf('Die Datei "%s" wurde im Import-Storage nicht gefunden.', $sourceFile));
+                    return $this->render('video/new.html.twig', [
+                        'form' => $form->createView(),
+                    ]);
+                }
             }
 
             $this->entityManager->persist($video);
             $this->entityManager->flush();
 
-            if ($video->getLocalPath()) {
+            if ($sourceFile) {
                 // Check, ob die Transition 'start_conversion' möglich ist (vom Status PENDING)
                 if ($this->workflowMachine->can($video, 'start_conversion')) {
                     // Anwendung der Transition setzt den Status auf CONVERTING

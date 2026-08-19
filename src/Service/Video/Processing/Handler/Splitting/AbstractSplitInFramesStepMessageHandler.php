@@ -77,11 +77,18 @@ abstract class AbstractSplitInFramesStepMessageHandler extends AbstractVideoMess
 
     protected function resolveVideoPath(Video $video): string
     {
-        $localVideoPath = $this->videoAnalyzer->resolvePath($video->getLocalPath());
+        $sourceFile = $video->getConvertedFilename() ?? $video->getSourceFile();
+
+        if ($sourceFile === null) {
+            $this->stopProcessing(sprintf('Video file key for video-entity with id "%s" is missing.', $video->getId()));
+            return '';
+        }
+
+        $localVideoPath = $this->videoAnalyzer->getAbsolutePath($sourceFile);
 
         if (!file_exists($localVideoPath)) {
             $errorMsg = sprintf(
-                'Video file for vide-entity with id "%s" not found at "%s"',
+                'Video file for video-entity with id "%s" not found at "%s"',
                 $video->getId(),
                 $localVideoPath
             );

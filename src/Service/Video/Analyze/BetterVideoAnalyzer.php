@@ -10,13 +10,13 @@ use App\Service\Video\Analyze\Result\EmptyScenesMergerResult;
 use App\Service\Video\Analyze\Result\FrameSplittingResult;
 use App\Service\Video\Analyze\Result\JellyfinExportResult;
 use App\Service\Video\Analyze\Result\RefinementAnalyzeResult;
+use App\Service\VideoFileService;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 readonly class BetterVideoAnalyzer
 {
     public function __construct(
         private FrameAnalyzer $frameAnalyzer,
-        private PathResolver $pathResolver,
         private Mp4Converter $mp4Converter,
         private SceneDetector $sceneDetector,
         private SceneThumbnailExtractor $sceneThumbnailExtractor,
@@ -24,24 +24,20 @@ readonly class BetterVideoAnalyzer
         private EmptyScenesMerger $emptyScenesMerger,
         private ChapterGenerator $chapterGenerator,
         private JellyfinUploader $jellyfinUploader,
+        private VideoFileService $videoFileService,
         #[Autowire('%env(default:app.min_scene_length_for_refinement:MIN_SCENE_LENGTH_FOR_REFINEMENT)%')]
         private float $minSceneLengthForRefinement = 2.0,
     ) {
     }
 
+    public function getAbsolutePath(string $path): string
+    {
+        return $this->videoFileService->getAbsolutePath($path);
+    }
+
     public function analyzeFrame(int $videoId, string $framePath, float|int $timestamp): void
     {
         $this->frameAnalyzer->analyzeFrame($videoId, $framePath, (int) $timestamp);
-    }
-
-    public function resolvePath(string $path): string
-    {
-        return $this->pathResolver->resolvePath($path);
-    }
-
-    public function getProjectDir(): string
-    {
-        return $this->pathResolver->getProjectDir();
     }
 
     public function convertToMp4(string $sourcePath, string $targetPath): bool
@@ -81,7 +77,6 @@ readonly class BetterVideoAnalyzer
         );
     }
 
-
     public function refineSceneAnalysis(Video $video): RefinementAnalyzeResult
     {
         $minSceneLength = $video->getMinSceneLengthForRefinement() ?? $this->minSceneLengthForRefinement;
@@ -90,7 +85,6 @@ readonly class BetterVideoAnalyzer
         foreach ($video->getScenes() as $scene) {
             $duration = $scene->getEndSeconds() - $scene->getStartSeconds();
 
-            // only refine scenes without faces and long enough
             if ($scene->getVideoFaces()->isEmpty() && $duration >= $minSceneLength) {
                 $scenesToRefine[] = $scene;
             }

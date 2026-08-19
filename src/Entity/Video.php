@@ -27,9 +27,7 @@ use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
         )
     ]
 )]
-// Erlaubt: /api/videos?title=mallorca
 #[ApiFilter(SearchFilter::class, properties: ['title' => 'partial'])]
-// Erlaubt: /api/videos?videoFaces.person.name=Wolf
 #[ApiFilter(SearchFilter::class, properties: ['videoFaces.person.name' => 'partial'])]
 #[ApiFilter(SearchFilter::class, properties: ['scenes.tags.name' => 'partial', 'scenes.tags.id' => 'exact'])]
 class Video
@@ -44,10 +42,17 @@ class Video
     #[Groups(['video:list', 'video:detail'])]
     private ?string $title = null;
 
-
     #[ORM\Column(length: 255, nullable: true)]
     #[Groups(['video:detail'])]
     private ?string $sourceFile = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['video:detail'])]
+    private ?string $convertedFilename = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['video:detail'])]
+    private ?string $thumbnailFilename = null;
 
     #[ORM\Column]
     #[Groups(['video:list', 'video:detail'])]
@@ -81,17 +86,8 @@ class Video
     private bool $mergeEmptyScenesWithLastPersonScene = false;
 
     #[ORM\Column(type: 'text', nullable: true)]
-    #[Groups(['video:list', 'video:detail'])] // Fehler wollen wir oft auch in der Liste sehen
+    #[Groups(['video:list', 'video:detail'])]
     private ?string $errorMessage = null;
-
-    // Pfad zur lokalen Datei nach dem Download
-    #[ORM\Column(length: 1000, nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?string $localPath = null;
-
-    #[ORM\Column(length: 1000, nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?string $convertedVideoPath = null;
 
     /**
      * @var Collection<int, VideoScene>
@@ -100,10 +96,6 @@ class Video
     #[ORM\OrderBy(['sceneNumber' => 'ASC'])]
     #[Groups(['video:detail'])]
     private Collection $scenes;
-
-    #[ORM\Column(length: 1000, nullable: true)]
-    #[Groups(['video:detail'])]
-    private ?string $thumbnailPath = null;
 
     /**
      * @var Collection<int, VideoChapter>
@@ -139,7 +131,6 @@ class Video
     #[ORM\Column(length: 500, nullable: true)]
     #[Groups(['video:detail'])]
     private ?string $currentRefinementFrameDirectory = null;
-
 
     #[ORM\Column(length: 511, nullable: true)]
     #[Groups(['video:detail'])]
@@ -208,10 +199,8 @@ class Video
     public function setTitle(string $title): static
     {
         $this->title = $title;
-
         return $this;
     }
-
 
     public function getSourceFile(): ?string
     {
@@ -224,6 +213,28 @@ class Video
         return $this;
     }
 
+    public function getConvertedFilename(): ?string
+    {
+        return $this->convertedFilename;
+    }
+
+    public function setConvertedFilename(?string $convertedFilename): self
+    {
+        $this->convertedFilename = $convertedFilename;
+        return $this;
+    }
+
+    public function getThumbnailFilename(): ?string
+    {
+        return $this->thumbnailFilename;
+    }
+
+    public function setThumbnailFilename(?string $thumbnailFilename): self
+    {
+        $this->thumbnailFilename = $thumbnailFilename;
+        return $this;
+    }
+
     public function getCreatedAt(): ?\DateTimeImmutable
     {
         return $this->createdAt;
@@ -232,7 +243,6 @@ class Video
     public function setCreatedAt(\DateTimeImmutable $createdAt): static
     {
         $this->createdAt = $createdAt;
-
         return $this;
     }
 
@@ -250,7 +260,6 @@ class Video
             $this->videoFaces->add($videoFace);
             $videoFace->setVideo($this);
         }
-
         return $this;
     }
 
@@ -261,7 +270,6 @@ class Video
                 $videoFace->setVideo(null);
             }
         }
-
         return $this;
     }
 
@@ -273,43 +281,6 @@ class Video
     public function setStatus(VideoStatus $status): self
     {
         $this->status = $status;
-        return $this;
-    }
-
-    public function getConvertedVideoPath(): ?string
-    {
-        return $this->convertedVideoPath;
-    }
-
-    public function setConvertedVideoPath(?string $convertedVideoPath): self
-    {
-        $this->convertedVideoPath = $convertedVideoPath;
-        return $this;
-    }
-
-    public function getThumbnailPath(): ?string
-    {
-        return $this->thumbnailPath;
-    }
-
-    public function setThumbnailPath(?string $thumbnailPath): self
-    {
-        $this->thumbnailPath = $thumbnailPath;
-
-        return $this;
-    }
-
-
-
-
-    public function getLocalPath(): ?string
-    {
-        return $this->localPath;
-    }
-
-    public function setLocalPath(?string $localPath): self
-    {
-        $this->localPath = $localPath;
         return $this;
     }
 
@@ -458,7 +429,6 @@ class Video
     public function setJellyfinPath(?string $jellyfinPath): self
     {
         $this->jellyfinPath = $jellyfinPath;
-
         return $this;
     }
 
@@ -569,7 +539,14 @@ class Video
     #[Groups(['video:list', 'video:detail'])]
     public function getThumbnailUrl(): ?string
     {
-        return $this->thumbnailPath ?? 'defaults/video-placeholder.jpg';
+        return $this->thumbnailFilename ?? 'defaults/video-placeholder.jpg';
+    }
+
+    public function setThumbnailUrl(?string $thumbnailUrl): self
+    {
+        // Wir speichern den relativen Pfad / Namen im thumbnailFilename-Feld
+        $this->thumbnailFilename = $thumbnailUrl;
+        return $this;
     }
 
     /**
@@ -586,19 +563,16 @@ class Video
             $this->processingSteps->add($processingStep);
             $processingStep->setVideo($this);
         }
-
         return $this;
     }
 
     public function removeProcessingStep(VideoProcessingStep $processingStep): static
     {
         if ($this->processingSteps->removeElement($processingStep)) {
-            // set the owning side to null (unless already changed)
             if ($processingStep->getVideo() === $this) {
                 $processingStep->setVideo(null);
             }
         }
-
         return $this;
     }
 
@@ -609,7 +583,6 @@ class Video
                 return $step->getFinishedAt();
             }
         }
-
         return null;
     }
 
@@ -620,7 +593,6 @@ class Video
                 return $step->getStartedAt();
             }
         }
-
         return null;
     }
 }

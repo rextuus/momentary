@@ -220,12 +220,12 @@
                             <form action="{{ path('app_jellyfin_export', {id: video.id}) }}" method="post">
                                 <input type="hidden" name="video_id" value="{{ video.id }}">
                                 <p class="small text-muted mb-2">Exportiere dieses Video in deine Jellyfin-Mediathek.</p>
-                                <button type="submit" class="btn btn-primary w-100 rounded-pill" {{ not video.localPath ? 'disabled' }}>
+                                <button type="submit" class="btn btn-primary w-100 rounded-pill" {{ not video.sourceFile ? 'disabled' }}>
                                     <i class="fas fa-share-square me-2"></i> Zu Jellyfin exportieren
                                 </button>
-                                {% if not video.localPath %}
+                                {% if not video.sourceFile %}
                                     <div class="alert alert-warning small mt-2 py-1 px-2 border-0">
-                                        <i class="fas fa-exclamation-circle me-1"></i> Lokale Datei wurde bereits gelöscht. Export nicht möglich.
+                                        <i class="fas fa-exclamation-circle me-1"></i> Keine Quelldatei vorhanden. Export nicht möglich.
                                     </div>
                                 {% endif %}
                             </form>
@@ -249,7 +249,7 @@
                 </div>
             </div>
 
-            {% if video.localPath %}
+            {% if video.sourceFile %}
                 <div class="card shadow-sm border-0">
                     <div class="card-header bg-transparent border-bottom p-4">
                         <h5 class="fw-bold mb-0">Datei-Info</h5>
@@ -257,11 +257,11 @@
                     <div class="card-body p-4">
                         <div class="mb-3">
                             <label class="small text-muted fw-bold text-uppercase mb-1">Dateiname</label>
-                            <div class="small text-truncate" title="{{ video.localPath }}">{{ video.localPath|split('/')|last }}</div>
+                            <div class="small text-truncate" title="{{ video.sourceFile }}">{{ video.sourceFile }}</div>
                         </div>
                         <div>
-                            <label class="small text-muted fw-bold text-uppercase mb-1">Pfad</label>
-                            <code class="d-block bg-light p-2 rounded small text-break" style="font-size: 0.7rem;">{{ video.localPath }}</code>
+                            <label class="small text-muted fw-bold text-uppercase mb-1">Storage-Key</label>
+                            <code class="d-block bg-light p-2 rounded small text-break" style="font-size: 0.7rem;">{{ video.sourceFile }}</code>
                         </div>
                     </div>
                 </div>

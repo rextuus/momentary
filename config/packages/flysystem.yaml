@@ -13,3 +13,15 @@ flysystem:
                         public: 0755
                         private: 0755
             public_url_generator: App\Service\File\FlysystemPublicUrlGenerator
+
+        video.storage:
+            adapter: 'local'
+            options:
+                directory: '%kernel.project_dir%/var/uploads/app_uploads'
+                permissions:
+                    file:
+                        public: 0644
+                        private: 0644
+                    dir:
+                        public: 0755
+                        private: 0755

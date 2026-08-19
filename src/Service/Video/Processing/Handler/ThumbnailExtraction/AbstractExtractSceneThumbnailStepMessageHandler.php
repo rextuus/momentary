@@ -69,9 +69,9 @@ abstract class AbstractExtractSceneThumbnailStepMessageHandler extends AbstractV
 
         $scene->setThumbnailUrl($thumbnailPath);
 
-        // set thumbnail of first scene as video thumbnail
-        if ($video->getThumbnailPath() === null) {
-            $video->setThumbnailPath($thumbnailPath);
+        // set thumbnail of first scene as video thumbnail (nutzt jetzt setThumbnailUrl)
+        if ($video->getThumbnailFilename() === null) {
+            $video->setThumbnailUrl($thumbnailPath);
         }
         $this->entityManager->flush();
 

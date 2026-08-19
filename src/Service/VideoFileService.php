@@ -2,40 +2,30 @@
 
 namespace App\Service;
 
-use App\Entity\Video;
-use Doctrine\ORM\EntityManagerInterface;
 use League\Flysystem\FilesystemOperator;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
-use Symfony\Component\String\Slugger\SluggerInterface;
 
-class VideoFileService
+readonly class VideoFileService
 {
     public function __construct(
-        private readonly FilesystemOperator $filesystem,
-        private readonly EntityManagerInterface $entityManager,
-        private readonly SluggerInterface $slugger,
+        // Wir injizieren hier den Flysystem-Storage für Videos (den wir gleich in der config definieren)
+        #[Autowire(service: 'video.storage')]
+        private FilesystemOperator $filesystem,
         #[Autowire('%kernel.project_dir%')]
-        string $projectDir
-    ) {
-        $this->basePath = $projectDir . '/' . PathConstants::MEDIA_IMAGES;
+        private string $projectDir
+    ) {}
+
+    // Gibt den absoluten Pfad für interne Prozesse (FFMPEG etc.) zurück
+    public function getAbsolutePath(string $relativeKey): string
+    {
+        // Hier definieren wir, dass "relativeKey" innerhalb des Video-Storages liegt
+        // Wenn das Flysystem lokal ist, ist das einfach der Pfad auf der Festplatte
+        return $this->projectDir . '/var/uploads/app_uploads/' . ltrim($relativeKey, '/');
     }
 
-    private string $basePath;
-
-    public function getVideoDirectory(Video $video, string $subFolder): string
+    public function exists(string $relativeKey): bool
     {
-        if (!$video->getDirectoryHash()) {
-            $video->setDirectoryHash(bin2hex(random_bytes(8)));
-            $this->entityManager->flush();
-        }
-
-        $folderName = $this->slugger->slug($video->getTitle()) . '_' . $video->getDirectoryHash();
-        return $folderName . '/' . $subFolder;
-    }
-
-    public function getAbsolutePath(string $relativeFilePath): string
-    {
-        return $this->basePath . '/' . $relativeFilePath;
+        return $this->filesystem->fileExists($relativeKey);
     }
 
     public function getFilesystem(): FilesystemOperator

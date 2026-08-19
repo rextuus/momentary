@@ -12,6 +12,7 @@ use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
 use App\Service\Video\VideoSceneService;
 use App\Service\Video\Analyze\BetterVideoAnalyzer;
+use App\Service\VideoFileService;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -26,6 +27,7 @@ class SceneDetectionStepMessageHandler extends AbstractVideoMessageHandler
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
         private readonly BetterVideoAnalyzer $videoAnalyzer,
+        private readonly VideoFileService $videoFileService,
         private readonly VideoSceneService $videoSceneService
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
@@ -37,8 +39,13 @@ class SceneDetectionStepMessageHandler extends AbstractVideoMessageHandler
         $video = $this->getVideo();
         $this->startCurrentStep();
 
+        $sourceFile = $video->getSourceFile();
+        if ($sourceFile === null) {
+            $this->stopProcessing("Source file key is missing for video: " . $video->getId());
+            return;
+        }
 
-        $videoPath = $this->videoAnalyzer->resolvePath($video->getLocalPath());
+        $videoPath = $this->videoFileService->getAbsolutePath($sourceFile);
 
         if (!file_exists($videoPath)) {
             $this->stopProcessing("Source video for scene detection not found: $videoPath");

@@ -19,7 +19,6 @@ class SceneThumbnailExtractor
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly PathResolver $pathResolver,
         private readonly VideoFileService $videoFileService,
         #[Autowire('%env(PYTHON_BINARY)%')]
         string $pythonBinary = '/usr/bin/python3',
@@ -28,17 +27,14 @@ class SceneThumbnailExtractor
 
     public function extractThumbnail(Video $video, float $timeInSeconds = 0.0, ?string $customFilename = null): ?string
     {
-        $videoPath = $video->getConvertedVideoPath();
-        if (!$videoPath || str_starts_with($videoPath, 'defaults/')) {
-            $videoPath = $video->getLocalPath();
-        }
+        $sourceFile = $video->getConvertedFilename() ?? $video->getSourceFile();
 
-
-        if (!$videoPath) {
+        if (!$sourceFile) {
             return null;
         }
 
-        $videoPath = $this->pathResolver->resolvePath($videoPath);
+        $videoPath = $this->videoFileService->getAbsolutePath($sourceFile);
+
         if (!file_exists($videoPath)) {
             return null;
         }
@@ -57,18 +53,18 @@ class SceneThumbnailExtractor
                 if ($ffprobeProcess->isSuccessful()) {
                     $duration = (float) $ffprobeProcess->getOutput();
                     if ($duration > 0) {
-                        // Wähle einen zufälligen Zeitpunkt zwischen 10% und 90%
                         $timeInSeconds = $duration * (mt_rand(10, 90) / 100);
                     }
                 } else {
                     $timeInSeconds = 1.0;
                 }
             } catch (\Exception $e) {
-                $timeInSeconds = 1.0; // Fallback auf 1 Sekunde
+                $timeInSeconds = 1.0;
             }
         }
 
-        $thumbnailDir = $this->videoFileService->getVideoDirectory($video, 'thumbnails');
+        // Zielverzeichnis für Thumbnails definieren (z. B. im Public/Upload-Ordner oder über Flysystem)
+        $thumbnailDir = 'thumbnails/' . $video->getId();
         $absoluteDir = $this->videoFileService->getAbsolutePath($thumbnailDir);
         if (!is_dir($absoluteDir)) {
             mkdir($absoluteDir, 0777, true);
@@ -77,7 +73,6 @@ class SceneThumbnailExtractor
         $thumbnailName = $customFilename ?? sprintf('video_%d.jpg', $video->getId());
         $thumbnailPath = $absoluteDir . '/' . $thumbnailName;
 
-        // FFmpeg Kommando um ein einzelnes Frame zu extrahieren
         $command = [
             'ffmpeg',
             '-loglevel', 'error',
@@ -99,24 +94,18 @@ class SceneThumbnailExtractor
             return null;
         }
 
-        if (!$process->isSuccessful()) {
+        if (!$process->isSuccessful() || !file_exists($thumbnailPath)) {
             return null;
         }
 
-        // Verifizieren, dass die Datei existiert und aktualisiert wurde
-        if (file_exists($thumbnailPath)) {
-            @touch($thumbnailPath); // Zeitstempel aktualisieren, falls Größe identisch war
-        } else {
-            return null;
-        }
+        @touch($thumbnailPath);
 
         $relativeThumbnailPath = $thumbnailDir . '/' . $thumbnailName;
-
-        // Cache-Buster hinzufügen, um Browser-Caching zu umgehen
         $relativeThumbnailPath .= '?t=' . time();
 
         if ($customFilename === null) {
-            $video->setThumbnailPath($relativeThumbnailPath);
+            // Nutze das korrekte Entity-Feld für das Thumbnail (z.B. setThumbnailUrl)
+            $video->setThumbnailUrl($relativeThumbnailPath);
             $this->entityManager->flush();
         }
 

@@ -36,12 +36,13 @@ class AnalyzeFirstVideoFrameStepMessageHandler extends AbstractAnalyzeFrameStepM
         $video = $this->getVideo();
         $this->startCurrentStep();
 
-
         // Special-Case: This is the only Frame => Finish this step => next handler will immediately go on
         if (count($message->getRemainingFrames()) === 1) {
             $framePaths = $message->getRemainingFrames();
             $firstFrame = array_shift($framePaths);
-            $framePath = $this->videoAnalyzer->resolvePath($firstFrame);
+
+            // HIER die Anpassung: resolvePath existiert nicht mehr
+            $framePath = $this->videoAnalyzer->getAbsolutePath($firstFrame);
 
             $successMsg = sprintf(
                 'Video %d contains only one frame. Analyzed this successfully',
