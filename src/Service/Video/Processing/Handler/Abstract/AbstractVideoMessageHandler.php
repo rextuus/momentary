@@ -63,29 +63,54 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
     {
         // get the new message type
         $nextStepMessage = $this->getNextStepMessageInstance($this->getCurrentMessage());
+        $currentMessage = $this->getCurrentMessage();
+
+        // Re-fetch or refresh the video entity so we work with the up-to-date state from DB
+        $video = $this->videoRepository->find($currentMessage->getVideoId());
+        $this->video = $video;
+
+        // processing chain finished
+        if (null === $nextStepMessage) {
+            $finalMessage = sprintf(
+                'Processing chain finished for video "%s"',
+                $this->video->getTitle()
+            );
+            echo '[✓✓] ' . $finalMessage . PHP_EOL;
+
+            $transition = $currentMessage->getTransitionToStatusNextStepIsBelonging()->value;
+            if ($this->workflowMachine->can($video, $transition)) {
+                $this->workflowMachine->apply($video, $transition);
+            }
+
+            return;
+        }
 
         // make sure we switch the state before dispatching the next message if necessary
-        $currentMessage = $this->getCurrentMessage();
         if ($currentMessage->nextStepNeedsTransition()) {
-            // Re-fetch or refresh the video entity so we work with the up-to-date state from DB
-            $video = $this->videoRepository->find($currentMessage->getVideoId());
-            $this->video = $video;
 
             $transition = $currentMessage->getTransitionToStatusNextStepIsBelonging()->value;
 
+//            dump('try to apply transition: ' . $transition . ' in handler: ' . get_class($this));
+//            dump('video status before transition: ' . $video->getStatus()->value);
+//            dump($this->workflowMachine->can($video, $transition));
             if ($this->workflowMachine->can($video, $transition)) {
                 $this->workflowMachine->apply($video, $transition);
-                dump('Transition applied: ' . $transition);
+//                dump('Transition applied: ' . $transition . ' in handler: ' . get_class($this));
             }
+//            dump("");
         }
 
         // dispatch the next message
         $this->dispatcher->dispatch($nextStepMessage);
     }
 
-    protected function getNextStepMessageInstance(VideoProcessStepMessageInterface $message): VideoProcessStepMessageInterface
+    protected function getNextStepMessageInstance(VideoProcessStepMessageInterface $message): ?VideoProcessStepMessageInterface
     {
         $nextStepMessageClass = $message->getNextStepMessageClass();
+        if (null === $nextStepMessageClass) {
+            return null;
+        }
+
         $nextStepMessage = new $nextStepMessageClass(
             $message->getVideoId(),
             $message->getMessageNrInVideoStack() + 1,
@@ -143,7 +168,6 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
             $video = $this->getVideo();
             if ($this->workflowMachine->can($video, $initialTransition->value)) {
                 $this->workflowMachine->apply($video, $initialTransition->value);
-                dump('Initial transition applied: ' . $initialTransition->value);
             }
         }
     }

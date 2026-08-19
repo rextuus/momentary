@@ -66,3 +66,7 @@ services:
         arguments:
             $url: '%env(MEILISEARCH_URL)%'
             $apiKey: '%env(MEILI_MASTER_KEY)%'
+
+    App\Command\ShowVideoProcessingPipelineCommand:
+        arguments:
+            $projectDir: '%kernel.project_dir%'

@@ -18,7 +18,7 @@ class ExtractSceneThumbnailStepMessage extends AbstractExtractSceneThumbnailStep
         $this->comingFromStepMessageClass = $comingFromStepMessageClass;
     }
 
-    public function getNextStepMessageClass(): string
+    public function getNextStepMessageClass(): ?string
     {
         return ExtractLastSceneThumbnailStepMessage::class;
     }

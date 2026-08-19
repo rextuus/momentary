@@ -77,8 +77,6 @@ class SceneThumbnailExtractor
         $thumbnailName = $customFilename ?? sprintf('video_%d.jpg', $video->getId());
         $thumbnailPath = $absoluteDir . '/' . $thumbnailName;
 
-        $this->logger->info(sprintf('Thumbnail will be saved to: %s', $thumbnailPath));
-
         // FFmpeg Kommando um ein einzelnes Frame zu extrahieren
         $command = [
             'ffmpeg',

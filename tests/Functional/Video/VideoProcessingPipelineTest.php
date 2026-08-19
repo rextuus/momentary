@@ -8,15 +8,22 @@ use App\Entity\Video;
 use App\Enum\VideoStatus;
 use App\Repository\VideoRepository;
 use App\Service\Aws\AmazonRekognitionService;
+use App\Service\Video\Analyze\ChapterGenerator;
+use App\Service\Video\Analyze\EmptyScenesMerger;
 use App\Service\Video\Analyze\FrameAnalyzer;
 use App\Service\Video\Analyze\FrameExtractor;
+use App\Service\Video\Analyze\JellyfinUploader;
 use App\Service\Video\Analyze\Mp4Converter;
 use App\Service\Video\Analyze\PathResolver;
+use App\Service\Video\Analyze\Result\ChapterGenerationResult;
+use App\Service\Video\Analyze\Result\EmptyScenesMergerResult;
 use App\Service\Video\Analyze\Result\FrameSplittingResult;
+use App\Service\Video\Analyze\Result\JellyfinExportResult;
 use App\Service\Video\Analyze\SceneDetector;
 use App\Service\Video\Analyze\SceneThumbnailExtractor;
+use App\Service\Video\Analyze\TaggingService;
+use App\Service\Video\Processing\Handler\UploadToJellyfinStepMessageHandler;
 use App\Service\Video\Processing\Message\ConvertStepMessage;
-use App\Service\VideoProcessingService;
 use Doctrine\ORM\EntityManagerInterface;
 use Meilisearch\Client;
 use Meilisearch\Endpoints\Indexes;
@@ -33,6 +40,12 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
     private MockObject $sceneThumbnailExtractor;
     private MockObject $frameExtractor;
     private MockObject $frameAnalyzer;
+    private MockObject $emptyScenesMerger;
+    private MockObject $taggingService;
+
+    private MockObject $chapterGenerator;
+
+    private MockObject $jellyfinUploader;
     private VideoRepository $videoRepository;
     private EntityManagerInterface $entityManager;
     private array $createdTempFiles = [];
@@ -48,6 +61,10 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         $this->sceneThumbnailExtractor = $this->createMock(SceneThumbnailExtractor::class);
         $this->frameExtractor = $this->createMock(FrameExtractor::class);
         $this->frameAnalyzer = $this->createMock(FrameAnalyzer::class);
+        $this->emptyScenesMerger = $this->createMock(EmptyScenesMerger::class);
+        $this->taggingService = $this->createMock(TaggingService::class);
+        $this->chapterGenerator = $this->createMock(ChapterGenerator::class);
+        $this->jellyfinUploader = $this->createMock(JellyfinUploader::class);
 
         $indexMock = $this->createMock(Indexes::class);
         $this->meiliSearchClientMock->method('index')->willReturn($indexMock);
@@ -60,6 +77,10 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         static::getContainer()->set(SceneThumbnailExtractor::class, $this->sceneThumbnailExtractor);
         static::getContainer()->set(FrameExtractor::class, $this->frameExtractor);
         static::getContainer()->set(FrameAnalyzer::class, $this->frameAnalyzer);
+        static::getContainer()->set(EmptyScenesMerger::class, $this->emptyScenesMerger);
+        static::getContainer()->set(TaggingService::class, $this->taggingService);
+        static::getContainer()->set(ChapterGenerator::class, $this->chapterGenerator);
+        static::getContainer()->set(JellyfinUploader::class, $this->jellyfinUploader);
 
         $this->videoRepository = static::getContainer()->get(VideoRepository::class);
         $this->entityManager = static::getContainer()->get(EntityManagerInterface::class);
@@ -113,6 +134,19 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         $this->frameAnalyzer->method('analyzeFrame')->willReturn(true);
         $this->mp4Converter->method('convertToMp4')->willReturn(true);
         $this->pathResolver->method('resolvePath')->willReturn('test.mov');
+        $this->taggingService->method('tagScene')->willReturn(true);
+        $result = new ChapterGenerationResult(
+            true,
+            11,
+        );
+        $this->chapterGenerator->method('generateChapters')->willReturn($result);
+
+        $result = new JellyfinExportResult(
+            true,
+            'test',
+            '1111',
+        );
+        $this->jellyfinUploader->method('exportVideo')->willReturn($result);
 
         // 3. Mock RekognitionService
         $this->rekognitionServiceMock
@@ -202,12 +236,24 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
                 new FrameSplittingResult([
                     ['path' => '/tmp/frames/refinement/frame_0013.jpg', 'timestamp' => 15.0],
                     ['path' => '/tmp/frames/refinement/frame_0014.jpg', 'timestamp' => 17.0],
+                ], '/tmp/frames/refinement'),
+                new FrameSplittingResult([
+                    ['path' => '/tmp/frames/refinement/frame_0013.jpg', 'timestamp' => 15.0],
+                    ['path' => '/tmp/frames/refinement/frame_0014.jpg', 'timestamp' => 17.0],
+                ], '/tmp/frames/refinement'),
+                new FrameSplittingResult([
+                    ['path' => '/tmp/frames/refinement/frame_0013.jpg', 'timestamp' => 15.0],
+                    ['path' => '/tmp/frames/refinement/frame_0014.jpg', 'timestamp' => 17.0],
                 ], '/tmp/frames/refinement')
             );
 
+        $this->emptyScenesMerger
+            ->expects($this->once())
+            ->method('mergeEmptyScenes')
+            ->willReturn(EmptyScenesMergerResult::success(4, 2));
+
         // 5. Trigger Pipeline
         $bus = static::getContainer()->get('messenger.bus.default');
-        $videoProcessingService = static::getContainer()->get(VideoProcessingService::class);
 
         $bus->dispatch(new ConvertStepMessage($video->getId(), 0, 'INITIAL'));
 
@@ -216,7 +262,7 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         $this->entityManager->clear();
         $updatedVideo = $this->videoRepository->find($video->getId());
 
-        $this->assertEquals(VideoStatus::REFINING_ANALYSIS, $updatedVideo->getStatus());
+        $this->assertEquals(VideoStatus::COMPLETED, $updatedVideo->getStatus());
     }
 
     public function testErrorCase(): void

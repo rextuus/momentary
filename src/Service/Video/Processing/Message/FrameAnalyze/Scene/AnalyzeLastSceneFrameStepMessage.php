@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Service\Video\Processing\Message\FrameAnalyze\Scene;
 
+use App\Enum\VideoStatus;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Enum\VideoWorkflowProcessTransition;
 use App\Service\Video\Processing\Message\FrameAnalyze\AbstractAnalyzeFrameStepMessage;
-use App\Service\Video\Processing\Message\Refinement\InitRefinementForEmptyScenesStepMessage;
+use App\Service\Video\Processing\Message\MergeScenesStepMessage;
 
 #[StepOrder(stepNumber: 16)]
 class AnalyzeLastSceneFrameStepMessage extends AbstractAnalyzeFrameStepMessage
@@ -28,10 +29,16 @@ class AnalyzeLastSceneFrameStepMessage extends AbstractAnalyzeFrameStepMessage
 
     public function getTransitionToStatusNextStepIsBelonging(): VideoWorkflowProcessTransition
     {
-        return VideoWorkflowProcessTransition::START_REFINING_EXTRACTION;
+        return VideoWorkflowProcessTransition::START_MERGING;
     }
 
-    public function getNextStepMessageClass(): string
+    public function getNextStepMessageClass(): ?string
     {
+        return MergeScenesStepMessage::class;
+    }
+
+    public function getVideoStatusForCurrentProcessStepEntity(): VideoStatus
+    {
+        return VideoStatus::ANALYZING_FACES_REFINEMENT;
     }
 }

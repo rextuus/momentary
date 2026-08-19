@@ -23,13 +23,13 @@ abstract class AbstractAnalyzeFrameStepMessage extends AbstractVideoProcessStepM
 
     public function getVideoStatusForCurrentProcessStepEntity(): VideoStatus
     {
-        return VideoStatus::ANALYZING_FACES;
+        return VideoStatus::ANALYZING_FACES_INITIAL;
     }
 
     /**
      * @throws CommonProcessStepException
      */
-    public function getNextStepMessageClass(): string
+    public function getNextStepMessageClass(): ?string
     {
         throw new CommonProcessStepException('Implement getNextStepMessageClass');
     }

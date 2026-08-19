@@ -7,15 +7,14 @@ use App\Entity\VideoChapter;
 use App\Entity\VideoProcessingStep;
 use App\Entity\VideoScene;
 use App\Form\VideoType;
-use App\Message\ConvertVideoMessage;
-use App\Message\DetectVideoScenesMessage;
-use App\Message\ExtractAllSceneThumbnailsMessage;
-use App\Message\ExtractThumbnailMessage;
-use App\Message\GenerateChaptersMessage;
-use App\Message\SplitVideoIntoFramesMessage;
-use App\Message\TagScenesMessage;
 use App\Repository\VideoRepository;
 use App\Service\Video\Processing\Message\ConvertStepMessage;
+use App\Service\Video\Processing\Message\SceneDetectionStepMessage;
+use App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractFirstSceneThumbnailStepMessage;
+use App\Service\Video\Processing\Message\Splitting\Video\SplitVideoInFramesStepMessage;
+use App\Service\Video\Processing\Message\Tagging\TagFirstSceneStepMessage;
+use App\Service\Video\Processing\Message\GenerateChapterStepMessage;
+use App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractSceneThumbnailStepMessage;
 use App\Service\VideoAnalyzer;
 use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
@@ -27,6 +26,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/video')]
 final class VideoController extends AbstractController
@@ -42,7 +42,7 @@ final class VideoController extends AbstractController
     ) {}
 
     /**
-     * Die Übersicht (vorher Index im AdminController)
+     * Die Übersicht
      */
     #[Route('/', name: 'app_video_index', methods: ['GET'])]
     public function index(): Response
@@ -85,9 +85,14 @@ final class VideoController extends AbstractController
             $this->entityManager->flush();
 
             if ($video->getLocalPath()) {
+                // Check, ob die Transition 'start_conversion' möglich ist (vom Status PENDING)
                 if ($this->workflowMachine->can($video, 'start_conversion')) {
+                    // Anwendung der Transition setzt den Status auf CONVERTING
                     $this->workflowMachine->apply($video, 'start_conversion');
-                    $this->messageBus->dispatch(new ConvertStepMessage($video->getId()));
+
+                    // Dispatch der allerersten neuen Step-Message
+                    $this->messageBus->dispatch(new ConvertStepMessage($video->getId(), 0, 'inital'));
+
                     $this->addFlash('success', 'Lokales Video hinzugefügt und Pipeline gestartet!');
                 }
             }
@@ -104,8 +109,6 @@ final class VideoController extends AbstractController
     public function delete(Request $request, Video $video, VideoAnalyzer $videoAnalyzer): Response
     {
         if ($this->isCsrfTokenValid('delete' . $video->getId(), $request->request->get('_token'))) {
-            // Erst Dateien löschen, dann Entity (bevor DB-Datensatz weg ist)
-            // cleanupLocalFile löscht nun auch das Thumbnail
             $videoAnalyzer->cleanupLocalFile($video->getId());
 
             $this->entityManager->remove($video);
@@ -151,15 +154,15 @@ final class VideoController extends AbstractController
         return $this->redirectToRoute('app_chapter_show', ['id' => $chapter->getId()]);
     }
 
-
     #[Route('/{id}/extract-thumbnail', name: 'video_extract_thumbnail', methods: ['POST'])]
     public function extractThumbnail(Video $video, Request $request): RedirectResponse
     {
         $time = $request->request->get('time');
         $timeInSeconds = $time !== null ? (float) $time : 0.0;
-        
-        $this->logger->info(sprintf('Dispatching ExtractThumbnailMessage for video %d at %f', $video->getId(), $timeInSeconds));
-        $this->messageBus->dispatch(new ExtractThumbnailMessage($video->getId(), $timeInSeconds));
+
+        $this->logger->info(sprintf('Dispatching ExtractSceneThumbnailStepMessage for video %d at %f', $video->getId(), $timeInSeconds));
+        // Auf neue Step-Message umgestellt statt alter ExtractThumbnailMessage
+        $this->messageBus->dispatch(new ExtractSceneThumbnailStepMessage($video->getId(), $timeInSeconds));
 
         $this->addFlash('success', 'Thumbnail-Erstellung wurde in die Warteschlange eingereiht (Zeit: ' . ($timeInSeconds > 0 ? round($timeInSeconds, 2) . 's' : 'zufällig') . ').');
 
@@ -167,7 +170,7 @@ final class VideoController extends AbstractController
     }
 
     /**
-     * Die fehlende Trigger-Route für die Buttons im Template
+     * Die Trigger-Route für die Buttons im Template (rein auf neue Step-Messages umgestellt)
      */
     #[Route('/{id}/trigger/{step}', name: 'app_video_trigger', methods: ['GET'])]
     public function trigger(Video $video, string $step, VideoAnalyzer $videoAnalyzer, WorkflowMachine $workflowMachine): Response
@@ -179,19 +182,19 @@ final class VideoController extends AbstractController
             match ($step) {
                 'convert'  => [
                     $this->ensureStepAccessible($video, 'start_conversion', $workflowMachine),
-                    $this->messageBus->dispatch(new ConvertVideoMessage($video->getId()))
+                    $this->messageBus->dispatch(new ConvertStepMessage($video->getId(), 0, 'manual_trigger'))
                 ],
                 'scenes'   => [
                     $this->ensureStepAccessible($video, 'start_scene_detection', $workflowMachine),
-                    $this->messageBus->dispatch(new DetectVideoScenesMessage($video->getId(), (string)$video->getLocalPath()))
+                    $this->messageBus->dispatch(new SceneDetectionStepMessage($video->getId(), 0, 'manual_trigger'))
                 ],
                 'thumbnails' => [
                     $this->ensureStepAccessible($video, 'start_extracting_thumbnails', $workflowMachine),
-                    $this->messageBus->dispatch(new ExtractAllSceneThumbnailsMessage($video->getId()))
+                    $this->messageBus->dispatch(new ExtractFirstSceneThumbnailStepMessage($video->getId()))
                 ],
                 'split'    => [
                     $this->ensureStepAccessible($video, 'start_splitting', $workflowMachine),
-                    $this->messageBus->dispatch(new SplitVideoIntoFramesMessage($video->getId(), (string)$video->getLocalPath()))
+                    $this->messageBus->dispatch(new SplitVideoInFramesStepMessage($video->getId()))
                 ],
                 'refine'   => [
                     $this->ensureStepAccessible($video, 'start_refining_extraction', $workflowMachine),
@@ -231,7 +234,7 @@ final class VideoController extends AbstractController
                 $scene->removeTag($tag);
             }
         }
-        $this->messageBus->dispatch(new TagScenesMessage($video->getId()));
+        $this->messageBus->dispatch(new TagFirstSceneStepMessage($video->getId()));
     }
 
     private function triggerChapters(Video $video, WorkflowMachine $workflowMachine): void
@@ -241,17 +244,17 @@ final class VideoController extends AbstractController
             $video->removeChapter($chapter);
             $this->entityManager->remove($chapter);
         }
-        $this->messageBus->dispatch(new GenerateChaptersMessage($video->getId()));
+        $this->messageBus->dispatch(new GenerateChapterStepMessage($video->getId()));
     }
 
     private function triggerFirstStep(Video $video, WorkflowMachine $workflowMachine): void
     {
         if ($this->workflowMachine->can($video, 'start_conversion')) {
             $this->ensureStepAccessible($video, 'start_conversion', $workflowMachine);
-            $this->messageBus->dispatch(new ConvertVideoMessage($video->getId()));
+            $this->messageBus->dispatch(new ConvertStepMessage($video->getId(), 0, 'reset_trigger'));
         } elseif ($this->workflowMachine->can($video, 'start_scene_detection')) {
             $this->ensureStepAccessible($video, 'start_scene_detection', $workflowMachine);
-            $this->messageBus->dispatch(new DetectVideoScenesMessage($video->getId(), (string)$video->getLocalPath()));
+            $this->messageBus->dispatch(new SceneDetectionStepMessage($video->getId(), 0, 'reset_trigger'));
         }
     }
 
@@ -262,7 +265,6 @@ final class VideoController extends AbstractController
             return true;
         }
 
-        // Falls wir nicht direkt hinkönnen, schauen wir ob wir zurückspringen können
         $backTransitions = [
             'start_download' => 'back_to_pending',
             'start_conversion' => 'back_to_conversion',
@@ -270,7 +272,7 @@ final class VideoController extends AbstractController
             'start_extracting_thumbnails' => 'back_to_scene_detection',
             'start_splitting' => 'back_to_splitting',
             'start_refining_extraction' => 'back_to_refining_extraction',
-            'start_optimization' => 'start_optimization', // Optimierung erlaubt von überall
+            'start_optimization' => 'start_optimization',
         ];
 
         if (isset($backTransitions[$transition])) {
@@ -288,7 +290,7 @@ final class VideoController extends AbstractController
      * Timeline Ansicht
      */
     #[Route('/{id}/timeline', name: 'video_timeline', methods: ['GET'])]
-    public function timeline(int $id): Response // Wir nehmen die ID statt des Objekts
+    public function timeline(int $id): Response
     {
         $video = $this->videoRepository->find($id);
 
@@ -313,10 +315,7 @@ final class VideoController extends AbstractController
         #[Autowire('%env(JELLYFIN_HOST)%')] string $jellyfinHost,
         #[Autowire('%env(JELLYFIN_API_KEY)%')] string $jellyfinApiKey
     ): Response {
-        // Für den Browser müssen wir ggf. den Host anpassen, wenn er intern anders heißt als extern
         $publicJellyfinHost = str_replace('http://jellyfin:', 'http://localhost:', $jellyfinHost);
-
-        // Optional: Ensure the host has no trailing slash to avoid double slashes in URLs
         $publicJellyfinHost = rtrim($publicJellyfinHost, '/');
 
         return $this->render('video/show.html.twig', [
@@ -333,6 +332,7 @@ final class VideoController extends AbstractController
             'step' => $processingStep,
         ]);
     }
+
     #[Route('/chapter/{id}', name: 'app_chapter_show', methods: ['GET'])]
     public function chapterShow(VideoChapter $chapter): Response
     {
@@ -340,23 +340,8 @@ final class VideoController extends AbstractController
         $this->entityManager->refresh($video);
         $this->denyAccessUnlessGranted('VIDEO_VIEW', $video);
 
-        $this->logger->info('chapterShow', [
-            'chapterId' => $chapter->getId(),
-            'videoId' => $video->getId(),
-            'scenesCount' => $video->getScenes()->count(),
-        ]);
-
         $scenes = $video->getScenes()->filter(function(VideoScene $scene) use ($chapter) {
-            $match = $scene->getStartSeconds() < $chapter->getEndSeconds() && $scene->getEndSeconds() > $chapter->getStartSeconds();
-            $this->logger->info('Scene filter', [
-                'sceneId' => $scene->getId(),
-                'sceneStart' => $scene->getStartSeconds(),
-                'sceneEnd' => $scene->getEndSeconds(),
-                'chapterStart' => $chapter->getStartSeconds(),
-                'chapterEnd' => $chapter->getEndSeconds(),
-                'match' => $match
-            ]);
-            return $match;
+            return $scene->getStartSeconds() < $chapter->getEndSeconds() && $scene->getEndSeconds() > $chapter->getStartSeconds();
         });
 
         return $this->render('video/chapter_show.html.twig', [

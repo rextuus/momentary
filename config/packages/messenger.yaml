@@ -10,6 +10,12 @@ framework:
                     max_retries: 3
                     delay: 1000
                     multiplier: 2
+            async_video_processing:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                retry_strategy:
+                    max_retries: 3
+                    delay: 1000
+                    multiplier: 2
             failed: '%env(MESSENGER_TRANSPORT_DSN)%'
             # sync: 'sync://'
 
@@ -35,17 +41,24 @@ framework:
             App\Message\GenerateChaptersMessage: async
             App\Message\AnalyzeSceneMessage: async
             App\Message\TestMessage: async
+            App\Service\Video\Processing\Message\SceneDetectionStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\ConvertStepMessage: async_video_processing
             App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeVideoFrameStepMessage: async_video_processing
             App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeLastVideoFrameStepMessage: async_video_processing
             App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeFirstVideoFrameStepMessage: async_video_processing
-            App\Service\Video\Processing\Message\ConvertStepMessage: async
-            App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractFirstSceneThumbnailStepMessage: async
-            App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractLastSceneThumbnailStepMessage: async
-            App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractSceneThumbnailStepMessage: async
-            App\Service\Video\Processing\Message\SceneDetectionStepMessage: async
+            App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractFirstSceneThumbnailStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractLastSceneThumbnailStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractSceneThumbnailStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\Refinement\InitRefinementForEmptyScenesStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\Splitting\Scene\SplitLastSceneInFramesStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\Splitting\Scene\SplitFirstSceneInFramesStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\Splitting\Scene\SplitSceneInFramesStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\Splitting\Video\SplitVideoInFramesStepMessage: async_video_processing
             App\Service\Video\Processing\Message\FrameAnalyze\Scene\AnalyzeFirstSceneFrameStepMessage: async_video_processing
             App\Service\Video\Processing\Message\FrameAnalyze\Scene\AnalyzeLastSceneFrameStepMessage: async_video_processing
             App\Service\Video\Processing\Message\FrameAnalyze\Scene\AnalyzeSceneFrameStepMessage: async_video_processing
-
-            # Route your messages to the transports
-            # 'App\Message\YourMessage': async
+            App\Service\Video\Processing\Message\Tagging\TagFirstSceneStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\Tagging\TagSceneStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\Tagging\TagLastSceneStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\GenerateChapterStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\UploadToJellyfinStepMessage: async_video_processing

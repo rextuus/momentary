@@ -19,18 +19,8 @@ class ExtractFirstSceneThumbnailStepMessage extends AbstractExtractSceneThumbnai
         $this->comingFromStepMessageClass = $comingFromStepMessageClass;
     }
 
-    public function getNextStepMessageClass(): string
+    public function getNextStepMessageClass(): ?string
     {
         return ExtractSceneThumbnailStepMessage::class;
-    }
-
-    public function getTransitionToStatusNextStepIsBelonging(): VideoWorkflowProcessTransition
-    {
-        return VideoWorkflowProcessTransition::START_EXTRACTING_THUMBNAILS;
-    }
-
-    public function nextStepNeedsTransition(): bool
-    {
-        return true;
     }
 }

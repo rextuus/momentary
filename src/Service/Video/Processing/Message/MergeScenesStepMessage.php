@@ -8,11 +8,12 @@ use App\Enum\VideoStatus;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Enum\VideoWorkflowProcessTransition;
 use App\Service\Video\Processing\Message\Abstract\AbstractVideoProcessStepMessage;
+use App\Service\Video\Processing\Message\Tagging\TagFirstSceneStepMessage;
 
-#[StepOrder(stepNumber: 1)]
-class ConvertStepMessage extends AbstractVideoProcessStepMessage
+#[StepOrder(stepNumber: 17)]
+class MergeScenesStepMessage extends AbstractVideoProcessStepMessage
 {
-    protected const string MESSAGE_LOGGING_IDENT = 'CONVERSION TO MP4';
+    protected const string MESSAGE_LOGGING_IDENT = 'MERGE EMPTY SCENES TOGETHER';
 
     public function __construct(int $videoId, int $messageNrInVideoStack, string $comingFromStepMessageClass)
     {
@@ -21,24 +22,19 @@ class ConvertStepMessage extends AbstractVideoProcessStepMessage
         $this->comingFromStepMessageClass = $comingFromStepMessageClass;
     }
 
-    public function getInitialTransition(): ?VideoWorkflowProcessTransition
-    {
-        return VideoWorkflowProcessTransition::START_CONVERSION;
-    }
-
     public function getTransitionToStatusNextStepIsBelonging(): VideoWorkflowProcessTransition
     {
-        return VideoWorkflowProcessTransition::START_SCENE_DETECTION;
+        return VideoWorkflowProcessTransition::START_TAGGING;
     }
 
     public function getNextStepMessageClass(): ?string
     {
-        return SceneDetectionStepMessage::class;
+        return TagFirstSceneStepMessage::class;
     }
 
     public function getVideoStatusForCurrentProcessStepEntity(): VideoStatus
     {
-        return VideoStatus::CONVERTING;
+        return VideoStatus::MERGING_SCENES;
     }
 
     public function nextStepNeedsTransition(): bool

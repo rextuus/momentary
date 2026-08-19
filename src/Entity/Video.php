@@ -96,7 +96,7 @@ class Video
     /**
      * @var Collection<int, VideoScene>
      */
-    #[ORM\OneToMany(targetEntity: VideoScene::class, mappedBy: 'video', cascade: ['remove'], orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: VideoScene::class, mappedBy: 'video', cascade: ['persist', 'remove'], orphanRemoval: true)]
     #[ORM\OrderBy(['sceneNumber' => 'ASC'])]
     #[Groups(['video:detail'])]
     private Collection $scenes;

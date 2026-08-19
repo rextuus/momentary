@@ -26,7 +26,7 @@ abstract class AbstractExtractSceneThumbnailStepMessage extends AbstractVideoPro
     /**
      * @throws CommonProcessStepException
      */
-    public function getNextStepMessageClass(): string
+    public function getNextStepMessageClass(): ?string
     {
         throw new CommonProcessStepException('Implement getNextStepMessageClass');
     }

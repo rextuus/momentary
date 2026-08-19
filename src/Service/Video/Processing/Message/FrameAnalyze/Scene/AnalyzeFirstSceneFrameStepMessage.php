@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service\Video\Processing\Message\FrameAnalyze\Scene;
 
+use App\Enum\VideoStatus;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Message\FrameAnalyze\AbstractAnalyzeFrameStepMessage;
 use App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeVideoFrameStepMessage;
@@ -20,8 +21,13 @@ class AnalyzeFirstSceneFrameStepMessage extends AbstractAnalyzeFrameStepMessage
         $this->comingFromStepMessageClass = $comingFromStepMessageClass;
     }
 
-    public function getNextStepMessageClass(): string
+    public function getNextStepMessageClass(): ?string
     {
         return AnalyzeSceneFrameStepMessage::class;
+    }
+
+    public function getVideoStatusForCurrentProcessStepEntity(): VideoStatus
+    {
+        return VideoStatus::ANALYZING_FACES_REFINEMENT;
     }
 }

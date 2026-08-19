@@ -21,13 +21,13 @@ class SplitFirstSceneInFramesStepMessage extends AbstractSplitInFramesStepMessag
         $this->comingFromStepMessageClass = $comingFromStepMessageClass;
     }
 
-    public function getNextStepMessageClass(): string
+    public function getNextStepMessageClass(): ?string
     {
         return SplitSceneInFramesStepMessage::class;
     }
 
     public function getVideoStatusForCurrentProcessStepEntity(): VideoStatus
     {
-        return VideoStatus::REFINING_EXTRACTION;
+        return VideoStatus::REFINING_SPLITTING;
     }
 }

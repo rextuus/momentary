@@ -22,7 +22,7 @@ class InitRefinementForEmptyScenesStepMessage extends AbstractVideoProcessStepMe
         $this->comingFromStepMessageClass = $comingFromStepMessageClass;
     }
 
-    public function getNextStepMessageClass(): string
+    public function getNextStepMessageClass(): ?string
     {
         return SplitFirstSceneInFramesStepMessage::class;
     }

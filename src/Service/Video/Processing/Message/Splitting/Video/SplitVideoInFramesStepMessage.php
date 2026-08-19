@@ -27,7 +27,7 @@ class SplitVideoInFramesStepMessage extends AbstractSplitInFramesStepMessage
         return VideoWorkflowProcessTransition::START_ANALYZING;
     }
 
-    public function getNextStepMessageClass(): string
+    public function getNextStepMessageClass(): ?string
     {
         return AnalyzeFirstVideoFrameStepMessage::class;
     }

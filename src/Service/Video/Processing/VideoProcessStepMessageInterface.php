@@ -21,9 +21,9 @@ interface VideoProcessStepMessageInterface
     public function getVideoStatusForCurrentProcessStepEntity(): VideoStatus;
 
     /**
-     * @return class-string<VideoProcessStepMessageInterface>
+     * @return class-string<VideoProcessStepMessageInterface>|null
      */
-    public function getNextStepMessageClass(): string;
+    public function getNextStepMessageClass(): ?string;
 
     /**
      * @return class-string<VideoProcessStepMessageInterface>

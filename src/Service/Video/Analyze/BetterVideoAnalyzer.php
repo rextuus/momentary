@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Service\Video\Analyze;
 
 use App\Entity\Video;
+use App\Service\Video\Analyze\Result\ChapterGenerationResult;
+use App\Service\Video\Analyze\Result\EmptyScenesMergerResult;
 use App\Service\Video\Analyze\Result\FrameSplittingResult;
+use App\Service\Video\Analyze\Result\JellyfinExportResult;
 use App\Service\Video\Analyze\Result\RefinementAnalyzeResult;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
@@ -18,6 +21,9 @@ readonly class BetterVideoAnalyzer
         private SceneDetector $sceneDetector,
         private SceneThumbnailExtractor $sceneThumbnailExtractor,
         private FrameExtractor $frameExtractor,
+        private EmptyScenesMerger $emptyScenesMerger,
+        private ChapterGenerator $chapterGenerator,
+        private JellyfinUploader $jellyfinUploader,
         #[Autowire('%env(default:app.min_scene_length_for_refinement:MIN_SCENE_LENGTH_FOR_REFINEMENT)%')]
         private float $minSceneLengthForRefinement = 2.0,
     ) {
@@ -91,5 +97,20 @@ readonly class BetterVideoAnalyzer
         }
 
         return RefinementAnalyzeResult::create($scenesToRefine);
+    }
+
+    public function mergeEmptyScenes(Video $video): EmptyScenesMergerResult
+    {
+        return $this->emptyScenesMerger->mergeEmptyScenes($video);
+    }
+
+    public function generateChapters(Video $video): ChapterGenerationResult
+    {
+        return $this->chapterGenerator->generateChapters($video);
+    }
+
+    public function exportVideo(Video $video): JellyfinExportResult
+    {
+        return $this->jellyfinUploader->exportVideo($video);
     }
 }

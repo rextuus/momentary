@@ -19,7 +19,7 @@ abstract class AbstractSplitInFramesStepMessage extends AbstractVideoProcessStep
         // TODO: Implement getVideoStatusForCurrentProcessStepEntity() method.
     }
 
-    public function getNextStepMessageClass(): string
+    public function getNextStepMessageClass(): ?string
     {
         // TODO: Implement getNextStepMessageClass() method.
     }

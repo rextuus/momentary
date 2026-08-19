@@ -9,10 +9,10 @@ use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Enum\VideoWorkflowProcessTransition;
 use App\Service\Video\Processing\Message\Abstract\AbstractVideoProcessStepMessage;
 
-#[StepOrder(stepNumber: 1)]
-class ConvertStepMessage extends AbstractVideoProcessStepMessage
+#[StepOrder(stepNumber: 22)]
+class UploadToJellyfinStepMessage extends AbstractVideoProcessStepMessage
 {
-    protected const string MESSAGE_LOGGING_IDENT = 'CONVERSION TO MP4';
+    protected const string MESSAGE_LOGGING_IDENT = 'UPLOAD TO JELLYFIN';
 
     public function __construct(int $videoId, int $messageNrInVideoStack, string $comingFromStepMessageClass)
     {
@@ -21,24 +21,19 @@ class ConvertStepMessage extends AbstractVideoProcessStepMessage
         $this->comingFromStepMessageClass = $comingFromStepMessageClass;
     }
 
-    public function getInitialTransition(): ?VideoWorkflowProcessTransition
-    {
-        return VideoWorkflowProcessTransition::START_CONVERSION;
-    }
-
     public function getTransitionToStatusNextStepIsBelonging(): VideoWorkflowProcessTransition
     {
-        return VideoWorkflowProcessTransition::START_SCENE_DETECTION;
+        return VideoWorkflowProcessTransition::COMPLETE;
     }
 
     public function getNextStepMessageClass(): ?string
     {
-        return SceneDetectionStepMessage::class;
+        return null;
     }
 
     public function getVideoStatusForCurrentProcessStepEntity(): VideoStatus
     {
-        return VideoStatus::CONVERTING;
+        return VideoStatus::EXPORTING_JELLYFIN;
     }
 
     public function nextStepNeedsTransition(): bool
@@ -46,3 +41,4 @@ class ConvertStepMessage extends AbstractVideoProcessStepMessage
         return true;
     }
 }
+

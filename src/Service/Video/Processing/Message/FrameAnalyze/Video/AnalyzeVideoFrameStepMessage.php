@@ -19,7 +19,7 @@ class AnalyzeVideoFrameStepMessage extends AbstractAnalyzeFrameStepMessage
         $this->comingFromStepMessageClass = $comingFromStepMessageClass;
     }
 
-    public function getNextStepMessageClass(): string
+    public function getNextStepMessageClass(): ?string
     {
         return AnalyzeLastVideoFrameStepMessage::class;
     }

@@ -46,7 +46,7 @@ class VideoProgressBar
             return 100;
         }
 
-        if (in_array($status, [VideoStatus::ANALYZING_FACES, VideoStatus::REFINING_ANALYSIS])) {
+        if (in_array($status, [VideoStatus::ANALYZING_FACES_INITIAL, VideoStatus::ANALYZING_FACES_REFINEMENT])) {
             if ($video->getTotalFrames() <= 0) {
                 return 0;
             }
@@ -81,18 +81,21 @@ class VideoProgressBar
             return (int) min(99, round(($scenesWithTags / $totalScenes) * 100));
         }
 
-        // Andere statustypen haben keine Frame-basierte Prozentrechnung
+        // Mapping aller Status auf Prozentwerte für die ProgressBar
         $statusOrder = [
             VideoStatus::PENDING->value => 0,
             VideoStatus::CONVERTING->value => 10,
             VideoStatus::SCENE_DETECTION->value => 20,
             VideoStatus::EXTRACTING_THUMBNAILS->value => 25,
             VideoStatus::VIDEO_SPLITTING->value => 30,
-            VideoStatus::ANALYZING_FACES->value => 40,
-            VideoStatus::REFINING_EXTRACTION->value => 70,
-            VideoStatus::REFINING_ANALYSIS->value => 80,
+            VideoStatus::ANALYZING_FACES_INITIAL->value => 40,
+            VideoStatus::REFINING_EXTRACTION->value => 60,
+            VideoStatus::REFINING_SPLITTING->value => 70,
+            VideoStatus::ANALYZING_FACES_REFINEMENT->value => 80,
             VideoStatus::MERGING_SCENES->value => 90,
-            VideoStatus::TAGGING_SCENES->value => 95,
+            VideoStatus::TAGGING_SCENES->value => 93,
+            VideoStatus::CHAPTER_GENERATION->value => 96,
+            VideoStatus::EXPORTING_JELLYFIN->value => 98,
             VideoStatus::COMPLETED->value => 100,
         ];
 

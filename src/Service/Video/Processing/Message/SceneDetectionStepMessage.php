@@ -24,17 +24,17 @@ class SceneDetectionStepMessage extends AbstractVideoProcessStepMessage
 
     public function getTransitionToStatusNextStepIsBelonging(): VideoWorkflowProcessTransition
     {
-        return VideoWorkflowProcessTransition::START_SCENE_DETECTION;
+        return VideoWorkflowProcessTransition::START_EXTRACTING_THUMBNAILS;
     }
 
-    public function getNextStepMessageClass(): string
+    public function getNextStepMessageClass(): ?string
     {
         return ExtractFirstSceneThumbnailStepMessage::class;
     }
 
     public function getVideoStatusForCurrentProcessStepEntity(): VideoStatus
     {
-        return VideoStatus::VIDEO_SPLITTING;
+        return VideoStatus::SCENE_DETECTION;
     }
 
     public function nextStepNeedsTransition(): bool

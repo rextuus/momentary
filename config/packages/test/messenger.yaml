@@ -22,4 +22,9 @@ framework:
             App\Service\Video\Processing\Message\FrameAnalyze\Scene\AnalyzeFirstSceneFrameStepMessage: async_video_processing
             App\Service\Video\Processing\Message\FrameAnalyze\Scene\AnalyzeLastSceneFrameStepMessage: async_video_processing
             App\Service\Video\Processing\Message\FrameAnalyze\Scene\AnalyzeSceneFrameStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\Tagging\TagFirstSceneStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\Tagging\TagSceneStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\Tagging\TagLastSceneStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\GenerateChapterStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\UploadToJellyfinStepMessage: async_video_processing
             App\Message\IndexVideoMessage: async

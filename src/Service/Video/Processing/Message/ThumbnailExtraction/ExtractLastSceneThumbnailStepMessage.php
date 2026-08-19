@@ -25,7 +25,7 @@ class ExtractLastSceneThumbnailStepMessage extends AbstractExtractSceneThumbnail
         return VideoWorkflowProcessTransition::START_SPLITTING;
     }
 
-    public function getNextStepMessageClass(): string
+    public function getNextStepMessageClass(): ?string
     {
         return SplitVideoInFramesStepMessage::class;
     }

@@ -31,7 +31,7 @@ class AnalyzeLastVideoFrameStepMessage extends AbstractAnalyzeFrameStepMessage
         return VideoWorkflowProcessTransition::START_REFINING_EXTRACTION;
     }
 
-    public function getNextStepMessageClass(): string
+    public function getNextStepMessageClass(): ?string
     {
         return InitRefinementForEmptyScenesStepMessage::class;
     }
