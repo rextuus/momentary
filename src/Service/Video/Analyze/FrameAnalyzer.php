@@ -16,7 +16,6 @@ use Ramsey\Uuid\Uuid;
 
 class FrameAnalyzer
 {
-
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly VideoRepository $videoRepository,
@@ -64,7 +63,9 @@ class FrameAnalyzer
 
         $imageContent = file_get_contents($framePath);
         $uuid = Uuid::uuid4()->toString();
-        $dir = $this->videoFileService->getVideoDirectory($video, 'faces');
+
+        // Korrektur: Statt getVideoDirectory() nutzen wir hier den direkten Pfad-Aufbau für faces
+        $dir = 'faces/' . $videoId;
         $storagePath = "{$dir}/{$uuid}.jpg";
 
         $this->imageFileService->getFilesystem()->write($storagePath, $imageContent);
@@ -89,24 +90,15 @@ class FrameAnalyzer
                     $person = $matchedFace?->getPerson();
                 }
 
-                // OPTIMIERUNG: Wenn wir eine hohe Ähnlichkeit haben, verknüpfen wir es direkt mit der Person
-                // Auch wenn wir keine matchedFaceId haben, könnten wir über FaceLabels suchen,
-                // aber Amazon gibt uns bei searchFaces bereits die beste Übereinstimmung.
-
                 if ($person === null) {
-                    // Falls wir die Person nicht über matchedFaceId finden, schauen wir, ob wir sie über den Namen finden (unknown_...)
-                    // Das ist aber unzuverlässig. Besser: Neue Person anlegen.
                     $person = new Person();
                     $faceId = $faceData['faceId'] ?? 'unknown';
-                    // Defensive: Ensure we have a string
                     if ($faceId === null) {
                         $faceId = 'unknown';
                     }
                     $person->setName('unknown_' . substr((string) $faceId, 0, 8));
                     $person->setIdentified(false);
                     $this->entityManager->persist($person);
-                    // Flush ist hier wichtig, damit die Person eine ID bekommt, falls wir sie später im Loop brauchen
-                    // Aber wir sind in einem Loop in analyzeFrame.
                 }
 
                 $videoFace = new VideoFace();
@@ -127,9 +119,7 @@ class FrameAnalyzer
                     $videoFace->setMatchedBy($matchedFace);
                     $videoFace->setMatchSimilarity((float) $faceData['similarity']);
 
-                    // NEU: Wenn die Ähnlichkeit hoch genug ist, markieren wir die Person als "wahrscheinlich"
-                    if ($faceData['similarity'] >= 80.0 && $matchedFace->getPerson() && $matchedFace->getPerson(
-                        )->isIdentified()) {
+                    if ($faceData['similarity'] >= 80.0 && $matchedFace->getPerson() && $matchedFace->getPerson()->isIdentified()) {
                         $videoFace->setDetection($matchedFace->getPerson());
                     }
                 }

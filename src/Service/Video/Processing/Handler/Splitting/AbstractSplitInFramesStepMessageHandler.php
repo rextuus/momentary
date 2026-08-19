@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service\Video\Processing\Handler\Splitting;
 
+use App\Dto\VideoFrame;
 use App\Entity\Video;
 use App\Entity\VideoScene;
 use App\Repository\VideoRepository;
@@ -18,6 +19,7 @@ use Doctrine\ORM\EntityManagerInterface;
 
 abstract class AbstractSplitInFramesStepMessageHandler extends AbstractVideoMessageHandler
 {
+    /** @var array<VideoFrame> */
     protected array $framePathCollection = [];
     protected ?int $currentSceneId = null;
     protected array $remainingSceneIds = [];
@@ -39,14 +41,13 @@ abstract class AbstractSplitInFramesStepMessageHandler extends AbstractVideoMess
     ): void {
         $preparedFrames = [];
         foreach ($frameSplitResult->getFrameList() as $frame) {
-            $timestamp = (int) $frame['timestamp'];
-            $timestamp += $startTime;
+            $timestamp = $frame->getTimestamp();
+            $timestamp += (int) $startTime;
 
-            $preparedFrames[] = [
-                'path' => $frame['path'],
-                'timestamp' => $timestamp,
-                'isLast' => false,
-            ];
+            $preparedFrames[] = new VideoFrame(
+                $frame->getPath(),
+                $timestamp
+            );
         }
         $this->framePathCollection = $preparedFrames;
     }
@@ -57,14 +58,13 @@ abstract class AbstractSplitInFramesStepMessageHandler extends AbstractVideoMess
     ): void {
         $preparedFrames = [];
         foreach ($frameSplitResult->getFrameList() as $frame) {
-            $timestamp = (int) $frame['timestamp'];
-            $timestamp += $startTime;
+            $timestamp = $frame->getTimestamp();
+            $timestamp += (int) $startTime;
 
-            $preparedFrames[] = [
-                'path' => $frame['path'],
-                'timestamp' => $timestamp,
-                'isLast' => false,
-            ];
+            $preparedFrames[] = new VideoFrame(
+                $frame->getPath(),
+                $timestamp
+            );
         }
 
         $this->framePathCollection = array_merge($this->framePathCollection, $preparedFrames);

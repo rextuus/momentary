@@ -44,7 +44,7 @@ class MergeScenesStepMessageHandler extends AbstractVideoMessageHandler
                 $video->getTitle(),
                 $result->getSkippedReason() ?? 'Unknown reason'
             );
-            $this->stopProcessing($errorMsg);
+            $this->finishCurrentStep($errorMsg);
 
             return;
         }

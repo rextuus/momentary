@@ -48,7 +48,6 @@ class AnalyzeSceneFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessag
             return;
         }
 
-
         // Special-Case: This is already last frame
         if ($message->getRemainingFrames() === []) {
             $successMsg = sprintf(
@@ -56,12 +55,7 @@ class AnalyzeSceneFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessag
                 $video->getId()
             );
 
-            $framePath = $this->videoAnalyzer->resolvePath($message->getCurrentFrame()['path']);
-            $this->videoAnalyzer->analyzeFrame(
-                $message->getVideoId(),
-                $framePath,
-                $message->getTimestamp()
-            );
+            $this->analyzeFrame($message);
 
             $this->finishCurrentStep($successMsg);
 
@@ -69,12 +63,10 @@ class AnalyzeSceneFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessag
         }
 
         // go on with next ones otherwise
-
         $this->frame = $message->getCurrentFrame();
 
         $this->analyzeFrame($message);
         $oldFrame = $this->frame;
-
 
         $remainingFrames = $message->getRemainingFrames();
         $this->frame = array_shift($remainingFrames);
@@ -94,7 +86,6 @@ class AnalyzeSceneFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessag
 
             return;
         }
-
 
         $successMsg = sprintf(
             'Frame #? of Video "%s" at timestamp "%d" analyzed. %d left',

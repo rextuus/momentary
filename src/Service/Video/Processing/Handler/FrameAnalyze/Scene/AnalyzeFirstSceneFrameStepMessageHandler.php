@@ -36,22 +36,26 @@ class AnalyzeFirstSceneFrameStepMessageHandler extends AbstractAnalyzeFrameStepM
         $video = $this->getVideo();
         $this->startCurrentStep();
 
+        // Special-Case: There is no frame=> Finish this step => next handler will immediately go on
+        if ($this->frame === null) {
+            $this->finishCurrentStep('Video has no frames');
+
+            return;
+        }
+
         // Special-Case: This is the only Frame => Finish this step => next handler will immediately go on
         if (count($message->getRemainingFrames()) === 1) {
             $framePaths = $message->getRemainingFrames();
-            $firstFrame = array_shift($framePaths);
-            $framePath = $this->videoAnalyzer->resolvePath($firstFrame);
+            $this->analyzeFrame($message);
+
+            $this->frame = array_shift($framePaths);
+            $this->remainingFrames = $framePaths;
 
             $successMsg = sprintf(
                 'Video %d contains only one frame. Analyzed this successfully',
                 $video->getId()
             );
 
-            $this->videoAnalyzer->analyzeFrame(
-                $message->getVideoId(),
-                $framePath,
-                $message->getTimestamp()
-            );
             $this->finishCurrentStep($successMsg);
 
             return;

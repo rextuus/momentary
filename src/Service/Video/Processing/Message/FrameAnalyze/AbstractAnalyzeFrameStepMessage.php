@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service\Video\Processing\Message\FrameAnalyze;
 
+use App\Dto\VideoFrame;
 use App\Enum\VideoStatus;
 use App\Service\Video\Processing\Exception\CommonProcessStepException;
 use App\Service\Video\Processing\Message\Abstract\AbstractVideoProcessStepMessage;
@@ -13,13 +14,12 @@ abstract class AbstractAnalyzeFrameStepMessage extends AbstractVideoProcessStepM
 {
     use VideoMessageTrait;
 
-    private ?array $currentFrame = null;
+    private ?VideoFrame $currentFrame = null;
 
     /**
-     * @var array<string>
+     * @var array<VideoFrame>
      */
     private array $remainingFrames = [];
-    private ?int $timestamp = null;
 
     public function getVideoStatusForCurrentProcessStepEntity(): VideoStatus
     {
@@ -34,12 +34,12 @@ abstract class AbstractAnalyzeFrameStepMessage extends AbstractVideoProcessStepM
         throw new CommonProcessStepException('Implement getNextStepMessageClass');
     }
 
-    public function getCurrentFrame(): ?array
+    public function getCurrentFrame(): ?VideoFrame
     {
         return $this->currentFrame;
     }
 
-    public function setCurrentFrame(?array $currentFrame): self
+    public function setCurrentFrame(?VideoFrame $currentFrame): self
     {
         $this->currentFrame = $currentFrame;
 
@@ -47,7 +47,7 @@ abstract class AbstractAnalyzeFrameStepMessage extends AbstractVideoProcessStepM
     }
 
     /**
-     * @return array<string>
+     * @return array<VideoFrame>
      */
     public function getRemainingFrames(): array
     {
@@ -57,18 +57,6 @@ abstract class AbstractAnalyzeFrameStepMessage extends AbstractVideoProcessStepM
     public function setRemainingFrames(array $remainingFrames): self
     {
         $this->remainingFrames = $remainingFrames;
-
-        return $this;
-    }
-
-    public function getTimestamp(): ?int
-    {
-        return $this->timestamp;
-    }
-
-    public function setTimestamp(?int $timestamp): self
-    {
-        $this->timestamp = $timestamp;
 
         return $this;
     }

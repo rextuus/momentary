@@ -47,7 +47,6 @@ class AnalyzeVideoFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessag
             return;
         }
 
-
         // Special-Case: This is already last frame
         if ($message->getRemainingFrames() === []) {
             $successMsg = sprintf(
@@ -55,11 +54,15 @@ class AnalyzeVideoFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessag
                 $video->getId()
             );
 
-            $framePath = $this->videoAnalyzer->resolvePath($message->getCurrentFrame()['path']);
+            $rawPath = $message->getCurrentFrame()->getPath();
+            $framePath = str_starts_with($rawPath, '/')
+                ? $rawPath
+                : $this->videoAnalyzer->getAbsolutePath($rawPath);
+
             $this->videoAnalyzer->analyzeFrame(
                 $message->getVideoId(),
                 $framePath,
-                $message->getTimestamp()
+                $message->getCurrentFrame()->getTimestamp()
             );
 
             $this->finishCurrentStep($successMsg);
@@ -68,12 +71,10 @@ class AnalyzeVideoFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessag
         }
 
         // go on with next ones otherwise
-
         $this->frame = $message->getCurrentFrame();
 
         $this->analyzeFrame($message);
         $oldFrame = $this->frame;
-
 
         $remainingFrames = $message->getRemainingFrames();
         $this->frame = array_shift($remainingFrames);
@@ -83,7 +84,7 @@ class AnalyzeVideoFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessag
             $successMsg = sprintf(
                 'Frame #? of Video "%s" at timestamp "%d" analyzed. Only 1 left. Dispatch final message',
                 $video->getTitle(),
-                $oldFrame['timestamp']
+                $oldFrame->getTimestamp()
             );
             $remainingFrames = $message->getRemainingFrames();
             $this->frame = array_shift($remainingFrames);
@@ -94,11 +95,10 @@ class AnalyzeVideoFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessag
             return;
         }
 
-
         $successMsg = sprintf(
             'Frame #? of Video "%s" at timestamp "%d" analyzed. %d left',
             $video->getTitle(),
-            $oldFrame['timestamp'],
+            $oldFrame->getTimestamp(),
             count($this->remainingFrames)
         );
 

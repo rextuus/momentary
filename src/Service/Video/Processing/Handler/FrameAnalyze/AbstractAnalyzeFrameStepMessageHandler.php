@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service\Video\Processing\Handler\FrameAnalyze;
 
+use App\Dto\VideoFrame;
 use App\Repository\VideoRepository;
 use App\Service\Video\Processing\Handler\Abstract\AbstractVideoMessageHandler;
 use App\Service\Video\Processing\Message\FrameAnalyze\AbstractAnalyzeFrameStepMessage;
@@ -15,7 +16,8 @@ use Exception;
 
 abstract class AbstractAnalyzeFrameStepMessageHandler extends AbstractVideoMessageHandler
 {
-    protected ?array $frame = null;
+    protected ?VideoFrame $frame = null;
+    /** @var array<VideoFrame> */
     protected array $remainingFrames = [];
     public function __construct(
         VideoRepository $videoRepository,
@@ -31,8 +33,8 @@ abstract class AbstractAnalyzeFrameStepMessageHandler extends AbstractVideoMessa
     {
         $this->videoAnalyzer->analyzeFrame(
             $message->getVideoId(),
-            $this->frame['path'],
-            (int) $this->frame['timestamp']
+            $this->frame->getPath(),
+            $this->frame->getTimestamp()
         );
     }
 }
