@@ -6,6 +6,9 @@ namespace App\Service\Video\Processing\Handler;
 
 use App\Enum\VideoStatus;
 use App\Repository\VideoRepository;
+use App\Service\Storage\FileManager;
+use App\Service\Storage\FileStorageService;
+use App\Service\Storage\StoragePathProvider;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Enum\VideoWorkflowProcessTransition;
 use App\Service\Video\Processing\Handler\Abstract\AbstractVideoMessageHandler;
@@ -13,7 +16,6 @@ use App\Service\Video\Processing\Message\ConvertStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
 use App\Service\Video\Analyze\BetterVideoAnalyzer;
-use App\Service\VideoFileService;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
@@ -29,7 +31,9 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
         private readonly BetterVideoAnalyzer $videoAnalyzer,
-        private readonly VideoFileService $videoFileService,
+        private readonly FileManager $fileManager,
+        private readonly FileStorageService $fileStorageService,
+        private readonly StoragePathProvider $pathProvider,
         private readonly EntityManagerInterface $entityManager,
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
@@ -37,55 +41,60 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
 
     public function __invoke(ConvertStepMessage $message): void
     {
-        $this->setCurrentMessage($message);
-        $video = $this->getVideo();
-        $this->startCurrentStep();
+        $video = $this->initHandler($message);
 
-        $sourceFile = $video->getSourceFile();
-        if ($sourceFile === null || !$this->videoFileService->getFilesystem()->fileExists($sourceFile)) {
-            $errorMsg = sprintf(
-                '[⚠] Video "%s" source file could not be found in storage: "%s".',
-                $video->getId(),
-                $sourceFile ?? 'null'
+        $sourceFileEntity = $video->getSourceFile();
+        if ($sourceFileEntity === null) {
+            $this->stopProcessing(sprintf('[⚠] Video "%s" has no source file assigned.', $video->getId()));
+            return;
+        }
+
+        $sourceAbsolutePath = $this->pathProvider->getStorageRoot() . '/' . $sourceFileEntity->getRelativePath();
+
+        if (!file_exists($sourceAbsolutePath)) {
+            $this->stopProcessing(
+                sprintf(
+                    '[⚠] Video "%s" source file could not be found in storage: "%s".',
+                    $video->getId(),
+                    $sourceFileEntity->getRelativePath()
+                )
             );
-            $this->stopProcessing($errorMsg);
-
             return;
         }
 
-        // Absoluten Pfad für FFMpeg etc. über den VideoFileService holen
-        $sourcePath = $this->videoFileService->getAbsolutePath($sourceFile);
-
-        // if already mp4, skip conversion
-        if (str_ends_with(strtolower($sourcePath), '.mp4')) {
-            $successMsg = sprintf('[i] Video "%s" is already MP4.', $video->getTitle());
-            $this->finishCurrentStep($successMsg);
-
+        // Wenn es bereits eine MP4-Datei ist, überspringen wir die Konvertierung
+        if (str_ends_with(strtolower($sourceAbsolutePath), '.mp4')) {
+            $this->finishCurrentStep(sprintf('[i] Video "%s" is already MP4.', $video->getTitle()));
             return;
         }
 
-        $tempMp4Name = 'video_converted_' . $video->getId() . '.mp4';
-        // Für temporäre Konvertierungen nutzen wir ebenfalls den VideoFileService oder den Projektpfad
-        $tempMp4 = $this->videoFileService->getAbsolutePath($tempMp4Name);
+        // Temporäre Datei für die Konvertierung im Storage ablegen (z.B. im Verzeichnis des Videos)
+        $tempFilename = 'converted_' . uniqid() . '.mp4';
+        $tempRelativePath = 'videos/' . $video->getId() . '/' . $tempFilename;
+        $tempAbsolutePath = $this->pathProvider->getStorageRoot() . '/' . $tempRelativePath;
 
-        if ($this->videoAnalyzer->convertToMp4($sourcePath, $tempMp4)) {
-            // Speichere den neuen Dateinamen als konvertierte Datei (nur Key, kein absoluter Pfad)
-            $video->setConvertedFilename($tempMp4Name);
-            // Wenn das konvertierte Video ab jetzt die Quelle ist, können wir sourceFile anpassen
-            // oder den Pfad im FileService verwalten. Hier setzen wir den neuen Dateinamen als sourceFile:
-            $video->setSourceFile($tempMp4Name);
+        // Sicherstellen, dass das Verzeichnis existiert
+        $this->fileStorageService->createDirectoryStructure('videos/' . $video->getId());
+
+        if ($this->videoAnalyzer->convertToMp4($sourceAbsolutePath, $tempAbsolutePath)) {
+            // 1. File-Entity für das konvertierte Video erstellen
+            $convertedFile = $this->fileManager->createConvertedVideoFile($video, $tempFilename);
+            $this->fileManager->saveFile($convertedFile);
+
+            // 2. Am Video als convertedFile setzen
+            $video->setConvertedFile($convertedFile);
+
+            // Optional: Wenn das konvertierte Video ab sofort die neue Hauptquelle sein soll:
+            // $video->setSourceFile($convertedFile);
 
             $this->entityManager->persist($video);
             $this->entityManager->flush();
 
-            $successMsg = sprintf('Conversion for video "%s" succeeded', $video->getTitle());
-            $this->finishCurrentStep($successMsg);
-
+            $this->finishCurrentStep(sprintf('Conversion for video "%s" succeeded', $video->getTitle()));
             return;
         }
 
-        $errorMsg = sprintf('[⚠] Conversion for video "%s" failed', $video->getTitle());
-        $this->stopProcessing($errorMsg);
+        $this->stopProcessing(sprintf('[⚠] Conversion for video "%s" failed', $video->getTitle()));
     }
 
     public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void

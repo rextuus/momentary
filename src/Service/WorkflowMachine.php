@@ -17,8 +17,7 @@ readonly class WorkflowMachine
     public function __construct(
         #[Target('video_processing')]
         private WorkflowInterface $videoProcessingWorkflow,
-        private EntityManagerInterface $entityManager,
-        private LoggerInterface $logger
+        private EntityManagerInterface $entityManager
     ) {
     }
 

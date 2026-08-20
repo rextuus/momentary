@@ -6,7 +6,7 @@ namespace App\Serializer;
 
 use App\Entity\VideoScene;
 use App\Service\ImgproxyService;
-use App\Service\JellyfinPlaybackService;
+use App\Service\Jellyfin\JellyfinPlaybackService;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Serializer\Normalizer\NormalizerAwareInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerAwareTrait;

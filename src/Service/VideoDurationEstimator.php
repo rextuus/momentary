@@ -8,7 +8,7 @@ use App\Entity\Video;
 use App\Enum\VideoStatus;
 use App\Repository\VideoRepository;
 
-class VideoDurationEstimator
+readonly class VideoDurationEstimator
 {
     public function __construct(private VideoRepository $videoRepository) {}
 

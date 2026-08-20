@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: docker/php/Dockerfile
     restart: unless-stopped
+    command: ["sh", "-c", "mkdir -p var/cache var/log storage/imports && chown -R www-data:www-data var storage && chmod -R 777 var storage && apache2-foreground"]
     ports:
       - "${APP_HOST_BINDING:-127.0.0.1}:${APP_PORT:-8088}:80"
     environment:
@@ -29,13 +30,11 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       API_KEY: ${API_KEY}
       PYTHON_BINARY: ${PYTHON_BINARY:-/usr/bin/python3}
+      STORAGE_ROOT: ${STORAGE_ROOT:-storage}
     volumes:
-      # Code-Mount: Nur in DEV aktiv (wird via ENV überschrieben)
       - ${APP_CODE_VOLUME:-./:/var/www/html:rw}
-      - ./media/images:/var/www/html/media/images
+      - ./${STORAGE_ROOT:-storage}:/var/www/html/storage:rw
       - app_var:/var/www/html/var
-      - ./docker/jellyfin/uploads:/var/www/html/docker/jellyfin/uploads:rw
-      - ./var/uploads/app_uploads:/var/www/html/var/uploads/app_uploads
     depends_on:
       database:
         condition: service_healthy
@@ -49,7 +48,7 @@ services:
       context: .
       dockerfile: docker/php/Dockerfile
     restart: always
-    command: ["sh", "-c", "php bin/console cache:clear --env=prod && php bin/console cache:warmup --env=prod && php bin/console messenger:consume async --time-limit=3600 --memory-limit=512M"]
+    command: ["sh", "-c", "mkdir -p var/cache var/log storage && chown -R www-data:www-data var storage && chmod -R 777 var storage && php bin/console cache:clear --env=prod && php bin/console cache:warmup --env=prod && php bin/console messenger:consume async --time-limit=3600 --memory-limit=512M"]
     environment:
       APP_ENV: ${APP_ENV:-prod}
       APP_SECRET: ${APP_SECRET}
@@ -57,8 +56,8 @@ services:
       MESSENGER_TRANSPORT_DSN: "amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/%2f/messages"
       MEILISEARCH_URL: ${MEILISEARCH_URL:-http://meilisearch:7700}
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY}
-      JELLYFIN_HOST: ${JELLYFIN_HOST:-http://jellyfin:8096}  # <-- Neu hinzugefügt
-      JELLYFIN_API_KEY: ${JELLYFIN_API_KEY}                  # <-- Neu hinzugefügt
+      JELLYFIN_HOST: ${JELLYFIN_HOST:-http://jellyfin:8096}
+      JELLYFIN_API_KEY: ${JELLYFIN_API_KEY}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       AWS_REGION: ${AWS_REGION:-eu-central-1}
@@ -66,13 +65,12 @@ services:
       AWS_MAX_FACES: ${AWS_MAX_FACES:-15}
       AWS_QUALITY_FILTER: ${AWS_QUALITY_FILTER:-AUTO}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
-      PYTHON_BINARY: ${PYTHON_BINARY:-/usr/bin/python3}      # <-- Neu hinzugefügt
+      PYTHON_BINARY: ${PYTHON_BINARY:-/usr/bin/python3}
+      STORAGE_ROOT: ${STORAGE_ROOT:-storage}
     volumes:
       - ${APP_CODE_VOLUME:-./:/var/www/html:rw}
-      - ./media/images:/var/www/html/media/images
+      - ./${STORAGE_ROOT:-storage}:/var/www/html/storage:rw
       - app_var:/var/www/html/var
-      - ./docker/jellyfin/uploads:/var/www/html/docker/jellyfin/uploads:rw # <-- Neu hinzugefügt
-      - ./var/uploads/app_uploads:/var/www/html/var/uploads/app_uploads
     depends_on:
       database:
         condition: service_healthy
@@ -108,7 +106,7 @@ services:
     volumes:
       - ./docker/jellyfin/config:/config
       - ./docker/jellyfin/cache:/cache
-      - ./docker/jellyfin/uploads:/uploads
+      - ./${STORAGE_ROOT:-storage}/jellyfin/uploads:/uploads
     networks:
       - momentary-network
 
@@ -149,7 +147,7 @@ services:
     ports:
       - "${IMGPROXY_HOST_BINDING:-127.0.0.1}:${IMGPROXY_PORT:-8081}:8080"
     volumes:
-      - ./media/images:/public/media/images:ro
+      - ./${STORAGE_ROOT:-storage}/images:/public/media/images:ro
     networks:
       - momentary-network
 
@@ -160,12 +158,10 @@ services:
     ports:
       - "2222:22"
     environment:
-      # Format: benutzername:passwort:uid:gid:ordner
       SFTP_USERS: "uploaduser:MeinSicheresPasswort123:1000:33:upload"
     volumes:
-      # Bindet das Upload-Verzeichnis direkt in den SFTP-Ordner des Benutzers ein
-      - ./docker/jellyfin/uploads:/home/uploaduser/upload/jellyfin_uploads
-      - ./var/uploads/app_uploads:/home/uploaduser/upload/app_uploads
+      - ./${STORAGE_ROOT:-storage}/jellyfin/uploads:/home/uploaduser/upload/jellyfin_uploads
+      - ./${STORAGE_ROOT:-storage}/app_uploads:/home/uploaduser/upload/app_uploads
     networks:
       - momentary-network
 

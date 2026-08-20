@@ -40,23 +40,11 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
-
-    App\Service\JellyfinUploadService:
-        arguments:
-            $jellyfinHost: '%env(resolve:JELLYFIN_HOST)%'
-            $jellyfinApiKey: '%env(default::JELLYFIN_API_KEY)%'
-
     App\Service\File\FileSystem:
     
     App\Service\ImageFileService:
 
     App\Service\VideoFileService:
-
-    App\Service\ImgproxyService:
-        arguments:
-            $key: '%imgproxy_key%'
-            $salt: '%imgproxy_salt%'
-            $publicHost: '%imgproxy_public_host%'
 
     App\Command\Images\InitProfileImagesCommand:
         arguments:

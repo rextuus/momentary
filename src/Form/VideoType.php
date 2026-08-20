@@ -7,6 +7,7 @@ use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Doctrine\ORM\EntityRepository;
 use App\Entity\Video;
 use App\Repository\VideoRepository;
+use App\Service\Storage\StoragePathProvider;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
@@ -19,8 +20,7 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 class VideoType extends AbstractType
 {
     public function __construct(
-        #[Autowire('/var/www/html/var/uploads/app_uploads')]
-        private readonly string $importDir,
+        private readonly StoragePathProvider $storagePathProvider,
         #[Autowire('%env(default:app.frame_analysis_fps:FRAME_ANALYSIS_FPS)%')]
         private readonly float $defaultFps,
         #[Autowire('%env(default:app.min_scene_length_for_refinement:MIN_SCENE_LENGTH_FOR_REFINEMENT)%')]
@@ -32,20 +32,30 @@ class VideoType extends AbstractType
 
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
+        // Sauber über den StoragePathProvider bezogen statt rtrim und string concat
+        $importDir = $this->storagePathProvider->getImportAbsolutePath();
+
         $files = [];
-        if (is_dir($this->importDir)) {
-            $foundFiles = scandir($this->importDir);
+        if (is_dir($importDir)) {
+            $foundFiles = scandir($importDir);
             $allowedExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
 
             foreach ($foundFiles as $file) {
-                if ($file !== '.' && $file !== '..' && !is_dir($this->importDir . '/' . $file)) {
-                    if ($this->videoRepository->findOneBy(['sourceFile' => $file])) {
+                if ($file !== '.' && $file !== '..' && !is_dir($importDir . '/' . $file)) {
+                    $alreadyExists = $this->videoRepository->createQueryBuilder('v')
+                        ->join('v.sourceFile', 'f')
+                        ->where('f.relativePath LIKE :filename')
+                        ->setParameter('filename', '%' . $file)
+                        ->getQuery()
+                        ->getOneOrNullResult();
+
+                    if ($alreadyExists) {
                         continue;
                     }
-                    
+
                     $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
                     if (in_array($ext, $allowedExtensions, true)) {
-                        $path = $this->importDir . DIRECTORY_SEPARATOR . $file;
+                        $path = $importDir . DIRECTORY_SEPARATOR . $file;
                         $size = filesize($path);
                         $mtime = filemtime($path);
                         $label = sprintf('%s (%s, %s)', $file, $this->formatBytes($size), date('Y-m-d H:i', $mtime));
@@ -61,10 +71,11 @@ class VideoType extends AbstractType
                 'attr' => ['class' => 'form-control'],
             ])
             ->add('sourceFile', ChoiceType::class, [
-                'label' => 'Lokale Videodatei (aus app_uploads)',
+                'label' => 'Lokale Videodatei (aus Storage/imports)',
                 'choices' => $files,
                 'placeholder' => '-- Datei wählen --',
                 'required' => false,
+                'mapped' => false,
                 'attr' => ['class' => 'form-select'],
             ])
             ->add('analysisFps', NumberType::class, [

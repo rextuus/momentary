@@ -223,7 +223,6 @@ class Person
     public function removeVideoFace(VideoFace $videoFace): static
     {
         if ($this->videoFaces->removeElement($videoFace)) {
-            // set the owning side to null (unless already changed)
             if ($videoFace->getPerson() === $this) {
                 $videoFace->setPerson(null);
             }
@@ -267,20 +266,16 @@ class Person
             return null;
         }
 
-        // Wenn der String direkt "Male" oder "Female" ist (AWS Format)
         if (in_array(ucfirst(strtolower($input)), ['Male', 'Female'])) {
             return ucfirst(strtolower($input));
         }
 
-        // Altes Python-Format (JSON) Fallback
         $parsed = json_decode($input, true);
 
-        // Check if JSON decoding failed
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($parsed)) {
-            return null; // Return null for invalid input
+            return null;
         }
 
-        // Determine the gender based on the largest confidence value
         $maxGender = null;
         $maxValue = -1;
 
@@ -291,7 +286,7 @@ class Person
             }
         }
 
-        return $maxGender; // Return the gender with the highest confidence
+        return $maxGender;
     }
 
     public function __toString(): string
@@ -332,7 +327,6 @@ class Person
     public function removeDetectionFace(VideoFace $detectionFace): static
     {
         if ($this->detectionFaces->removeElement($detectionFace)) {
-            // set the owning side to null (unless already changed)
             if ($detectionFace->getDetection() === $this) {
                 $detectionFace->setDetection(null);
             }
@@ -415,6 +409,9 @@ class Person
     public function getProfileImageUrl(): ?string
     {
         $face = $this->getProfileFaceObject();
-        return $face ? $face->getFaceImagePath() : null;
+        if (!$face || !$face->getFaceImage()) {
+            return null;
+        }
+        return $face->getFaceImage()->getRelativePath();
     }
 }

@@ -22,7 +22,6 @@ use App\Service\Video\Analyze\Result\JellyfinExportResult;
 use App\Service\Video\Analyze\SceneDetector;
 use App\Service\Video\Analyze\SceneThumbnailExtractor;
 use App\Service\Video\Analyze\TaggingService;
-use App\Service\Video\Processing\Handler\UploadToJellyfinStepMessageHandler;
 use App\Service\Video\Processing\Message\ConvertStepMessage;
 use Doctrine\ORM\EntityManagerInterface;
 use Meilisearch\Client;

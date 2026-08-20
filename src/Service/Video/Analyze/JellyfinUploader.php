@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Video\Analyze;
 
 use App\Entity\Video;
-use App\Service\JellyfinUploadService;
+use App\Service\Jellyfin\JellyfinUploadService;
 use App\Service\Video\Analyze\Result\JellyfinExportResult;
 use App\Service\VideoFileService;
 use Doctrine\ORM\EntityManagerInterface;

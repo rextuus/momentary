@@ -7,6 +7,7 @@ use Onliner\ImgProxy\Options\Width;
 use Onliner\ImgProxy\Options\Height;
 use Onliner\ImgProxy\Options\ResizingType;
 use Onliner\ImgProxy\Options\Blur;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 class ImgproxyService
 {
@@ -14,8 +15,11 @@ class ImgproxyService
     private string $publicHost;
 
     public function __construct(
+        #[Autowire('%imgproxy_key%')]
         string $key,
+        #[Autowire('%imgproxy_salt%')]
         string $salt,
+        #[Autowire('%imgproxy_public_host%')]
         string $publicHost
     ) {
         $this->builder = UrlBuilder::signed($key, $salt);
@@ -26,7 +30,7 @@ class ImgproxyService
     {
         // Cache-Buster entfernen, falls vorhanden, für das imgproxy-Mapping
         $pureSourceUrl = $sourceUrl;
-        
+
         // Falls die URL bereits den publicHost enthält, entfernen wir ihn, um den Pfad zu erhalten
         if (str_starts_with($pureSourceUrl, $this->publicHost)) {
             $pureSourceUrl = str_replace($this->publicHost, '', $pureSourceUrl);
@@ -34,22 +38,22 @@ class ImgproxyService
 
         // Falls es sich bereits um eine Imgproxy-URL handelt, versuchen wir die originale URL zu extrahieren
         if (str_starts_with($pureSourceUrl, '/') && (str_contains($pureSourceUrl, '/w:') || str_contains($pureSourceUrl, '/h:'))) {
-             $parts = explode('/', trim($pureSourceUrl, '/'));
-             
-             // The structure is {signature}/{w:XXX}/{h:XXX}/{rt:XXX}/{encoded_url}
-             // So {encoded_url} is the 5th element, or everything after {rt:XXX}.
-             
-             $encodedUrl = implode('/', array_slice($parts, 4));
-             $decodedSourceUrl = $this->base64UrlDecode($encodedUrl);
-             
-             // Rekursiver Aufruf mit der dekodierten URL, diese wird dann neu signiert
-             return $this->generateUrl($decodedSourceUrl, $width, $height, $resizingType, $blur);
+            $parts = explode('/', trim($pureSourceUrl, '/'));
+
+            // The structure is {signature}/{w:XXX}/{h:XXX}/{rt:XXX}/{encoded_url}
+            // So {encoded_url} is the 5th element, or everything after {rt:XXX}.
+
+            $encodedUrl = implode('/', array_slice($parts, 4));
+            $decodedSourceUrl = $this->base64UrlDecode($encodedUrl);
+
+            // Rekursiver Aufruf mit der dekodierten URL, diese wird dann neu signiert
+            return $this->generateUrl($decodedSourceUrl, $width, $height, $resizingType, $blur);
         }
 
         $queryString = '';
         if (($pos = strpos($pureSourceUrl, '?')) !== false) {
+            $queryString = substr($pureSourceUrl, $pos); // Korrigiert: $queryString extrahieren
             $pureSourceUrl = substr($pureSourceUrl, 0, $pos);
-            $queryString = substr($pureSourceUrl, $pos);
         }
 
         // Mapping für lokale Pfade: imgproxy sieht /public als Root (siehe compose.yaml)
@@ -59,7 +63,7 @@ class ImgproxyService
         // - Flysystem-Pfade (z.B. SomeName_hash/thumbnails/...): media/images/{path} -> Mapping: local:///media/images/{path}
 
         if (!str_starts_with($pureSourceUrl, 'http://') && !str_starts_with($pureSourceUrl, 'https://') && !str_starts_with($pureSourceUrl, 'local:///')) {
-            
+
             $path = ltrim($pureSourceUrl, '/');
 
             if (str_starts_with($path, 'video_faces/')) {
@@ -89,8 +93,8 @@ class ImgproxyService
         }
 
         $generatedUrl = $this->publicHost . $this->builder
-            ->with(...$options)
-            ->url($finalSourceUrl, 'jpg');
+                ->with(...$options)
+                ->url($finalSourceUrl, 'jpg');
 
         // Auch an die generierte URL den Cache-Buster hängen für den Browser
         if ($queryString) {

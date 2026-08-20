@@ -28,6 +28,14 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
     ) {
     }
 
+    protected function initHandler(VideoProcessStepMessageInterface $message): Video
+    {
+        $this->setCurrentMessage($message);
+        $this->startCurrentStep();
+
+        return $this->getVideo();
+    }
+
     protected function setCurrentMessage(VideoProcessStepMessageInterface $message): void
     {
         $this->currentMessage = $message;

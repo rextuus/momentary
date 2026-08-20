@@ -42,9 +42,10 @@ class VideoScene
     #[Groups(['video:detail'])]
     private ?string $title = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
+    #[ORM\ManyToOne(targetEntity: File::class, cascade: ['persist', 'remove'])]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     #[Groups(['video:detail'])]
-    private ?string $thumbnailUrl = null;
+    private ?File $thumbnailFile = null;
 
     /**
      * @var Collection<int, VideoFace>
@@ -186,15 +187,21 @@ class VideoScene
         return $this;
     }
 
-    public function getThumbnailUrl(): ?string
+    public function getThumbnailFile(): ?File
     {
-        return $this->thumbnailUrl;
+        return $this->thumbnailFile;
     }
 
-    public function setThumbnailUrl(?string $thumbnailUrl): self
+    public function setThumbnailFile(?File $thumbnailFile): self
     {
-        $this->thumbnailUrl = $thumbnailUrl;
+        $this->thumbnailFile = $thumbnailFile;
         return $this;
+    }
+
+    #[Groups(['video:detail'])]
+    public function getThumbnailUrl(): ?string
+    {
+        return $this->thumbnailFile ? $this->thumbnailFile->getRelativePath() : null;
     }
 
     public function getId(): ?int

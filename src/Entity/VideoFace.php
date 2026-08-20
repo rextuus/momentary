@@ -55,8 +55,9 @@ class VideoFace
     #[Groups(['video:list', 'video:detail', 'videoface:list', 'videoface:detail'])]
     private ?string $faceLabel = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $faceImagePath = null;
+    #[ORM\ManyToOne(targetEntity: File::class, cascade: ['persist', 'remove'])]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?File $faceImage = null;
 
     #[ORM\Column(type: 'json', nullable: true)]
     #[Groups(['video:detail', 'videoface:detail'])]
@@ -163,14 +164,14 @@ class VideoFace
         return $this;
     }
 
-    public function getFaceImagePath(): ?string
+    public function getFaceImage(): ?File
     {
-        return $this->faceImagePath;
+        return $this->faceImage;
     }
 
-    public function setFaceImagePath(?string $faceImagePath): static
+    public function setFaceImage(?File $faceImage): static
     {
-        $this->faceImagePath = $faceImagePath;
+        $this->faceImage = $faceImage;
         return $this;
     }
 
@@ -295,6 +296,6 @@ class VideoFace
     #[Groups(['video:list', 'video:detail', 'videoface:list', 'videoface:detail'])]
     public function getImageUrl(): ?string
     {
-        return $this->faceImagePath;
+        return $this->faceImage ? $this->faceImage->getRelativePath() : null;
     }
 }

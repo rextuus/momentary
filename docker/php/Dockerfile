@@ -17,14 +17,10 @@ RUN apt-get update && apt-get install -y \
 RUN python3 -m pip install scenedetect[av] --break-system-packages
 
 # Install PHP extensions
-# Workaround for PHP 8.5 experimental images: install extensions one by one
-# and handle opcache specifically.
 RUN pecl install amqp && docker-php-ext-enable amqp
 RUN docker-php-ext-configure intl && docker-php-ext-install intl
 RUN docker-php-ext-install pdo_mysql
 RUN docker-php-ext-configure zip && docker-php-ext-install zip
-# Opcache might be tricky in 8.5, trying to install it separately. 
-# If it's already there, this might fail, but let's try a different approach if it does.
 RUN docker-php-ext-install opcache || echo "Opcache install failed, skipping..."
 
 # Enable Apache mod_rewrite
@@ -35,10 +31,10 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# Create necessary directories (including app_uploads) and set permissions
-RUN mkdir -p var/uploads/app_uploads public/uploads/faces docker/jellyfin/uploads \
-    && chown -R www-data:www-data var public/uploads docker \
-    && chmod -R 777 var public/uploads docker
+# Create necessary central storage directories, var structure, and set permissions
+RUN mkdir -p storage/app_uploads storage/jellyfin/uploads public/uploads/faces var/cache var/log \
+    && chown -R www-data:www-data storage var public/uploads \
+    && chmod -R 777 storage var public/uploads
 
 # Adjust Apache document root for Symfony
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public

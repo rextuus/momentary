@@ -1,11 +1,12 @@
 <?php
 
-namespace App\Service;
+namespace App\Service\Jellyfin;
 
+use App\Service\PathConstants;
+use App\Service\VideoFileService;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
-use App\Service\PathConstants;
 
 class JellyfinUploadService
 {
@@ -14,22 +15,24 @@ class JellyfinUploadService
     private ?string $jellyfinApiKey;
 
     public function __construct(
-        #[Autowire('%kernel.project_dir%')] string $projectDir,
+        #[Autowire(env: 'JELLYFIN_HOST')]
         string $jellyfinHost,
+        #[Autowire(env: 'JELLYFIN_API_KEY')]
         ?string $jellyfinApiKey,
         private readonly HttpClientInterface $httpClient,
         private readonly LoggerInterface $logger,
-        private readonly VideoAnalyzer $videoAnalyzer
+        private readonly VideoFileService $videoFileService
     ) {
-        $uploadDir = $projectDir . '/' . PathConstants::JELLYFIN_UPLOADS;
-        $this->uploadDir = $this->videoAnalyzer->resolvePath($uploadDir);
+        // Wir nutzen den VideoFileService, um den absoluten Pfad für das Jellyfin-Upload-Verzeichnis aufzulösen
+        $relativeUploadDir = PathConstants::JELLYFIN_UPLOADS;
+        $this->uploadDir = $this->videoFileService->getAbsolutePath($relativeUploadDir);
         $this->jellyfinHost = rtrim($jellyfinHost, '/');
         $this->jellyfinApiKey = $jellyfinApiKey;
     }
 
     /**
      * "Uploads" a video by moving it to the Jellyfin watched directory.
-     * 
+     *
      * @param string $sourcePath Path to the local video file.
      * @param string $filename The desired filename in the Jellyfin directory.
      * @return string|bool The final path on success, false on failure.
@@ -49,9 +52,9 @@ class JellyfinUploadService
         }
 
         $destinationPath = $this->uploadDir . DIRECTORY_SEPARATOR . $filename;
-        
+
         $this->logger->info("Copying file from $sourcePath to $destinationPath");
-        
+
         // Ensure upload directory exists and is writable
         if (!is_writable($this->uploadDir)) {
             $message = "Upload directory is not writable: $this->uploadDir. Please check permissions (e.g. chmod 777).";
@@ -62,11 +65,11 @@ class JellyfinUploadService
         if (copy($sourcePath, $destinationPath)) {
             @chmod($destinationPath, 0666);
             $this->logger->info("Video successfully copied to Jellyfin directory: $destinationPath");
-            
+
             // Trigger Jellyfin library scan if API key is provided
             $this->logger->info("Triggering Jellyfin library scan...");
             $this->triggerScan();
-            
+
             return $destinationPath;
         }
 
@@ -87,19 +90,17 @@ class JellyfinUploadService
         try {
             $url = "{$this->jellyfinHost}/Library/Refresh";
             $this->logger->info("Requesting Jellyfin refresh via API: $url");
-            
-            // Jellyfin API for scheduled tasks or specific library refreshes
-            // To refresh all libraries: POST /Library/Refresh
+
             $response = $this->httpClient->request('POST', $url, [
                 'headers' => [
                     'X-Emby-Token' => $this->jellyfinApiKey,
                 ],
-                'timeout' => 10, // Add a timeout to prevent hanging
+                'timeout' => 10,
             ]);
 
             $statusCode = $response->getStatusCode();
             $this->logger->info("Jellyfin API responded with status code: $statusCode");
-            
+
             $content = $response->getContent(false);
             if ($content) {
                 $this->logger->debug("Jellyfin API response content: " . substr($content, 0, 500));
@@ -122,8 +123,6 @@ class JellyfinUploadService
         }
 
         try {
-            // Internal Jellyfin path normalization
-            // If the path starts with the local upload dir, we make it relative to the Jellyfin internal mount point (/uploads)
             $internalPath = $path;
             if (str_contains($path, 'docker/jellyfin/uploads')) {
                 $parts = explode('docker/jellyfin/uploads', $path);
@@ -132,14 +131,12 @@ class JellyfinUploadService
                 $parts = explode('/var/www/html/docker/jellyfin/uploads', $path);
                 $internalPath = '/uploads' . end($parts);
             }
-            
-            // Normalize path to forward slashes for API comparison
+
             $normalizedInternalPath = str_replace('\\', '/', $internalPath);
-            
-            // We search using the /Items endpoint and filter by path
+
             $url = "{$this->jellyfinHost}/Items";
             $this->logger->info("Searching for Jellyfin Item ID for path: $normalizedInternalPath (original: $path)");
-            
+
             $response = $this->httpClient->request('GET', $url, [
                 'headers' => [
                     'X-Emby-Token' => $this->jellyfinApiKey,
@@ -154,7 +151,7 @@ class JellyfinUploadService
             ]);
 
             $data = $response->toArray();
-            
+
             if (isset($data['Items'])) {
                 foreach ($data['Items'] as $item) {
                     if (isset($item['Path'])) {
@@ -165,7 +162,7 @@ class JellyfinUploadService
                     }
                 }
             }
-            
+
             $this->logger->warning("Could not find Jellyfin Item ID for path: $normalizedInternalPath");
         } catch (\Exception $e) {
             $this->logger->error("Error finding Jellyfin Item ID: " . $e->getMessage());

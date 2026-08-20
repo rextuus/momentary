@@ -2,8 +2,9 @@
 
 namespace App\Controller;
 
+use App\Service\Storage\FileStorageService;
+use App\Service\Storage\StoragePathProvider;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\File\Exception\FileException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -13,14 +14,17 @@ use Symfony\Component\String\Slugger\SluggerInterface;
 class UploadController extends AbstractController
 {
     public function __construct(
-        #[Autowire('/var/www/html/var/uploads/app_uploads')]
-        private string $importDir,
-        private readonly SluggerInterface $slugger
+        private readonly SluggerInterface $slugger,
+        private readonly StoragePathProvider $pathProvider,
+        private readonly FileStorageService $fileStorageService,
     ) {}
 
     #[Route('/upload', name: 'app_upload', methods: ['GET', 'POST'])]
     public function index(Request $request): Response
     {
+        $importRelativeDir = $this->pathProvider->getImportRelativePath();
+        $importDir = $this->pathProvider->getImportAbsolutePath();
+
         if ($request->isMethod('POST')) {
             $videoFile = $request->files->get('video_file');
 
@@ -31,17 +35,15 @@ class UploadController extends AbstractController
                 $newFilename = $safeFilename . '-' . uniqid() . '.' . $videoFile->guessExtension();
 
                 try {
-                    if (!is_dir($this->importDir)) {
-                        mkdir($this->importDir, 0777, true);
-                    }
+                    $this->fileStorageService->createDirectoryStructure($importRelativeDir);
 
                     $videoFile->move(
-                        $this->importDir,
+                        $importDir,
                         $newFilename
                     );
 
                     $this->addFlash('success', 'Video "' . $newFilename . '" erfolgreich hochgeladen.');
-                    
+
                     if ($request->request->has('redirect_to_new')) {
                         return $this->redirectToRoute('video_new');
                     }
@@ -54,7 +56,7 @@ class UploadController extends AbstractController
         }
 
         return $this->render('upload/index.html.twig', [
-            'importDir' => $this->importDir,
+            'importDir' => $importDir,
         ]);
     }
 }

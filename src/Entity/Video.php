@@ -42,17 +42,20 @@ class Video
     #[Groups(['video:list', 'video:detail'])]
     private ?string $title = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
+    #[ORM\ManyToOne(targetEntity: File::class, cascade: ['persist', 'remove'])]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     #[Groups(['video:detail'])]
-    private ?string $sourceFile = null;
+    private ?File $sourceFile = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
+    #[ORM\ManyToOne(targetEntity: File::class, cascade: ['persist', 'remove'])]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     #[Groups(['video:detail'])]
-    private ?string $convertedFilename = null;
+    private ?File $convertedFile = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
+    #[ORM\ManyToOne(targetEntity: File::class, cascade: ['persist', 'remove'])]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     #[Groups(['video:detail'])]
-    private ?string $thumbnailFilename = null;
+    private ?File $thumbnailFile = null;
 
     #[ORM\Column]
     #[Groups(['video:list', 'video:detail'])]
@@ -202,36 +205,36 @@ class Video
         return $this;
     }
 
-    public function getSourceFile(): ?string
+    public function getSourceFile(): ?File
     {
         return $this->sourceFile;
     }
 
-    public function setSourceFile(?string $sourceFile): self
+    public function setSourceFile(?File $sourceFile): self
     {
         $this->sourceFile = $sourceFile;
         return $this;
     }
 
-    public function getConvertedFilename(): ?string
+    public function getConvertedFile(): ?File
     {
-        return $this->convertedFilename;
+        return $this->convertedFile;
     }
 
-    public function setConvertedFilename(?string $convertedFilename): self
+    public function setConvertedFile(?File $convertedFile): self
     {
-        $this->convertedFilename = $convertedFilename;
+        $this->convertedFile = $convertedFile;
         return $this;
     }
 
-    public function getThumbnailFilename(): ?string
+    public function getThumbnailFile(): ?File
     {
-        return $this->thumbnailFilename;
+        return $this->thumbnailFile;
     }
 
-    public function setThumbnailFilename(?string $thumbnailFilename): self
+    public function setThumbnailFile(?File $thumbnailFile): self
     {
-        $this->thumbnailFilename = $thumbnailFilename;
+        $this->thumbnailFile = $thumbnailFile;
         return $this;
     }
 
@@ -539,14 +542,7 @@ class Video
     #[Groups(['video:list', 'video:detail'])]
     public function getThumbnailUrl(): ?string
     {
-        return $this->thumbnailFilename ?? 'defaults/video-placeholder.jpg';
-    }
-
-    public function setThumbnailUrl(?string $thumbnailUrl): self
-    {
-        // Wir speichern den relativen Pfad / Namen im thumbnailFilename-Feld
-        $this->thumbnailFilename = $thumbnailUrl;
-        return $this;
+        return $this->thumbnailFile ? $this->thumbnailFile->getRelativePath() : 'defaults/video-placeholder.jpg';
     }
 
     /**
@@ -594,5 +590,11 @@ class Video
             }
         }
         return null;
+    }
+
+    #[Groups(['video:list', 'video:detail'])]
+    public function getSourceFilename(): ?string
+    {
+        return $this->sourceFile ? basename($this->sourceFile->getRelativePath()) : null;
     }
 }

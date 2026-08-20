@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Service;
+namespace App\Service\Jellyfin;
 
 use App\Entity\VideoScene;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;

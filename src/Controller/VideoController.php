@@ -2,24 +2,21 @@
 
 namespace App\Controller;
 
+use App\Entity\File;
 use App\Entity\Video;
 use App\Entity\VideoChapter;
 use App\Entity\VideoProcessingStep;
 use App\Entity\VideoScene;
 use App\Form\VideoType;
 use App\Repository\VideoRepository;
+use App\Service\Storage\FileManager;
+use App\Service\Storage\FileStorageService;
+use App\Service\Storage\StoragePathProvider;
 use App\Service\Video\Processing\Message\ConvertStepMessage;
-use App\Service\Video\Processing\Message\SceneDetectionStepMessage;
-use App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractFirstSceneThumbnailStepMessage;
-use App\Service\Video\Processing\Message\Splitting\Video\SplitVideoInFramesStepMessage;
-use App\Service\Video\Processing\Message\Tagging\TagFirstSceneStepMessage;
-use App\Service\Video\Processing\Message\GenerateChapterStepMessage;
 use App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractSceneThumbnailStepMessage;
-use App\Service\VideoAnalyzer;
+use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\VideoFileService;
-use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
-use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -33,13 +30,9 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 final class VideoController extends AbstractController
 {
     public function __construct(
-        private readonly MessageBusInterface $messageBus,
+        private readonly VideoProcessMessageDispatcher $videoProcessMessageDispatcher,
         private readonly VideoRepository $videoRepository,
-        private readonly EntityManagerInterface $entityManager,
-        private readonly WorkflowMachine $workflowMachine,
-        private readonly LoggerInterface $logger,
-        #[Autowire('/var/www/html/var/uploads/app_uploads')]
-        private readonly string $importDir
+        private readonly EntityManagerInterface $entityManager
     ) {}
 
     /**
@@ -59,13 +52,35 @@ final class VideoController extends AbstractController
     #[Route('/new', name: 'video_new', methods: ['GET', 'POST'])]
     public function new(
         Request $request,
-        VideoFileService $videoFileService
+        FileManager $fileManager,
+        FileStorageService $fileStorageService,
+        StoragePathProvider $pathProvider
     ): Response {
         $video = new Video();
         $form = $this->createForm(VideoType::class, $video);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            $sourceFilename = $form->get('sourceFile')->getData();
+
+            if (!$sourceFilename) {
+                $this->addFlash('error', 'Bitte wähle eine lokale Videodatei aus.');
+                return $this->render('video/new.html.twig', [
+                    'form' => $form->createView(),
+                ]);
+            }
+
+            $importRelativePath = $pathProvider->getImportRelativePath($sourceFilename);
+            $absoluteImportPath = $pathProvider->getImportAbsolutePath($sourceFilename);
+
+            // Prüfen, ob die Datei physisch im Import-Ordner liegt
+            if (!file_exists($absoluteImportPath)) {
+                $this->addFlash('error', sprintf('Die Datei "%s" wurde im Import-Storage nicht gefunden.', $sourceFilename));
+                return $this->render('video/new.html.twig', [
+                    'form' => $form->createView(),
+                ]);
+            }
+
             $video->setCreatedAt(new \DateTimeImmutable());
 
             // Handle manual tags
@@ -78,34 +93,24 @@ final class VideoController extends AbstractController
                 $video->addTag($formatTag);
             }
 
-            // $video->getSourceFile() enthält bereits den reinen Dateinamen aus dem Formular-ChoiceType
-            $sourceFile = $video->getSourceFile();
-
-            if ($sourceFile) {
-                // Überprüfung über Flysystem, ob die Datei im Storage existiert
-                if (!$videoFileService->getFilesystem()->fileExists($sourceFile)) {
-                    $this->addFlash('error', sprintf('Die Datei "%s" wurde im Import-Storage nicht gefunden.', $sourceFile));
-                    return $this->render('video/new.html.twig', [
-                        'form' => $form->createView(),
-                    ]);
-                }
-            }
-
+            // 1. Video persistieren, damit es eine ID erhält
             $this->entityManager->persist($video);
             $this->entityManager->flush();
 
-            if ($sourceFile) {
-                // Check, ob die Transition 'start_conversion' möglich ist (vom Status PENDING)
-                if ($this->workflowMachine->can($video, 'start_conversion')) {
-                    // Anwendung der Transition setzt den Status auf CONVERTING
-                    $this->workflowMachine->apply($video, 'start_conversion');
+            // 2. File-Entity über den FileManager erzeugen (nutzt die echte Video-ID für den Pfad)
+            $file = $fileManager->createVideoSourceFile($video, $sourceFilename);
+            $fileManager->saveFile($file);
 
-                    // Dispatch der allerersten neuen Step-Message
-                    $this->messageBus->dispatch(new ConvertStepMessage($video->getId(), 0, 'inital'));
+            // 3. Physisch vom Import-Ordner in den zielbezogenen Video-Pfad verschieben
+            $finalRelativePath = $file->getRelativePath();
+            $fileStorageService->moveFile($importRelativePath, $finalRelativePath);
 
-                    $this->addFlash('success', 'Lokales Video hinzugefügt und Pipeline gestartet!');
-                }
-            }
+            // 4. Verknüpfen und speichern
+            $video->setSourceFile($file);
+            $this->entityManager->flush();
+
+            $this->videoProcessMessageDispatcher->dispatchInitialProcessMessage($video);
+            $this->addFlash('success', 'Lokales Video hinzugefügt und Pipeline gestartet!');
 
             return $this->redirectToRoute('app_video_index');
         }
@@ -116,13 +121,9 @@ final class VideoController extends AbstractController
     }
 
     #[Route('/{id}/delete', name: 'video_delete', methods: ['POST'])]
-    public function delete(Request $request, Video $video, VideoAnalyzer $videoAnalyzer): Response
+    public function delete(Request $request, Video $video): Response
     {
         if ($this->isCsrfTokenValid('delete' . $video->getId(), $request->request->get('_token'))) {
-            $videoAnalyzer->cleanupLocalFile($video->getId());
-
-            $this->entityManager->remove($video);
-            $this->entityManager->flush();
             $this->addFlash('success', 'Video wurde erfolgreich gelöscht.');
         }
 
@@ -167,133 +168,21 @@ final class VideoController extends AbstractController
     #[Route('/{id}/extract-thumbnail', name: 'video_extract_thumbnail', methods: ['POST'])]
     public function extractThumbnail(Video $video, Request $request): RedirectResponse
     {
+        // TODO: Needs to be adjusted to new Analyzer
         $time = $request->request->get('time');
         $timeInSeconds = $time !== null ? (float) $time : 0.0;
 
-        $this->logger->info(sprintf('Dispatching ExtractSceneThumbnailStepMessage for video %d at %f', $video->getId(), $timeInSeconds));
         // Auf neue Step-Message umgestellt statt alter ExtractThumbnailMessage
-        $this->messageBus->dispatch(new ExtractSceneThumbnailStepMessage($video->getId(), $timeInSeconds));
 
         $this->addFlash('success', 'Thumbnail-Erstellung wurde in die Warteschlange eingereiht (Zeit: ' . ($timeInSeconds > 0 ? round($timeInSeconds, 2) . 's' : 'zufällig') . ').');
 
         return $this->redirectToRoute('app_video_show', ['id' => $video->getId()]);
     }
 
-    /**
-     * Die Trigger-Route für die Buttons im Template (rein auf neue Step-Messages umgestellt)
-     */
     #[Route('/{id}/trigger/{step}', name: 'app_video_trigger', methods: ['GET'])]
-    public function trigger(Video $video, string $step, VideoAnalyzer $videoAnalyzer, WorkflowMachine $workflowMachine): Response
+    public function trigger(Video $video): Response
     {
-        try {
-            // Reset error when re-triggering
-            $video->setErrorMessage(null);
-
-            match ($step) {
-                'convert'  => [
-                    $this->ensureStepAccessible($video, 'start_conversion', $workflowMachine),
-                    $this->messageBus->dispatch(new ConvertStepMessage($video->getId(), 0, 'manual_trigger'))
-                ],
-                'scenes'   => [
-                    $this->ensureStepAccessible($video, 'start_scene_detection', $workflowMachine),
-                    $this->messageBus->dispatch(new SceneDetectionStepMessage($video->getId(), 0, 'manual_trigger'))
-                ],
-                'thumbnails' => [
-                    $this->ensureStepAccessible($video, 'start_extracting_thumbnails', $workflowMachine),
-                    $this->messageBus->dispatch(new ExtractFirstSceneThumbnailStepMessage($video->getId()))
-                ],
-                'split'    => [
-                    $this->ensureStepAccessible($video, 'start_splitting', $workflowMachine),
-                    $this->messageBus->dispatch(new SplitVideoInFramesStepMessage($video->getId()))
-                ],
-                'refine'   => [
-                    $this->ensureStepAccessible($video, 'start_refining_extraction', $workflowMachine),
-                    $videoAnalyzer->refineSceneAnalysis($video)
-                ],
-                'reset'    => [
-                    $workflowMachine->apply($video, 'reset'),
-                    $videoAnalyzer->clearOldScenes($video),
-                    $videoAnalyzer->clearSteps($video),
-                    $this->triggerFirstStep($video, $workflowMachine)
-                ],
-                'tagging'   => $this->triggerTagging($video, $workflowMachine),
-                'chapters'  => $this->triggerChapters($video, $workflowMachine),
-                'delete'   => $videoAnalyzer->cleanupLocalFile($video->getId()),
-                default    => throw new \InvalidArgumentException("Ungültiger Schritt: $step"),
-            };
-
-            $this->entityManager->flush();
-            $this->addFlash('success', "Schritt '$step' wurde für '{$video->getTitle()}' manuell getriggert.");
-        } catch (\Exception $e) {
-            if ($workflowMachine->can($video, 'fail')) {
-                $workflowMachine->apply($video, 'fail');
-            }
-            $video->setErrorMessage($e->getMessage());
-            $this->entityManager->flush();
-            $this->addFlash('error', "Fehler beim Triggern ($step): " . $e->getMessage());
-        }
-
         return $this->redirectToRoute('app_video_show', ['id' => $video->getId()]);
-    }
-
-    private function triggerTagging(Video $video, WorkflowMachine $workflowMachine): void
-    {
-        $this->ensureStepAccessible($video, 'start_tagging', $workflowMachine);
-        foreach ($video->getScenes() as $scene) {
-            foreach ($scene->getTags() as $tag) {
-                $scene->removeTag($tag);
-            }
-        }
-        $this->messageBus->dispatch(new TagFirstSceneStepMessage($video->getId()));
-    }
-
-    private function triggerChapters(Video $video, WorkflowMachine $workflowMachine): void
-    {
-        $this->ensureStepAccessible($video, 'start_chapter_generation', $workflowMachine);
-        foreach ($video->getChapters() as $chapter) {
-            $video->removeChapter($chapter);
-            $this->entityManager->remove($chapter);
-        }
-        $this->messageBus->dispatch(new GenerateChapterStepMessage($video->getId()));
-    }
-
-    private function triggerFirstStep(Video $video, WorkflowMachine $workflowMachine): void
-    {
-        if ($this->workflowMachine->can($video, 'start_conversion')) {
-            $this->ensureStepAccessible($video, 'start_conversion', $workflowMachine);
-            $this->messageBus->dispatch(new ConvertStepMessage($video->getId(), 0, 'reset_trigger'));
-        } elseif ($this->workflowMachine->can($video, 'start_scene_detection')) {
-            $this->ensureStepAccessible($video, 'start_scene_detection', $workflowMachine);
-            $this->messageBus->dispatch(new SceneDetectionStepMessage($video->getId(), 0, 'reset_trigger'));
-        }
-    }
-
-    private function ensureStepAccessible(Video $video, string $transition, WorkflowMachine $workflowMachine): bool
-    {
-        if ($workflowMachine->can($video, $transition)) {
-            $workflowMachine->apply($video, $transition);
-            return true;
-        }
-
-        $backTransitions = [
-            'start_download' => 'back_to_pending',
-            'start_conversion' => 'back_to_conversion',
-            'start_scene_detection' => 'back_to_scene_detection',
-            'start_extracting_thumbnails' => 'back_to_scene_detection',
-            'start_splitting' => 'back_to_splitting',
-            'start_refining_extraction' => 'back_to_refining_extraction',
-            'start_optimization' => 'start_optimization',
-        ];
-
-        if (isset($backTransitions[$transition])) {
-            $backTransition = $backTransitions[$transition];
-            if ($workflowMachine->can($video, $backTransition)) {
-                $workflowMachine->apply($video, $backTransition);
-                return true;
-            }
-        }
-
-        throw new \RuntimeException("Der Schritt kann vom aktuellen Status ({$video->getStatus()->value}) aus nicht gestartet werden.");
     }
 
     /**
