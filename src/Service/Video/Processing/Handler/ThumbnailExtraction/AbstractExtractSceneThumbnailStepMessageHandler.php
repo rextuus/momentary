@@ -6,10 +6,12 @@ namespace App\Service\Video\Processing\Handler\ThumbnailExtraction;
 
 use App\Repository\VideoRepository;
 use App\Repository\VideoSceneRepository;
+use App\Service\Storage\FileManager;
+use App\Service\Storage\StoragePathProvider;
 use App\Service\Video\Processing\Handler\Abstract\AbstractVideoMessageHandler;
 use App\Service\Video\Processing\Message\ThumbnailExtraction\AbstractExtractSceneThumbnailStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
-use App\Service\Video\Analyze\BetterVideoAnalyzer;
+use App\Service\Video\Analyze\SceneThumbnailExtractor;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
@@ -22,14 +24,16 @@ abstract class AbstractExtractSceneThumbnailStepMessageHandler extends AbstractV
 {
     protected ?int $nextSceneId = null;
     protected array $remainingSceneIds = [];
+
     public function __construct(
         VideoRepository $videoRepository,
         VideoProcessMessageDispatcher $dispatcher,
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
-        private readonly VideoSceneRepository $videoSceneRepository,
-        private readonly BetterVideoAnalyzer $videoAnalyzer,
-        private readonly EntityManagerInterface $entityManager,
+        protected VideoSceneRepository $videoSceneRepository,
+        protected SceneThumbnailExtractor $thumbnailExtractor,
+        protected StoragePathProvider $pathProvider,
+        protected EntityManagerInterface $entityManager,
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
     }
@@ -37,7 +41,7 @@ abstract class AbstractExtractSceneThumbnailStepMessageHandler extends AbstractV
     protected function generateThumbnail(AbstractExtractSceneThumbnailStepMessage $message): ?string
     {
         $scene = $this->videoSceneRepository->find($message->getCurrentSceneId());
-        if ($scene === null){
+        if ($scene === null) {
             return sprintf(
                 '[⚠] Cant find scene with id "%s"',
                 $message->getCurrentSceneId()
@@ -52,27 +56,48 @@ abstract class AbstractExtractSceneThumbnailStepMessageHandler extends AbstractV
             );
         }
 
+        $sourceFileEntity = $video->getSourceFile();
+        if ($sourceFileEntity === null) {
+            return sprintf(
+                '[⚠] Source file entity is missing for video id "%s"',
+                $video->getId()
+            );
+        }
+
+        $videoPath = $this->pathProvider->getStorageRoot() . '/' . $sourceFileEntity->getRelativePath();
+        if (!file_exists($videoPath)) {
+            return sprintf(
+                '[⚠] Source video file not found on disk: "%s"',
+                $videoPath
+            );
+        }
+
         // Extract thumbnail from the middle of the scene
         $time = ($scene->getStartSeconds() + $scene->getEndSeconds()) / 2;
-        $thumbnailPath = $this->videoAnalyzer->extractThumbnail(
+        $thumbnailFilename = sprintf('scene_%d.jpg', $scene->getId());
+
+        // Der Extractor liefert direkt eine fertige File-Entity zurück
+        $thumbnailFile = $this->thumbnailExtractor->extractThumbnail(
             $video,
             $time,
-            sprintf('scene_%d.jpg', $scene->getId())
+            $thumbnailFilename
         );
 
-        if ($thumbnailPath === null) {
+        if ($thumbnailFile === null) {
             return sprintf(
                 '[⚠] No thumbnail could be generated for scene id "%s"',
                 $message->getCurrentSceneId()
             );
         }
 
-        $scene->setThumbnailUrl($thumbnailPath);
+        // Als File-Entity an der Scene setzen
+        $scene->setThumbnailFile($thumbnailFile);
 
-        // set thumbnail of first scene as video thumbnail (nutzt jetzt setThumbnailUrl)
-        if ($video->getThumbnailFilename() === null) {
-            $video->setThumbnailUrl($thumbnailPath);
+        // Wenn das Video noch kein Thumbnail hat, dort ebenfalls setzen
+        if ($video->getThumbnailFile() === null) {
+            $video->setThumbnailFile($thumbnailFile);
         }
+
         $this->entityManager->flush();
 
         return null;

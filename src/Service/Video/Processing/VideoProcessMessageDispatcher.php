@@ -9,9 +9,9 @@ use App\Service\Video\Processing\Message\ConvertStepMessage;
 use Symfony\Component\Messenger\Exception\ExceptionInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
 
-readonly class VideoProcessMessageDispatcher
+class VideoProcessMessageDispatcher
 {
-    public function __construct(private MessageBusInterface $bus)
+    public function __construct(private readonly MessageBusInterface $bus)
     {
     }
 

@@ -38,13 +38,13 @@ final class VideoIndexerSubscriber
 
     private function handle(object $entity): void
     {
-        if ($entity instanceof Video) {
-            $this->messageBus->dispatch(new IndexVideoMessage($entity->getId()));
-        } elseif ($entity instanceof VideoScene) {
-            $video = $entity->getVideo();
-            if ($video) {
-                $this->messageBus->dispatch(new IndexVideoMessage($video->getId()));
-            }
-        }
+//        if ($entity instanceof Video) {
+//            $this->messageBus->dispatch(new IndexVideoMessage($entity->getId()));
+//        } elseif ($entity instanceof VideoScene) {
+//            $video = $entity->getVideo();
+//            if ($video) {
+//                $this->messageBus->dispatch(new IndexVideoMessage($video->getId()));
+//            }
+//        }
     }
 }

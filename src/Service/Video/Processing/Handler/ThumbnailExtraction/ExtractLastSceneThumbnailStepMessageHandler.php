@@ -6,6 +6,9 @@ namespace App\Service\Video\Processing\Handler\ThumbnailExtraction;
 
 use App\Repository\VideoRepository;
 use App\Repository\VideoSceneRepository;
+use App\Service\Storage\FileManager;
+use App\Service\Storage\StoragePathProvider;
+use App\Service\Video\Analyze\SceneThumbnailExtractor;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Message\Splitting\Video\SplitVideoInFramesStepMessage;
 use App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractLastSceneThumbnailStepMessage;
@@ -29,7 +32,8 @@ class ExtractLastSceneThumbnailStepMessageHandler extends AbstractExtractSceneTh
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
         VideoSceneRepository $videoSceneRepository,
-        BetterVideoAnalyzer $videoAnalyzer,
+        SceneThumbnailExtractor $thumbnailExtractor,
+        StoragePathProvider $pathProvider,
         EntityManagerInterface $entityManager,
     ) {
         parent::__construct(
@@ -38,7 +42,8 @@ class ExtractLastSceneThumbnailStepMessageHandler extends AbstractExtractSceneTh
             $workflowMachine,
             $processingService,
             $videoSceneRepository,
-            $videoAnalyzer,
+            $thumbnailExtractor,
+            $pathProvider,
             $entityManager,
         );
     }

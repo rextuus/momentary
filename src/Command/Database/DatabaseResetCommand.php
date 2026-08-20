@@ -5,6 +5,7 @@ namespace App\Command\Database;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -25,20 +26,18 @@ class DatabaseResetCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
         
-        if (!$io->confirm('Sind Sie sicher, dass Sie die gesamte Datenbank außer der User-Tabelle leeren möchten?', false)) {
+        if (!$io->confirm('Sind Sie sicher, dass Sie die gesamte Datenbank außer der User-Tabelle leeren möchten?', true)) {
             $io->warning('Abgebrochen.');
             return Command::FAILURE;
         }
 
         $connection = $this->entityManager->getConnection();
-        $schemaManager = $connection->createSchemaManager();
-        $tables = $schemaManager->listTableNames();
-
-        $connection->beginTransaction();
+        
         try {
-            // Deaktivieren der Foreign-Key-Checks (Syntax ist DB-abhängig, meist MySQL/MariaDB/PostgreSQL)
-            // Hier gehe ich von MySQL aus, da "public/uploads" vorkam (typisch für viele kleine PHP Projekte)
             $connection->executeStatement('SET FOREIGN_KEY_CHECKS = 0');
+            
+            $schemaManager = $connection->createSchemaManager();
+            $tables = $schemaManager->listTableNames();
 
             foreach ($tables as $table) {
                 if ($table === 'user') {
@@ -48,16 +47,26 @@ class DatabaseResetCommand extends Command
                 $io->note(sprintf('Leere Tabelle: %s', $table));
                 $connection->executeStatement(sprintf('TRUNCATE TABLE %s', $table));
             }
-
-            $connection->executeStatement('SET FOREIGN_KEY_CHECKS = 1');
-            $connection->commit();
+            
             $io->success('Datenbank wurde erfolgreich geleert.');
         } catch (\Exception $e) {
-            $connection->rollBack();
-            $connection->executeStatement('SET FOREIGN_KEY_CHECKS = 1');
             $io->error('Ein Fehler ist aufgetreten: ' . $e->getMessage());
             return Command::FAILURE;
+        } finally {
+            $connection->executeStatement('SET FOREIGN_KEY_CHECKS = 1');
+            $this->entityManager->clear();
         }
+
+        $io->note('Führe doctrine:schema:update --force aus...');
+        $command = $this->getApplication()->find('doctrine:schema:update');
+        $result = $command->run(new ArrayInput(['--force' => true]), $output);
+        
+        if ($result !== Command::SUCCESS) {
+            $io->error('Fehler beim Aktualisieren des Datenbankschemas.');
+            return $result;
+        }
+
+        $io->success('Datenbank erfolgreich geleert und Schema aktualisiert.');
 
         return Command::SUCCESS;
     }

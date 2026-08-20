@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Video\Processing\Handler;
 
 use App\Repository\VideoRepository;
+use App\Service\Storage\StoragePathProvider;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Handler\Abstract\AbstractVideoMessageHandler;
 use App\Service\Video\Processing\Message\SceneDetectionStepMessage;
@@ -12,7 +13,6 @@ use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
 use App\Service\Video\VideoSceneService;
 use App\Service\Video\Analyze\BetterVideoAnalyzer;
-use App\Service\VideoFileService;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -27,7 +27,7 @@ class SceneDetectionStepMessageHandler extends AbstractVideoMessageHandler
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
         private readonly BetterVideoAnalyzer $videoAnalyzer,
-        private readonly VideoFileService $videoFileService,
+        private readonly StoragePathProvider $pathProvider,
         private readonly VideoSceneService $videoSceneService
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
@@ -35,21 +35,19 @@ class SceneDetectionStepMessageHandler extends AbstractVideoMessageHandler
 
     public function __invoke(SceneDetectionStepMessage $message): void
     {
-        $this->setCurrentMessage($message);
-        $video = $this->getVideo();
-        $this->startCurrentStep();
+        $video = $this->initHandler($message);
 
-        $sourceFile = $video->getSourceFile();
-        if ($sourceFile === null) {
-            $this->stopProcessing("Source file key is missing for video: " . $video->getId());
+        $sourceFileEntity = $video->getSourceFile();
+        if ($sourceFileEntity === null) {
+            $this->stopProcessing("Source file entity is missing for video: " . $video->getId());
             return;
         }
 
-        $videoPath = $this->videoFileService->getAbsolutePath($sourceFile);
+        // Absoluten Pfad über den StoragePathProvider und die File-Entity ermitteln
+        $videoPath = $this->pathProvider->getStorageRoot() . '/' . $sourceFileEntity->getRelativePath();
 
         if (!file_exists($videoPath)) {
             $this->stopProcessing("Source video for scene detection not found: $videoPath");
-
             return;
         }
 
@@ -61,13 +59,12 @@ class SceneDetectionStepMessageHandler extends AbstractVideoMessageHandler
         // Save scenes
         $this->videoSceneService->storeScenes($video, $scenes);
 
-        if($scenes === []){
+        if ($scenes === []) {
             $errorMsg = sprintf(
                 '[⚠] Splitting Scenes for video "%s" failed! 0 scenes added to DB!',
                 $video->getTitle()
             );
             $this->stopProcessing($errorMsg);
-
             return;
         }
 

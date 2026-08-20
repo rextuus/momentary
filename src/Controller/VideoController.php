@@ -10,8 +10,7 @@ use App\Entity\VideoScene;
 use App\Form\VideoType;
 use App\Repository\VideoRepository;
 use App\Service\Storage\FileManager;
-use App\Service\Storage\FileStorageService;
-use App\Service\Storage\StoragePathProvider;
+use App\Service\Video\VideoCreationService;
 use App\Service\Video\Processing\Message\ConvertStepMessage;
 use App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractSceneThumbnailStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
@@ -52,9 +51,7 @@ final class VideoController extends AbstractController
     #[Route('/new', name: 'video_new', methods: ['GET', 'POST'])]
     public function new(
         Request $request,
-        FileManager $fileManager,
-        FileStorageService $fileStorageService,
-        StoragePathProvider $pathProvider
+        VideoCreationService $videoCreationService
     ): Response {
         $video = new Video();
         $form = $this->createForm(VideoType::class, $video);
@@ -62,7 +59,6 @@ final class VideoController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             $sourceFilename = $form->get('sourceFile')->getData();
-
             if (!$sourceFilename) {
                 $this->addFlash('error', 'Bitte wähle eine lokale Videodatei aus.');
                 return $this->render('video/new.html.twig', [
@@ -70,49 +66,20 @@ final class VideoController extends AbstractController
                 ]);
             }
 
-            $importRelativePath = $pathProvider->getImportRelativePath($sourceFilename);
-            $absoluteImportPath = $pathProvider->getImportAbsolutePath($sourceFilename);
+            try {
+                $cameraTag = $form->get('cameraTags')->getData();
+                $formatTag = $form->get('formatTags')->getData();
 
-            // Prüfen, ob die Datei physisch im Import-Ordner liegt
-            if (!file_exists($absoluteImportPath)) {
-                $this->addFlash('error', sprintf('Die Datei "%s" wurde im Import-Storage nicht gefunden.', $sourceFilename));
+                $videoCreationService->createVideo($video, $sourceFilename, $cameraTag, $formatTag);
+
+                $this->addFlash('success', 'Lokales Video hinzugefügt und Pipeline gestartet!');
+                return $this->redirectToRoute('app_video_index');
+            } catch (\Exception $e) {
+                $this->addFlash('error', 'Fehler beim Erstellen des Videos: ' . $e->getMessage());
                 return $this->render('video/new.html.twig', [
                     'form' => $form->createView(),
                 ]);
             }
-
-            $video->setCreatedAt(new \DateTimeImmutable());
-
-            // Handle manual tags
-            $cameraTag = $form->get('cameraTags')->getData();
-            if ($cameraTag) {
-                $video->addTag($cameraTag);
-            }
-            $formatTag = $form->get('formatTags')->getData();
-            if ($formatTag) {
-                $video->addTag($formatTag);
-            }
-
-            // 1. Video persistieren, damit es eine ID erhält
-            $this->entityManager->persist($video);
-            $this->entityManager->flush();
-
-            // 2. File-Entity über den FileManager erzeugen (nutzt die echte Video-ID für den Pfad)
-            $file = $fileManager->createVideoSourceFile($video, $sourceFilename);
-            $fileManager->saveFile($file);
-
-            // 3. Physisch vom Import-Ordner in den zielbezogenen Video-Pfad verschieben
-            $finalRelativePath = $file->getRelativePath();
-            $fileStorageService->moveFile($importRelativePath, $finalRelativePath);
-
-            // 4. Verknüpfen und speichern
-            $video->setSourceFile($file);
-            $this->entityManager->flush();
-
-            $this->videoProcessMessageDispatcher->dispatchInitialProcessMessage($video);
-            $this->addFlash('success', 'Lokales Video hinzugefügt und Pipeline gestartet!');
-
-            return $this->redirectToRoute('app_video_index');
         }
 
         return $this->render('video/new.html.twig', [
@@ -121,9 +88,22 @@ final class VideoController extends AbstractController
     }
 
     #[Route('/{id}/delete', name: 'video_delete', methods: ['POST'])]
-    public function delete(Request $request, Video $video): Response
+    public function delete(Request $request, Video $video, FileManager $fileManager): Response
     {
         if ($this->isCsrfTokenValid('delete' . $video->getId(), $request->request->get('_token'))) {
+            if ($video->getSourceFile()) {
+                $fileManager->deleteFile($video->getSourceFile(), false);
+            }
+            if ($video->getConvertedFile()) {
+                $fileManager->deleteFile($video->getConvertedFile(), false);
+            }
+            if ($video->getThumbnailFile()) {
+                $fileManager->deleteFile($video->getThumbnailFile(), false);
+            }
+
+            $this->entityManager->remove($video);
+            $this->entityManager->flush();
+
             $this->addFlash('success', 'Video wurde erfolgreich gelöscht.');
         }
 

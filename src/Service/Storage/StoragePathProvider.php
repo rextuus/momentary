@@ -21,11 +21,15 @@ class StoragePathProvider
      */
     public function getAbsolutePath(File $file): string
     {
-        $root = str_starts_with($this->storageRoot, '/')
-            ? $this->storageRoot
-            : $this->projectDir . '/' . $this->storageRoot;
+        return $this->getStorageRoot() . '/' . ltrim($file->getRelativePath(), '/');
+    }
 
-        return rtrim($root, '/') . '/' . ltrim($file->getRelativePath(), '/');
+    /**
+     * NEU: Gibt den absoluten Pfad direkt für eine gegebene relative Pfad-Zeichenkette zurück.
+     */
+    public function getAbsoluteFilePath(string $relativePath): string
+    {
+        return rtrim($this->getStorageRoot(), '/') . '/' . ltrim($relativePath, '/');
     }
 
     /**

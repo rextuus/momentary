@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\Service\Video\Analyze;
 
+use App\Entity\File;
 use App\Entity\Video;
-use App\Service\VideoFileService;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Service\Storage\FileManager;
+use App\Service\Storage\StoragePathProvider;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Process\Exception\RuntimeException;
 use Symfony\Component\Process\Process;
@@ -18,28 +19,26 @@ use Symfony\Component\Process\Process;
 class SceneThumbnailExtractor
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
-        private readonly VideoFileService $videoFileService,
+        private readonly StoragePathProvider $pathProvider,
+        private readonly FileManager $fileManager,
         #[Autowire('%env(PYTHON_BINARY)%')]
         string $pythonBinary = '/usr/bin/python3',
     ) {
     }
 
-    public function extractThumbnail(Video $video, float $timeInSeconds = 0.0, ?string $customFilename = null): ?string
+    public function extractThumbnail(Video $video, float $timeInSeconds = 0.0, ?string $customFilename = null): ?File
     {
-        $sourceFile = $video->getConvertedFilename() ?? $video->getSourceFile();
-
-        if (!$sourceFile) {
+        $fileEntity = $video->getConvertedFile() ?? $video->getSourceFile();
+        if ($fileEntity === null) {
             return null;
         }
 
-        $videoPath = $this->videoFileService->getAbsolutePath($sourceFile);
-
+        $videoPath = $this->pathProvider->getAbsolutePath($fileEntity);
         if (!file_exists($videoPath)) {
             return null;
         }
 
-        // Wenn Zeit 0.0 ist, versuchen wir eine sinnvollere Zeit zu finden (zufällig)
+        // Wenn Zeit 0.0 ist, Dauer per ffprobe ermitteln
         if ($timeInSeconds <= 0.0) {
             try {
                 $ffprobeProcess = new Process([
@@ -63,15 +62,16 @@ class SceneThumbnailExtractor
             }
         }
 
-        // Zielverzeichnis für Thumbnails definieren (z. B. im Public/Upload-Ordner oder über Flysystem)
-        $thumbnailDir = 'thumbnails/' . $video->getId();
-        $absoluteDir = $this->videoFileService->getAbsolutePath($thumbnailDir);
+        $thumbnailName = $customFilename ?? sprintf('video_%d.jpg', $video->getId());
+
+        // Thumbnail-File-Entity erzeugen und absoluten Pfad über den PathProvider holen
+        $thumbnailFile = $this->fileManager->createThumbnailFile($thumbnailName);
+        $absoluteThumbnailPath = $this->pathProvider->getAbsolutePath($thumbnailFile);
+
+        $absoluteDir = dirname($absoluteThumbnailPath);
         if (!is_dir($absoluteDir)) {
             mkdir($absoluteDir, 0777, true);
         }
-
-        $thumbnailName = $customFilename ?? sprintf('video_%d.jpg', $video->getId());
-        $thumbnailPath = $absoluteDir . '/' . $thumbnailName;
 
         $command = [
             'ffmpeg',
@@ -82,7 +82,7 @@ class SceneThumbnailExtractor
             '-vframes', '1',
             '-q:v', '2',
             '-pix_fmt', 'yuvj420p',
-            $thumbnailPath
+            $absoluteThumbnailPath
         ];
 
         $process = new Process($command);
@@ -94,21 +94,16 @@ class SceneThumbnailExtractor
             return null;
         }
 
-        if (!$process->isSuccessful() || !file_exists($thumbnailPath)) {
+        if (!$process->isSuccessful() || !file_exists($absoluteThumbnailPath)) {
             return null;
         }
 
-        @touch($thumbnailPath);
+        @touch($absoluteThumbnailPath);
 
-        $relativeThumbnailPath = $thumbnailDir . '/' . $thumbnailName;
-        $relativeThumbnailPath .= '?t=' . time();
+        // Dateigröße aktualisieren und Datei über den FileManager persistieren
+        $thumbnailFile->setFileSize(filesize($absoluteThumbnailPath) ?: 0);
+        $this->fileManager->saveFile($thumbnailFile);
 
-        if ($customFilename === null) {
-            // Nutze das korrekte Entity-Feld für das Thumbnail (z.B. setThumbnailUrl)
-            $video->setThumbnailUrl($relativeThumbnailPath);
-            $this->entityManager->flush();
-        }
-
-        return $relativeThumbnailPath;
+        return $thumbnailFile;
     }
 }

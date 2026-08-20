@@ -79,6 +79,19 @@ class FileManager
         );
     }
 
+    /**
+     * NEU: Erstellt ein allgemeines Thumbnail-File (nutzt Zweck THUMBNAIL_VIDEO ohne starre Video-ID Verknüpfung im Pfad, falls gewünscht).
+     */
+    public function createThumbnailFile(string $thumbnailName, MimeType $mimeType = MimeType::JPEG): File
+    {
+        return $this->createFileEntity(
+            purpose: FilePurpose::THUMBNAIL_VIDEO,
+            filename: $thumbnailName,
+            entityId: null,
+            mimeType: $mimeType->value
+        );
+    }
+
     public function saveFile(File $file, bool $flush = true): void
     {
         $this->fileRepository->save($file, $flush);
@@ -119,7 +132,7 @@ class FileManager
         $file->setPurpose($purpose);
         $file->setRelativePath($relativePath);
         $file->setMimeType($mimeType);
-        $file->setFileSize(0); // Wird aktualisiert, sobald die echte Datei da ist
+        $file->setFileSize(0);
 
         return $file;
     }
