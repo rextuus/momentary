@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Video\Processing\Handler\Splitting\Video;
 
 use App\Repository\VideoRepository;
+use App\Service\Storage\StoragePathProvider;
 use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Handler\Splitting\AbstractSplitInFramesStepMessageHandler;
@@ -27,6 +28,7 @@ class SplitVideoInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
         BetterVideoAnalyzer $videoAnalyzer,
+        StoragePathProvider $pathProvider,
         EntityManagerInterface $entityManager
     ) {
         parent::__construct(
@@ -35,6 +37,7 @@ class SplitVideoInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
             $workflowMachine,
             $processingService,
             $videoAnalyzer,
+            $pathProvider,
             $entityManager
         );
     }

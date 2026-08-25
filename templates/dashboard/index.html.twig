@@ -166,7 +166,7 @@
                                                             {% if video.thumbnailUrl %}
                                                                 {% set is_allowed = is_granted('VIDEO_VIEW', video) %}
                                                                 {% set blur = (not is_allowed and (app.user is null or (app.user.settings and app.user.settings.blurForbiddenContent))) ? 5 : 0 %}
-                                                                <img src="{{ imgproxy_url(video.thumbnailUrl, 100, 60, 'fill', blur) }}" alt="{{ video.title }}" class="w-100 h-100 object-fit-cover position-absolute top-0 start-0">
+                                                                <img src="{{ imgproxy_url(video.thumbnailFile, 100, 60, 'fill', blur) }}" alt="{{ video.title }}" class="w-100 h-100 object-fit-cover position-absolute top-0 start-0">
                                                             {% endif %}
                                                             <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-{{ statusInfo.color }} bg-opacity-25" style="z-index: 1;">
                                                                 <i class="fas fa-{{ statusInfo.icon }} text-white shadow-sm" style="font-size: 0.8rem;"></i>
@@ -271,7 +271,7 @@
                                 <a href="{{ path('person_detail', {id: person.id}) }}" class="list-group-item list-group-item-action border-0 px-0 d-flex align-items-center mb-2">
                                     <div class="rounded-circle shadow-sm me-3 border border-2 border-white overflow-hidden flex-shrink-0" style="width: 38px; height: 38px; background-color: #f8f9fa;">
                                         {% if displayFace %}
-                                            <div style="{{ face_zoom_style(imgproxy_url(displayFace.faceImagePath), displayFace.boundingBox, 0.1) }}"></div>
+                                            <div style="{{ face_zoom_style(imgproxy_url(displayFace.faceImage), displayFace.boundingBox, 0.1) }}"></div>
                                         {% else %}
                                             <div class="d-flex align-items-center justify-content-center h-100 text-muted small fw-bold">{{ person.name|slice(0,1)|upper }}</div>
                                         {% endif %}

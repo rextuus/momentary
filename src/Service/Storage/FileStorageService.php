@@ -48,9 +48,8 @@ class FileStorageService
      */
     public function moveFile(string $fromRelativePath, string $toRelativePath): void
     {
-        $storageRoot = $this->pathProvider->getStorageRoot();
-        $absoluteFrom = rtrim($storageRoot, '/') . '/' . ltrim($fromRelativePath, '/');
-        $absoluteTo = rtrim($storageRoot, '/') . '/' . ltrim($toRelativePath, '/');
+        $absoluteFrom = $this->pathProvider->getAbsoluteFilePath($fromRelativePath);
+        $absoluteTo = $this->pathProvider->getAbsoluteFilePath($toRelativePath);
 
         $targetDir = dirname($absoluteTo);
         if (!$this->filesystem->exists($targetDir)) {
@@ -65,9 +64,8 @@ class FileStorageService
      */
     public function copyFile(string $fromRelativePath, string $toRelativePath): void
     {
-        $storageRoot = $this->pathProvider->getStorageRoot();
-        $absoluteFrom = rtrim($storageRoot, '/') . '/' . ltrim($fromRelativePath, '/');
-        $absoluteTo = rtrim($storageRoot, '/') . '/' . ltrim($toRelativePath, '/');
+        $absoluteFrom = $this->pathProvider->getAbsoluteFilePath($fromRelativePath);
+        $absoluteTo = $this->pathProvider->getAbsoluteFilePath($toRelativePath);
 
         $targetDir = dirname($absoluteTo);
         if (!$this->filesystem->exists($targetDir)) {
@@ -104,8 +102,7 @@ class FileStorageService
      */
     public function createDirectoryStructure(string $relativeDirectory): void
     {
-        $storageRoot = $this->pathProvider->getStorageRoot();
-        $absoluteDir = rtrim($storageRoot, '/') . '/' . ltrim($relativeDirectory, '/');
+        $absoluteDir = $this->pathProvider->getAbsoluteFilePath($relativeDirectory);
 
         if (!$this->filesystem->exists($absoluteDir)) {
             $this->filesystem->mkdir($absoluteDir, 0775);

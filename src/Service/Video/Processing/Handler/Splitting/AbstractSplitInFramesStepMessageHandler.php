@@ -8,6 +8,7 @@ use App\Dto\VideoFrame;
 use App\Entity\Video;
 use App\Entity\VideoScene;
 use App\Repository\VideoRepository;
+use App\Service\Storage\StoragePathProvider;
 use App\Service\Video\Analyze\Result\FrameSplittingResult;
 use App\Service\Video\Processing\Handler\Abstract\AbstractVideoMessageHandler;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
@@ -30,6 +31,7 @@ abstract class AbstractSplitInFramesStepMessageHandler extends AbstractVideoMess
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
         protected readonly BetterVideoAnalyzer $videoAnalyzer,
+        protected readonly StoragePathProvider $pathProvider,
         protected readonly EntityManagerInterface $entityManager
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
@@ -77,14 +79,14 @@ abstract class AbstractSplitInFramesStepMessageHandler extends AbstractVideoMess
 
     protected function resolveVideoPath(Video $video): string
     {
-        $sourceFile = $video->getConvertedFilename() ?? $video->getSourceFile();
+        $fileEntity = $video->getConvertedFile() ?? $video->getSourceFile();
 
-        if ($sourceFile === null) {
-            $this->stopProcessing(sprintf('Video file key for video-entity with id "%s" is missing.', $video->getId()));
+        if ($fileEntity === null) {
+            $this->stopProcessing(sprintf('Video file entity for video-entity with id "%s" is missing.', $video->getId()));
             return '';
         }
 
-        $localVideoPath = $this->videoAnalyzer->getAbsolutePath($sourceFile);
+        $localVideoPath = $this->pathProvider->getAbsolutePath($fileEntity);
 
         if (!file_exists($localVideoPath)) {
             $errorMsg = sprintf(
@@ -93,6 +95,7 @@ abstract class AbstractSplitInFramesStepMessageHandler extends AbstractVideoMess
                 $localVideoPath
             );
             $this->stopProcessing($errorMsg);
+            return '';
         }
 
         return $localVideoPath;
@@ -106,7 +109,7 @@ abstract class AbstractSplitInFramesStepMessageHandler extends AbstractVideoMess
         $startTime = $scene->getStartSeconds();
         $endTime = $scene->getEndSeconds();
 
-        $result =  $this->videoAnalyzer->extractFrames(
+        $result = $this->videoAnalyzer->extractFrames(
             $video->getId(),
             $localVideoPath,
             $video->getAnalysisFps(),

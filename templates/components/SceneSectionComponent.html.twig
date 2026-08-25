@@ -23,7 +23,7 @@
             <div class="d-flex align-items-center flex-grow-1">
                 <div class="d-flex flex-column gap-2 me-3">
                     {% if scene.thumbnailUrl %}
-                        <img src="{{ imgproxy_url(scene.thumbnailUrl, 640, 360) }}" alt="Szene {{ sceneNumber }}" class="rounded shadow-sm" style="width: 200px; height: 112px; object-fit: cover;">
+                        <img src="{{ imgproxy_url(scene.thumbnailFile, 640, 360) }}" alt="Szene {{ sceneNumber }}" class="rounded shadow-sm" style="width: 200px; height: 112px; object-fit: cover;">
                     {% endif %}
 
                     {% set frames = this.getFramesForScene() %}

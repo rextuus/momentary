@@ -74,7 +74,7 @@ class VideoProgressBar
             }
             $scenesWithTags = 0;
             foreach ($video->getScenes() as $scene) {
-                if ($scene->getTags()->count() > 0) {
+                if (count($scene->getTags()) > 0) {
                     $scenesWithTags++;
                 }
             }

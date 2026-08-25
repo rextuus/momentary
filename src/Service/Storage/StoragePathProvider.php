@@ -25,7 +25,7 @@ class StoragePathProvider
     }
 
     /**
-     * NEU: Gibt den absoluten Pfad direkt für eine gegebene relative Pfad-Zeichenkette zurück.
+     * Gibt den absoluten Pfad direkt für eine gegebene relative Pfad-Zeichenkette zurück.
      */
     public function getAbsoluteFilePath(string $relativePath): string
     {
@@ -39,7 +39,7 @@ class StoragePathProvider
     {
         return match ($purpose) {
             FilePurpose::VIDEO_SOURCE, FilePurpose::VIDEO_CONVERTED, FilePurpose::VIDEO_FRAME => $this->createVideoPath($entityId ?? 0, $filename),
-            FilePurpose::THUMBNAIL_SCENE, FilePurpose::THUMBNAIL_VIDEO => $this->createThumbnailPath($filename),
+            FilePurpose::THUMBNAIL_SCENE, FilePurpose::THUMBNAIL_VIDEO => $this->createThumbnailPath($filename, $entityId),
             FilePurpose::IMAGE_PROFILE, FilePurpose::IMAGE_FACE => $this->createProfileImagePath($entityId ?? 0, $filename),
         };
     }
@@ -72,10 +72,14 @@ class StoragePathProvider
     }
 
     /**
-     * Generiert einen relativen Pfad für Thumbnails.
+     * Generiert einen relativen Pfad für Thumbnails (optional mit Video-ID bezug).
      */
-    public function createThumbnailPath(string $filename): string
+    public function createThumbnailPath(string $filename, ?int $videoId = null): string
     {
+        if ($videoId !== null && $videoId > 0) {
+            return sprintf('videos/%d/thumbnails/%s', $videoId, $filename);
+        }
+
         return sprintf('thumbnails/%s', $filename);
     }
 

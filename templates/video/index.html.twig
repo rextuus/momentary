@@ -34,7 +34,7 @@
                                 {% if video.thumbnailUrl %}
                                     {% set is_allowed = is_granted('VIDEO_VIEW', video) %}
                                     {% set blur = (not is_allowed and (app.user is null or (app.user.settings and app.user.settings.blurForbiddenContent))) ? 5 : 0 %}
-                                    <img src="{{ imgproxy_url(video.thumbnailUrl, 200, 120, 'fill', blur) }}" alt="{{ video.title }}" class="w-100 h-100 object-fit-cover position-absolute top-0 start-0">
+                                    <img src="{{ imgproxy_url(video.thumbnailFile, 200, 120, 'fill', blur) }}" alt="{{ video.title }}" class="w-100 h-100 object-fit-cover position-absolute top-0 start-0">
                                 {% endif %}
                                 <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-{{ statusInfo.color }} bg-opacity-25" style="z-index: 1;">
                                     <i class="fas fa-{{ statusInfo.icon }} text-white fa-lg shadow-sm"></i>

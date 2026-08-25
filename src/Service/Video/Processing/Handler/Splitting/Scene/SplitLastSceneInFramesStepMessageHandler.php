@@ -6,6 +6,7 @@ namespace App\Service\Video\Processing\Handler\Splitting\Scene;
 
 use App\Repository\VideoRepository;
 use App\Repository\VideoSceneRepository;
+use App\Service\Storage\StoragePathProvider;
 use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Handler\Splitting\AbstractSplitInFramesStepMessageHandler;
@@ -28,6 +29,7 @@ class SplitLastSceneInFramesStepMessageHandler extends AbstractSplitInFramesStep
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
         BetterVideoAnalyzer $videoAnalyzer,
+        StoragePathProvider $pathProvider,
         EntityManagerInterface $entityManager,
         private readonly VideoSceneRepository $sceneRepository
     ) {
@@ -37,6 +39,7 @@ class SplitLastSceneInFramesStepMessageHandler extends AbstractSplitInFramesStep
             $workflowMachine,
             $processingService,
             $videoAnalyzer,
+            $pathProvider,
             $entityManager
         );
     }

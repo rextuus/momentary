@@ -59,13 +59,13 @@
                      {% if displayFace %}
                      data-bs-toggle="modal"
                      data-bs-target="#imageModal"
-                     data-bs-img="{{ imgproxy_url(displayFace.faceImagePath, 800, 600, 'fit') }}"
+                     data-bs-img="{{ imgproxy_url(displayFace.faceImage, 800, 600, 'fit') }}"
                      data-bs-box="{{ displayFace.boundingBoxStyles }}"
                      data-bs-caption="Sichtung in {{ displayFace.video.title }}"
                      {% endif %}>
                     {% if displayFace %}
                         <div class="position-relative w-100 h-100">
-                             <img src="{{ imgproxy_url(displayFace.faceImagePath, 800, 600, 'fit') }}"
+                             <img src="{{ imgproxy_url(displayFace.faceImage, 800, 600, 'fit') }}"
                                  class="img-fluid"
                                  style="width: 100%; height: 100%; object-fit: contain;">
                             <div class="position-absolute border border-danger border-3" style="{{ displayFace.boundingBoxStyles|raw }}; pointer-events: none;"></div>
