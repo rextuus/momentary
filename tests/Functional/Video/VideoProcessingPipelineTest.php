@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Video;
 
+use App\Entity\File;
 use App\Entity\Video;
 use App\Enum\VideoStatus;
 use App\Repository\VideoRepository;
@@ -193,9 +194,11 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
 
         $this->sceneThumbnailExtractor
             ->method('extractThumbnail')
-            ->willReturnCallback(function (Video $video, float $timeInSeconds = 0.0, ?string $customFilename = null): string {
+            ->willReturnCallback(function (Video $video, float $timeInSeconds = 0.0, ?string $customFilename = null): File {
                 $filename = $customFilename ?? sprintf('video_%d.jpg', $video->getId());
-                return sprintf('videos/%d/thumbnails/%s?t=%d', $video->getId(), $filename, time());
+                $file = new File();
+                $file->setRelativePath(sprintf('videos/%d/thumbnails/%s', $video->getId(), $filename));
+                return $file;
             });
 
         $this->frameExtractor

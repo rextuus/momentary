@@ -32,10 +32,10 @@ class ImgproxyExtension extends AbstractExtension
         $relativePath = ltrim($source->getRelativePath(), '/');
 
         // Da Imgproxy-Volume auf /public/media/images gemappt ist,
-        // müssen Dateien, die nicht in media/images liegen (wie z.B. "thumbnails/..."),
+        // müssen Dateien, die nicht in media/images liegen (wie z.B. "images/..."),
         // entsprechend für den Imgproxy-Pfad gemappt werden.
-        if (str_starts_with($relativePath, 'thumbnails/')) {
-            $sourceUrl = 'local:///media/images/' . $relativePath;
+        if (str_starts_with($relativePath, 'images/')) {
+            $sourceUrl = 'local:///media/' . $relativePath;
         } else {
             $sourceUrl = 'local:///' . $relativePath;
         }

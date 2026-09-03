@@ -55,7 +55,12 @@ class TagSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
                 $video->getId()
             );
 
-            $this->processSceneTagging($message->getCurrentSceneId());
+            $result = $this->processSceneTagging($message->getCurrentSceneId());
+            if (!$result->isSuccess()) {
+                $this->stopProcessing($result->getMessage());
+                return;
+            }
+
             $this->finishCurrentStep($successMsg);
 
             return;
@@ -63,7 +68,11 @@ class TagSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
 
         // Tag current scene
         $this->currentSceneId = $message->getCurrentSceneId();
-        $this->processSceneTagging($this->currentSceneId);
+        $result = $this->processSceneTagging($this->currentSceneId);
+        if (!$result->isSuccess()) {
+            $this->stopProcessing($result->getMessage());
+            return;
+        }
         $oldSceneId = $this->currentSceneId;
 
         $remainingSceneIds = $message->getRemainingSceneIds();

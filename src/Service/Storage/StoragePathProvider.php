@@ -35,12 +35,12 @@ class StoragePathProvider
     /**
      * Generiert einen relativen Pfad basierend auf dem Zweck und Dateinamen.
      */
-    public function getRelativePath(FilePurpose $purpose, string $filename, ?int $entityId = null): string
+    public function getRelativePath(FilePurpose $purpose, string $filename, ?string $directoryIdentifier = null): string
     {
         return match ($purpose) {
-            FilePurpose::VIDEO_SOURCE, FilePurpose::VIDEO_CONVERTED, FilePurpose::VIDEO_FRAME => $this->createVideoPath($entityId ?? 0, $filename),
-            FilePurpose::THUMBNAIL_SCENE, FilePurpose::THUMBNAIL_VIDEO => $this->createThumbnailPath($filename, $entityId),
-            FilePurpose::IMAGE_PROFILE, FilePurpose::IMAGE_FACE => $this->createProfileImagePath($entityId ?? 0, $filename),
+            FilePurpose::VIDEO_SOURCE, FilePurpose::VIDEO_CONVERTED, FilePurpose::VIDEO_FRAME => $this->createVideoPath($directoryIdentifier ?? '0', $filename),
+            FilePurpose::THUMBNAIL_SCENE, FilePurpose::THUMBNAIL_VIDEO => $this->createThumbnailPath($filename, $directoryIdentifier),
+            FilePurpose::IMAGE_PROFILE, FilePurpose::IMAGE_FACE => $this->createProfileImagePath($directoryIdentifier ?? '0', $filename),
         };
     }
 
@@ -57,38 +57,38 @@ class StoragePathProvider
     /**
      * Generiert einen relativen Pfad für ein Video.
      */
-    public function createVideoPath(int $videoId, string $filename): string
+    public function createVideoPath(string $directoryIdentifier, string $filename): string
     {
-        return sprintf('videos/%d/%s', $videoId, $filename);
+        return sprintf('videos/%s/%s', $directoryIdentifier, $filename);
     }
 
     /**
      * Generiert einen relativen Pfad für Analyseeinzelbilder (Frames).
      */
-    public function createFramePath(int $videoId, string $filename, bool $isRefinement = false): string
+    public function createFramePath(string $directoryIdentifier, string $filename, bool $isRefinement = false): string
     {
         $folder = $isRefinement ? 'refinement_frames' : 'frames';
-        return sprintf('videos/%d/%s/%s', $videoId, $folder, $filename);
+        return sprintf('videos/%s/%s/%s', $directoryIdentifier, $folder, $filename);
     }
 
     /**
      * Generiert einen relativen Pfad für Thumbnails (optional mit Video-ID bezug).
      */
-    public function createThumbnailPath(string $filename, ?int $videoId = null): string
+    public function createThumbnailPath(string $filename, ?string $directoryIdentifier = null): string
     {
-        if ($videoId !== null && $videoId > 0) {
-            return sprintf('videos/%d/thumbnails/%s', $videoId, $filename);
+        if ($directoryIdentifier !== null && $directoryIdentifier !== '') {
+            return sprintf('images/videos/%s/thumbnails/%s', $directoryIdentifier, $filename);
         }
 
-        return sprintf('thumbnails/%s', $filename);
+        return sprintf('images/thumbnails/%s', $filename);
     }
 
     /**
      * Generiert einen relativen Pfad für Profil- oder Gesichtsbilder von Personen.
      */
-    public function createProfileImagePath(int $personId, string $filename): string
+    public function createProfileImagePath(string $directoryIdentifier, string $filename): string
     {
-        return sprintf('persons/%d/%s', $personId, $filename);
+        return sprintf('persons/%s/%s', $directoryIdentifier, $filename);
     }
 
     /**

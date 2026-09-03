@@ -24,7 +24,7 @@ class FileManager
         return $this->createFileEntity(
             purpose: FilePurpose::VIDEO_SOURCE,
             filename: $filename,
-            entityId: $video->getId(),
+            directoryIdentifier: $video->getDirectoryHash() ?? (string)$video->getId(),
             mimeType: $mimeType->value
         );
     }
@@ -34,7 +34,7 @@ class FileManager
         return $this->createFileEntity(
             purpose: FilePurpose::VIDEO_CONVERTED,
             filename: $filename,
-            entityId: $video->getId(),
+            directoryIdentifier: $video->getDirectoryHash() ?? (string)$video->getId(),
             mimeType: $mimeType->value
         );
     }
@@ -44,7 +44,7 @@ class FileManager
         return $this->createFileEntity(
             purpose: FilePurpose::THUMBNAIL_VIDEO,
             filename: $filename,
-            entityId: $video->getId(),
+            directoryIdentifier: $video->getDirectoryHash() ?? (string)$video->getId(),
             mimeType: $mimeType->value
         );
     }
@@ -54,7 +54,7 @@ class FileManager
         return $this->createFileEntity(
             purpose: FilePurpose::THUMBNAIL_SCENE,
             filename: $filename,
-            entityId: $scene->getId(),
+            directoryIdentifier: (string)$scene->getId(),
             mimeType: $mimeType->value
         );
     }
@@ -64,7 +64,7 @@ class FileManager
         return $this->createFileEntity(
             purpose: FilePurpose::IMAGE_PROFILE,
             filename: $filename,
-            entityId: $person->getId(),
+            directoryIdentifier: (string)$person->getId(),
             mimeType: $mimeType->value
         );
     }
@@ -74,7 +74,7 @@ class FileManager
         return $this->createFileEntity(
             purpose: FilePurpose::IMAGE_FACE,
             filename: $filename,
-            entityId: $face->getId(),
+            directoryIdentifier: (string)$face->getId(),
             mimeType: $mimeType->value
         );
     }
@@ -87,7 +87,7 @@ class FileManager
         return $this->createFileEntity(
             purpose: FilePurpose::THUMBNAIL_VIDEO,
             filename: $thumbnailName,
-            entityId: null,
+            directoryIdentifier: null,
             mimeType: $mimeType->value
         );
     }
@@ -124,9 +124,9 @@ class FileManager
         return file_exists($this->pathProvider->getAbsolutePath($file));
     }
 
-    private function createFileEntity(FilePurpose $purpose, string $filename, ?int $entityId, string $mimeType): File
+    private function createFileEntity(FilePurpose $purpose, string $filename, ?string $directoryIdentifier, string $mimeType): File
     {
-        $relativePath = $this->pathProvider->getRelativePath($purpose, $filename, $entityId);
+        $relativePath = $this->pathProvider->getRelativePath($purpose, $filename, $directoryIdentifier);
 
         $file = new File();
         $file->setPurpose($purpose);

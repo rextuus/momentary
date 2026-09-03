@@ -7,6 +7,7 @@ namespace App\Service\Video\Analyze;
 use App\Entity\File;
 use App\Entity\Video;
 use App\Service\Storage\FileManager;
+use App\Service\Storage\FileStorageService;
 use App\Service\Storage\StoragePathProvider;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Process\Exception\RuntimeException;
@@ -21,6 +22,7 @@ class SceneThumbnailExtractor
     public function __construct(
         private readonly StoragePathProvider $pathProvider,
         private readonly FileManager $fileManager,
+        private readonly FileStorageService $storageService,
         #[Autowire('%env(PYTHON_BINARY)%')]
         string $pythonBinary = '/usr/bin/python3',
     ) {
@@ -65,13 +67,9 @@ class SceneThumbnailExtractor
         $thumbnailName = $customFilename ?? sprintf('video_%d.jpg', $video->getId());
 
         // Thumbnail-File-Entity erzeugen und absoluten Pfad über den PathProvider holen
-        $thumbnailFile = $this->fileManager->createThumbnailFile($thumbnailName);
+        $thumbnailFile = $this->fileManager->createVideoThumbnailFile($video, $thumbnailName);
+        $this->storageService->ensureDirectoryExists($thumbnailFile);
         $absoluteThumbnailPath = $this->pathProvider->getAbsolutePath($thumbnailFile);
-
-        $absoluteDir = dirname($absoluteThumbnailPath);
-        if (!is_dir($absoluteDir)) {
-            mkdir($absoluteDir, 0777, true);
-        }
 
         $command = [
             'ffmpeg',
@@ -94,7 +92,13 @@ class SceneThumbnailExtractor
             return null;
         }
 
-        if (!$process->isSuccessful() || !file_exists($absoluteThumbnailPath)) {
+        if (!$process->isSuccessful()) {
+            error_log("DEBUG: ffmpeg failed: " . $process->getErrorOutput());
+            return null;
+        }
+
+        if (!file_exists($absoluteThumbnailPath)) {
+            error_log("DEBUG: File does not exist after ffmpeg: " . $absoluteThumbnailPath);
             return null;
         }
 

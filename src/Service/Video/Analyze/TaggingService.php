@@ -46,19 +46,20 @@ class TaggingService
             $allTags = [];
 
             foreach ($timestamps as $time) {
-                $thumbnailRelPath = $this->videoAnalyzer->extractThumbnail(
+                $thumbnailFile = $this->videoAnalyzer->extractThumbnail(
                     $video,
                     $time,
-                    sprintf('scene_analysis_%d.jpg', $scene->getId())
+                    sprintf('scene_analysis_%d_%d.jpg', $scene->getId(), (int)$time)
                 );
 
-                echo "[TaggingService] Thumbnail RelPath: " . var_export($thumbnailRelPath, true) . PHP_EOL;
+                echo "[TaggingService] Thumbnail RelPath: " . var_export($thumbnailFile?->getRelativePath(), true) . PHP_EOL;
 
-                if (!$thumbnailRelPath) {
+                if (!$thumbnailFile) {
                     echo "[TaggingService] Kein Thumbnail-Pfad zurückgegeben für Timestamp {$time}" . PHP_EOL;
                     continue;
                 }
 
+                $thumbnailRelPath = $thumbnailFile->getRelativePath();
                 $cleanPath = explode('?', $thumbnailRelPath)[0];
 
                 $resolvedPath = str_starts_with($cleanPath, '/')
@@ -103,7 +104,7 @@ class TaggingService
                 sprintf('Successfully analyzed and tagged scene %d.', $scene->getId())
             );
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             echo "[TaggingService FEHLER]: " . $e->getMessage() . PHP_EOL;
             return new TaggingResult(
                 false,

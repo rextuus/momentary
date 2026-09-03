@@ -50,7 +50,11 @@ class TagFirstSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
         // Special-Case: Only one scene exists
         if (count($sceneIds) === 1) {
             $firstSceneId = array_shift($sceneIds);
-            $this->processSceneTagging($firstSceneId);
+            $result = $this->processSceneTagging($firstSceneId);
+            if (!$result->isSuccess()) {
+                $this->stopProcessing($result->getMessage());
+                return;
+            }
 
             $successMsg = sprintf('Video %d contains only one scene. Tagged successfully.', $video->getId());
             $this->finishCurrentStep($successMsg);
@@ -60,7 +64,11 @@ class TagFirstSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
 
         // Analyze first scene
         $this->currentSceneId = array_shift($sceneIds);
-        $this->processSceneTagging($this->currentSceneId);
+        $result = $this->processSceneTagging($this->currentSceneId);
+        if (!$result->isSuccess()) {
+            $this->stopProcessing($result->getMessage());
+            return;
+        }
 
         $successMsg = sprintf(
             'First scene (ID %d) of Video "%s" tagged. %d left.',

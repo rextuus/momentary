@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service\Video\Analyze;
 
+use App\Entity\File;
 use App\Entity\Video;
 use App\Service\Video\Analyze\Result\ChapterGenerationResult;
 use App\Service\Video\Analyze\Result\EmptyScenesMergerResult;
@@ -54,7 +55,7 @@ readonly class BetterVideoAnalyzer
         return $this->sceneDetector->detectScenes($videoPath, $videoId, $threshold, $detector);
     }
 
-    public function extractThumbnail(Video $video, float $timeInSeconds = 0.0, ?string $customFilename = null): ?string
+    public function extractThumbnail(Video $video, float $timeInSeconds = 0.0, ?string $customFilename = null): ?File
     {
         return $this->sceneThumbnailExtractor->extractThumbnail($video, $timeInSeconds, $customFilename);
     }
