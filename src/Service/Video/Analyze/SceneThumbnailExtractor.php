@@ -8,7 +8,7 @@ use App\Entity\File;
 use App\Entity\Video;
 use App\Service\Storage\FileManager;
 use App\Service\Storage\FileStorageService;
-use App\Service\Storage\StoragePathProvider;
+use App\Service\VideoFileService;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Process\Exception\RuntimeException;
 use Symfony\Component\Process\Process;
@@ -20,9 +20,10 @@ use Symfony\Component\Process\Process;
 class SceneThumbnailExtractor
 {
     public function __construct(
-        private readonly StoragePathProvider $pathProvider,
+        private readonly VideoFileService $videoFileService,
         private readonly FileManager $fileManager,
         private readonly FileStorageService $storageService,
+        private readonly \Doctrine\ORM\EntityManagerInterface $entityManager,
         #[Autowire('%env(PYTHON_BINARY)%')]
         string $pythonBinary = '/usr/bin/python3',
     ) {
@@ -35,7 +36,7 @@ class SceneThumbnailExtractor
             return null;
         }
 
-        $videoPath = $this->pathProvider->getAbsolutePath($fileEntity);
+        $videoPath = $this->videoFileService->getAbsolutePath($fileEntity);
         if (!file_exists($videoPath)) {
             return null;
         }
@@ -68,8 +69,16 @@ class SceneThumbnailExtractor
 
         // Thumbnail-File-Entity erzeugen und absoluten Pfad über den PathProvider holen
         $thumbnailFile = $this->fileManager->createVideoThumbnailFile($video, $thumbnailName);
+
+        // Vorab prüfen, ob bereits ein File-Eintrag mit diesem Pfad existiert, um Duplicate Entry zu vermeiden
+        $existingFile = $this->entityManager->getRepository(File::class)->findOneBy(['relativePath' => $thumbnailFile->getRelativePath()]);
+        if ($existingFile) {
+            $thumbnailFile = $existingFile;
+        }
+
         $this->storageService->ensureDirectoryExists($thumbnailFile);
-        $absoluteThumbnailPath = $this->pathProvider->getAbsolutePath($thumbnailFile);
+        $absoluteThumbnailPath = $this->videoFileService->getAbsolutePath($thumbnailFile);
+        error_log("DEBUG: Attempting to create thumbnail at: " . $absoluteThumbnailPath);
 
         $command = [
             'ffmpeg',
@@ -79,7 +88,7 @@ class SceneThumbnailExtractor
             '-i', $videoPath,
             '-vframes', '1',
             '-q:v', '2',
-            '-pix_fmt', 'yuvj420p',
+            '-pix_fmt', 'yuv420p',
             $absoluteThumbnailPath
         ];
 
@@ -94,11 +103,13 @@ class SceneThumbnailExtractor
 
         if (!$process->isSuccessful()) {
             error_log("DEBUG: ffmpeg failed: " . $process->getErrorOutput());
+            error_log("DEBUG: Command: " . implode(' ', $command));
             return null;
         }
 
         if (!file_exists($absoluteThumbnailPath)) {
             error_log("DEBUG: File does not exist after ffmpeg: " . $absoluteThumbnailPath);
+            error_log("DEBUG: Command: " . implode(' ', $command));
             return null;
         }
 

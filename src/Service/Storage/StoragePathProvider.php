@@ -40,7 +40,8 @@ class StoragePathProvider
         return match ($purpose) {
             FilePurpose::VIDEO_SOURCE, FilePurpose::VIDEO_CONVERTED, FilePurpose::VIDEO_FRAME => $this->createVideoPath($directoryIdentifier ?? '0', $filename),
             FilePurpose::THUMBNAIL_SCENE, FilePurpose::THUMBNAIL_VIDEO => $this->createThumbnailPath($filename, $directoryIdentifier),
-            FilePurpose::IMAGE_PROFILE, FilePurpose::IMAGE_FACE => $this->createProfileImagePath($directoryIdentifier ?? '0', $filename),
+            FilePurpose::IMAGE_PROFILE => $this->createProfileImagePath($directoryIdentifier ?? '0', $filename),
+            FilePurpose::IMAGE_FACE => $this->createFacePath($directoryIdentifier ?? '0', $filename),
         };
     }
 
@@ -81,6 +82,14 @@ class StoragePathProvider
         }
 
         return sprintf('images/thumbnails/%s', $filename);
+    }
+
+    /**
+     * Generiert einen relativen Pfad für Gesichtsbilder.
+     */
+    public function createFacePath(string $directoryIdentifier, string $filename): string
+    {
+        return sprintf('images/faces/%s/%s', $directoryIdentifier, $filename);
     }
 
     /**

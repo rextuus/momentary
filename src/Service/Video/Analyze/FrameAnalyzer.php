@@ -11,7 +11,10 @@ use App\Repository\VideoRepository;
 use App\Service\Aws\AmazonRekognitionService;
 use App\Service\ImageFileService;
 use App\Service\VideoFileService;
+use App\Service\Storage\StoragePathProvider;
 use Doctrine\ORM\EntityManagerInterface;
+use App\Entity\File;
+use App\Enum\FilePurpose;
 use Ramsey\Uuid\Uuid;
 
 class FrameAnalyzer
@@ -22,6 +25,7 @@ class FrameAnalyzer
         private readonly AmazonRekognitionService $rekognitionService,
         private readonly ImageFileService $imageFileService,
         private readonly VideoFileService $videoFileService,
+        private readonly StoragePathProvider $pathProvider,
     ) {
     }
 
@@ -64,23 +68,31 @@ class FrameAnalyzer
         $imageContent = file_get_contents($framePath);
         $uuid = Uuid::uuid4()->toString();
 
-        // Korrektur: Statt getVideoDirectory() nutzen wir hier den direkten Pfad-Aufbau für faces
-        $dir = 'faces/' . $videoId;
-        $storagePath = "{$dir}/{$uuid}.jpg";
+        $storagePath = $this->pathProvider->createFacePath((string)$videoId, $uuid . '.jpg');
 
         $this->imageFileService->getFilesystem()->write($storagePath, $imageContent);
 
+        $file = $this->entityManager->getRepository(File::class)->findOneBy(['relativePath' => $storagePath]);
+        if (!$file) {
+            $file = new File();
+            $file->setRelativePath($storagePath);
+            $file->setMimeType('image/jpeg');
+            $file->setFileSize(strlen($imageContent));
+            $file->setPurpose(FilePurpose::IMAGE_FACE);
+            $this->entityManager->persist($file);
+        }
+
         foreach ($allFacesData as $faceData) {
-            $this->saveFaceData($video, $faceData, $timestamp, $storagePath, $currentScene);
+            $this->saveFaceData($video, $faceData, $timestamp, $file, $currentScene);
         }
 
         return true;
     }
 
-    private function saveFaceData($video, $faceData, $timestamp, $storagePath, $currentScene): void
+    private function saveFaceData($video, $faceData, $timestamp, $file, $currentScene): void
     {
         $this->entityManager->wrapInTransaction(
-            function () use ($video, $faceData, $timestamp, $storagePath, $currentScene) {
+            function () use ($video, $faceData, $timestamp, $file, $currentScene) {
                 $person = null;
                 $matchedFace = null;
 
@@ -105,7 +117,7 @@ class FrameAnalyzer
                 $videoFace->setVideo($video);
                 $videoFace->setPerson($person);
                 $videoFace->setTimestamp($timestamp);
-                $videoFace->setFaceImagePath($storagePath);
+                $videoFace->setFaceImage($file);
                 $videoFace->setFaceLabel($faceData['faceId']);
                 $videoFace->setAge((int) $faceData['age']);
                 $videoFace->setGender((string) $faceData['gender']);

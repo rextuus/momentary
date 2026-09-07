@@ -20,6 +20,12 @@ class ChapterGenerator
     public function generateChapters(Video $video): ChapterGenerationResult
     {
         try {
+            // Re-fetch video to ensure it's managed by the current entity manager
+            $video = $this->entityManager->find(Video::class, $video->getId());
+            if (!$video) {
+                return new ChapterGenerationResult(false, 0, "Video not found.");
+            }
+
             foreach ($video->getChapters() as $chapter) {
                 $this->entityManager->remove($chapter);
             }
@@ -39,7 +45,7 @@ class ChapterGenerator
                     'start' => $scene->getStartSeconds(),
                     'end' => $scene->getEndSeconds(),
                     'title' => $scene->getTitle(),
-                    'tags' => array_map(fn($tag) => $tag->getName(), $scene->getTags()->toArray()),
+                    'tags' => array_map(fn($tag) => $tag->getName(), $scene->getTags()),
                 ];
             }
 

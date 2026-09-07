@@ -123,12 +123,11 @@ class JellyfinUploadService
         }
 
         try {
+            // Leite den Jellyfin-internen Pfad aus dem jellyfin/uploads-Segment ab,
+            // unabhängig davon wo der Storage-Root liegt.
             $internalPath = $path;
-            if (str_contains($path, 'docker/jellyfin/uploads')) {
-                $parts = explode('docker/jellyfin/uploads', $path);
-                $internalPath = '/uploads' . end($parts);
-            } elseif (str_contains($path, '/var/www/html/docker/jellyfin/uploads')) {
-                $parts = explode('/var/www/html/docker/jellyfin/uploads', $path);
+            if (str_contains($path, 'jellyfin/uploads')) {
+                $parts = explode('jellyfin/uploads', $path);
                 $internalPath = '/uploads' . end($parts);
             }
 

@@ -17,7 +17,7 @@ flysystem:
         video.storage:
             adapter: 'local'
             options:
-                directory: '%kernel.project_dir%/var/uploads/app_uploads'
+                directory: '%kernel.project_dir%/storage'
                 permissions:
                     file:
                         public: 0644

@@ -19,23 +19,25 @@ readonly class VideoProcessingService
         private VideoProcessingStepRepository $repository
     ) {}
 
-    public function startStep(Video $video, VideoStatus $step, VideoProcessStepMessageInterface $message): void
+    public function startStep(Video $video, VideoStatus $step, ?VideoProcessStepMessageInterface $message = null): void
     {
         $info = 'Started';
-        if ($message->isIntermediateStep()){
+        $isIntermediateStep = $message?->isIntermediateStep() ?? false;
+
+        if ($isIntermediateStep){
             $info = 'Go on with next part of';
         }
 
         $logMsg = sprintf(
             '[➜] %s step |%s|%s| for video "%s"',
             $info,
-            $message->getMessageLoggingIdent(),
+            $message?->getMessageLoggingIdent() ?? 'unknown',
             $step->value,
             $video->getTitle()
         );
         echo $logMsg . PHP_EOL;
 
-        if (!$message->isIntermediateStep()){
+        if (!$isIntermediateStep){
             $existingStep = $this->repository->findOneBy(['video' => $video, 'step' => $step]);
             if (!$existingStep) {
                 $existingStep = new VideoProcessingStep();
@@ -54,23 +56,25 @@ readonly class VideoProcessingService
         }
     }
 
-    public function finishStep(Video $video, VideoStatus $step, VideoProcessStepMessageInterface $message): void
+    public function finishStep(Video $video, VideoStatus $step, ?VideoProcessStepMessageInterface $message = null): void
     {
         $info = 'Finished';
-        if ($message->isIntermediateStep()){
+        $isIntermediateStep = $message?->isIntermediateStep() ?? false;
+
+        if ($isIntermediateStep){
             $info = 'Go on with next part of';
         }
 
         $logMsg = sprintf(
             '[✓] %s step |%s|%s| for video "%s"',
             $info,
-            $message->getMessageLoggingIdent(),
+            $message?->getMessageLoggingIdent() ?? 'unknown',
             $step->value,
             $video->getTitle()
         );
         echo $logMsg . PHP_EOL . PHP_EOL;
 
-        if(!$message->isIntermediateStep()){
+        if(!$isIntermediateStep){
             $stepEntity = $this->repository->findOneBy(['video' => $video, 'step' => $step]);
             if ($stepEntity) {
                 $finishedAt = new DateTimeImmutable();

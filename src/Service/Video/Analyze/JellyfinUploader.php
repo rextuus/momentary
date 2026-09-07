@@ -20,12 +20,12 @@ class JellyfinUploader
 
     public function exportVideo(Video $video): JellyfinExportResult
     {
-        $sourceFile = $video->getConvertedFilename() ?? $video->getSourceFile();
-        if (!$sourceFile) {
+        $file = $video->getConvertedFile() ?? $video->getSourceFile();
+        if (!$file instanceof \App\Entity\File) {
             return new JellyfinExportResult(false, null, null, 'Video has no source file specified.');
         }
 
-        $sourcePath = $this->videoFileService->getAbsolutePath($sourceFile);
+        $sourcePath = $this->videoFileService->getAbsolutePath($file->getRelativePath());
         if (!file_exists($sourcePath)) {
             return new JellyfinExportResult(false, null, null, sprintf('Local file "%s" does not exist.', $sourcePath));
         }

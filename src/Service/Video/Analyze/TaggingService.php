@@ -6,15 +6,15 @@ namespace App\Service\Video\Analyze;
 
 use App\Entity\VideoScene;
 use App\Service\Gemini\GeminiService;
+use App\Service\Storage\StoragePathProvider;
 use App\Service\Video\Analyze\Result\TaggingResult;
-use App\Service\VideoFileService;
 
 class TaggingService
 {
     public function __construct(
         private readonly GeminiService $geminiService,
         private readonly BetterVideoAnalyzer $videoAnalyzer,
-        private readonly VideoFileService $videoFileService,
+        private readonly StoragePathProvider $pathProvider,
         private readonly TagService $tagService,
     ) {
     }
@@ -64,7 +64,7 @@ class TaggingService
 
                 $resolvedPath = str_starts_with($cleanPath, '/')
                     ? $cleanPath
-                    : $this->videoFileService->getAbsolutePath($cleanPath);
+                    : $this->pathProvider->getAbsoluteFilePath($cleanPath);
 
                 echo "[TaggingService] Geprüfter ResolvedPath: {$resolvedPath} | Exists: " . (file_exists($resolvedPath) ? 'JA' : 'NEIN') . PHP_EOL;
 

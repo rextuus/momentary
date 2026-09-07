@@ -77,11 +77,18 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
         $this->fileStorageService->createDirectoryStructure('videos/' . $video->getId());
 
         if ($this->videoAnalyzer->convertToMp4($sourceAbsolutePath, $tempAbsolutePath)) {
-            // 1. File-Entity für das konvertierte Video erstellen
+            // 1. Vorab prüfen, ob bereits ein File-Eintrag mit diesem Pfad existiert, um Duplicate Entry zu vermeiden
+            $existingFile = $this->entityManager->getRepository(\App\Entity\File::class)->findOneBy(['relativePath' => $tempRelativePath]);
+            if ($existingFile) {
+                $this->fileManager->deleteFile($existingFile);
+            }
+
+            // 2. File-Entity für das konvertierte Video erstellen
             $convertedFile = $this->fileManager->createConvertedVideoFile($video, $tempFilename);
+            $convertedFile->setFileSize($this->fileManager->getFileSize($convertedFile));
             $this->fileManager->saveFile($convertedFile);
 
-            // 2. Am Video als convertedFile setzen
+            // 3. Am Video als convertedFile setzen
             $video->setConvertedFile($convertedFile);
 
             // Optional: Wenn das konvertierte Video ab sofort die neue Hauptquelle sein soll:

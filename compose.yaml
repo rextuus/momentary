@@ -30,11 +30,11 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       API_KEY: ${API_KEY}
       PYTHON_BINARY: ${PYTHON_BINARY:-/usr/bin/python3}
-      STORAGE_ROOT: ${STORAGE_ROOT:-storage}
+      STORAGE_ROOT: storage
     volumes:
       - ${APP_CODE_VOLUME:-./:/var/www/html:rw}
-      - ./${STORAGE_ROOT:-storage}:/var/www/html/storage:rw
       - app_var:/var/www/html/var
+      - ./${STORAGE_ROOT:-storage}:/var/www/html/storage:rw
     depends_on:
       database:
         condition: service_healthy
@@ -66,11 +66,11 @@ services:
       AWS_QUALITY_FILTER: ${AWS_QUALITY_FILTER:-AUTO}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       PYTHON_BINARY: ${PYTHON_BINARY:-/usr/bin/python3}
-      STORAGE_ROOT: ${STORAGE_ROOT:-storage}
+      STORAGE_ROOT: storage
     volumes:
       - ${APP_CODE_VOLUME:-./:/var/www/html:rw}
-      - ./${STORAGE_ROOT:-storage}:/var/www/html/storage:rw
       - app_var:/var/www/html/var
+      - ./${STORAGE_ROOT:-storage}:/var/www/html/storage:rw
     depends_on:
       database:
         condition: service_healthy
@@ -131,6 +131,7 @@ services:
     environment:
       - MEILI_MASTER_KEY=${MEILI_MASTER_KEY}
       - MEILI_ENV=${MEILI_ENV:-production}
+      - MEILI_UPGRADE_DB=true
     volumes:
       - ./docker/meilisearch/data:/meili_data
     networks:
@@ -144,10 +145,11 @@ services:
       IMGPROXY_SALT: ${IMGPROXY_SALT}
       IMGPROXY_LOCAL_FILESYSTEM_ROOT: /public
       IMGPROXY_ALLOW_ORIGIN: "*"
+      STORAGE_ROOT: storage
     ports:
       - "${IMGPROXY_HOST_BINDING:-127.0.0.1}:${IMGPROXY_PORT:-8081}:8080"
     volumes:
-      - ./${STORAGE_ROOT:-storage}/images:/public/media/images:ro
+      - ./${STORAGE_ROOT:-storage}:/public:ro
     networks:
       - momentary-network
 

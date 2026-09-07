@@ -175,6 +175,11 @@ class VideoFace
         return $this;
     }
 
+    public function getFaceImagePath(): ?string
+    {
+        return $this->faceImage?->getRelativePath();
+    }
+
     public function getBoundingBox(): ?array
     {
         return $this->boundingBox;

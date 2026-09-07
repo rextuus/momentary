@@ -5,7 +5,7 @@
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
     app.path.media_images: '%kernel.project_dir%/media/images'
-    app.path.jellyfin_uploads: '%kernel.project_dir%/docker/jellyfin/uploads'
+    app.path.jellyfin_uploads: '%kernel.project_dir%/storage/jellyfin/uploads'
     env(JELLYFIN_HOST): 'http://localhost:8096'
     app.frame_analysis_fps: 0.2
     app.min_scene_length_for_refinement: 2.0
@@ -18,7 +18,7 @@ parameters:
     imgproxy_public_host: '%env(IMGPROXY_PUBLIC_HOST)%'
     app.internal_api_host: 'http://app'
     app.ftp_source_dirs:
-        - '/var/www/html/docker/jellyfin/uploads'
+        - '/var/www/html/storage/jellyfin/uploads'
         - '/var/www/html/var/uploads/app_uploads'
 
 services:
@@ -43,6 +43,9 @@ services:
     App\Service\File\FileSystem:
     
     App\Service\ImageFileService:
+        arguments:
+            $filesystem: '@video.storage'
+            $pathProvider: '@App\Service\Storage\StoragePathProvider'
 
     App\Service\VideoFileService:
 

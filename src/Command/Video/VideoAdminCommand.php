@@ -23,32 +23,7 @@ class VideoAdminCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        $videos = $this->videoRepository->findAll();
-
-        if (!$videos) {
-            $io->warning('Keine Videos vorhanden.');
-            return Command::SUCCESS;
-        }
-
-        $videoMap = [];
-        foreach ($videos as $v) {
-            $videoMap[$v->getTitle() . " (ID: {$v->getId()})"] = $v;
-        }
-
-        $selectedTitle = $io->choice('Welches Video soll bearbeitet werden?', array_keys($videoMap));
-        $video = $videoMap[$selectedTitle];
-
-        $step = $io->choice('Welchen Schritt triggern?', [
-            'scenes'   => 'Szenenerkennung (benötigt localPath)',
-            'split'    => 'Frames extrahieren & Analyse (benötigt localPath)',
-        ]);
-
-        match ($step) {
-            'scenes'   => $this->bus->dispatch(new DetectVideoScenesMessage($video->getId(), (string)$video->getLocalPath())),
-            'split'    => $this->bus->dispatch(new SplitVideoIntoFramesMessage($video->getId(), (string)$video->getLocalPath())),
-        };
-
-        $io->success("Job für '$step' wurde eingereiht.");
-        return Command::SUCCESS;
+        $io->error('Diese Funktion ist aktuell nicht verfügbar (alte Pipeline entfernt).');
+        return Command::FAILURE;
     }
 }

@@ -2,25 +2,26 @@
 
 namespace App\Service;
 
+use App\Service\Storage\StoragePathProvider;
 use League\Flysystem\FilesystemOperator;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 readonly class VideoFileService
 {
     public function __construct(
-        // Wir injizieren hier den Flysystem-Storage für Videos (den wir gleich in der config definieren)
         #[Autowire(service: 'video.storage')]
         private FilesystemOperator $filesystem,
-        #[Autowire('%kernel.project_dir%')]
-        private string $projectDir
+        private StoragePathProvider $pathProvider
     ) {}
 
     // Gibt den absoluten Pfad für interne Prozesse (FFMPEG etc.) zurück
-    public function getAbsolutePath(string $relativeKey): string
+    public function getAbsolutePath(string| \App\Entity\File $path): string
     {
-        // Hier definieren wir, dass "relativeKey" innerhalb des Video-Storages liegt
-        // Wenn das Flysystem lokal ist, ist das einfach der Pfad auf der Festplatte
-        return $this->projectDir . '/var/uploads/app_uploads/' . ltrim($relativeKey, '/');
+        if ($path instanceof \App\Entity\File) {
+            return $this->pathProvider->getAbsoluteFilePath($path->getRelativePath());
+        }
+        
+        return $this->pathProvider->getAbsoluteFilePath($path);
     }
 
     public function exists(string $relativeKey): bool

@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Service\Storage\StoragePathProvider;
 use League\Flysystem\FilesystemOperator;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use App\Service\PathConstants;
@@ -10,13 +11,8 @@ class ImageFileService
 {
     public function __construct(
         private FilesystemOperator $filesystem,
-        #[Autowire('%kernel.project_dir%')]
-        private string $projectDir
-    ) {
-        $this->basePath = $projectDir . '/' . PathConstants::MEDIA_IMAGES;
-    }
-
-    private string $basePath;
+        private StoragePathProvider $pathProvider
+    ) {}
 
     public function getFilesystem(): FilesystemOperator
     {
@@ -25,6 +21,6 @@ class ImageFileService
 
     public function getAbsolutePath(string $relativeFilePath): string
     {
-        return $this->basePath . '/' . $relativeFilePath;
+        return $this->pathProvider->getAbsoluteFilePath($relativeFilePath);
     }
 }

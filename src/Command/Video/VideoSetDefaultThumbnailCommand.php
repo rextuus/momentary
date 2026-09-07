@@ -2,6 +2,8 @@
 
 namespace App\Command\Video;
 
+use App\Entity\File;
+use App\Enum\FilePurpose;
 use App\Repository\VideoFaceRepository;
 use App\Repository\VideoRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -44,6 +46,15 @@ class VideoSetDefaultThumbnailCommand extends Command
         $defaultVideoPath = 'defaults/video-placeholder.jpg';
         $defaultFacePath = 'defaults/face-placeholder.jpg';
 
+        $faceImageFile = $this->entityManager->getRepository(File::class)->findOneBy(['relativePath' => $defaultFacePath]);
+        if (!$faceImageFile) {
+            $faceImageFile = new File();
+            $faceImageFile->setRelativePath($defaultFacePath);
+            $faceImageFile->setMimeType('image/jpeg');
+            $faceImageFile->setPurpose(FilePurpose::IMAGE_FACE);
+            $this->entityManager->persist($faceImageFile);
+        }
+
         // --- 1. VIDEOS VERARBEITEN ---
         $videos = $this->videoRepository->findAll();
         $updatedVideos = 0;
@@ -81,7 +92,7 @@ class VideoSetDefaultThumbnailCommand extends Command
                     continue;
                 }
 
-                $face->setFaceImagePath($defaultFacePath);
+                $face->setFaceImage($faceImageFile);
                 $updatedFaces++;
                 $io->progressAdvance();
             }
