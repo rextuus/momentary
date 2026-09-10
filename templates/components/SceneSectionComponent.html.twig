@@ -55,9 +55,9 @@
                     <div class="mt-2">
                         {% for category in this.categories %}
                             {% set categoryTags = [] %}
-                            {% for tag in category.tags %}
-                                {% if tag.id in scene.tags|map(t => t.id) %}
-                                    {% set categoryTags = categoryTags|merge([tag]) %}
+                            {% for sceneTag in scene.sceneTags %}
+                                {% if sceneTag.tag.category.id == category.id %}
+                                    {% set categoryTags = categoryTags|merge([sceneTag]) %}
                                 {% endif %}
                             {% endfor %}
 
@@ -65,11 +65,14 @@
                                 <div class="d-flex flex-wrap align-items-center mb-1">
                                     <span class="badge me-1" style="background-color: {{ category.color }}; width: 8px; height: 8px; padding: 0;" title="{{ category.name }}"></span>
                                     <span class="text-muted fw-bold me-2" style="font-size: 0.7rem;">{{ category.name }}:</span>
-                                    {% for tag in categoryTags %}
+                                    {% for sceneTag in categoryTags %}
                                         <span class="badge rounded-pill border text-dark me-1" 
-                                              style="background-color: {{ category.color }}33; border-color: {{ category.color }} !important; font-size: 0.7rem;"
-                                              title="Kategorie: {{ category.name }}">
-                                            {{ tag.name }}
+                                              style="background-color: {{ sceneTag.isAiGenerated ? category.color ~ '22' : category.color ~ '55' }}; border-color: {{ category.color }} !important; font-size: 0.7rem;"
+                                              title="{{ sceneTag.isAiGenerated ? 'AI generiert' : 'Manuell' }}">
+                                            {{ sceneTag.tag.name }}
+                                            {% if sceneTag.isAiGenerated %}
+                                                <i class="fas fa-robot ms-1" style="font-size: 0.6rem;"></i>
+                                            {% endif %}
                                         </span>
                                     {% endfor %}
                                 </div>

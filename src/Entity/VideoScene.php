@@ -81,6 +81,11 @@ class VideoScene
         return $this->sceneTags;
     }
 
+    public function addTag(Tag $tag): static
+    {
+        return $this->addSceneTag($tag, isAiGenerated: false);
+    }
+
     public function addSceneTag(Tag $tag, bool $isAiGenerated = false, ?float $confidence = null): static
     {
         foreach ($this->sceneTags as $sceneTag) {

@@ -56,7 +56,15 @@ class SceneSectionComponent extends AbstractController
         $tag = $this->entityManager->getRepository(Tag::class)->find($tagId);
         if (!$tag) return;
 
-        if ($this->scene->getTags()->contains($tag)) {
+        $hasTag = false;
+        foreach ($this->scene->getSceneTags() as $sceneTag) {
+            if ($sceneTag->getTag() === $tag) {
+                $hasTag = true;
+                break;
+            }
+        }
+
+        if ($hasTag) {
             $this->scene->removeTag($tag);
         } else {
             $this->scene->addTag($tag);

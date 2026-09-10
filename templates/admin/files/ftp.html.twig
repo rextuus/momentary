@@ -3,14 +3,27 @@
 {% block title %}FTP/SFTP Dateimanagement{% endblock %}
 
 {% block body %}
-    <h1>FTP/SFTP Dateimanagement</h1>
-    
-    <h2>Verfügbare Quellverzeichnisse</h2>
-    <ul>
-        {% for dir in sourceDirs %}
-            <li>
-                <a href="{{ path('admin_files_ftp_list', {dir: dir}) }}">{{ dir }}</a>
-            </li>
-        {% endfor %}
-    </ul>
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ path('app_dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item active" aria-current="page">FTP/SFTP</li>
+        </ol>
+    </nav>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+            <h1 class="h3 fw-bold mb-4">FTP/SFTP Dateimanagement</h1>
+            
+            <h2 class="h5 mb-3">Verfügbare Quellverzeichnisse</h2>
+            <div class="list-group">
+                {% for dir in sourceDirs %}
+                    <a href="{{ path('admin_files_ftp_list', {dir: dir}) }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-folder me-2"></i> {{ dir }}
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

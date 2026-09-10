@@ -249,12 +249,20 @@
                 </div>
             </div>
 
-            {% if video.sourceFile %}
+            {% if video.sourceFile or video.convertedFile %}
                 <div class="card shadow-sm border-0">
                     <div class="card-header bg-transparent border-bottom p-4">
                         <h5 class="fw-bold mb-0">Datei-Info</h5>
                     </div>
                     <div class="card-body p-4">
+                        {% if video.convertedFile %}
+                            <div class="mb-3">
+                                <label class="small text-muted fw-bold text-uppercase mb-1">Aktuelle Datei (Konvertiert)</label>
+                                <div class="small text-truncate" title="{{ video.convertedFile.relativePath }}">{{ video.convertedFile.relativePath|split('/')|last }}</div>
+                                <code class="d-block bg-light p-2 rounded small text-break mt-1" style="font-size: 0.7rem;">{{ video.convertedFile.relativePath }}</code>
+                            </div>
+                        {% endif %}
+
                         <div class="mb-3">
                             <label class="small text-muted fw-bold text-uppercase mb-1">Status</label>
                             <div>
@@ -263,17 +271,17 @@
                                 </span>
                             </div>
                         </div>
-                        <div class="mb-3">
-                            <label class="small text-muted fw-bold text-uppercase mb-1">Dateiname</label>
-                            <div class="small text-truncate" title="{{ video.sourceFile.relativePath }}">{{ video.sourceFile.relativePath|split('/')|last }}</div>
-                        </div>
+
+                        {% if video.sourceFile %}
+                            <div class="mb-3">
+                                <label class="small text-muted fw-bold text-uppercase mb-1">Original Datei</label>
+                                <div class="small text-truncate" title="{{ video.sourceFile.relativePath }}">{{ video.sourceFile.relativePath|split('/')|last }}</div>
+                            </div>
+                        {% endif %}
+
                         <div class="mb-3">
                             <label class="small text-muted fw-bold text-uppercase mb-1">Zweck (Purpose)</label>
-                            <div class="small font-monospace">{{ video.sourceFile.purpose.value }}</div>
-                        </div>
-                        <div>
-                            <label class="small text-muted fw-bold text-uppercase mb-1">Storage-Pfad (Relative Path)</label>
-                            <code class="d-block bg-light p-2 rounded small text-break" style="font-size: 0.7rem;">{{ video.sourceFile.relativePath }}</code>
+                            <div class="small font-monospace">{{ (video.convertedFile ?? video.sourceFile).purpose.value }}</div>
                         </div>
                     </div>
                 </div>
