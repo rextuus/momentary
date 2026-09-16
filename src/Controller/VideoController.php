@@ -10,6 +10,7 @@ use App\Entity\VideoScene;
 use App\Form\VideoType;
 use App\Repository\VideoRepository;
 use App\Service\Storage\FileManager;
+use App\Service\Tag\TagInitializer;
 use App\Service\Video\VideoCreationService;
 use App\Service\Video\Processing\Message\ConvertStepMessage;
 use App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractSceneThumbnailStepMessage;
@@ -31,7 +32,8 @@ final class VideoController extends AbstractController
     public function __construct(
         private readonly VideoProcessMessageDispatcher $videoProcessMessageDispatcher,
         private readonly VideoRepository $videoRepository,
-        private readonly EntityManagerInterface $entityManager
+        private readonly EntityManagerInterface $entityManager,
+        private readonly TagInitializer $tagInitializer
     ) {}
 
     /**
@@ -53,6 +55,8 @@ final class VideoController extends AbstractController
         Request $request,
         VideoCreationService $videoCreationService
     ): Response {
+        $this->tagInitializer->initialize();
+
         $video = new Video();
         $form = $this->createForm(VideoType::class, $video);
         $form->handleRequest($request);

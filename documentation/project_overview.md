@@ -32,17 +32,14 @@ Das Ziel ist es, große Mengen an Videomaterial durchsuchbar zu machen, indem au
 - **Jellyfin-Export:** Export der erkannten Kapitel (Szenen) und Tags an Jellyfin.
 
 ## 4. Kernkomponenten (src/)
-- `App\Entity`: Datenmodell (Video, Scene, Person, Tag, Face). Eine detaillierte Übersicht findest du in [entity_overview.md](entity_overview.md).
+- `App\Entity`: Datenmodell (Video, Scene, Person, Tag, Face). Eine detaillierte Übersicht findest du in [database_schema.md](database_schema.md).
 - `App\Service\VideoAnalyzer`: Das Herzstück der Analyse-Logik (Szenen, Frames, AWS-Anbindung).
 - `App\Service\WorkflowMachine`: Steuerung des Video-Status.
 - `App\Service\Aws\AmazonRekognitionService`: Interface zur AWS Cloud.
-- `App\MessageHandler`: Asynchrone Handler für rechenintensive Aufgaben.
+- `App\Service\Video\Processing`: Asynchrone Handler (`Handler/`) und Nachrichten (`Message/`) für rechenintensive Aufgaben.
 - `App\Twig\Components`: Moderne UI-Komponenten für die Personenverwaltung und Timeline.
 
 ## 5. Workflow eines Videos
-1. **Pending:** Video ist registriert.
-2. **Converting:** Rohmaterial wird in ein bearbeitbares Format gebracht.
-3. **Scene Detection:** PySceneDetect markiert Starts und Enden von Szenen.
-4. **Splitting / Analyzing:** Frames werden extrahiert und an AWS Rekognition gesendet.
-5. **Refining:** (Optional) Höher auflösende Analyse bei Bedarf.
-6. **Completed:** Video ist analysiert und bereit für den Export oder die manuelle Korrektur.
+Die Videoverarbeitung wird durch eine Symfony **State Machine** (`video_processing`) gesteuert. Der Prozess wird asynchron über den Symfony Messenger mittels dedizierter **Message-Handler** abgewickelt.
+
+Eine detaillierte Aufstellung aller Schritte, Zustände und Transitionen findet sich in der Dokumentation unter [processing_pipeline.md](processing_pipeline.md).

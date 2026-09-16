@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Service\Tag\TagInitializer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -15,6 +16,14 @@ final class TagController extends AbstractController
     public function index(): Response
     {
         return $this->render('tag/index.html.twig');
+    }
+
+    #[Route('/init', name: 'app_tag_init', methods: ['POST'])]
+    public function init(TagInitializer $tagInitializer): Response
+    {
+        $tagInitializer->initialize();
+        $this->addFlash('success', 'Tags und Kategorien wurden erfolgreich initialisiert.');
+        return $this->redirectToRoute('app_tag_admin');
     }
 
     #[Route('/tag-test', name: 'app_tag_test')]

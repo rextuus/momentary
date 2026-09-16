@@ -36,7 +36,7 @@ Cloud-Dienst für:
 ## Kommunikationsfluss
 Die Symfony-Anwendung steuert den Prozess über den `messenger-worker`:
 1.  **Upload**: Das Video wird als MP4 in `public/uploads/import/` abgelegt (manuell via SFTP oder Upload-Formular). Nur MP4-Dateien werden im Formular `/video/new` angezeigt.
-2.  **Dispatching**: Beim Absenden des Formulars dispatcht Symfony `ConvertVideoMessage` → der Worker startet die Pipeline.
+2.  **Dispatching**: Beim Absenden des Formulars dispatcht Symfony `ConvertStepMessage` → der Worker startet die Pipeline.
 3.  **Worker-Ausführung**: Der `messenger-worker` verarbeitet die Nachrichten asynchron und führt bei Bedarf Python-Skripte aus.
 4.  **KI-Analysen**: Für Szenenanalysen und das Tagging bindet der Workflow Amazon Rekognition (Gesichter) und Google Gemini (Tags, Kapitel) ein.
 5.  **Datenpersistenz**: Ergebnisse werden in MySQL gespeichert und für das Frontend (Suche via Meilisearch) bereitgestellt.
@@ -54,21 +54,9 @@ Das System besteht aus mehreren Containern, die via `docker-compose` orchestrier
 -   **mailer**: Mailpit zum Testen von E-Mails in der Entwicklung.
 
 ## Verarbeitungsprozess (Workflow)
-Die Videoverarbeitung wird durch eine Symfony **State Machine** (`video_processing`) gesteuert. Der Workflow durchläuft folgende Zustände in dieser Reihenfolge:
+Die Videoverarbeitung wird durch eine Symfony **State Machine** (`video_processing`) gesteuert. Der Prozess wird asynchron über den Symfony Messenger mittels dedizierter **Message-Handler** abgewickelt.
 
-1.  **PENDING** → Video registriert, wartet auf Start.
-2.  **CONVERTING** → `ConvertVideoMessage`: Konvertierung falls nötig (bei MP4 wird dieser Schritt übersprungen). Danach immer `DetectVideoScenesMessage`.
-3.  **SCENE_DETECTION** → `DetectVideoScenesMessage`: Szenenerkennung via Python-Skript. Danach `ExtractAllSceneThumbnailsMessage` (wenn Szenen gefunden) oder direkt `SplitVideoIntoFramesMessage` (wenn keine Szenen).
-4.  **EXTRACTING_THUMBNAILS** → `ExtractAllSceneThumbnailsMessage` / `ExtractSceneThumbnailMessage`: Für jede Szene wird ein Thumbnail extrahiert und gespeichert. Danach `SplitVideoIntoFramesMessage`.
-5.  **SPLITTING** → `SplitVideoIntoFramesMessage`: Das Video wird in Frames aufgeteilt (Standard: 5s-Intervalle). Für jeden Frame wird `FrameAnalyzerMessage` dispatcht.
-6.  **ANALYZING_FACES** → `FrameAnalyzerMessage`: Frames werden an Amazon Rekognition zur Gesichtserkennung geschickt. Nach dem letzten Frame: `SplitVideoIntoFramesMessage` (Refinement, 1s-Intervalle für Szenen ohne erkannte Personen).
-7.  **REFINING_EXTRACTION** → `SplitVideoIntoFramesMessage` (isRefinement=true): Szenen ohne Personen werden in 1s-Frames aufgeteilt.
-8.  **REFINING_ANALYSIS** → `FrameAnalyzerMessage` (isRefinement=true): Verfeinerte Frames werden erneut analysiert. Nach dem letzten Frame: `VideoAnalyzer::mergeEmptyScenes()` → `OptimizeVideoForJellyfinMessage`.
-9.  **MERGING_SCENES** → `VideoAnalyzer::mergeEmptyScenes()`: Szenen ohne erkannte Personen werden mit der nächsten Szene zusammengeführt. Danach `OptimizeVideoForJellyfinMessage`.
-10. **OPTIMIZING** → `OptimizeVideoForJellyfinMessage`: Vorbereitung für Jellyfin (bei MP4 wird die eigentliche Optimierung übersprungen). Danach `TagScenesMessage` (wenn `ENABLE_TAGGING_SCENES=true`) oder `ExportVideoToJellyfinMessage`.
-11. **TAGGING_SCENES** → `TagScenesMessage` / `AnalyzeSceneMessage`: Für jede Szene wird das Thumbnail an Google Gemini geschickt und Tags + Titel generiert. Nach dem letzten getaggten Szene: `GenerateChaptersMessage`.
-12. **CHAPTER_GENERATION** → `GenerateChaptersMessage`: Aus den gesammelten Tags und Szenen werden Kapitel mit Gemini generiert. Danach `ExportVideoToJellyfinMessage`.
-13. **COMPLETED** → `ExportVideoToJellyfinMessage`: Das Video wird in das Jellyfin-Verzeichnis exportiert und ein Library-Scan getriggert.
+Eine detaillierte Aufstellung aller Schritte, Zustände und Transitionen findet sich in der Dokumentation unter `documentation/processing_pipeline.md`.
 
 Fehler während des Prozesses führen in den Status **ERROR**.
 

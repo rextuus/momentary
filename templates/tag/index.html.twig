@@ -16,6 +16,12 @@
                 Jeder Kategorie können beliebig viele Tags zugeordnet werden.
             </p>
 
+            <form action="{{ path('app_tag_init') }}" method="post" class="mb-4">
+                <button type="submit" class="btn btn-outline-primary">
+                    <i class="fas fa-sync-alt me-2"></i> Default Tags initialisieren
+                </button>
+            </form>
+
             {{ component('TagManagerComponent') }}
         </div>
     </div>
