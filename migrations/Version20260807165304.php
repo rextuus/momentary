@@ -26,7 +26,7 @@ final class Version20260807165304 extends AbstractMigration
         );
 
         $this->addSql(<<<'SQL'
-            CREATE TABLE oauth2_access_token (
+            CREATE TABLE IF NOT EXISTS oauth2_access_token (
               identifier CHAR(80) CHARACTER SET utf8mb4 NOT NULL COLLATE `utf8mb4_0900_ai_ci`,
               expiry DATETIME NOT NULL,
               user_identifier VARCHAR(128) CHARACTER SET utf8mb4 DEFAULT NULL COLLATE `utf8mb4_0900_ai_ci`,
@@ -51,7 +51,7 @@ final class Version20260807165304 extends AbstractMigration
         );
 
         $this->addSql(<<<'SQL'
-            CREATE TABLE oauth2_authorization_code (
+            CREATE TABLE IF NOT EXISTS oauth2_authorization_code (
               identifier CHAR(80) CHARACTER SET utf8mb4 NOT NULL COLLATE `utf8mb4_0900_ai_ci`,
               expiry DATETIME NOT NULL,
               user_identifier VARCHAR(128) CHARACTER SET utf8mb4 DEFAULT NULL COLLATE `utf8mb4_0900_ai_ci`,
@@ -76,7 +76,7 @@ final class Version20260807165304 extends AbstractMigration
         );
 
         $this->addSql(<<<'SQL'
-            CREATE TABLE oauth2_client (
+            CREATE TABLE IF NOT EXISTS oauth2_client (
               name VARCHAR(128) CHARACTER SET utf8mb4 NOT NULL COLLATE `utf8mb4_0900_ai_ci`,
               secret VARCHAR(128) CHARACTER SET utf8mb4 DEFAULT NULL COLLATE `utf8mb4_0900_ai_ci`,
               redirect_uris TEXT CHARACTER SET utf8mb4 DEFAULT NULL COLLATE `utf8mb4_0900_ai_ci`,
@@ -94,7 +94,7 @@ final class Version20260807165304 extends AbstractMigration
         );
 
         $this->addSql(<<<'SQL'
-            CREATE TABLE oauth2_refresh_token (
+            CREATE TABLE IF NOT EXISTS oauth2_refresh_token (
               identifier CHAR(80) CHARACTER SET utf8mb4 NOT NULL COLLATE `utf8mb4_0900_ai_ci`,
               expiry DATETIME NOT NULL,
               revoked TINYINT NOT NULL,
