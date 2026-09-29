@@ -16,8 +16,14 @@ readonly class VideoProcessingService
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
-        private VideoProcessingStepRepository $repository
+        private VideoProcessingStepRepository $repository,
+        private \Psr\Log\LoggerInterface $logger
     ) {}
+
+    public function getLogger(): \Psr\Log\LoggerInterface
+    {
+        return $this->logger;
+    }
 
     public function startStep(Video $video, VideoStatus $step, ?VideoProcessStepMessageInterface $message = null): void
     {

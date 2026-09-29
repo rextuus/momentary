@@ -17,6 +17,7 @@ use App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractSceneThumbna
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\VideoFileService;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -33,7 +34,8 @@ final class VideoController extends AbstractController
         private readonly VideoProcessMessageDispatcher $videoProcessMessageDispatcher,
         private readonly VideoRepository $videoRepository,
         private readonly EntityManagerInterface $entityManager,
-        private readonly TagInitializer $tagInitializer
+        private readonly TagInitializer $tagInitializer,
+        private readonly LoggerInterface $logger
     ) {}
 
     /**
@@ -55,11 +57,16 @@ final class VideoController extends AbstractController
         Request $request,
         VideoCreationService $videoCreationService
     ): Response {
+        error_log('VideoController: new action called');
         $this->tagInitializer->initialize();
 
         $video = new Video();
         $form = $this->createForm(VideoType::class, $video);
         $form->handleRequest($request);
+        error_log('VideoController: Form submitted: ' . ($form->isSubmitted() ? 'yes' : 'no'));
+        if ($form->isSubmitted()) {
+            error_log('VideoController: Form valid: ' . ($form->isValid() ? 'yes' : 'no'));
+        }
 
         if ($form->isSubmitted() && $form->isValid()) {
             $sourceFilename = $form->get('sourceFile')->getData();
@@ -73,17 +80,24 @@ final class VideoController extends AbstractController
             try {
                 $cameraTag = $form->get('cameraTags')->getData();
                 $formatTag = $form->get('formatTags')->getData();
+                $autoProcess = $form->get('autoProcess')->getData();
+                $this->logger->info('VideoController: autoProcess = ' . ($autoProcess ? 'true' : 'false'));
+                $this->logger->info('VideoController: Calling createVideo with ' . $sourceFilename);
 
-                $videoCreationService->createVideo($video, $sourceFilename, $cameraTag, $formatTag);
+                $videoCreationService->createVideo($video, $sourceFilename, $cameraTag, $formatTag, $autoProcess);
 
                 $this->addFlash('success', 'Lokales Video hinzugefügt und Pipeline gestartet!');
                 return $this->redirectToRoute('app_video_index');
             } catch (\Exception $e) {
+                $this->logger->error('VideoController: Fehler beim Erstellen des Videos: ' . $e->getMessage());
                 $this->addFlash('error', 'Fehler beim Erstellen des Videos: ' . $e->getMessage());
                 return $this->render('video/new.html.twig', [
                     'form' => $form->createView(),
                 ]);
             }
+        } else if ($form->isSubmitted()) {
+            error_log('VideoController: Form submitted but invalid: ' . (string) $form->getErrors(true));
+            $this->logger->warning('VideoController: Form is invalid: ' . (string) $form->getErrors(true));
         }
 
         return $this->render('video/new.html.twig', [

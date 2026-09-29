@@ -6,6 +6,7 @@ namespace App\Entity;
 
 use App\Enum\VideoStatus;
 use App\Repository\VideoProcessingStepRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: VideoProcessingStepRepository::class)]

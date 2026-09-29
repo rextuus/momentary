@@ -20,6 +20,7 @@ parameters:
     app.ftp_source_dirs:
         - '/var/www/html/storage/jellyfin/uploads'
         - '/var/www/html/var/uploads/app_uploads'
+        - '/var/www/html/storage/imports'
 
 services:
     # default configuration for services in *this* file

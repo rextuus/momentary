@@ -130,5 +130,30 @@ final class GeminiService
         
         return json_decode(trim($text), true) ?? [];
     }
+
+    public function suggestVideoName(array $tags, array $sceneSummaries, string $filename, ?string $createdAt): string
+    {
+        $promptParts = ['Schlage einen prägnanten Titel für dieses Video vor.'];
+        
+        if (!empty($tags)) {
+            $promptParts[] = 'Tags: ' . implode(', ', $tags) . '.';
+        }
+        if (!empty($sceneSummaries)) {
+             $promptParts[] = 'Szenen/Kapitel-Zusammenfassungen: ' . json_encode($sceneSummaries) . '.';
+        }
+        
+        $promptParts[] = sprintf('Falls diese Informationen nicht ausreichen, hier ergänzende Daten: Dateiname: %s, Erstellungsdatum: %s.', $filename, $createdAt ?? 'unbekannt');
+        $promptParts[] = 'Antworte ausschließlich mit dem Titel.';
+
+        $prompt = implode(' ', $promptParts);
+
+        $response = $this->client
+            ->generativeModel(model: 'gemini-3.1-flash-lite')
+            ->generateContent([
+                $prompt
+            ]);
+
+        return trim($response->text());
+    }
 }
 

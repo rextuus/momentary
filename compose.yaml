@@ -50,7 +50,7 @@ services:
       context: .
       dockerfile: docker/php/Dockerfile
     restart: always
-    command: ["sh", "-c", "mkdir -p var/cache var/log storage && chown -R www-data:www-data var storage && chmod -R 777 var storage && php bin/console cache:clear --env=prod && php bin/console cache:warmup --env=prod && php bin/console messenger:consume async --time-limit=3600 --memory-limit=512M"]
+    command: ["sh", "-c", "mkdir -p var/cache var/log storage && chown -R www-data:www-data var storage && chmod -R 777 var storage && php bin/console cache:clear --env=prod && php bin/console cache:warmup --env=prod && php bin/console messenger:consume async async_video_processing --time-limit=3600 --memory-limit=512M"]
     environment:
       APP_ENV: ${APP_ENV:-prod}
       APP_SECRET: ${APP_SECRET}

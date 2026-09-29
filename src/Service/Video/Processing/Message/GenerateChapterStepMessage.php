@@ -23,12 +23,12 @@ class GenerateChapterStepMessage extends AbstractVideoProcessStepMessage
 
     public function getTransitionToStatusNextStepIsBelonging(): VideoWorkflowProcessTransition
     {
-        return VideoWorkflowProcessTransition::START_EXPORT;
+        return VideoWorkflowProcessTransition::START_NAMING;
     }
 
     public function getNextStepMessageClass(): ?string
     {
-        return UploadToJellyfinStepMessage::class;
+        return VideoNamingStepMessage::class;
     }
 
     public function getVideoStatusForCurrentProcessStepEntity(): VideoStatus

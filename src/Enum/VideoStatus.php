@@ -7,6 +7,7 @@ namespace App\Enum;
 enum VideoStatus: string
 {
     case PENDING = 'pending';
+    case QUEUED = 'queued';
     case CONVERTING = 'converting';
     case SCENE_DETECTION = 'scene_detection';
     case EXTRACTING_THUMBNAILS = 'extracting_thumbnails';
@@ -19,6 +20,17 @@ enum VideoStatus: string
     case TAGGING_SCENES = 'tagging_scenes';
     case CHAPTER_GENERATION = 'chapter_generation';
     case EXPORTING_JELLYFIN = 'exporting_jellyfin';
+    case NAMING = 'naming';
     case COMPLETED = 'completed';
     case ERROR = 'error';
+
+    public function isProcessing(): bool
+    {
+        return !in_array($this, [
+            self::PENDING,
+            self::QUEUED,
+            self::COMPLETED,
+            self::ERROR,
+        ], true);
+    }
 }

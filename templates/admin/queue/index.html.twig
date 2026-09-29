@@ -1,0 +1,56 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Warteschlange - Momentary{% endblock %}
+
+{% block body %}
+    <div class="container pb-5">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ path('app_dashboard') }}">Dashboard</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Warteschlange</li>
+            </ol>
+        </nav>
+
+        <h1 class="fw-bold mb-4">Aktuelle Warteschlange</h1>
+
+        <div class="alert {{ isWorkerRunning ? 'alert-success' : 'alert-danger' }} shadow-sm">
+            Worker-Status: <strong>{{ isWorkerRunning ? 'Aktiv' : 'Gestoppt (Worker läuft nicht!)' }}</strong>
+            {% if not isWorkerRunning %}
+                <br>Bitte starten Sie den Worker: <code>php bin/console messenger:consume async_video_processing</code>
+            {% endif %}
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Video</th>
+                            <th>Status</th>
+                            <th>Erstellt</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for video in videos %}
+                            <tr>
+                                <td>
+                                    <a href="{{ path('app_video_show', {id: video.id}) }}">
+                                        {{ video.title ?? 'Unbenanntes Video' }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">{{ video.status.value }}</span>
+                                </td>
+                                <td>{{ video.createdAt|date('d.m.Y H:i') }}</td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="3" class="text-center py-3">Keine Videos in der Warteschlange.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}

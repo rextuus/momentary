@@ -112,6 +112,23 @@
                 </a>
             </div>
             <div class="col-md-3">
+                <a href="{{ path('app_admin_queue') }}" class="card h-100 p-3 text-decoration-none shadow-sm border-left-info">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-tasks text-info fa-2x me-3"></i>
+                        <div>
+                            <div class="fw-bold text-dark">Warteschlange</div>
+                            <div class="text-muted small">
+                                {% if queueIsRunning %}
+                                    <span class="text-success"><i class="fas fa-check-circle"></i> Läuft</span>
+                                {% else %}
+                                    <span class="text-danger"><i class="fas fa-exclamation-triangle"></i> Gestoppt</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-3">
                 <a href="{{ path('admin_files_ftp') }}" class="card h-100 p-3 text-decoration-none shadow-sm border-left-secondary">
                     <div class="d-flex align-items-center">
                         <i class="fas fa-file-upload text-secondary fa-2x me-3"></i>

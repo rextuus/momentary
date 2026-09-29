@@ -94,7 +94,8 @@ class VideoProgressBar
             VideoStatus::ANALYZING_FACES_REFINEMENT->value => 80,
             VideoStatus::MERGING_SCENES->value => 90,
             VideoStatus::TAGGING_SCENES->value => 93,
-            VideoStatus::CHAPTER_GENERATION->value => 96,
+            VideoStatus::CHAPTER_GENERATION->value => 95,
+            VideoStatus::NAMING->value => 97,
             VideoStatus::EXPORTING_JELLYFIN->value => 98,
             VideoStatus::COMPLETED->value => 100,
         ];

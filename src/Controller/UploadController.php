@@ -2,8 +2,10 @@
 
 namespace App\Controller;
 
+use App\Entity\Video;
 use App\Service\Storage\FileStorageService;
 use App\Service\Storage\StoragePathProvider;
+use App\Service\Video\VideoCreationService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\Exception\FileException;
 use Symfony\Component\HttpFoundation\Request;
@@ -17,6 +19,7 @@ class UploadController extends AbstractController
         private readonly SluggerInterface $slugger,
         private readonly StoragePathProvider $pathProvider,
         private readonly FileStorageService $fileStorageService,
+        private readonly VideoCreationService $videoCreationService,
     ) {}
 
     #[Route('/upload', name: 'app_upload', methods: ['GET', 'POST'])]
@@ -42,13 +45,19 @@ class UploadController extends AbstractController
                         $newFilename
                     );
 
-                    $this->addFlash('success', 'Video "' . $newFilename . '" erfolgreich hochgeladen.');
+                    $video = new Video();
+                    $video->setTitle($newFilename);
+                    $this->videoCreationService->createVideo($video, $newFilename, null, null, true);
+
+                    $this->addFlash('success', 'Video "' . $newFilename . '" erfolgreich hochgeladen und zur Verarbeitung vorgemerkt.');
 
                     if ($request->request->has('redirect_to_new')) {
                         return $this->redirectToRoute('video_new');
                     }
                 } catch (FileException $e) {
                     $this->addFlash('danger', 'Fehler beim Upload: ' . $e->getMessage());
+                } catch (\Exception $e) {
+                    $this->addFlash('danger', 'Fehler bei der Videokreation: ' . $e->getMessage());
                 }
             } else {
                 $this->addFlash('warning', 'Bitte eine Datei auswählen.');

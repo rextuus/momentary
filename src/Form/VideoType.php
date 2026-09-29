@@ -98,6 +98,13 @@ class VideoType extends AbstractType
                 'required' => false,
                 'attr' => ['class' => 'form-check-input'],
             ])
+            ->add('autoProcess', CheckboxType::class, [
+                'label' => 'Automatisch verarbeiten',
+                'required' => false,
+                'mapped' => false,
+                'data' => true,
+                'attr' => ['class' => 'form-check-input'],
+            ])
             ->add('cameraTags', EntityType::class, [
                 'class' => Tag::class,
                 'choice_label' => 'name',

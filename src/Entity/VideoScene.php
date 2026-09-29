@@ -257,4 +257,38 @@ class VideoScene
         $this->endSeconds = $endSeconds;
         return $this;
     }
+
+    public function addVideoFace(VideoFace $videoFace): static
+    {
+        if (!$this->videoFaces->contains($videoFace)) {
+            $this->videoFaces->add($videoFace);
+            $videoFace->setVideoScene($this);
+        }
+
+        return $this;
+    }
+
+    public function removeVideoFace(VideoFace $videoFace): static
+    {
+        if ($this->videoFaces->removeElement($videoFace)) {
+            // set the owning side to null (unless already changed)
+            if ($videoFace->getVideoScene() === $this) {
+                $videoFace->setVideoScene(null);
+            }
+        }
+
+        return $this;
+    }
+
+    public function removeSceneTag(VideoSceneTag $sceneTag): static
+    {
+        if ($this->sceneTags->removeElement($sceneTag)) {
+            // set the owning side to null (unless already changed)
+            if ($sceneTag->getVideoScene() === $this) {
+                $sceneTag->setVideoScene(null);
+            }
+        }
+
+        return $this;
+    }
 }

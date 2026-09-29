@@ -303,4 +303,26 @@ class VideoFace
     {
         return $this->faceImage ? $this->faceImage->getRelativePath() : null;
     }
+
+    public function addMatchFor(VideoFace $matchFor): static
+    {
+        if (!$this->matchFor->contains($matchFor)) {
+            $this->matchFor->add($matchFor);
+            $matchFor->setMatchedBy($this);
+        }
+
+        return $this;
+    }
+
+    public function removeMatchFor(VideoFace $matchFor): static
+    {
+        if ($this->matchFor->removeElement($matchFor)) {
+            // set the owning side to null (unless already changed)
+            if ($matchFor->getMatchedBy() === $this) {
+                $matchFor->setMatchedBy(null);
+            }
+        }
+
+        return $this;
+    }
 }
