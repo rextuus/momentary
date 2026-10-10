@@ -6,9 +6,11 @@ namespace App\Tests\Functional\Video;
 
 use App\Entity\File;
 use App\Entity\Video;
+use App\Enum\FilePurpose;
 use App\Enum\VideoStatus;
 use App\Repository\VideoRepository;
 use App\Service\Aws\AmazonRekognitionService;
+use App\Service\Storage\StoragePathProvider;
 use App\Service\Video\Analyze\ChapterGenerator;
 use App\Service\Video\Analyze\EmptyScenesMerger;
 use App\Service\Video\Analyze\FrameAnalyzer;
@@ -20,6 +22,7 @@ use App\Service\Video\Analyze\Result\ChapterGenerationResult;
 use App\Service\Video\Analyze\Result\EmptyScenesMergerResult;
 use App\Service\Video\Analyze\Result\FrameSplittingResult;
 use App\Service\Video\Analyze\Result\JellyfinExportResult;
+use App\Service\Video\Analyze\Result\TaggingResult;
 use App\Service\Video\Analyze\SceneDetector;
 use App\Service\Video\Analyze\SceneThumbnailExtractor;
 use App\Service\Video\Analyze\TaggingService;
@@ -48,6 +51,7 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
     private MockObject $jellyfinUploader;
     private VideoRepository $videoRepository;
     private EntityManagerInterface $entityManager;
+    private StoragePathProvider $pathProvider;
     private array $createdTempFiles = [];
 
     protected function setUp(): void
@@ -84,6 +88,7 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
 
         $this->videoRepository = static::getContainer()->get(VideoRepository::class);
         $this->entityManager = static::getContainer()->get(EntityManagerInterface::class);
+        $this->pathProvider = static::getContainer()->get(StoragePathProvider::class);
     }
 
     protected function tearDown(): void
@@ -105,7 +110,19 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         $video->setTitle('Urlaub 2024');
         $video->setCreatedAt(new \DateTimeImmutable());
         $video->setStatus(VideoStatus::PENDING);
-        $video->setLocalPath('test.mov');
+        $file = new File();
+        $file->setRelativePath('test.mov');
+        $file->setMimeType('video/mp4');
+        $file->setPurpose(FilePurpose::VIDEO_SOURCE);
+        $video->setSourceFile($file);
+        
+        // Ensure source file exists in storage
+        $sourceAbsolutePath = $this->pathProvider->getAbsoluteFilePath($file->getRelativePath());
+        $filesystem = new Filesystem();
+        $filesystem->mkdir(dirname($sourceAbsolutePath));
+        file_put_contents($sourceAbsolutePath, 'dummy-video-content');
+        $this->createdTempFiles[] = $sourceAbsolutePath;
+        
         $this->entityManager->persist($video);
         $this->entityManager->flush();
 
@@ -132,9 +149,14 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
 
         // Mocks konfigurieren
         $this->frameAnalyzer->method('analyzeFrame')->willReturn(true);
-        $this->mp4Converter->method('convertToMp4')->willReturn(true);
+        $this->mp4Converter->method('convertToMp4')->willReturnCallback(function (string $sourcePath, string $targetPath) use ($filesystem) {
+            $filesystem->mkdir(dirname($targetPath));
+            file_put_contents($targetPath, 'dummy-mp4-content');
+            $this->createdTempFiles[] = $targetPath;
+            return true;
+        });
         $this->pathResolver->method('resolvePath')->willReturn('test.mov');
-        $this->taggingService->method('tagScene')->willReturn(true);
+        $this->taggingService->method('tagScene')->willReturn(new TaggingResult(true, true, [1]));
         $result = new ChapterGenerationResult(
             true,
             11,
@@ -198,6 +220,8 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
                 $filename = $customFilename ?? sprintf('video_%d.jpg', $video->getId());
                 $file = new File();
                 $file->setRelativePath(sprintf('videos/%d/thumbnails/%s', $video->getId(), $filename));
+                $file->setMimeType('image/jpeg');
+                $file->setPurpose(FilePurpose::THUMBNAIL_VIDEO);
                 return $file;
             });
 
@@ -274,7 +298,11 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         $video->setTitle('Error Video');
         $video->setCreatedAt(new \DateTimeImmutable());
         $video->setStatus(VideoStatus::PENDING);
-        $video->setLocalPath('test.mov');
+        $file = new File();
+        $file->setRelativePath('test.mov');
+        $file->setMimeType('video/mp4');
+        $file->setPurpose(FilePurpose::VIDEO_SOURCE);
+        $video->setSourceFile($file);
         $this->entityManager->persist($video);
         $this->entityManager->flush();
 

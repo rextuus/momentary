@@ -27,4 +27,3 @@ framework:
             App\Service\Video\Processing\Message\Tagging\TagLastSceneStepMessage: async_video_processing
             App\Service\Video\Processing\Message\GenerateChapterStepMessage: async_video_processing
             App\Service\Video\Processing\Message\UploadToJellyfinStepMessage: async_video_processing
-            App\Message\IndexVideoMessage: async

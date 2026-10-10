@@ -19,10 +19,10 @@ readonly class VideoSceneService
     {
         foreach ($scenes as $data) {
             $scene = new VideoScene();
-            $scene->setVideo($video);
             $scene->setSceneNumber((int) $data['scene_number']);
             $scene->setStartSeconds((float) $data['start_seconds']);
             $scene->setEndSeconds((float) $data['end_seconds']);
+            $video->addScene($scene);
             $this->entityManager->persist($scene);
         }
 

@@ -60,7 +60,7 @@ class ExtractSceneThumbnailStepMessageHandler extends AbstractExtractSceneThumbn
         $video = $this->getVideo();
         $this->startCurrentStep();
 
-        $currentSceneId = $this->nextSceneId;
+        $currentSceneId = $message->getCurrentSceneId();
         $thumbnailGenerationError = $this->generateThumbnail($message);
 
         if ($thumbnailGenerationError !== null){
