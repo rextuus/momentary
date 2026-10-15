@@ -68,6 +68,19 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
             return;
         }
 
+        // Wenn bereits eine Datei konvertiert wurde, prüfe ob sie existiert
+        if ($video->getConvertedFile() !== null) {
+            $existingPath = $this->pathProvider->getStorageRoot() . '/' . $video->getConvertedFile()->getRelativePath();
+            if (file_exists($existingPath)) {
+                $this->finishCurrentStep(sprintf('[i] Video "%s" already converted.', $video->getTitle()));
+                return;
+            }
+            // Falls Datei nicht existiert, aber Entity schon: Entity löschen/aufräumen
+            $this->entityManager->remove($video->getConvertedFile());
+            $video->setConvertedFile(null);
+            $this->entityManager->flush();
+        }
+
         // Temporäre Datei für die Konvertierung im Storage ablegen (z.B. im Verzeichnis des Videos)
         $tempFilename = 'converted_' . uniqid() . '.mp4';
         $tempRelativePath = 'videos/' . $video->getId() . '/' . $tempFilename;
@@ -77,27 +90,29 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
         $this->fileStorageService->createDirectoryStructure('videos/' . $video->getId());
 
         if ($this->videoAnalyzer->convertToMp4($sourceAbsolutePath, $tempAbsolutePath)) {
-            // 1. Vorab prüfen, ob bereits ein File-Eintrag mit diesem Pfad existiert, um Duplicate Entry zu vermeiden
-            $existingFile = $this->entityManager->getRepository(\App\Entity\File::class)->findOneBy(['relativePath' => $tempRelativePath]);
-            if ($existingFile) {
-                $this->fileManager->deleteFile($existingFile);
+            try {
+                // File-Entity für das konvertierte Video erstellen
+                $convertedFile = $this->fileManager->createConvertedVideoFile($video, $tempFilename);
+                $convertedFile->setFileSize($this->fileManager->getFileSize($convertedFile));
+                
+                // Vorab prüfen, ob Datei-Pfad schon belegt
+                $existingFile = $this->entityManager->getRepository(\App\Entity\File::class)->findOneBy(['relativePath' => $convertedFile->getRelativePath()]);
+                if ($existingFile) {
+                    $this->fileManager->deleteFile($existingFile);
+                }
+
+                $this->fileManager->saveFile($convertedFile);
+
+                // Am Video als convertedFile setzen
+                $video->setConvertedFile($convertedFile);
+
+                $this->entityManager->persist($video);
+                $this->entityManager->flush();
+
+                $this->finishCurrentStep(sprintf('Conversion for video "%s" succeeded', $video->getTitle()));
+            } catch (\Exception $e) {
+                $this->stopProcessing(sprintf('[⚠] Conversion failed: %s', $e->getMessage()));
             }
-
-            // 2. File-Entity für das konvertierte Video erstellen
-            $convertedFile = $this->fileManager->createConvertedVideoFile($video, $tempFilename);
-            $convertedFile->setFileSize($this->fileManager->getFileSize($convertedFile));
-            $this->fileManager->saveFile($convertedFile);
-
-            // 3. Am Video als convertedFile setzen
-            $video->setConvertedFile($convertedFile);
-
-            // Optional: Wenn das konvertierte Video ab sofort die neue Hauptquelle sein soll:
-            // $video->setSourceFile($convertedFile);
-
-            $this->entityManager->persist($video);
-            $this->entityManager->flush();
-
-            $this->finishCurrentStep(sprintf('Conversion for video "%s" succeeded', $video->getTitle()));
             return;
         }
 

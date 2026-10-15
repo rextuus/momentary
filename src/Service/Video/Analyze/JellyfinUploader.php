@@ -45,8 +45,8 @@ class JellyfinUploader
 
         // Attempting to find the Item ID with retries
         $itemId = null;
-        for ($i = 0; $i < 5; $i++) {
-            sleep(3);
+        for ($i = 0; $i < 10; $i++) {
+            sleep(5);
             $itemId = $this->jellyfinUploadService->findItemIdByPath($resultPath);
             if ($itemId) {
                 break;

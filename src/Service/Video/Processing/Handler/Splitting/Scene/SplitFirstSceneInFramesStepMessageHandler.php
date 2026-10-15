@@ -80,7 +80,8 @@ class SplitFirstSceneInFramesStepMessageHandler extends AbstractSplitInFramesSte
 
         // check if there are more scenes needing refining
         $remainingScenes = $message->getRemainingSceneIds();
-        $this->currentSceneId = array_shift($remainingScenes)->getId();
+        $nextScene = array_shift($remainingScenes);
+        $this->currentSceneId = $nextScene ? $nextScene->getId() : null;
         $this->remainingSceneIds = $remainingScenes;
 
         $successMsg = sprintf(

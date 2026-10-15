@@ -44,7 +44,11 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
     protected function getVideo(): Video
     {
         if ($this->video === null) {
-            return $this->video = $this->videoRepository->find($this->getCurrentMessage()->getVideoId());
+            $video = $this->videoRepository->find($this->getCurrentMessage()->getVideoId());
+            if (!$video) {
+                throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException('Video not found');
+            }
+            $this->video = $video;
         }
 
         return $this->video;

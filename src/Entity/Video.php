@@ -42,6 +42,9 @@ class Video
     #[ORM\Column(length: 255)]
     #[Groups(['video:list', 'video:detail'])]
     private ?string $title = null;
+    #[ORM\Column(length: 64, nullable: true)]
+    #[Groups(["video:detail"])]
+    private ?string $fileHash = null;
 
     #[ORM\ManyToOne(targetEntity: File::class, cascade: ['persist', 'remove'])]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
@@ -198,6 +201,17 @@ class Video
     public function getTitle(): ?string
     {
         return $this->title;
+    }
+
+    public function getFileHash(): ?string
+    {
+        return $this->fileHash;
+    }
+
+    public function setFileHash(?string $fileHash): static
+    {
+        $this->fileHash = $fileHash;
+        return $this;
     }
 
     public function setTitle(string $title): static

@@ -10,6 +10,7 @@ use App\Enum\FilePurpose;
 use App\Enum\VideoStatus;
 use App\Repository\VideoRepository;
 use App\Service\Aws\AmazonRekognitionService;
+use App\Service\Gemini\GeminiService;
 use App\Service\Storage\StoragePathProvider;
 use App\Service\Video\Analyze\ChapterGenerator;
 use App\Service\Video\Analyze\EmptyScenesMerger;
@@ -45,6 +46,7 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
     private MockObject $frameAnalyzer;
     private MockObject $emptyScenesMerger;
     private MockObject $taggingService;
+    private MockObject $geminiServiceMock;
 
     private MockObject $chapterGenerator;
 
@@ -67,6 +69,7 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         $this->frameAnalyzer = $this->createMock(FrameAnalyzer::class);
         $this->emptyScenesMerger = $this->createMock(EmptyScenesMerger::class);
         $this->taggingService = $this->createMock(TaggingService::class);
+        $this->geminiServiceMock = $this->createMock(GeminiService::class);
         $this->chapterGenerator = $this->createMock(ChapterGenerator::class);
         $this->jellyfinUploader = $this->createMock(JellyfinUploader::class);
 
@@ -83,6 +86,7 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         static::getContainer()->set(FrameAnalyzer::class, $this->frameAnalyzer);
         static::getContainer()->set(EmptyScenesMerger::class, $this->emptyScenesMerger);
         static::getContainer()->set(TaggingService::class, $this->taggingService);
+        static::getContainer()->set(GeminiService::class, $this->geminiServiceMock);
         static::getContainer()->set(ChapterGenerator::class, $this->chapterGenerator);
         static::getContainer()->set(JellyfinUploader::class, $this->jellyfinUploader);
 
@@ -177,8 +181,24 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
                 [
                     'BoundingBox' => ['Width' => 0.2, 'Height' => 0.2, 'Left' => 0.4, 'Top' => 0.3],
                     'Confidence' => 99.8,
+                    'faceId' => 'face1',
+                    'age' => 20,
+                    'gender' => 'Male',
+                    'emotion' => 'Happy',
+                    'similarity' => 90.0,
                 ],
             ]);
+
+        // 3.1 Mock GeminiService
+        $this->geminiServiceMock
+            ->method('analyzeImage')
+            ->willReturn(['Titel' => 'Test', 'Tags' => ['Personen' => ['Kind'], 'Aktivitäten' => [], 'Orte' => []]]);
+        $this->geminiServiceMock
+            ->method('suggestChapters')
+            ->willReturn([['title' => 'Kapitel 1', 'startSeconds' => 0, 'endSeconds' => 60, 'description' => 'Desc']]);
+        $this->geminiServiceMock
+            ->method('suggestVideoName')
+            ->willReturn('Test Video Name');
 
         // 4. Mock SceneDetector & Extractor
         $this->sceneDetector

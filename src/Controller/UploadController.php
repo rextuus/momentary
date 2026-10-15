@@ -2,10 +2,12 @@
 
 namespace App\Controller;
 
+use App\Repository\VideoRepository;
 use App\Entity\Video;
 use App\Service\Storage\FileStorageService;
 use App\Service\Storage\StoragePathProvider;
 use App\Service\Video\VideoCreationService;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\Exception\FileException;
 use Symfony\Component\HttpFoundation\Request;
@@ -20,6 +22,8 @@ class UploadController extends AbstractController
         private readonly StoragePathProvider $pathProvider,
         private readonly FileStorageService $fileStorageService,
         private readonly VideoCreationService $videoCreationService,
+        private readonly LoggerInterface $logger,
+        private readonly VideoRepository $videoRepository,
     ) {}
 
     #[Route('/upload', name: 'app_upload', methods: ['GET', 'POST'])]
@@ -32,9 +36,21 @@ class UploadController extends AbstractController
             $videoFile = $request->files->get('video_file');
 
             if ($videoFile) {
+                $originalFilename = pathinfo($videoFile->getClientOriginalName(), PATHINFO_FILENAME);
+                
+                // Hash berechnen
+                $fileContent = file_get_contents($videoFile->getRealPath());
+                $hash = hash('sha256', $fileContent);
+
+                // Duplikatsprüfung: Prüfe nach Hash
+                $existingVideo = $this->videoRepository->findOneBy(['fileHash' => $hash]);
+                if ($existingVideo) {
+                    $this->addFlash('warning', 'Dieses Video wurde bereits hochgeladen.');
+                    return $this->redirectToRoute('app_video_show', ['id' => $existingVideo->getId()]);
+                }
+
                 $customFilename = $request->request->get('custom_filename');
-                $originalFilename = $customFilename ?: pathinfo($videoFile->getClientOriginalName(), PATHINFO_FILENAME);
-                $safeFilename = $this->slugger->slug($originalFilename);
+                $safeFilename = $this->slugger->slug($customFilename ?: $originalFilename);
                 $newFilename = $safeFilename . '-' . uniqid() . '.' . $videoFile->guessExtension();
 
                 try {
@@ -46,14 +62,13 @@ class UploadController extends AbstractController
                     );
 
                     $video = new Video();
-                    $video->setTitle($newFilename);
+                    $video->setTitle($originalFilename);
+                    $video->setFileHash($hash);
                     $this->videoCreationService->createVideo($video, $newFilename, null, null, true);
 
-                    $this->addFlash('success', 'Video "' . $newFilename . '" erfolgreich hochgeladen und zur Verarbeitung vorgemerkt.');
+                    $this->addFlash('success', 'Video "' . $originalFilename . '" erfolgreich hochgeladen.');
 
-                    if ($request->request->has('redirect_to_new')) {
-                        return $this->redirectToRoute('video_new');
-                    }
+                    return $this->redirectToRoute('app_video_show', ['id' => $video->getId()]);
                 } catch (FileException $e) {
                     $this->addFlash('danger', 'Fehler beim Upload: ' . $e->getMessage());
                 } catch (\Exception $e) {

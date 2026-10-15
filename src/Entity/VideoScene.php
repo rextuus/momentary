@@ -18,7 +18,7 @@ class VideoScene
     #[Groups(['video:detail'])]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(targetEntity: Video::class, inversedBy: 'scenes')]
+    #[ORM\ManyToOne(targetEntity: Video::class, inversedBy: "scenes", cascade: ["persist"])]
     #[ORM\JoinColumn(nullable: false)]
     private ?Video $video = null;
 

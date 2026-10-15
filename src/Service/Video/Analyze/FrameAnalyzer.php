@@ -61,38 +61,52 @@ class FrameAnalyzer
             return false;
         }
 
+        echo "FrameAnalyzer: File exists: " . (file_exists($framePath) ? 'yes' : 'no') . "\n";
         if (!file_exists($framePath)) {
             throw new \RuntimeException("Frame file disappeared before processing: {$framePath}");
         }
 
         $imageContent = file_get_contents($framePath);
+        echo "FrameAnalyzer: Got image content\n";
         $uuid = Uuid::uuid4()->toString();
 
         $storagePath = $this->pathProvider->createFacePath((string)$videoId, $uuid . '.jpg');
+        echo "FrameAnalyzer: Storage path: $storagePath\n";
 
         $this->imageFileService->getFilesystem()->write($storagePath, $imageContent);
+        echo "FrameAnalyzer: File written\n";
 
         $file = $this->entityManager->getRepository(File::class)->findOneBy(['relativePath' => $storagePath]);
+        echo "FrameAnalyzer: Found file entity\n";
         if (!$file) {
+            echo "FrameAnalyzer: Creating new file entity\n";
             $file = new File();
             $file->setRelativePath($storagePath);
             $file->setMimeType('image/jpeg');
             $file->setFileSize(strlen($imageContent));
             $file->setPurpose(FilePurpose::IMAGE_FACE);
             $this->entityManager->persist($file);
+            echo "FrameAnalyzer: Persisted new file entity\n";
         }
 
+        $allFacesData = array_values($allFacesData);
+        echo "FrameAnalyzer: About to enter loop. Count: " . count($allFacesData) . "\n";
         foreach ($allFacesData as $faceData) {
+            echo "FrameAnalyzer: Iterating faceData\n";
             $this->saveFaceData($video, $faceData, $timestamp, $file, $currentScene);
         }
+
+        $this->entityManager->flush();
 
         return true;
     }
 
     private function saveFaceData($video, $faceData, $timestamp, $file, $currentScene): void
     {
+        echo "FrameAnalyzer: Entering saveFaceData\n";
         $this->entityManager->wrapInTransaction(
             function () use ($video, $faceData, $timestamp, $file, $currentScene) {
+                echo "FrameAnalyzer: Inside transaction\n";
                 $person = null;
                 $matchedFace = null;
 
@@ -126,6 +140,7 @@ class FrameAnalyzer
 
                 if ($currentScene) {
                     $videoFace->setVideoScene($currentScene);
+                    $currentScene->addVideoFace($videoFace);
                 }
                 if ($matchedFace) {
                     $videoFace->setMatchedBy($matchedFace);
@@ -137,6 +152,7 @@ class FrameAnalyzer
                 }
 
                 $this->entityManager->persist($videoFace);
+                echo "FrameAnalyzer: Persisted VideoFace for video ID " . ($video->getId() ?? 'null') . " and scene ID " . ($currentScene ? $currentScene->getId() : 'null') . "\n";
             }
         );
     }

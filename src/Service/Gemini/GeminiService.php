@@ -13,7 +13,7 @@ use Gemini\Enums\MimeType;
 use RuntimeException;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
-final class GeminiService
+class GeminiService
 {
     private Client $client;
 

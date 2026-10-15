@@ -1,0 +1,10 @@
+[
+    {
+        "faceId": "face789",
+        "age": 25,
+        "gender": "Female",
+        "emotion": "Neutral",
+        "boundingBox": {"width": 0.1, "height": 0.1, "left": 0.3, "top": 0.3},
+        "similarity": 97.5
+    }
+]

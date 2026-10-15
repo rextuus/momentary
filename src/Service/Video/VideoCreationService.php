@@ -34,7 +34,7 @@ class VideoCreationService
      */
     public function createVideo(Video $video, string $sourceFilename, ?Tag $cameraTag, ?Tag $formatTag, bool $autoProcess = false): Video
     {
-        $this->logger->info('VideoCreationService: createVideo called with autoProcess = ' . ($autoProcess ? 'true' : 'false'));
+        error_log('VideoCreationService: createVideo called for ' . $sourceFilename . ' with autoProcess = ' . ($autoProcess ? 'true' : 'false'));
         $absoluteImportPath = $this->pathProvider->getImportAbsolutePath($sourceFilename);
 
         if (!file_exists($absoluteImportPath)) {

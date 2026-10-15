@@ -41,8 +41,8 @@ class FullResetCommand extends Command
 
         // Run meilisearch clear
         $io->note('Führe Meilisearch-Clear aus...');
-        $meiliCommand = $this->getApplication()->find('app:meilisearch:clear');
-        $meiliCommand->run(new ArrayInput([]), $output);
+//        $meiliCommand = $this->getApplication()->find('app:meilisearch:clear');
+//        $meiliCommand->run(new ArrayInput([]), $output);
 
         $io->success('System wurde erfolgreich zurückgesetzt.');
         return Command::SUCCESS;

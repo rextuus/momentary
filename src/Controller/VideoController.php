@@ -109,6 +109,8 @@ final class VideoController extends AbstractController
     public function delete(Request $request, Video $video, FileManager $fileManager): Response
     {
         if ($this->isCsrfTokenValid('delete' . $video->getId(), $request->request->get('_token'))) {
+            $videoId = $video->getId();
+            
             if ($video->getSourceFile()) {
                 $fileManager->deleteFile($video->getSourceFile(), false);
             }

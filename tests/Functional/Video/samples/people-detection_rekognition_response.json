@@ -1,0 +1,18 @@
+[
+    {
+        "faceId": "face123",
+        "age": 28,
+        "gender": "Male",
+        "emotion": "Neutral",
+        "boundingBox": {"width": 0.1, "height": 0.1, "left": 0.2, "top": 0.2},
+        "similarity": 99.5
+    },
+    {
+        "faceId": "face456",
+        "age": 32,
+        "gender": "Female",
+        "emotion": "Happy",
+        "boundingBox": {"width": 0.1, "height": 0.1, "left": 0.5, "top": 0.2},
+        "similarity": 98.2
+    }
+]

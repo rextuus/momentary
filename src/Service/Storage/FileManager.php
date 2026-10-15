@@ -127,6 +127,10 @@ class FileManager
     private function createFileEntity(FilePurpose $purpose, string $filename, ?string $directoryIdentifier, string $mimeType): File
     {
         $relativePath = $this->pathProvider->getRelativePath($purpose, $filename, $directoryIdentifier);
+        
+        if (empty($relativePath)) {
+            throw new \RuntimeException(sprintf("File creation failed: empty relative path! Purpose: %s, Filename: %s, DirId: %s", $purpose->value, $filename, $directoryIdentifier ?? 'null'));
+        }
 
         $file = new File();
         $file->setPurpose($purpose);

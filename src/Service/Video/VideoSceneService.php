@@ -17,6 +17,7 @@ readonly class VideoSceneService
 
     public function storeScenes(Video $video, array $scenes): void
     {
+        $this->entityManager->persist($video); // Stelle sicher, dass das Video persistiert ist
         foreach ($scenes as $data) {
             $scene = new VideoScene();
             $scene->setSceneNumber((int) $data['scene_number']);

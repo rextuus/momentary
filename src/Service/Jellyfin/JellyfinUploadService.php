@@ -88,8 +88,31 @@ class JellyfinUploadService
         }
 
         try {
-            $url = "{$this->jellyfinHost}/Library/Refresh";
-            $this->logger->info("Requesting Jellyfin refresh via API: $url");
+            // Versuche, gezielt die Bibliothek zu aktualisieren, die /uploads enthält
+            $urlFolders = "{$this->jellyfinHost}/Library/VirtualFolders";
+            $responseFolders = $this->httpClient->request('GET', $urlFolders, [
+                'headers' => ['X-Emby-Token' => $this->jellyfinApiKey],
+                'timeout' => 5,
+            ]);
+            
+            $folders = $responseFolders->toArray();
+            $libraryId = null;
+
+            foreach ($folders as $folder) {
+                // Jellyfin speichert Locations oft mit dem Pfad wie er im Container konfiguriert ist
+                if (isset($folder['Locations']) && in_array('/uploads', $folder['Locations'])) {
+                    $libraryId = $folder['Id'];
+                    break;
+                }
+            }
+
+            if ($libraryId) {
+                $url = "{$this->jellyfinHost}/Library/VirtualFolders/Refresh?id={$libraryId}";
+                $this->logger->info("Requesting Jellyfin refresh for library $libraryId: $url");
+            } else {
+                $url = "{$this->jellyfinHost}/Library/Refresh";
+                $this->logger->info("Specific library not found, requesting global Jellyfin refresh: $url");
+            }
 
             $response = $this->httpClient->request('POST', $url, [
                 'headers' => [
@@ -101,15 +124,10 @@ class JellyfinUploadService
             $statusCode = $response->getStatusCode();
             $this->logger->info("Jellyfin API responded with status code: $statusCode");
 
-            $content = $response->getContent(false);
-            if ($content) {
-                $this->logger->debug("Jellyfin API response content: " . substr($content, 0, 500));
-            }
-
             if ($statusCode === 204 || $statusCode === 200) {
                 $this->logger->info("Triggered Jellyfin library refresh.");
             } else {
-                $this->logger->error("Jellyfin refresh returned status: " . $response->getStatusCode());
+                $this->logger->error("Jellyfin refresh returned status: " . $statusCode);
             }
         } catch (\Exception $e) {
             $this->logger->error("Failed to trigger Jellyfin scan: " . $e->getMessage());
@@ -123,18 +141,14 @@ class JellyfinUploadService
         }
 
         try {
-            // Leite den Jellyfin-internen Pfad aus dem jellyfin/uploads-Segment ab,
-            // unabhängig davon wo der Storage-Root liegt.
-            $internalPath = $path;
-            if (str_contains($path, 'jellyfin/uploads')) {
-                $parts = explode('jellyfin/uploads', $path);
-                $internalPath = '/uploads' . end($parts);
-            }
-
+            // Wir suchen nach dem Pfad, wie Jellyfin ihn sieht.
+            // Jellyfin speichert den Pfad relativ zur Mediathek-Root, also inkl. "/uploads/".
+            $internalPath = '/uploads/' . ltrim(basename($path), '/');
+            
             $normalizedInternalPath = str_replace('\\', '/', $internalPath);
-
+            
             $url = "{$this->jellyfinHost}/Items";
-            $this->logger->info("Searching for Jellyfin Item ID for path: $normalizedInternalPath (original: $path)");
+            $this->logger->info("Searching for Jellyfin Item ID for path: $normalizedInternalPath (internal: $internalPath, basename: " . basename($path) . ", original: $path)");
 
             $response = $this->httpClient->request('GET', $url, [
                 'headers' => [
@@ -155,6 +169,7 @@ class JellyfinUploadService
                 foreach ($data['Items'] as $item) {
                     if (isset($item['Path'])) {
                         $jellyfinItemPath = str_replace('\\', '/', $item['Path']);
+                        $this->logger->info("Jellyfin Item: " . $item['Id'] . " Path: " . $jellyfinItemPath . " Search: " . $normalizedInternalPath);
                         if ($jellyfinItemPath === $normalizedInternalPath) {
                             return $item['Id'];
                         }

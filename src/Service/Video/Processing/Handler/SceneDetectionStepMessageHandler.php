@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service\Video\Processing\Handler;
 
+use Doctrine\ORM\EntityManagerInterface;
 use App\Repository\VideoRepository;
 use App\Service\Storage\StoragePathProvider;
 use App\Service\Video\Processing\Attribute\StepOrder;
@@ -28,15 +29,31 @@ class SceneDetectionStepMessageHandler extends AbstractVideoMessageHandler
         VideoProcessingService $processingService,
         private readonly BetterVideoAnalyzer $videoAnalyzer,
         private readonly StoragePathProvider $pathProvider,
-        private readonly VideoSceneService $videoSceneService
+        private readonly VideoSceneService $videoSceneService,
+        private readonly EntityManagerInterface $entityManager
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
+        // Wir setzen $this->entityManager hier explizit, falls die Elternklasse es nicht tut,
+        // obwohl das Property hier als readonly in der Klasse deklariert ist.
+        // Die Fehlermeldung deutet darauf hin, dass das Property nicht initialisiert ist.
+        // Das passiert in PHP, wenn man es im Konstruktor deklariert, aber nicht zuweist.
+        // Aber hier ist es deklariert. Vielleicht ist es ein Cache-Problem?
     }
 
     public function __invoke(SceneDetectionStepMessage $message): void
     {
-        $video = $this->initHandler($message);
-
+        // Video neu laden, um sicherzustellen, dass es managed ist
+        $video = $this->videoRepository->find($message->getVideoId());
+        
+        if (!$video) {
+            $this->stopProcessing("Video not found: " . $message->getVideoId());
+            return;
+        }
+        
+        $this->video = $video;
+        $this->setCurrentMessage($message);
+        $this->startCurrentStep();
+        
         $sourceFileEntity = $video->getSourceFile();
         if ($sourceFileEntity === null) {
             $this->stopProcessing("Source file entity is missing for video: " . $video->getId());
@@ -57,6 +74,7 @@ class SceneDetectionStepMessageHandler extends AbstractVideoMessageHandler
         );
 
         // Save scenes
+        $this->entityManager->persist($video); // Sicherstellen, dass Video persistiert ist
         $this->videoSceneService->storeScenes($video, $scenes);
 
         if ($scenes === []) {

@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: docker/php/Dockerfile
     restart: unless-stopped
-    command: ["sh", "-c", "mkdir -p var/cache var/log storage/imports && chown -R www-data:www-data var storage && chmod -R 777 var storage && apache2-foreground"]
+    command: ["sh", "-c", "mkdir -p var/cache var/log storage/imports && chown -R www-data:www-data /var/www/html/var /var/www/html/storage && chmod -R 775 /var/www/html/var /var/www/html/storage && apache2-foreground"]
     ports:
       - "${APP_HOST_BINDING:-127.0.0.1}:${APP_PORT:-8088}:80"
     environment:
@@ -46,11 +46,12 @@ services:
       - momentary-network
 
   messenger-worker:
+    user: www-data
     build:
       context: .
       dockerfile: docker/php/Dockerfile
     restart: always
-    command: ["sh", "-c", "mkdir -p var/cache var/log storage && chown -R www-data:www-data var storage && chmod -R 777 var storage && php bin/console cache:clear --env=prod && php bin/console cache:warmup --env=prod && php bin/console messenger:consume async async_video_processing --time-limit=3600 --memory-limit=512M"]
+    command: ["sh", "-c", "mkdir -p var/cache var/log storage && php bin/console cache:clear --env=prod && php bin/console cache:warmup --env=prod && php bin/console messenger:consume async async_video_processing --time-limit=3600 --memory-limit=512M"]
     environment:
       APP_ENV: ${APP_ENV:-prod}
       APP_SECRET: ${APP_SECRET}

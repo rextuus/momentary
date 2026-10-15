@@ -35,6 +35,12 @@ class UploadToJellyfinStepMessageHandler extends AbstractVideoMessageHandler
         $video = $this->getVideo();
         $this->startCurrentStep();
 
+        // Idempotenz-Prüfung: Wenn bereits eine ID existiert, ist der Schritt erledigt.
+        if ($video->getJellyfinItemId() !== null) {
+            $this->finishCurrentStep('Video is already exported to Jellyfin (Item ID: ' . $video->getJellyfinItemId() . ')');
+            return;
+        }
+
         $result = $this->betterVideoAnalyzer->exportVideo($video);
 
         if (!$result->isSuccess()) {
