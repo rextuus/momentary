@@ -101,7 +101,7 @@ class JellyfinUploadService
             foreach ($folders as $folder) {
                 // Jellyfin speichert Locations oft mit dem Pfad wie er im Container konfiguriert ist
                 if (isset($folder['Locations']) && in_array('/uploads', $folder['Locations'])) {
-                    $libraryId = $folder['Id'];
+                    $libraryId = $folder['Id'] ?? $folder['id'] ?? null;
                     break;
                 }
             }

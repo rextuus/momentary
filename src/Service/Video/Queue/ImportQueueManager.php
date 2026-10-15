@@ -24,38 +24,83 @@ class ImportQueueManager
 
     public function processQueue(): int
     {
-        // 1. Check how many are currently processing
-        $allVideos = $this->videoRepository->findAll();
-        foreach ($allVideos as $v) {
-            $this->logger->info(sprintf('Video %d status: %s', $v->getId(), $v->getStatus()?->value));
-        }
-        $processingVideos = array_filter($allVideos, fn(Video $v) => $v->getStatus()?->isProcessing() ?? false);
-        
-        $currentCount = count($processingVideos);
-        $this->logger->info(sprintf('ImportQueueManager: %d videos currently processing.', $currentCount));
-        
+        $currentCount = $this->countProcessing();
+
         if ($currentCount >= self::MAX_PARALLEL_PROCESSES) {
-            $this->logger->info('ImportQueueManager: Max parallel processes reached.');
-            return 0; // Already at limit
+            return 0;
         }
 
         $needed = self::MAX_PARALLEL_PROCESSES - $currentCount;
 
-        // 2. Find QUEUED videos
-        $queuedVideos = $this->videoRepository->findBy(['status' => VideoStatus::QUEUED], ['createdAt' => 'ASC'], $needed);
-        $this->logger->info(sprintf('ImportQueueManager: Found %d queued videos.', count($queuedVideos)));
+        $queuedVideos = $this->videoRepository->findBy(
+            ['status' => VideoStatus::QUEUED],
+            ['createdAt' => 'ASC'],
+            $needed
+        );
 
         $started = 0;
         foreach ($queuedVideos as $video) {
-            $this->logger->info(sprintf('ImportQueueManager: Starting processing for video %d.', $video->getId()));
-            // 3. Start processing
-            $video->setStatus(VideoStatus::CONVERTING);
-            $this->entityManager->flush();
-            
-            $this->videoProcessMessageDispatcher->dispatchInitialProcessMessage($video);
+            // Atomar beanspruchen: verhindert, dass Web-Request und Worker dasselbe Video doppelt starten
+            if (!$this->claim($video)) {
+                continue;
+            }
+
+            $this->entityManager->refresh($video);
+            $this->logger->info(sprintf('ImportQueueManager: Starte Verarbeitung für Video %d.', $video->getId()));
+
+            if (!$this->videoProcessMessageDispatcher->dispatchInitialProcessMessage($video)) {
+                // Dispatch fehlgeschlagen -> zurück in die Warteschlange
+                $this->entityManager->createQueryBuilder()
+                    ->update(Video::class, 'v')
+                    ->set('v.status', ':queued')
+                    ->where('v.id = :id')
+                    ->setParameter('queued', VideoStatus::QUEUED->value)
+                    ->setParameter('id', $video->getId())
+                    ->getQuery()
+                    ->execute();
+                $this->entityManager->refresh($video);
+                continue;
+            }
+
             $started++;
         }
 
         return $started;
+    }
+
+    private function countProcessing(): int
+    {
+        $processingStates = array_values(array_map(
+            static fn (VideoStatus $s): string => $s->value,
+            array_filter(VideoStatus::cases(), static fn (VideoStatus $s): bool => $s->isProcessing())
+        ));
+
+        if ($processingStates === []) {
+            return 0;
+        }
+
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(v.id)')
+            ->from(Video::class, 'v')
+            ->where('v.status IN (:states)')
+            ->setParameter('states', $processingStates)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    private function claim(Video $video): bool
+    {
+        $affected = $this->entityManager->createQueryBuilder()
+            ->update(Video::class, 'v')
+            ->set('v.status', ':converting')
+            ->where('v.id = :id')
+            ->andWhere('v.status = :queued')
+            ->setParameter('converting', VideoStatus::CONVERTING->value)
+            ->setParameter('queued', VideoStatus::QUEUED->value)
+            ->setParameter('id', $video->getId())
+            ->getQuery()
+            ->execute();
+
+        return $affected === 1;
     }
 }

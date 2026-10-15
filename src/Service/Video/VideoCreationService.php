@@ -9,11 +9,12 @@ use App\Repository\VideoRepository;
 use App\Service\Storage\FileManager;
 use App\Service\Storage\FileStorageService;
 use App\Service\Storage\StoragePathProvider;
-use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Queue\ImportQueueManager;
-use App\Service\Video\VideoNamingService;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\String\Slugger\SluggerInterface;
 
 class VideoCreationService
 {
@@ -23,23 +24,18 @@ class VideoCreationService
         private FileManager $fileManager,
         private FileStorageService $fileStorageService,
         private StoragePathProvider $pathProvider,
-        private VideoProcessMessageDispatcher $videoProcessMessageDispatcher,
         private VideoNamingService $videoNamingService,
         private ImportQueueManager $importQueueManager,
-        private \Psr\Log\LoggerInterface $logger
+        private SluggerInterface $slugger,
+        private LoggerInterface $logger
     ) {}
 
     /**
      * @throws Exception
      */
-    public function createVideo(Video $video, string $sourceFilename, ?Tag $cameraTag, ?Tag $formatTag, bool $autoProcess = false): Video
+    public function createVideo(Video $video, UploadedFile $uploadedFile, ?Tag $cameraTag, ?Tag $formatTag, bool $autoProcess = false): Video
     {
-        error_log('VideoCreationService: createVideo called for ' . $sourceFilename . ' with autoProcess = ' . ($autoProcess ? 'true' : 'false'));
-        $absoluteImportPath = $this->pathProvider->getImportAbsolutePath($sourceFilename);
-
-        if (!file_exists($absoluteImportPath)) {
-            throw new Exception(sprintf('Die Datei "%s" wurde im Import-Storage nicht gefunden.', $sourceFilename));
-        }
+        $this->logger->info('VideoCreationService: createVideo called with direct uploaded file.');
 
         if ($autoProcess && empty($video->getTitle())) {
             $video->setTitle($this->videoNamingService->suggestName($video));
@@ -58,44 +54,59 @@ class VideoCreationService
             $video->addTag($formatTag);
         }
 
-        $importRelativePath = $this->pathProvider->getImportRelativePath($sourceFilename);
-
         $this->entityManager->getConnection()->beginTransaction();
-        $this->logger->info('VideoCreationService: Transaction started.');
         try {
-            // 1. Video persistieren, damit es eine ID erhält
+            // 1. Video persistieren, um die echte DB-ID zu erhalten
             $this->entityManager->persist($video);
             $this->entityManager->flush();
-            $this->logger->info('VideoCreationService: Video persisted with ID ' . $video->getId());
+            $this->entityManager->refresh($video);
 
-            // 2. File-Entity über den FileManager erzeugen (nutzt die echte Video-ID für den Pfad)
-            $file = $this->fileManager->createVideoSourceFile($video, $sourceFilename);
+            $videoId = $video->getId();
+            $directoryIdentifier = (string) $videoId;
+
+            // 2. Zielverzeichnis erstellen (videos/{id}/)
+            $targetRelativeDir = 'videos/' . $directoryIdentifier;
+            $this->fileStorageService->createDirectoryStructure($targetRelativeDir);
+
+            // 3. Absolut eindeutigen Dateinamen generieren (verhindert uniqid-Kollisionen)
+            $originalFilename = pathinfo($uploadedFile->getClientOriginalName(), PATHINFO_FILENAME);
+            $safeFilename = $this->slugger->slug($originalFilename);
+            $extension = $uploadedFile->guessExtension() ?? $uploadedFile->getClientOriginalExtension();
+            $newFilename = sprintf('%s-%s.%s', $safeFilename, bin2hex(random_bytes(6)), $extension);
+
+            $targetDirectoryAbsolutePath = $this->pathProvider->getStorageRoot() . '/' . $targetRelativeDir;
+
+            // 4. Datei direkt in den finalen Zielordner verschieben
+            $uploadedFile->move($targetDirectoryAbsolutePath, $newFilename);
+
+            // Synchronisation erzwingen
+            $absoluteTargetPath = $targetDirectoryAbsolutePath . '/' . $newFilename;
+            if (file_exists($absoluteTargetPath)) {
+                clearstatcache(true, $absoluteTargetPath);
+            }
+
+            // 5. File-Entity über deinen FileManager erzeugen und Pfad zuweisen
+            $file = $this->fileManager->createVideoSourceFile($video, $newFilename);
+            $file->setRelativePath($targetRelativeDir . '/' . $newFilename);
+            $file->setFileSize(file_exists($absoluteTargetPath) ? filesize($absoluteTargetPath) : 0);
+
             $this->entityManager->persist($file);
             $this->entityManager->flush();
-            $this->logger->info('VideoCreationService: File entity persisted.');
 
-            // 3. Physisch vom Import-Ordner in den zielbezogenen Video-Pfad verschieben
-            $finalRelativePath = $file->getRelativePath();
-            $this->fileStorageService->moveFile($importRelativePath, $finalRelativePath);
-            $this->logger->info('VideoCreationService: File moved to ' . $finalRelativePath);
-
-            // 4. Verknüpfen und speichern
+            // 6. Verknüpfen und finalisieren
             $video->setSourceFile($file);
             $this->entityManager->persist($video);
             $this->entityManager->flush();
-            $this->logger->info('VideoCreationService: Video finalized.');
 
             $this->entityManager->getConnection()->commit();
-            $this->logger->info('VideoCreationService: Transaction committed.');
+            $this->logger->info('VideoCreationService: Transaction committed successfully for video ' . $videoId);
         } catch (Exception $e) {
             $this->entityManager->getConnection()->rollBack();
             $this->logger->error('VideoCreationService: Transaction failed: ' . $e->getMessage());
-            $this->logger->error('VideoCreationService: Stack trace: ' . $e->getTraceAsString());
             throw $e;
         }
 
         if ($autoProcess) {
-            $this->logger->info('VideoCreationService: Auto-processing video ' . $video->getId());
             $video->setStatus(VideoStatus::QUEUED);
             $this->entityManager->flush();
             $this->importQueueManager->processQueue();

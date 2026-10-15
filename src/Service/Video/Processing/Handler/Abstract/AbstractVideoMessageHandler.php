@@ -7,6 +7,7 @@ namespace App\Service\Video\Processing\Handler\Abstract;
 use App\Entity\Video;
 use App\Repository\VideoRepository;
 use App\Service\Video\Processing\Exception\StepMessageDecorationException;
+use App\Service\Video\Processing\Exception\VideoGoneException;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageHandlerInterface;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
@@ -39,14 +40,18 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
     protected function setCurrentMessage(VideoProcessStepMessageInterface $message): void
     {
         $this->currentMessage = $message;
+        // WICHTIG: Handler-Services leben im Worker über viele Messages hinweg.
+        // Ohne Reset würde das Video der vorherigen Message (ggf. gelöscht) weiterverwendet.
+        $this->video = null;
     }
 
     protected function getVideo(): Video
     {
         if ($this->video === null) {
-            $video = $this->videoRepository->find($this->getCurrentMessage()->getVideoId());
+            $videoId = $this->getCurrentMessage()->getVideoId();
+            $video = $this->videoRepository->find($videoId);
             if (!$video) {
-                throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException('Video not found');
+                throw VideoGoneException::forId($videoId);
             }
             $this->video = $video;
         }
@@ -77,15 +82,18 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
         $nextStepMessage = $this->getNextStepMessageInstance($this->getCurrentMessage());
         $currentMessage = $this->getCurrentMessage();
 
-        // Re-fetch or refresh the video entity so we work with the up-to-date state from DB
+        // Re-fetch the video entity so we work with the up-to-date state from DB
         $video = $this->videoRepository->find($currentMessage->getVideoId());
+        if (!$video) {
+            throw VideoGoneException::forId($currentMessage->getVideoId());
+        }
         $this->video = $video;
 
         // processing chain finished
         if (null === $nextStepMessage) {
             $finalMessage = sprintf(
                 'Processing chain finished for video "%s"',
-                $this->video->getTitle()
+                $video->getTitle()
             );
             echo '[✓✓] ' . $finalMessage . PHP_EOL;
 
@@ -99,17 +107,11 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
 
         // make sure we switch the state before dispatching the next message if necessary
         if ($currentMessage->nextStepNeedsTransition()) {
-
             $transition = $currentMessage->getTransitionToStatusNextStepIsBelonging()->value;
 
-//            dump('try to apply transition: ' . $transition . ' in handler: ' . get_class($this));
-//            dump('video status before transition: ' . $video->getStatus()->value);
-//            dump($this->workflowMachine->can($video, $transition));
             if ($this->workflowMachine->can($video, $transition)) {
                 $this->workflowMachine->apply($video, $transition);
-//                dump('Transition applied: ' . $transition . ' in handler: ' . get_class($this));
             }
-//            dump("");
         }
 
         // dispatch the next message
@@ -153,7 +155,12 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
         echo $errorMsg . PHP_EOL;
 
         // Fetch a managed instance of the video
-        $video = $this->videoRepository->find($this->getCurrentMessage()->getVideoId());
+        $videoId = $this->getCurrentMessage()->getVideoId();
+        $video = $this->videoRepository->find($videoId);
+        if (!$video) {
+            // Video wurde währenddessen gelöscht -> nichts mehr zu tun
+            throw VideoGoneException::forId($videoId);
+        }
 
         if ($this->workflowMachine->can($video, VideoWorkflowProcessTransition::FAIL->value)) {
             $this->workflowMachine->apply($video, VideoWorkflowProcessTransition::FAIL->value);

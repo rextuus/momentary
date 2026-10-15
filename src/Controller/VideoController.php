@@ -10,6 +10,8 @@ use App\Entity\VideoScene;
 use App\Form\VideoType;
 use App\Repository\VideoRepository;
 use App\Service\Storage\FileManager;
+use App\Service\Storage\FileStorageService;
+use App\Service\Storage\StoragePathProvider;
 use App\Service\Tag\TagInitializer;
 use App\Service\Video\VideoCreationService;
 use App\Service\Video\Processing\Message\ConvertStepMessage;
@@ -106,25 +108,37 @@ final class VideoController extends AbstractController
     }
 
     #[Route('/{id}/delete', name: 'video_delete', methods: ['POST'])]
-    public function delete(Request $request, Video $video, FileManager $fileManager): Response
-    {
+    public function delete(
+        Request $request,
+        Video $video,
+        FileManager $fileManager,
+        FileStorageService $fileStorageService
+    ): Response {
         if ($this->isCsrfTokenValid('delete' . $video->getId(), $request->request->get('_token'))) {
             $videoId = $video->getId();
-            
+
+            // 1. Hauptdateien über den FileManager löschen
             if ($video->getSourceFile()) {
-                $fileManager->deleteFile($video->getSourceFile(), false);
+                $fileManager->deleteFile($video->getSourceFile(), true);
             }
             if ($video->getConvertedFile()) {
-                $fileManager->deleteFile($video->getConvertedFile(), false);
+                $fileManager->deleteFile($video->getConvertedFile(), true);
             }
             if ($video->getThumbnailFile()) {
-                $fileManager->deleteFile($video->getThumbnailFile(), false);
+                $fileManager->deleteFile($video->getThumbnailFile(), true);
             }
 
+            // 2. Video aus der Datenbank entfernen
             $this->entityManager->remove($video);
             $this->entityManager->flush();
 
-            $this->addFlash('success', 'Video wurde erfolgreich gelöscht.');
+            // 3. Physischen Ordner im Storage löschen
+            $fileStorageService->deleteDirectory('videos/' . $videoId);
+
+            // 4. EntityManager-Cache komplett leeren, damit keine veralteten Identity-Map-Einträge bleiben
+            $this->entityManager->clear();
+
+            $this->addFlash('success', 'Video und alle zugehörigen Daten wurden erfolgreich gelöscht.');
         }
 
         return $this->redirectToRoute('app_video_index');

@@ -22,7 +22,9 @@ framework:
         default_bus: messenger.bus.default
 
         buses:
-            messenger.bus.default: []
+            messenger.bus.default:
+                middleware:
+                    - App\Service\Video\Processing\Middleware\DiscardGoneVideoMessageMiddleware
 
         routing:
             Symfony\Component\Mailer\Messenger\SendEmailMessage: async

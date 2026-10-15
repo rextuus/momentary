@@ -108,4 +108,16 @@ class FileStorageService
             $this->filesystem->mkdir($absoluteDir, 0775);
         }
     }
+
+    /**
+     * Löscht ein komplettes Verzeichnis rekursiv innerhalb des Storages.
+     */
+    public function deleteDirectory(string $relativeDirectory): void
+    {
+        $absoluteDir = $this->pathProvider->getAbsoluteFilePath($relativeDirectory);
+
+        if ($this->filesystem->exists($absoluteDir)) {
+            $this->filesystem->remove($absoluteDir);
+        }
+    }
 }
