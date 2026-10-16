@@ -132,8 +132,9 @@ final class VideoController extends AbstractController
             $this->entityManager->remove($video);
             $this->entityManager->flush();
 
-            // 3. Physischen Ordner im Storage löschen
+            // 3. Physische Ordner im Storage löschen (Videodateien + Analyse-Frames)
             $fileStorageService->deleteDirectory('videos/' . $videoId);
+            $fileStorageService->deleteDirectory('frames/' . $videoId);
 
             // 4. EntityManager-Cache komplett leeren, damit keine veralteten Identity-Map-Einträge bleiben
             $this->entityManager->clear();

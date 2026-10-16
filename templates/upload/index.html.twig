@@ -5,54 +5,382 @@
 {% block body %}
     <div class="container pb-5">
         <div class="row justify-content-center">
-            <div class="col-lg-6">
-                <div class="card p-4 shadow-sm border-0">
+            <div class="col-lg-7">
+                <div class="card p-4 shadow-sm border-0"
+                     id="uploader"
+                     data-upload-url="{{ path('app_upload_file') }}"
+                     data-check-url="{{ path('app_upload_check') }}"
+                     data-csrf="{{ csrf_token('video_upload') }}">
                     <div class="d-flex align-items-center mb-4">
                         <div class="bg-primary bg-opacity-10 p-3 rounded-3 me-3">
                             <i class="fas fa-cloud-upload-alt fa-2x text-primary"></i>
                         </div>
                         <div>
                             <h2 class="fw-bold mb-0">Video Upload</h2>
-                            <p class="text-muted mb-0 small text-uppercase fw-bold">Direkt in den Storage hochladen</p>
+                            <p class="text-muted mb-0 small text-uppercase fw-bold">Einzelne Dateien oder ganze Ordner</p>
                         </div>
                     </div>
 
-                    <div class="alert alert-info border-0 shadow-sm d-flex align-items-center">
-                        <i class="fas fa-info-circle fa-lg me-3"></i>
-                        <div>
-                            Die Datei wird direkt verarbeitet und in den isolierten Video-Ordner hochgeladen.
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="files_input" class="form-label fw-bold small text-uppercase text-muted">Dateien wählen</label>
+                            <input type="file" id="files_input" class="form-control" accept="video/*,.mkv,.mts,.m2ts" multiple>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="folder_input" class="form-label fw-bold small text-uppercase text-muted">Ganzen Ordner wählen</label>
+                            <input type="file" id="folder_input" class="form-control" webkitdirectory directory multiple>
                         </div>
                     </div>
 
-                    <form method="post" enctype="multipart/form-data">
-                        <div class="mb-4">
-                            <label for="video_file" class="form-label fw-bold small text-uppercase text-muted">Video-Datei wählen</label>
-                            <input type="file" name="video_file" id="video_file" class="form-control form-control-lg" required>
-                            <div class="form-text mt-2">Unterstützte Formate: MP4, MOV, MKV, WebM, AVI etc.</div>
-                        </div>
+                    <div class="mb-3">
+                        <label for="batch_name" class="form-label fw-bold small text-uppercase text-muted">Gruppen-Tag (optional)</label>
+                        <input type="text" id="batch_name" class="form-control" maxlength="100"
+                               placeholder="z. B. Urlaub 2026 – wird bei Ordnern automatisch mit dem Ordnernamen vorbelegt">
+                        <div class="form-text">Alle Videos dieses Uploads erhalten dieses Tag (Kategorie „Upload-Ordner“), damit man sie später gemeinsam findet.</div>
+                    </div>
 
-                        <div class="mb-4">
-                            <label for="custom_filename" class="form-label fw-bold small text-uppercase text-muted">Datei-Name (optional)</label>
-                            <input type="text" name="custom_filename" id="custom_filename" class="form-control" placeholder="Optional: Eigener Name für die Datei">
-                        </div>
+                    <div class="mb-3" id="custom_name_wrap">
+                        <label for="custom_filename" class="form-label fw-bold small text-uppercase text-muted">Titel (nur bei einer einzelnen Datei)</label>
+                        <input type="text" id="custom_filename" class="form-control" placeholder="Optional: eigener Titel">
+                    </div>
 
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary btn-lg shadow-sm">
-                                <i class="fas fa-upload me-2"></i>Hochladen & Verarbeiten
-                            </button>
-                            <a href="{{ path('app_video_index') }}" class="btn btn-link text-muted">Zurück zur Übersicht</a>
-                        </div>
-                    </form>
+                    <div id="selection_info" class="small text-muted mb-2"></div>
+                    <ul class="list-group list-group-flush mb-3" id="file_list"></ul>
+                    <div id="summary" class="mb-3"></div>
+
+                    <div class="d-grid gap-2">
+                        <button type="button" id="start_btn" class="btn btn-primary btn-lg shadow-sm" disabled>
+                            <i class="fas fa-upload me-2"></i><span id="start_label">Hochladen & Verarbeiten</span>
+                        </button>
+                        <button type="button" id="cancel_btn" class="btn btn-outline-danger d-none">
+                            <i class="fas fa-stop me-2"></i>Abbrechen
+                        </button>
+                        <a href="{{ path('app_video_index') }}" class="btn btn-link text-muted">Zurück zur Übersicht</a>
+                    </div>
                 </div>
 
                 <div class="mt-4 card p-4 border-0 shadow-sm bg-light">
                     <h5 class="fw-bold"><i class="fas fa-history me-2 text-muted"></i>Hinweis</h5>
                     <p class="small text-muted mb-0">
-                        Große Dateien können je nach Serverkonfiguration etwas Zeit in Anspruch nehmen.
-                        Der Browser zeigt den Fortschritt in der Statusleiste an.
+                        Die Dateien werden nacheinander hochgeladen und sofort in die Verarbeitung eingereiht
+                        (2 Videos laufen parallel, der Rest wartet). Vor jedem Upload wird geprüft, ob das Video
+                        schon existiert; bereits vorhandene Dateien werden übersprungen. Nach einem Abbruch oder
+                        Seiten-Reload einfach denselben Ordner erneut wählen.
                     </p>
                 </div>
             </div>
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/hash-wasm@4.11.0/dist/sha256.umd.min.js"></script>
+    <script>
+        (() => {
+            const root = document.getElementById('uploader');
+            const uploadUrl = root.dataset.uploadUrl;
+            const checkUrl = root.dataset.checkUrl;
+            const csrf = root.dataset.csrf;
+            const VIDEO_EXT = /\.(mp4|mov|mkv|webm|avi|m4v|mts|m2ts|mpg|mpeg|wmv|flv|3gp)$/i;
+            const HASH_CHUNK = 8 * 1024 * 1024;
+
+            const filesInput = document.getElementById('files_input');
+            const folderInput = document.getElementById('folder_input');
+            const batchInput = document.getElementById('batch_name');
+            const nameInput = document.getElementById('custom_filename');
+            const nameWrap = document.getElementById('custom_name_wrap');
+            const startBtn = document.getElementById('start_btn');
+            const startLabel = document.getElementById('start_label');
+            const cancelBtn = document.getElementById('cancel_btn');
+            const listEl = document.getElementById('file_list');
+            const infoEl = document.getElementById('selection_info');
+            const summaryEl = document.getElementById('summary');
+            const lockables = [filesInput, folderInput, batchInput, nameInput];
+
+            let queue = [];
+            let running = false;
+            let cancelled = false;
+            let currentXhr = null;
+
+            function relPath(file) {
+                return file.webkitRelativePath || file.name;
+            }
+
+            function select(fileList, folderName) {
+                const all = Array.from(fileList);
+                queue = all
+                    .filter(f => VIDEO_EXT.test(f.name))
+                    .sort((a, b) => relPath(a).localeCompare(relPath(b), undefined, { numeric: true }))
+                    .map(file => ({ file, done: false, result: null }));
+
+                const skipped = all.length - queue.length;
+                infoEl.textContent = queue.length + ' Video(s) ausgewählt'
+                    + (skipped > 0 ? ' · ' + skipped + ' Nicht-Video-Datei(en) übersprungen' : '');
+
+                if (folderName) {
+                    batchInput.value = folderName;
+                }
+
+                nameWrap.style.display = queue.length === 1 ? '' : 'none';
+                summaryEl.className = '';
+                summaryEl.textContent = '';
+                startLabel.textContent = 'Hochladen & Verarbeiten';
+                renderList();
+                startBtn.disabled = queue.length === 0;
+            }
+
+            function renderList() {
+                listEl.replaceChildren();
+                queue.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item px-0';
+
+                    const top = document.createElement('div');
+                    top.className = 'd-flex justify-content-between align-items-center gap-2';
+
+                    const name = document.createElement('span');
+                    name.className = 'text-truncate small';
+                    name.textContent = relPath(item.file);
+
+                    const badge = document.createElement('span');
+                    badge.className = 'badge bg-secondary flex-shrink-0';
+                    badge.textContent = 'Wartet';
+
+                    top.append(name, badge);
+
+                    const progress = document.createElement('div');
+                    progress.className = 'progress mt-1';
+                    progress.style.height = '4px';
+                    const bar = document.createElement('div');
+                    bar.className = 'progress-bar';
+                    bar.style.width = '0%';
+                    progress.append(bar);
+
+                    li.append(top, progress);
+                    listEl.append(li);
+
+                    item.li = li;
+                    item.badge = badge;
+                    item.bar = bar;
+                    item.nameEl = name;
+                    item.msgEl = null;
+                });
+            }
+
+            function setState(item, cls, text, percent) {
+                item.badge.className = 'badge flex-shrink-0 ' + cls;
+                item.badge.textContent = text;
+                if (percent !== undefined) {
+                    item.bar.style.width = percent + '%';
+                }
+            }
+
+            function setMessage(item, text) {
+                clearMessage(item);
+                const msg = document.createElement('div');
+                msg.className = 'small text-danger';
+                msg.textContent = text;
+                item.li.append(msg);
+                item.msgEl = msg;
+            }
+
+            function clearMessage(item) {
+                if (item.msgEl) {
+                    item.msgEl.remove();
+                    item.msgEl = null;
+                }
+            }
+
+            function linkName(item, url) {
+                const a = document.createElement('a');
+                a.href = url;
+                a.textContent = relPath(item.file);
+                item.nameEl.replaceChildren(a);
+            }
+
+            // Streaming-SHA-256 (gleicher Wert wie hash_file('sha256') auf dem Server)
+            async function sha256(file, onProgress) {
+                if (!window.hashwasm) {
+                    return null;
+                }
+                try {
+                    const hasher = await window.hashwasm.createSHA256();
+                    hasher.init();
+                    for (let offset = 0; offset < file.size; offset += HASH_CHUNK) {
+                        if (cancelled) {
+                            return null;
+                        }
+                        const buffer = await file.slice(offset, offset + HASH_CHUNK).arrayBuffer();
+                        hasher.update(new Uint8Array(buffer));
+                        onProgress(Math.min(100, Math.round((offset + HASH_CHUNK) / file.size * 100)));
+                    }
+                    return hasher.digest('hex');
+                } catch (e) {
+                    return null; // ohne Hash einfach normal hochladen
+                }
+            }
+
+            async function checkExisting(hash) {
+                try {
+                    const fd = new FormData();
+                    fd.append('hash', hash);
+                    fd.append('batch_name', batchInput.value.trim());
+                    const res = await fetch(checkUrl, {
+                        method: 'POST',
+                        body: fd,
+                        headers: { 'X-CSRF-Token': csrf, 'Accept': 'application/json' },
+                    });
+                    return res.ok ? await res.json() : null;
+                } catch (e) {
+                    return null;
+                }
+            }
+
+            function uploadOne(item) {
+                return new Promise(resolve => {
+                    const fd = new FormData();
+                    fd.append('video_file', item.file);
+                    fd.append('batch_name', batchInput.value.trim());
+                    if (queue.length === 1) {
+                        fd.append('custom_filename', nameInput.value.trim());
+                    }
+
+                    const xhr = new XMLHttpRequest();
+                    currentXhr = xhr;
+                    xhr.open('POST', uploadUrl);
+                    xhr.setRequestHeader('X-CSRF-Token', csrf);
+                    xhr.setRequestHeader('Accept', 'application/json');
+
+                    xhr.upload.onprogress = e => {
+                        if (e.lengthComputable) {
+                            setState(item, 'bg-primary', 'Lädt hoch …', Math.round(e.loaded / e.total * 100));
+                        }
+                    };
+
+                    xhr.onload = () => {
+                        currentXhr = null;
+                        let data = {};
+                        try { data = JSON.parse(xhr.responseText); } catch (e) { /* keine JSON-Antwort */ }
+
+                        if (data.status === 'ok') {
+                            setState(item, 'bg-success', 'Fertig', 100);
+                        } else if (data.status === 'duplicate') {
+                            setState(item, 'bg-warning text-dark', 'Schon vorhanden', 100);
+                        } else {
+                            setState(item, 'bg-danger', 'Fehler');
+                            setMessage(item, data.message || ('Fehler (HTTP ' + xhr.status + ')'));
+                        }
+                        if (data.url && data.status !== 'error') {
+                            linkName(item, data.url);
+                        }
+                        resolve({ status: data.status || 'error', url: data.url });
+                    };
+
+                    xhr.onerror = () => {
+                        currentXhr = null;
+                        setState(item, 'bg-danger', 'Netzwerkfehler');
+                        resolve({ status: 'error' });
+                    };
+
+                    xhr.onabort = () => {
+                        currentXhr = null;
+                        setState(item, 'bg-secondary', 'Abgebrochen', 0);
+                        resolve({ status: 'cancelled' });
+                    };
+
+                    xhr.send(fd);
+                });
+            }
+
+            async function processItem(item) {
+                clearMessage(item);
+
+                // 1. Gibt es das Video schon? Dann den Upload komplett sparen.
+                setState(item, 'bg-info text-dark', 'Prüfe …', 0);
+                const hash = await sha256(item.file, p => setState(item, 'bg-info text-dark', 'Prüfe …', p));
+
+                if (cancelled) {
+                    setState(item, 'bg-secondary', 'Abgebrochen', 0);
+                    return { status: 'cancelled' };
+                }
+
+                if (hash) {
+                    const known = await checkExisting(hash);
+                    if (known && known.exists) {
+                        setState(item, 'bg-warning text-dark', 'Schon vorhanden', 100);
+                        if (known.url) {
+                            linkName(item, known.url);
+                        }
+                        return { status: 'duplicate', url: known.url };
+                    }
+                }
+
+                // 2. Hochladen
+                return uploadOne(item);
+            }
+
+            function summarize() {
+                const count = s => queue.filter(i => i.result && i.result.status === s).length;
+                const open = queue.filter(i => !i.done).length;
+
+                summaryEl.className = 'alert alert-info border-0 shadow-sm';
+                summaryEl.textContent = count('ok') + ' hochgeladen · '
+                    + count('duplicate') + ' bereits vorhanden · '
+                    + count('error') + ' Fehler'
+                    + (open > 0 ? ' · ' + open + ' offen' : '');
+
+                if (open > 0) {
+                    startLabel.textContent = 'Fortsetzen (' + open + ' offen)';
+                    startBtn.disabled = false;
+                } else {
+                    startLabel.textContent = 'Fertig';
+                    startBtn.disabled = true;
+                }
+            }
+
+            startBtn.addEventListener('click', async () => {
+                if (running || queue.length === 0) return;
+                running = true;
+                cancelled = false;
+                startBtn.disabled = true;
+                cancelBtn.classList.remove('d-none');
+                lockables.forEach(el => el.disabled = true);
+
+                for (const item of queue) {
+                    if (cancelled) break;
+                    if (item.done) continue;
+
+                    item.result = await processItem(item);
+                    item.done = item.result.status === 'ok' || item.result.status === 'duplicate';
+                }
+
+                running = false;
+                cancelBtn.classList.add('d-none');
+                lockables.forEach(el => el.disabled = false);
+                summarize();
+
+                const only = queue.length === 1 ? queue[0] : null;
+                if (only && only.done && only.result.url && !cancelled) {
+                    window.location.href = only.result.url;
+                }
+            });
+
+            cancelBtn.addEventListener('click', () => {
+                cancelled = true;
+                if (currentXhr) {
+                    currentXhr.abort();
+                }
+            });
+
+            filesInput.addEventListener('change', () => {
+                folderInput.value = '';
+                select(filesInput.files, null);
+            });
+
+            folderInput.addEventListener('change', () => {
+                filesInput.value = '';
+                const first = folderInput.files[0];
+                const folderName = first && first.webkitRelativePath ? first.webkitRelativePath.split('/')[0] : '';
+                select(folderInput.files, folderName);
+            });
+        })();
+    </script>
 {% endblock %}

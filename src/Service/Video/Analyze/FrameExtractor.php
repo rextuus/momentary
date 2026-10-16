@@ -7,7 +7,6 @@ namespace App\Service\Video\Analyze;
 use App\Repository\VideoRepository;
 use App\Service\Video\Analyze\Result\FrameSplittingResult;
 use App\Service\VideoFileService;
-use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Process\Process;
@@ -26,11 +25,7 @@ class FrameExtractor
         #[Autowire('%env(PYTHON_BINARY)%')]
         string $pythonBinary = '/usr/bin/python3',
     ) {
-        if (!file_exists($pythonBinary)) {
-            $this->pythonBinaryPath = 'python3';
-        } else {
-            $this->pythonBinaryPath = $pythonBinary;
-        }
+        $this->pythonBinaryPath = file_exists($pythonBinary) ? $pythonBinary : 'python3';
     }
 
     public function extractFrames(
@@ -45,18 +40,15 @@ class FrameExtractor
         $fps ??= $video?->getAnalysisFps() ?? $this->defaultFps;
 
         // Verzeichnis über VideoFileService ermitteln
-        $dir = 'frames/' . $videoId;
-        $absoluteDir = $this->videoFileService->getAbsolutePath($dir);
+        $absoluteDir = $this->videoFileService->getAbsolutePath('frames/' . $videoId);
+        $frameDirPath = $absoluteDir . '/' . ($isRefinement ? 'refinement' : 'analysis');
 
-        $subDir = $isRefinement ? 'refinement' : 'analysis';
-        $frameDirPath = $absoluteDir . '/' . $subDir;
-
-        if (!is_dir($frameDirPath)) {
-            mkdir($frameDirPath, 0777, true);
-        } else {
-            $fs = new Filesystem();
-            $fs->remove(glob($frameDirPath . '/*'));
+        // Frische Ausgabe: alte Frames dieses Durchlaufs entfernen, Ordner neu anlegen
+        $fs = new Filesystem();
+        if (is_dir($frameDirPath)) {
+            $fs->remove($frameDirPath);
         }
+        $fs->mkdir($frameDirPath);
 
         // Sicherstellen, dass der übergebene Pfad absolut ist
         $resolvedVideoPath = str_starts_with($videoPath, '/')
@@ -69,31 +61,17 @@ class FrameExtractor
             $resolvedVideoPath,
             (string) $fps,
             '--output-dir',
-            $frameDirPath
+            $frameDirPath,
         ];
 
-        if ($startTime !== null) {
-            if (is_array($startTime)) {
-                foreach ($startTime as $s) {
-                    $command[] = '--start-time';
-                    $command[] = (string) $s;
-                }
-            } else {
-                $command[] = '--start-time';
-                $command[] = (string) $startTime;
-            }
+        foreach ((array) $startTime as $s) {
+            $command[] = '--start-time';
+            $command[] = (string) $s;
         }
 
-        if ($duration !== null) {
-            if (is_array($duration)) {
-                foreach ($duration as $d) {
-                    $command[] = '--duration';
-                    $command[] = (string) $d;
-                }
-            } else {
-                $command[] = '--duration';
-                $command[] = (string) $duration;
-            }
+        foreach ((array) $duration as $d) {
+            $command[] = '--duration';
+            $command[] = (string) $d;
         }
 
         $process = new Process($command);
@@ -101,10 +79,19 @@ class FrameExtractor
         $process->run();
 
         if (!$process->isSuccessful()) {
-            throw new FrameExtractionException('extract_frames.py script dont run successfully.');
+            throw new FrameExtractionException(sprintf(
+                'extract_frames.py failed (exit code %s): %s',
+                (string) $process->getExitCode(),
+                trim($process->getErrorOutput()) ?: trim($process->getOutput())
+            ));
         }
 
         $frameList = json_decode($process->getOutput(), true);
+        if (!is_array($frameList)) {
+            throw new FrameExtractionException(
+                'extract_frames.py returned no valid JSON: ' . substr(trim($process->getOutput()), 0, 300)
+            );
+        }
 
         return new FrameSplittingResult($frameList, $frameDirPath);
     }
