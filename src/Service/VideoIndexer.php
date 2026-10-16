@@ -10,18 +10,18 @@ class VideoIndexer
     {
         $personsGroups = [];
         foreach ($video->getVideoFaces() as $face) {
-            if ($face->getPerson() && !str_starts_with($face->getPerson()->getName(), 'unknown_')) {
-                file_put_contents('/tmp/indexer.log', 'Face: ' . $face->getId() . ' Scene: ' . ($face->getVideoScene() ? $face->getVideoScene()->getId() : 'null') . PHP_EOL, FILE_APPEND);
-                if ($face->getVideoScene()) {
-                    $name = $face->getPerson()->getName();
-                    $title = $face->getVideoScene()->getTitle();
-                    $personsGroups[$name][] = [
-                        'start' => (int)$face->getVideoScene()->getStartSeconds(),
-                        'end' => (int)$face->getVideoScene()->getEndSeconds(),
-                        'title' => $title ?? 'Unbenannte Szene',
-                        'thumbnailUrl' => $face->getVideoScene()->getThumbnailUrl(),
-                    ];
-                }
+            $person = $face->getPerson();
+            $scene = $face->getVideoScene();
+            $personName = (string) $person?->getName();
+
+            // Unbekannte Personen (unknown_*) werden bewusst nicht indexiert
+            if ($person && $personName !== '' && !str_starts_with($personName, 'unknown_') && $scene) {
+                $personsGroups[$personName][] = [
+                    'start' => (int) $scene->getStartSeconds(),
+                    'end' => (int) $scene->getEndSeconds(),
+                    'title' => $scene->getTitle() ?? 'Unbenannte Szene',
+                    'thumbnailUrl' => $scene->getThumbnailUrl(),
+                ];
             }
         }
 
@@ -29,8 +29,7 @@ class VideoIndexer
         $persons = [];
         foreach ($personsGroups as $name => $intervals) {
             $persons[] = $name;
-            $merged = $this->mergeIntervals($intervals);
-            foreach ($merged as $interval) {
+            foreach ($this->mergeIntervals($intervals) as $interval) {
                 $personsWithScenes[] = [
                     'name' => $name,
                     'start' => $interval['start'],
@@ -47,19 +46,19 @@ class VideoIndexer
             foreach ($scene->getTags() as $tag) {
                 $name = $tag->getName();
                 $categoryName = $tag->getCategory() ? $tag->getCategory()->getName() : 'Uncategorized';
-                
+
                 $tagsGroups[$name][] = [
-                    'start' => (int)$scene->getStartSeconds(),
-                    'end' => (int)$scene->getEndSeconds(),
+                    'start' => (int) $scene->getStartSeconds(),
+                    'end' => (int) $scene->getEndSeconds(),
                     'title' => $scene->getTitle() ?? 'Unbenannte Szene',
                     'thumbnailUrl' => $scene->getThumbnailUrl(),
                     'category' => $categoryName,
                 ];
-                
+
                 if (!isset($tagsByCategory[$categoryName])) {
                     $tagsByCategory[$categoryName] = [];
                 }
-                if (!in_array($name, $tagsByCategory[$categoryName])) {
+                if (!in_array($name, $tagsByCategory[$categoryName], true)) {
                     $tagsByCategory[$categoryName][] = $name;
                 }
             }
@@ -69,8 +68,7 @@ class VideoIndexer
         $tags = [];
         foreach ($tagsGroups as $name => $intervals) {
             $tags[] = $name;
-            $merged = $this->mergeIntervals($intervals);
-            foreach ($merged as $interval) {
+            foreach ($this->mergeIntervals($intervals) as $interval) {
                 $tagsWithScenes[] = [
                     'name' => $name,
                     'category' => $interval['category'],
@@ -83,7 +81,7 @@ class VideoIndexer
         }
 
         return [
-            'id' => (string)$video->getId(),
+            'id' => (string) $video->getId(),
             'jellyfinItemId' => $video->getJellyfinItemId(),
             'title' => $video->getTitle(),
             'persons_with_scenes' => $personsWithScenes,
@@ -97,22 +95,22 @@ class VideoIndexer
 
     private function mergeIntervals(array $intervals): array
     {
-        if (empty($intervals)) return [];
+        if (empty($intervals)) {
+            return [];
+        }
 
-        // Sort by start
-        usort($intervals, fn($a, $b) => $a['start'] <=> $b['start']);
+        usort($intervals, fn ($a, $b) => $a['start'] <=> $b['start']);
 
         $merged = [];
         $current = $intervals[0];
 
         for ($i = 1; $i < count($intervals); $i++) {
             if ($intervals[$i]['start'] <= $current['end']) {
-                // Overlap or consecutive: merge
+                // Überlappend oder direkt anschließend: zusammenführen
                 $current['end'] = max($current['end'], $intervals[$i]['end']);
-                // Aggregiere Titel, falls unterschiedlich
                 if (isset($intervals[$i]['title']) && $current['title'] !== $intervals[$i]['title']) {
                     $titles = explode(', ', $current['title']);
-                    if (!in_array($intervals[$i]['title'], $titles)) {
+                    if (!in_array($intervals[$i]['title'], $titles, true)) {
                         $current['title'] = $current['title'] . ', ' . $intervals[$i]['title'];
                     }
                 }

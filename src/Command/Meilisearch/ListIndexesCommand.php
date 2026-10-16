@@ -3,6 +3,7 @@
 namespace App\Command\Meilisearch;
 
 use Meilisearch\Client as MeiliSearchClient;
+use Meilisearch\Contracts\DocumentsQuery;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -34,14 +35,16 @@ class ListIndexesCommand extends Command
         $showDocuments = $input->getOption('show-documents');
 
         try {
-            $indexes = $this->meiliSearchClient->getIndexes();
+            $indexes = $this->meiliSearchClient->getIndexes()->getResults();
         } catch (\Exception $e) {
             $io->error('Failed to fetch indexes: ' . $e->getMessage());
+
             return Command::FAILURE;
         }
 
-        if (empty($indexes)) {
+        if (count($indexes) === 0) {
             $io->success('No indexes found.');
+
             return Command::SUCCESS;
         }
 
@@ -52,32 +55,32 @@ class ListIndexesCommand extends Command
             $io->text(sprintf('Primary Key: %s', $index->getPrimaryKey() ?? 'Not set'));
             $io->text(sprintf('Created at: %s', $index->getCreatedAt()?->format('Y-m-d H:i:s') ?? 'N/A'));
             $io->text(sprintf('Updated at: %s', $index->getUpdatedAt()?->format('Y-m-d H:i:s') ?? 'N/A'));
+            $io->text(sprintf('Documents: %d', $index->stats()['numberOfDocuments'] ?? 0));
+            $io->text('Filterable: ' . implode(', ', $index->getFilterableAttributes()));
 
             if ($showDocuments) {
                 $io->text('Documents (first 5):');
-                $documents = $index->getDocuments(['limit' => 5]);
-                
-                if (empty($documents)) {
+                $documents = $index->getDocuments((new DocumentsQuery())->setLimit(5))->getResults();
+
+                if (count($documents) === 0) {
                     $io->text('No documents found.');
-                } else {
-                    if ($index->getUid() === 'videos') {
-                        $tableRows = [];
-                        foreach ($documents as $doc) {
-                            $tableRows[] = [
-                                $doc['id'] ?? 'N/A',
-                                $doc['title'] ?? 'N/A',
-                                implode(', ', $doc['tags'] ?? []),
-                                implode(', ', $doc['persons'] ?? []),
-                            ];
-                        }
-                        $io->table(['ID', 'Title', 'Tags', 'Persons'], $tableRows);
-                    } else {
-                        $tableRows = [];
-                        foreach ($documents as $doc) {
-                            $tableRows[] = [json_encode($doc)];
-                        }
-                        $io->table(['Document'], $tableRows);
+                } elseif ($index->getUid() === 'videos') {
+                    $tableRows = [];
+                    foreach ($documents as $doc) {
+                        $tableRows[] = [
+                            $doc['id'] ?? 'N/A',
+                            $doc['title'] ?? 'N/A',
+                            implode(', ', $doc['tags'] ?? []),
+                            implode(', ', $doc['persons'] ?? []),
+                        ];
                     }
+                    $io->table(['ID', 'Title', 'Tags', 'Persons'], $tableRows);
+                } else {
+                    $tableRows = [];
+                    foreach ($documents as $doc) {
+                        $tableRows[] = [json_encode($doc)];
+                    }
+                    $io->table(['Document'], $tableRows);
                 }
             }
             $io->newLine();

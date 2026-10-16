@@ -2,18 +2,24 @@
 
 namespace App\Controller\Api;
 
+use App\Entity\User;
+use App\Entity\Video;
 use App\Repository\VideoRepository;
 use App\Repository\VideoSceneRepository;
 use App\Service\ImgproxyService;
+use App\Service\VideoSearchIndex;
 use Meilisearch\Client as MeiliSearchClient;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Serializer\SerializerInterface;
 
 class SearchController extends AbstractController
 {
+    private const MAX_RESULTS = 20;
+
     public function __construct(
         private MeiliSearchClient $meiliSearchClient,
         private VideoRepository $videoRepository,
@@ -25,174 +31,155 @@ class SearchController extends AbstractController
     #[Route('/api/search', name: 'api_search', methods: ['GET'])]
     public function search(Request $request): JsonResponse
     {
-        $query = $request->query->get('q', '');
-        $persons = $request->query->all('persons');
-        $tags = $request->query->all('tags');
-        
-        // Build filter
+        $query = trim((string) $request->query->get('q', ''));
+        $persons = $this->stringList($request->query->all('persons'));
+        $tags = $this->stringList($request->query->all('tags'));
+
+        // Filter: alle gewählten Personen und Tags müssen im Video vorkommen
         $filters = [];
         foreach ($persons as $person) {
-            $filters[] = sprintf("persons = '%s'", str_replace("'", "''", $person));
+            $filters[] = sprintf('persons = "%s"', $this->escapeFilterValue($person));
         }
         foreach ($tags as $tag) {
-            $filters[] = sprintf("tags = '%s'", str_replace("'", "''", $tag));
-        }
-        
-        $filterString = implode(' AND ', $filters);
-
-        $options = [];
-        if (!empty($filterString)) {
-            $options['filter'] = $filterString;
+            $filters[] = sprintf('tags = "%s"', $this->escapeFilterValue($tag));
         }
 
-        $searchResult = $this->meiliSearchClient->index('videos')->search(empty($query) ? null : $query, $options);
-        $hits = $searchResult->getHits();
-        $videoIds = array_map('intval', array_column($hits, 'id'));
-        
-        $sceneIds = [];
-        foreach ($hits as $hit) {
-            foreach ($hit['persons_with_scenes'] ?? [] as $item) {
-                if (isset($item['id'])) $sceneIds[] = (int)$item['id'];
-            }
-            foreach ($hit['tags_with_scenes'] ?? [] as $item) {
-                if (isset($item['id'])) $sceneIds[] = (int)$item['id'];
-            }
-        }
-        $sceneMap = [];
-        if (!empty($sceneIds)) {
-            $scenes = $this->videoSceneRepository->findBy(['id' => array_unique($sceneIds)]);
-            foreach ($scenes as $scene) {
-                $sceneMap[$scene->getId()] = $scene;
-            }
+        $options = ['limit' => self::MAX_RESULTS];
+        if ($filters !== []) {
+            $options['filter'] = implode(' AND ', $filters);
         }
 
-        if (empty($videoIds)) {
+        try {
+            $hits = $this->meiliSearchClient
+                ->index(VideoSearchIndex::INDEX_NAME)
+                ->search($query === '' ? null : $query, $options)
+                ->getHits();
+        } catch (\Throwable $e) {
+            return new JsonResponse(['error' => 'Suche nicht erreichbar: ' . $e->getMessage()], Response::HTTP_BAD_GATEWAY);
+        }
+
+        if ($hits === []) {
             return new JsonResponse([]);
         }
 
-        $videos = $this->videoRepository->findBy(['id' => $videoIds]);
-        
-        // Videos nach ID mappen
+        $videos = $this->videoRepository->findBy(['id' => array_map('intval', array_column($hits, 'id'))]);
         $videoMap = [];
+        $scenesByVideo = [];
+        $sceneByStart = [];
         foreach ($videos as $video) {
             $videoMap[$video->getId()] = $video;
-        }
-
-        // Build a map of scenes per video indexed by startSeconds for persons_with_scenes/tags_with_scenes lookup
-        $sceneByVideoAndStart = [];
-        foreach ($videos as $videoEntity) {
-            $videoScenes = $this->videoSceneRepository->findBy(['video' => $videoEntity]);
-            foreach ($videoScenes as $scene) {
-                $sceneByVideoAndStart[$videoEntity->getId()][(int)$scene->getStartSeconds()] = $scene;
+            $scenesByVideo[$video->getId()] = $this->videoSceneRepository->findBy(['video' => $video]);
+            foreach ($scenesByVideo[$video->getId()] as $scene) {
+                $sceneByStart[$video->getId()][(int) $scene->getStartSeconds()] = $scene;
             }
         }
 
-        // MeiliSearch-Hits nach ID mappen
-        $hitDataMap = [];
-        foreach ($hits as $hit) {
-            $video = $videoMap[(int)$hit['id']] ?? null;
-            $blur = ($video && $this->isGranted('VIDEO_VIEW', $video)) ? 0 : 5;
-            
-            $accessInfo = 'Nicht sichtbar';
-            if ($this->isGranted('ROLE_ADMIN')) {
-                $accessInfo = 'Sichtbar (Admin)';
-            } elseif ($video && $video->isPublic()) {
-                $accessInfo = 'Öffentlich sichtbar';
-            } elseif ($video && $video->getOwner() && $video->getOwner()->getId() === $this->getUser()?->getId()) {
-                $accessInfo = 'Sichtbar (Eigentümer)';
-            } elseif ($video) {
-                $user = $this->getUser();
-                if ($user instanceof \App\Entity\User) {
-                    foreach ($video->getAllowedGroups() as $group) {
-                        foreach ($group->getMembers() as $member) {
-                            if ($member->getUser() && $member->getUser()->getId() === $user->getId()) {
-                                $accessInfo = 'Sichtbar (Mitglied in Gruppe ' . $group->getName() . ')';
-                                break 2;
-                            }
-                        }
-                    }
-                }
-            }
-
-            $availabilityStatus = $video ? ($video->isPublic() ? 'Öffentlich' : 'Privat') : 'N/A';
-
-            $personsWithScenes = $hit['persons_with_scenes'] ?? [];
-            $tagsWithScenes = $hit['tags_with_scenes'] ?? [];
-
-            // Filter persons_with_scenes if persons requested
-            if (!empty($persons)) {
-                $personsWithScenes = array_filter($personsWithScenes, function ($item) use ($persons) {
-                    return in_array($item['name'], $persons);
-                });
-            }
-
-            // Transform thumbnailUrl in personsWithScenes
-            foreach ($personsWithScenes as &$item) {
-                if (isset($item['thumbnailUrl'])) {
-                    $itemBlur = $blur;
-                    if (isset($item['id']) && isset($sceneMap[$item['id']])) {
-                        $itemBlur = $this->isGranted('SCENE_VIEW', $sceneMap[$item['id']]) ? 0 : 5;
-                        $item['endSeconds'] = $sceneMap[$item['id']]->getEndSeconds();
-                    } elseif (isset($item['start']) && isset($sceneByVideoAndStart[(int)$hit['id']][(int)$item['start']])) {
-                        $itemBlur = $this->isGranted('SCENE_VIEW', $sceneByVideoAndStart[(int)$hit['id']][(int)$item['start']]) ? 0 : 5;
-                        $item['endSeconds'] = $sceneByVideoAndStart[(int)$hit['id']][(int)$item['start']]->getEndSeconds();
-                    }
-                    $item['thumbnailUrl'] = $this->imgproxyService->generateUrl($item['thumbnailUrl'], 160, 90, 'fill', $itemBlur);
-                }
-            }
-            unset($item);
-
-            // Filter tags_with_scenes if tags requested
-            if (!empty($tags)) {
-                $tagsWithScenes = array_filter($tagsWithScenes, function ($item) use ($tags) {
-                    return in_array($item['name'], $tags);
-                });
-            }
-
-            // Transform thumbnailUrl in tagsWithScenes
-            foreach ($tagsWithScenes as &$item) {
-                if (isset($item['thumbnailUrl'])) {
-                    $itemBlur = $blur;
-                    if (isset($item['id']) && isset($sceneMap[$item['id']])) {
-                        $itemBlur = $this->isGranted('SCENE_VIEW', $sceneMap[$item['id']]) ? 0 : 5;
-                        $item['endSeconds'] = $sceneMap[$item['id']]->getEndSeconds();
-                    } elseif (isset($item['start']) && isset($sceneByVideoAndStart[(int)$hit['id']][(int)$item['start']])) {
-                        $itemBlur = $this->isGranted('SCENE_VIEW', $sceneByVideoAndStart[(int)$hit['id']][(int)$item['start']]) ? 0 : 5;
-                        $item['endSeconds'] = $sceneByVideoAndStart[(int)$hit['id']][(int)$item['start']]->getEndSeconds();
-                    }
-                    $item['thumbnailUrl'] = $this->imgproxyService->generateUrl($item['thumbnailUrl'], 160, 90, 'fill', $itemBlur);
-                }
-            }
-            unset($item);
-
-            $hitDataMap[(int)$hit['id']] = [
-                'persons_with_scenes' => array_values($personsWithScenes),
-                'tags_with_scenes' => array_values($tagsWithScenes),
-                'blur' => $blur,
-                'accessInfo' => $accessInfo,
-                'availabilityStatus' => $availabilityStatus,
-            ];
-        }
-
+        // In der Reihenfolge der Meilisearch-Treffer ausgeben
         $result = [];
-        foreach ($videos as $video) {
+        foreach ($hits as $hit) {
+            $videoId = (int) $hit['id'];
+            $video = $videoMap[$videoId] ?? null;
+            if ($video === null) {
+                continue; // veralteter Index-Eintrag
+            }
+
+            $blur = $this->isGranted('VIDEO_VIEW', $video) ? 0 : 5;
+
             $data = json_decode($this->serializer->serialize($video, 'json', ['groups' => ['video:list']]), true);
-            $hitData = $hitDataMap[$video->getId()] ?? ['persons_with_scenes' => [], 'tags_with_scenes' => [], 'blur' => 5, 'accessInfo' => 'Nicht sichtbar', 'availabilityStatus' => 'N/A'];
-            
-            // $scenes = $video->getScenes();
-            $scenes = $this->videoSceneRepository->findBy(['video' => $video]);
-            $data['scenes'] = json_decode($this->serializer->serialize($scenes, 'json', ['groups' => ['video:detail']]), true);
-            
-            $blur = $hitData['blur'] ?? 5;
-            
-            // Auch das Haupt-Thumbnail des Videos bluren
+            $data['id'] = $video->getId();
+            $data['scenes'] = json_decode(
+                $this->serializer->serialize($scenesByVideo[$videoId] ?? [], 'json', ['groups' => ['video:detail']]),
+                true
+            );
+
+            // Auch das Haupt-Thumbnail des Videos bei fehlender Berechtigung unscharf machen
             if (isset($data['thumbnailUrl'])) {
                 $data['thumbnailUrl'] = $this->imgproxyService->generateUrl($data['thumbnailUrl'], 160, 90, 'fill', $blur);
             }
-            
-            $result[] = array_merge($data, $hitData);
+
+            $result[] = array_merge($data, [
+                'persons_with_scenes' => $this->prepareSceneItems($hit['persons_with_scenes'] ?? [], $persons, $blur, $sceneByStart[$videoId] ?? []),
+                'tags_with_scenes' => $this->prepareSceneItems($hit['tags_with_scenes'] ?? [], $tags, $blur, $sceneByStart[$videoId] ?? []),
+                'blur' => $blur,
+                'accessInfo' => $this->describeAccess($video),
+                'availabilityStatus' => $video->isPublic() ? 'Öffentlich' : 'Privat',
+            ]);
         }
 
         return new JsonResponse($result);
+    }
+
+    /**
+     * Filtert Szenen-Einträge auf die angefragten Namen und erzeugt (ggf. unscharfe) Thumbnail-URLs.
+     */
+    private function prepareSceneItems(array $items, array $requestedNames, int $blur, array $sceneByStart): array
+    {
+        if ($requestedNames !== []) {
+            $items = array_filter($items, fn ($item) => in_array($item['name'] ?? null, $requestedNames, true));
+        }
+
+        foreach ($items as &$item) {
+            if (!isset($item['thumbnailUrl'])) {
+                continue;
+            }
+
+            $itemBlur = $blur;
+            $scene = isset($item['start']) ? ($sceneByStart[(int) $item['start']] ?? null) : null;
+            if ($scene !== null) {
+                $itemBlur = $this->isGranted('SCENE_VIEW', $scene) ? 0 : 5;
+                $item['endSeconds'] = $scene->getEndSeconds();
+            }
+
+            $item['thumbnailUrl'] = $this->imgproxyService->generateUrl($item['thumbnailUrl'], 160, 90, 'fill', $itemBlur);
+        }
+        unset($item);
+
+        return array_values($items);
+    }
+
+    private function describeAccess(Video $video): string
+    {
+        if ($this->isGranted('ROLE_ADMIN')) {
+            return 'Sichtbar (Admin)';
+        }
+
+        if ($video->isPublic()) {
+            return 'Öffentlich sichtbar';
+        }
+
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return 'Nicht sichtbar';
+        }
+
+        if ($video->getOwner() && $video->getOwner()->getId() === $user->getId()) {
+            return 'Sichtbar (Eigentümer)';
+        }
+
+        foreach ($video->getAllowedGroups() as $group) {
+            foreach ($group->getMembers() as $member) {
+                if ($member->getUser() && $member->getUser()->getId() === $user->getId()) {
+                    return 'Sichtbar (Mitglied in Gruppe ' . $group->getName() . ')';
+                }
+            }
+        }
+
+        return 'Nicht sichtbar';
+    }
+
+    /**
+     * @return string[]
+     */
+    private function stringList(array $values): array
+    {
+        return array_values(array_filter($values, 'is_string'));
+    }
+
+    /**
+     * Meilisearch maskiert Anführungszeichen und Backslashes in Filterwerten mit einem Backslash.
+     */
+    private function escapeFilterValue(string $value): string
+    {
+        return addcslashes($value, '\\"');
     }
 }

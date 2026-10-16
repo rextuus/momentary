@@ -1,120 +1,294 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Search Test Explorer{% endblock %}
+{% block title %}Suche - Momentary{% endblock %}
 
 {% block body %}
-    <h1>Search Test Explorer</h1>
-
-    <div class="mb-3 alert alert-info">
-        {% if user %}
-            Eingeloggt als: <strong>{{ user.userIdentifier }}</strong>
-        {% else %}
-            Nicht eingeloggt.
-        {% endif %}
-    </div>
-
-    <div class="row">
-        <div class="col-md-4">
-            <div class="mb-3">
-                <label for="searchQuery" class="form-label">Search Query</label>
-                <input type="text" id="searchQuery" class="form-control" placeholder="Search...">
+    <div class="container pb-5" id="search-app" data-video-url="{{ path('app_video_show', {id: '__ID__'}) }}">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+            <div>
+                <h1 class="fw-bold mb-0">Suche</h1>
+                <p class="text-muted small mb-0">Videos, Szenen, Tags und Personen durchsuchen</p>
             </div>
-
-            <div class="mb-3">
-                <label class="form-label">Tags</label>
-                <select id="tagsSelect" class="form-select" multiple>
-                    {% for tag in tags %}
-                        <option value="{{ tag.name }}">{{ tag.name }}</option>
-                    {% endfor %}
-                </select>
+            <div class="small text-muted">
+                {% if user %}
+                    <i class="fas fa-user me-1"></i>{{ user.userIdentifier }}
+                {% else %}
+                    Nicht eingeloggt
+                {% endif %}
             </div>
-
-            <div class="mb-3">
-                <label class="form-label">Persons</label>
-                <select id="personsSelect" class="form-select" multiple>
-                    {% for person in persons %}
-                        <option value="{{ person.name }}">{{ person.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <button id="searchBtn" class="btn btn-primary">Search</button>
         </div>
 
-        <div class="col-md-8">
-            <h3>Results (Max 10)</h3>
-            <div id="results"></div>
+        {% if not indexHasFilters %}
+            <div class="alert alert-warning">
+                Im Suchindex gibt es noch keine Tags oder Personen. Falls Videos fehlen:
+                <code>php bin/console app:meilisearch:index-all</code>
+            </div>
+        {% endif %}
+
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm p-3">
+                    <div class="input-group mb-3">
+                        <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                        <input type="search" id="searchQuery" class="form-control" placeholder="Suchbegriff …" autocomplete="off">
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold small text-uppercase text-muted">Tags</span>
+                        <input type="search" id="tagFilter" class="form-control form-control-sm w-50" placeholder="Tags filtern …">
+                    </div>
+                    <div class="mb-3" style="max-height: 280px; overflow-y: auto;">
+                        {% for category, items in tagsByCategory %}
+                            <div class="mb-2 tag-group">
+                                <div class="small text-muted mb-1">{{ category }}</div>
+                                <div class="d-flex flex-wrap gap-1">
+                                    {% for item in items %}
+                                        <button type="button" class="btn btn-sm btn-outline-primary chip" data-kind="tag" data-value="{{ item.name }}" aria-pressed="false">
+                                            {{ item.name }} <span class="opacity-75">{{ item.count }}</span>
+                                        </button>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% else %}
+                            <p class="small text-muted mb-0">Keine Tags im Index.</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="fw-bold small text-uppercase text-muted mb-2">Personen</div>
+                    <div class="d-flex flex-wrap gap-1 mb-2">
+                        {% for item in persons %}
+                            <button type="button" class="btn btn-sm btn-outline-success chip" data-kind="person" data-value="{{ item.name }}" aria-pressed="false">
+                                {{ item.name }} <span class="opacity-75">{{ item.count }}</span>
+                            </button>
+                        {% else %}
+                            <span class="small text-muted">Keine benannten Personen im Index.</span>
+                        {% endfor %}
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <span class="small text-muted" id="activeFilters">Keine Filter aktiv</span>
+                        <button type="button" id="resetBtn" class="btn btn-sm btn-link text-muted p-0">Zurücksetzen</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-8">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0" id="resultCount">Suche …</h5>
+                    <div class="spinner-border spinner-border-sm text-primary d-none" id="spinner" role="status"></div>
+                </div>
+
+                <div id="errorBox" class="alert alert-danger d-none"></div>
+                <div id="emptyBox" class="alert alert-light border d-none"></div>
+                <div id="results" class="row row-cols-1 row-cols-md-2 g-3"></div>
+
+                <details class="mt-4">
+                    <summary class="small text-muted">Debug: Anfrage und Rohantwort</summary>
+                    <pre id="debug" class="small bg-light border rounded p-2 mt-2 mb-0" style="max-height: 300px; overflow: auto;"></pre>
+                </details>
+            </div>
         </div>
     </div>
 
     <script>
-        document.getElementById('searchBtn').addEventListener('click', function() {
-            const query = document.getElementById('searchQuery').value;
-            const tags = Array.from(document.getElementById('tagsSelect').selectedOptions).map(o => o.value);
-            const persons = Array.from(document.getElementById('personsSelect').selectedOptions).map(o => o.value);
+        (() => {
+            const root = document.getElementById('search-app');
+            const videoUrlTemplate = root.dataset.videoUrl;
 
-            let url = '/api/search?q=' + encodeURIComponent(query);
-            tags.forEach(tag => url += '&tags[]=' + encodeURIComponent(tag));
-            persons.forEach(person => url += '&persons[]=' + encodeURIComponent(person));
+            const queryEl = document.getElementById('searchQuery');
+            const tagFilterEl = document.getElementById('tagFilter');
+            const resetBtn = document.getElementById('resetBtn');
+            const activeEl = document.getElementById('activeFilters');
+            const countEl = document.getElementById('resultCount');
+            const spinnerEl = document.getElementById('spinner');
+            const errorEl = document.getElementById('errorBox');
+            const emptyEl = document.getElementById('emptyBox');
+            const resultsEl = document.getElementById('results');
+            const debugEl = document.getElementById('debug');
 
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    const resultsDiv = document.getElementById('results');
-                    resultsDiv.innerHTML = '';
-                    
-                    const limitedData = data.slice(0, 10);
-                    
-                    if (limitedData.length === 0) {
-                        resultsDiv.innerHTML = '<p>Keine Ergebnisse gefunden.</p>';
-                        return;
-                    }
-                    
-                    const row = document.createElement('div');
-                    row.className = 'row row-cols-1 row-cols-md-2 g-4';
-                    
-                    limitedData.forEach(video => {
-                        const col = document.createElement('div');
-                        col.className = 'col';
-                        
-                        let scenesHtml = '';
-                        if (video.scenes && video.scenes.length > 0) {
-                            scenesHtml = '<div class="mt-2"><strong>Szenen:</strong><ul class="list-unstyled">';
-                            video.scenes.forEach(scene => {
-                                scenesHtml += `
-                                    <li class="mb-2">
-                                        <div class="d-flex align-items-center">
-                                            ${scene.thumbnailUrl ? `<img src="${scene.thumbnailUrl}" style="width: 50px; height: 30px; object-fit: cover;" class="me-2">` : ''}
-                                            <span class="badge ${scene.isPublic ? 'bg-success' : 'bg-secondary'} me-2">
-                                                ${scene.isPublic ? 'Public' : 'Private'}
-                                            </span>
-                                            <span class="small">${scene.title || 'Ohne Titel'}</span>
-                                        </div>
-                                    </li>
-                                `;
-                            });
-                            scenesHtml += '</ul></div>';
-                        }
-                        
-                        col.innerHTML = `
-                            <div class="card h-100">
-                                ${video.thumbnailUrl ? `<img src="${video.thumbnailUrl}" class="card-img-top" alt="${video.title}" style="max-height: 150px; object-fit: cover;">` : ''}
-                                <div class="card-body">
-                                    <h5 class="card-title">${video.title}</h5>
-                                    <p class="card-text text-truncate small">${video.description ?? ''}</p>
-                                    <div class="small text-muted">
-                                        <strong>Status:</strong> ${video.availabilityStatus} <br>
-                                        <strong>Grund:</strong> ${video.accessInfo}
-                                    </div>
-                                    ${scenesHtml}
-                                </div>
+            const selectedTags = new Set();
+            const selectedPersons = new Set();
+
+            const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+
+            const fmtTime = seconds => {
+                const s = Math.max(0, Math.floor(Number(seconds) || 0));
+                return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+            };
+
+            let timer = null;
+            let controller = null;
+
+            function schedule() {
+                clearTimeout(timer);
+                timer = setTimeout(run, 300);
+            }
+
+            function updateActiveLabel() {
+                const parts = [];
+                if (selectedTags.size) parts.push(selectedTags.size + (selectedTags.size === 1 ? ' Tag' : ' Tags'));
+                if (selectedPersons.size) parts.push(selectedPersons.size + (selectedPersons.size === 1 ? ' Person' : ' Personen'));
+                activeEl.textContent = parts.length ? parts.join(', ') + ' gewählt' : 'Keine Filter aktiv';
+            }
+
+            function sceneRow(item, kind) {
+                const end = item.endSeconds ?? item.end;
+                return `
+                <li class="d-flex align-items-center mb-1">
+                    ${item.thumbnailUrl ? `<img src="${esc(item.thumbnailUrl)}" loading="lazy" alt="" class="rounded me-2" style="width: 64px; height: 36px; object-fit: cover;">` : ''}
+                    <div class="small" style="min-width: 0;">
+                        <span class="badge ${kind === 'person' ? 'bg-success' : 'bg-primary'} me-1">${esc(item.name)}</span>
+                        <span class="text-muted">${fmtTime(item.start)}–${fmtTime(end)}</span>
+                        <div class="text-truncate">${esc(item.title || 'Unbenannte Szene')}</div>
+                    </div>
+                </li>`;
+            }
+
+            function videoCard(video) {
+                const href = video.id != null ? videoUrlTemplate.replace('__ID__', encodeURIComponent(video.id)) : null;
+                const title = esc(video.title || 'Ohne Titel');
+                const titleHtml = href ? `<a href="${esc(href)}" class="text-decoration-none">${title}</a>` : title;
+
+                const personItems = Array.isArray(video.persons_with_scenes) ? video.persons_with_scenes : [];
+                const tagItems = Array.isArray(video.tags_with_scenes) ? video.tags_with_scenes : [];
+                const sceneCount = Array.isArray(video.scenes) ? video.scenes.length : 0;
+
+                // Mit aktiven Filtern: passende Szenen zeigen. Ohne Filter: Tags und Personen als Badges.
+                const matches = [
+                    ...personItems.filter(i => selectedPersons.has(i.name)).map(i => sceneRow(i, 'person')),
+                    ...tagItems.filter(i => selectedTags.has(i.name)).map(i => sceneRow(i, 'tag')),
+                ];
+
+                let detailsHtml = '';
+                if (matches.length) {
+                    detailsHtml = `<ul class="list-unstyled mb-0">${matches.slice(0, 6).join('')}</ul>`
+                        + (matches.length > 6 ? `<div class="small text-muted">+ ${matches.length - 6} weitere Szenen</div>` : '');
+                } else {
+                    const personNames = [...new Set(personItems.map(i => i.name))].slice(0, 6);
+                    const tagNames = [...new Set(tagItems.map(i => i.name))].slice(0, 8);
+                    detailsHtml = '<div class="d-flex flex-wrap gap-1">'
+                        + personNames.map(n => `<span class="badge bg-success">${esc(n)}</span>`).join('')
+                        + tagNames.map(n => `<span class="badge bg-light text-dark border">${esc(n)}</span>`).join('')
+                        + '</div>';
+                }
+
+                return `
+                <div class="col">
+                    <div class="card h-100 border-0 shadow-sm">
+                        ${video.thumbnailUrl ? `<img src="${esc(video.thumbnailUrl)}" loading="lazy" class="card-img-top" alt="" style="height: 150px; object-fit: cover;">` : ''}
+                        <div class="card-body">
+                            <h6 class="card-title fw-bold">${titleHtml}</h6>
+                            <div class="small text-muted mb-2">
+                                ${video.availabilityStatus ? `<span class="badge bg-light text-dark border me-1">${esc(video.availabilityStatus)}</span>` : ''}
+                                ${video.accessInfo ? esc(video.accessInfo) : ''}
+                                ${sceneCount ? ` · ${sceneCount} ${sceneCount === 1 ? 'Szene' : 'Szenen'}` : ''}
                             </div>
-                        `;
-                        row.appendChild(col);
+                            ${detailsHtml}
+                        </div>
+                    </div>
+                </div>`;
+            }
+
+            async function run() {
+                if (controller) controller.abort();
+                const mine = controller = new AbortController();
+
+                const params = new URLSearchParams();
+                params.append('q', queryEl.value.trim());
+                selectedTags.forEach(tag => params.append('tags[]', tag));
+                selectedPersons.forEach(person => params.append('persons[]', person));
+                const url = '/api/search?' + params.toString();
+
+                spinnerEl.classList.remove('d-none');
+                errorEl.classList.add('d-none');
+                emptyEl.classList.add('d-none');
+
+                try {
+                    const response = await fetch(url, { signal: mine.signal, headers: { 'Accept': 'application/json' } });
+                    const text = await response.text();
+                    debugEl.textContent = 'GET ' + decodeURIComponent(url) + '\nHTTP ' + response.status + '\n\n' + text.slice(0, 6000);
+
+                    let data;
+                    try {
+                        data = JSON.parse(text);
+                    } catch (e) {
+                        throw new Error('Keine gültige JSON-Antwort (HTTP ' + response.status + ').');
+                    }
+                    if (!response.ok || (data && data.error)) {
+                        throw new Error((data && data.error) || 'Fehler vom Server (HTTP ' + response.status + ').');
+                    }
+
+                    const list = Array.isArray(data) ? data : [];
+                    countEl.textContent = list.length === 1 ? '1 Treffer' : list.length + ' Treffer';
+                    resultsEl.innerHTML = list.map(videoCard).join('');
+
+                    if (list.length === 0) {
+                        emptyEl.textContent = (selectedTags.size || selectedPersons.size || queryEl.value.trim())
+                            ? 'Keine Treffer. Probiere weniger Filter oder einen anderen Suchbegriff.'
+                            : 'Auch ohne Filter kommt nichts zurück. Der Suchindex ist vermutlich leer: app:meilisearch:index-all ausführen.';
+                        emptyEl.classList.remove('d-none');
+                    }
+                } catch (e) {
+                    if (e.name === 'AbortError') return;
+                    countEl.textContent = 'Fehler';
+                    resultsEl.innerHTML = '';
+                    errorEl.textContent = e.message;
+                    errorEl.classList.remove('d-none');
+                } finally {
+                    if (controller === mine) spinnerEl.classList.add('d-none');
+                }
+            }
+
+            // Chips für Tags und Personen
+            root.addEventListener('click', event => {
+                const chip = event.target.closest('.chip');
+                if (!chip) return;
+
+                const set = chip.dataset.kind === 'tag' ? selectedTags : selectedPersons;
+                const value = chip.dataset.value;
+                if (set.has(value)) {
+                    set.delete(value);
+                    chip.classList.remove('active');
+                    chip.setAttribute('aria-pressed', 'false');
+                } else {
+                    set.add(value);
+                    chip.classList.add('active');
+                    chip.setAttribute('aria-pressed', 'true');
+                }
+                updateActiveLabel();
+                schedule();
+            });
+
+            queryEl.addEventListener('input', schedule);
+
+            tagFilterEl.addEventListener('input', () => {
+                const needle = tagFilterEl.value.trim().toLowerCase();
+                document.querySelectorAll('.tag-group').forEach(group => {
+                    let visible = 0;
+                    group.querySelectorAll('.chip').forEach(chip => {
+                        const show = chip.dataset.value.toLowerCase().includes(needle);
+                        chip.classList.toggle('d-none', !show);
+                        if (show) visible++;
                     });
-                    
-                    resultsDiv.appendChild(row);
+                    group.classList.toggle('d-none', visible === 0);
                 });
-        });
+            });
+
+            resetBtn.addEventListener('click', () => {
+                selectedTags.clear();
+                selectedPersons.clear();
+                document.querySelectorAll('.chip.active').forEach(chip => {
+                    chip.classList.remove('active');
+                    chip.setAttribute('aria-pressed', 'false');
+                });
+                queryEl.value = '';
+                updateActiveLabel();
+                schedule();
+            });
+
+            run();
+        })();
     </script>
 {% endblock %}
