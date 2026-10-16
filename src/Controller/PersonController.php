@@ -31,9 +31,9 @@ class PersonController extends AbstractController
     {
         $statuses = $request->query->all('statuses');
         if (empty($statuses)) {
-            $statuses = ['identified'];
+            $statuses = [PersonStatus::IDENTIFIED->value];
         }
-        $search = $request->query->get('search', '');
+        $search = (string) $request->query->get('search', '');
 
         return $this->render('person/index.html.twig', [
             'statuses' => $statuses,

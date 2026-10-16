@@ -1,282 +1,318 @@
-<div {{ attributes }}
-     data-controller="keyboard-shortcuts"
-     data-action="keydown@window->keyboard-shortcuts#onKeydown"
-     class="person-resolver-container"
->
-    {# Flash-Messages für Fehlermeldungen #}
-    {% for label, messages in app.flashes %}
-        {% for message in messages %}
-            <div class="alert alert-{{ label == 'error' ? 'danger' : label }} alert-dismissible fade show shadow-sm mx-auto mb-3" style="max-width: 90%;">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        {% endfor %}
-    {% endfor %}
+<div {{ attributes }} class="person-resolver-container">
+    {# Eigener Stimulus-Controller auf innerem Wrapper (data-controller von {{ attributes }} ist schon "live") #}
+    <div data-controller="resolver-shortcuts">
 
-    {% set person = this.unidentifiedPerson %}
-
-    {% if person %}
-        {# Wir holen uns das spezifisch ausgewählte Gesicht über die PHP-Getter-Logik #}
-        {% set mainFace = this.activeFace %}
-
-    <div class="row justify-content-center" 
-         data-keyboard-shortcuts-target="container"
-    >
-            <div class="col-md-11">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h2 class="h4 mb-0 text-secondary">Identität klären
-                        <span class="badge rounded-pill bg-primary ms-2" style="font-size: 0.5em;">
-                            {{ this.remainingCount }} verbleibend
-                        </span>
-                    </h2>
-                    <div class="d-flex gap-2 align-items-center flex-wrap justify-content-end">
-                        <div class="form-check form-switch me-md-3">
-                            <input class="form-check-input" type="checkbox" id="showWasted" data-model="showWasted">
-                            <label class="form-check-label small text-muted" for="showWasted">Ausgeblendete zeigen</label>
-                        </div>
-                        <button type="button" class="btn btn-sm btn-outline-warning shadow-sm me-2" 
-                                data-action="live#action" 
-                                data-live-action-param="markForReassignment"
-                                id="btn-reassign-person">
-                            <i class="bi bi-scissors me-1"></i> Auftrennen
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary shadow-sm" 
-                                data-action="live#action" 
-                                data-live-action-param="skip"
-                                id="btn-skip-person">
-                            Überspringen
-                        </button>
-                    </div>
+        {# Flash-Messages #}
+        {% for label, messages in app.flashes %}
+            {% for message in messages %}
+                <div class="alert alert-{{ label == 'error' ? 'danger' : label }} alert-dismissible fade show shadow-sm mx-auto mb-3" style="max-width: 90%;">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
+            {% endfor %}
+        {% endfor %}
 
-                <div class="card shadow border-0 overflow-hidden">
-                    <div class="card-body p-0">
-                        <div class="row g-0">
+        {% set person = this.unidentifiedPerson %}
 
-                            {# LINKE SEITE: Visualisierung & Galerie #}
-                            <div class="col-lg-7 bg-dark p-3 p-md-4 d-flex flex-column align-items-center" style="min-height: 400px; height: auto;">
-                                <div class="w-100 d-flex justify-content-between mb-2">
-                                    <span class="badge bg-info text-dark shadow-sm">
-                                        <i class="bi bi-camera-video me-1"></i> {{ person.videoFaces|length }} Sichtungen
-                                    </span>
-                                    <span class="badge bg-secondary shadow-sm">
-                                        <i class="bi bi-film me-1"></i> {{ person.sceneCount }} Szenen
-                                    </span>
-                                </div>
+        {% if person %}
+            {% set mainFace = this.activeFace %}
 
-                                {# 1. OBEN: ZOOM #}
-                                <div class="text-center w-100 mb-4">
-                                    <small class="text-light opacity-50 d-block mb-2 text-uppercase fw-bold">Gesichts-Zoom</small>
-                                    <div class="d-inline-block shadow-lg border border-4 border-white rounded overflow-hidden bg-black"
-                                         style="width: 250px; height: 250px; max-width: 100%;">
+            <div class="row justify-content-center">
+                <div class="col-md-11">
 
-                                        {% if mainFace and mainFace.boundingBox %}
-                                            {% set box = mainFace.boundingBox %}
+                    {# ───────── Kopfzeile ───────── #}
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <h2 class="h4 mb-0 text-secondary">
+                            Identität klären
+                            <span class="badge rounded-pill bg-primary ms-2" style="font-size: 0.5em;">
+                                {{ this.remainingCount }} verbleibend
+                            </span>
+                            {% if this.skippedCount > 0 %}
+                                <span class="badge rounded-pill bg-secondary ms-1" style="font-size: 0.5em;">
+                                    {{ this.skippedCount }} übersprungen
+                                </span>
+                            {% endif %}
+                        </h2>
 
-                                            {# Zoom-Logik mit object-fit: none für präzise Zentrierung #}
-                                            {% set zoomFactor = 0.35 %}
-                                            {% set imgWidth = (1 / (box.Width ?: 0.1)) * 100 * zoomFactor %}
-                                            {% set centerX = (box.Left + (box.Width / 2)) * 100 %}
-                                            {% set centerY = (box.Top + (box.Height / 2)) * 100 %}
+                        <div class="d-flex gap-2 align-items-center flex-wrap justify-content-end">
+                            <div class="form-check form-switch me-md-3 mb-0">
+                                <input class="form-check-input" type="checkbox" id="showWasted" data-model="showWasted">
+                                <label class="form-check-label small text-muted" for="showWasted">Ausgeblendete zeigen</label>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-warning shadow-sm"
+                                    data-action="live#action"
+                                    data-live-action-param="markForReassignment"
+                                    id="btn-reassign-person">
+                                <i class="bi bi-scissors me-1"></i> Auftrennen <kbd class="ms-1">R</kbd>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary shadow-sm"
+                                    data-action="live#action"
+                                    data-live-action-param="skip"
+                                    id="btn-skip-person">
+                                Überspringen <kbd class="ms-1">S</kbd>
+                            </button>
+                        </div>
+                    </div>
 
-                                            <img src="{{ imgproxy_url(mainFace.faceImage, 800, 600, 'fit') }}"
-                                                 style="width: {{ imgWidth }}%;
-                                                         height: auto;
-                                                         aspect-ratio: 16/9;
-                                                         object-fit: none;
-                                                         object-position: {{ centerX }}% {{ centerY }}%;
-                                                         display: block;
-                                                         width: 250px;
-                                                         height: 250px;">
-                                        {% else %}
-                                            <div class="text-white p-5">Vorschau nicht verfügbar</div>
-                                        {% endif %}
+                    <div class="card shadow border-0 overflow-hidden">
+                        <div class="card-body p-0">
+                            <div class="row g-0">
+
+                                {# ───────── LINKS: Bilder ───────── #}
+                                <div class="col-lg-7 bg-dark p-3 p-md-4 d-flex flex-column">
+                                    <div class="d-flex justify-content-between mb-3">
+                                        <span class="badge bg-info text-dark shadow-sm">
+                                            <i class="bi bi-camera-video me-1"></i> {{ person.videoFaces|length }} Sichtungen
+                                        </span>
+                                        <span class="badge bg-secondary shadow-sm">
+                                            <i class="bi bi-film me-1"></i> {{ person.sceneCount }} Szenen
+                                        </span>
                                     </div>
-                                </div>
 
-                                {# 2. MITTE: KONTEXT (MIT BOX) #}
-                                <div class="text-center w-100 mb-4">
-                                    <small class="text-light opacity-50 d-block mb-2 text-uppercase fw-bold">Kontext im Video</small>
-                                    <div class="position-relative d-inline-block shadow border border-1 border-secondary rounded overflow-hidden bg-black" style="max-width: 100%;">
-                                        {% if mainFace %}
-                                            <img src="{{ imgproxy_url(mainFace.faceImage, 800, 600, 'fit') }}"
-                                                 class="img-fluid"
-                                                 style="width: 100%; opacity: 0.4; display: block;"
-                                                 alt="Context">
-
-                                            {% if mainFace.boundingBoxStyles %}
-                                                <div style="position: absolute; border: 2px solid #ff0000;
-                                                            box-shadow: 0 0 12px rgba(255,0,0,0.9); pointer-events: none;
-                                                            {{ mainFace.boundingBoxStyles|raw }}"></div>
-                                            {% endif %}
-                                        {% endif %}
-                                    </div>
-                                </div>
-
-                                {# 3. UNTEN: GALERIE (Klickbare Thumbnails) #}
-                                <div class="w-100 mt-md-auto pt-3 border-top border-secondary">
-                                    <small class="text-light opacity-50 d-block mb-2 text-uppercase fw-bold text-center">Aufnahmen dieser Person</small>
-                                    <div class="d-flex flex-wrap justify-content-center gap-2 overflow-auto py-2" style="max-height: 160px;">
-                                        {% for face in person.videoFaces %}
-                                            <div class="position-relative"
-                                                 style="cursor: pointer;"
-                                                 data-action="click->live#action"
-                                                 data-live-action-param="selectFace"
-                                                 data-live-face-id-param="{{ face.id }}">
-
-                                                <img src="{{ imgproxy_url(face.faceImage, 150, 150) }}"
-                                                     class="rounded border {{ (mainFace and face.id == mainFace.id) ? 'border-primary border-4 shadow' : 'border-secondary opacity-50' }}"
-                                                     style="width: 70px; height: 70px; object-fit: cover; transition: all 0.2s;"
-                                                     alt="Thumbnail">
-
-                                                {% if mainFace and face.id == mainFace.id %}
-                                                    <span class="position-absolute top-0 start-50 translate-middle badge rounded-pill bg-primary" style="font-size: 0.6em; z-index: 10;">AKTIV</span>
+                                    <div class="d-flex flex-wrap gap-4 justify-content-center align-items-start mb-3">
+                                        {# ZOOM #}
+                                        <div class="text-center">
+                                            <small class="text-light opacity-50 d-block mb-2 text-uppercase fw-bold">Gesichts-Zoom</small>
+                                            <div class="d-inline-block shadow-lg border border-4 border-white rounded overflow-hidden bg-black"
+                                                 style="width: 250px; height: 250px; max-width: 100%;">
+                                                {% if mainFace and mainFace.boundingBox %}
+                                                    {% set box = mainFace.boundingBox %}
+                                                    {% set centerX = (box.Left + (box.Width / 2)) * 100 %}
+                                                    {% set centerY = (box.Top + (box.Height / 2)) * 100 %}
+                                                    <img src="{{ imgproxy_url(mainFace.faceImage, 800, 600, 'fit') }}"
+                                                         alt="Zoom"
+                                                         style="display: block; width: 250px; height: 250px;
+                                                                 object-fit: none;
+                                                                 object-position: {{ centerX }}% {{ centerY }}%;">
+                                                {% else %}
+                                                    <div class="text-white p-5">Vorschau nicht verfügbar</div>
                                                 {% endif %}
                                             </div>
-                                        {% endfor %}
+                                        </div>
+
+                                        {# KONTEXT #}
+                                        <div class="text-center flex-grow-1" style="min-width: 260px; max-width: 460px;">
+                                            <small class="text-light opacity-50 d-block mb-2 text-uppercase fw-bold">Kontext im Video</small>
+                                            <div class="position-relative d-inline-block shadow border border-1 border-secondary rounded overflow-hidden bg-black w-100">
+                                                {% if mainFace %}
+                                                    <img src="{{ imgproxy_url(mainFace.faceImage, 800, 600, 'fit') }}"
+                                                         class="img-fluid"
+                                                         style="width: 100%; opacity: 0.4; display: block;"
+                                                         alt="Context">
+                                                    {% if mainFace.boundingBoxStyles %}
+                                                        <div style="position: absolute; border: 2px solid #ff0000;
+                                                                    box-shadow: 0 0 12px rgba(255,0,0,0.9); pointer-events: none;
+                                                                    {{ mainFace.boundingBoxStyles|raw }}"></div>
+                                                    {% endif %}
+                                                {% endif %}
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
 
-                            {# RECHTE SEITE: Formular #}
-                            <div class="col-lg-5 p-4 bg-white d-flex flex-column border-start">
-                                {{ form_start(form) }}
-                                <h5 class="fw-bold mb-4">Zuweisung</h5>
-
-                                {# QUICK SUGGESTIONS SECTION #}
-                                {% set suggestions = this.quickSuggestions %}
-                                {% if suggestions %}
-                                    <div class="mb-4">
-                                        <label class="form-label fw-bold text-muted small text-uppercase">Vorschläge (Top 20)</label>
-                                        <div class="row row-cols-3 row-cols-md-5 g-2">
-                                            {% for sug in suggestions %}
-                                                {# Wir nehmen das erste Gesicht der Person als Profilbild #}
-                                                {% set sugFace = sug.profileFace ?: sug.videoFaces.first %}
-                                                <div class="col">
-                                                    <button type="button"
-                                                            class="btn btn-outline-light p-1 border shadow-sm w-100 d-flex flex-column align-items-center position-relative"
-                                                            style="border-radius: 8px; transition: all 0.2s; min-height: 85px;"
-                                                            data-action="live#action"
-                                                            data-live-action-param="selectSuggestedPerson"
-                                                            data-live-id-param="{{ sug.id }}"
-                                                            title="{{ sug.name }}">
-                                                        {% if sugFace %}
-                                                            <img src="{{ imgproxy_url(sugFace.faceImage, 100, 100) }}"
-                                                                 class="rounded-circle mb-1"
-                                                                 style="width: 45px; height: 45px; object-fit: cover;">
-                                                        {% endif %}
-                                                        <span class="text-dark small fw-bold text-truncate w-100 px-1" style="font-size: 0.75rem;">{{ sug.name }}</span>
-                                                    </button>
+                                    {# GALERIE #}
+                                    <div class="w-100 mt-auto pt-3 border-top border-secondary">
+                                        <small class="text-light opacity-50 d-block mb-2 text-uppercase fw-bold text-center">
+                                            Aufnahmen dieser Person <span class="text-lowercase">(← →)</span>
+                                        </small>
+                                        <div class="d-flex flex-wrap justify-content-center gap-2 overflow-auto py-2" style="max-height: 160px;">
+                                            {% for face in person.videoFaces %}
+                                                {% set isActive = mainFace and face.id == mainFace.id %}
+                                                <div class="position-relative"
+                                                     style="cursor: pointer;"
+                                                     data-face-thumb
+                                                     data-active="{{ isActive ? '1' : '0' }}"
+                                                     data-action="click->live#action"
+                                                     data-live-action-param="selectFace"
+                                                     data-live-face-id-param="{{ face.id }}">
+                                                    <img src="{{ imgproxy_url(face.faceImage, 150, 150) }}"
+                                                         class="rounded border {{ isActive ? 'border-primary border-4 shadow' : 'border-secondary opacity-50' }}"
+                                                         style="width: 70px; height: 70px; object-fit: cover; transition: all 0.2s;"
+                                                         alt="Thumbnail">
+                                                    {% if isActive %}
+                                                        <span class="position-absolute top-0 start-50 translate-middle badge rounded-pill bg-primary" style="font-size: 0.6em; z-index: 10;">AKTIV</span>
+                                                    {% endif %}
                                                 </div>
                                             {% endfor %}
                                         </div>
                                     </div>
-                                {% endif %}
-
-                                <div class="mb-4">
-                                    <label class="form-label fw-bold text-primary small">Bestehende Person finden</label>
-                                    {{ form_widget(form.targetPerson) }}
                                 </div>
 
-                                <div class="text-center position-relative mb-4">
-                                    <hr><span class="position-absolute top-50 start-50 translate-middle bg-white px-2 text-muted small">ODER</span>
-                                </div>
+                                {# ───────── RECHTS: Formular ───────── #}
+                                <div class="col-lg-5 p-4 bg-white d-flex flex-column border-start">
+                                    {{ form_start(form) }}
+                                    <h5 class="fw-bold mb-3">Zuweisung</h5>
 
-                                <div class="mb-4">
-                                    <label class="form-label fw-bold text-success small">Neue Identität erstellen</label>
-                                    <input type="text"
-                                           data-model="newName"
-                                           class="form-control border-success shadow-sm mb-2"
-                                           placeholder="Rufname / Kurzname (z.B. Oma)"
-                                           autocomplete="off">
-
-                                    <input type="text"
-                                           data-model="newFullName"
-                                           class="form-control border-success shadow-sm mb-3"
-                                           placeholder="Voller Name (Vor- und Nachname)"
-                                           autocomplete="off">
-
-                                    <div class="row g-2 mb-3">
-                                        <div class="col-6">
-                                            <label class="form-label small fw-bold text-muted mb-1">Alter (ca.)</label>
-                                            <input type="number" data-model="newAge" class="form-control form-control-sm" placeholder="Alter">
+                                    {# Vorschläge #}
+                                    {% set suggestions = this.quickSuggestions %}
+                                    {% if suggestions %}
+                                        <div class="mb-4">
+                                            <label class="form-label fw-bold text-muted small text-uppercase">
+                                                Vorschläge <span class="text-lowercase fw-normal">(Tasten 1–9)</span>
+                                            </label>
+                                            <div class="row row-cols-3 row-cols-md-5 g-2">
+                                                {% for sug in suggestions %}
+                                                    {% set sugFace = sug.profileFace ?: sug.videoFaces.first %}
+                                                    <div class="col">
+                                                        <button type="button"
+                                                                class="btn btn-outline-light p-1 border shadow-sm w-100 d-flex flex-column align-items-center position-relative"
+                                                                style="border-radius: 8px; transition: all 0.2s; min-height: 85px;"
+                                                                data-suggestion
+                                                                data-action="live#action"
+                                                                data-live-action-param="selectSuggestedPerson"
+                                                                data-live-id-param="{{ sug.id }}"
+                                                                title="{{ sug.name }}">
+                                                            {% if loop.index <= 9 %}
+                                                                <span class="position-absolute top-0 start-0 badge bg-dark opacity-75" style="font-size: 0.6rem; border-radius: 6px 0 6px 0;">{{ loop.index }}</span>
+                                                            {% endif %}
+                                                            {% if sugFace %}
+                                                                <img src="{{ imgproxy_url(sugFace.faceImage, 100, 100) }}"
+                                                                     class="rounded-circle mb-1"
+                                                                     style="width: 45px; height: 45px; object-fit: cover;"
+                                                                     alt="">
+                                                            {% endif %}
+                                                            <span class="text-dark small fw-bold text-truncate w-100 px-1" style="font-size: 0.75rem;">{{ sug.name }}</span>
+                                                        </button>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
                                         </div>
-                                        <div class="col-6">
-                                            <label class="form-label small fw-bold text-muted mb-1">Geschlecht</label>
-                                            <select data-model="newGender" class="form-select form-select-sm">
-                                                <option value="">Unbekannt</option>
-                                                <option value="male">Männlich</option>
-                                                <option value="female">Weiblich</option>
-                                                <option value="other">Anderes</option>
-                                            </select>
+                                    {% endif %}
+
+                                    <div class="mb-4">
+                                        <label class="form-label fw-bold text-primary small">Bestehende Person finden</label>
+                                        {{ form_widget(form.targetPerson) }}
+                                    </div>
+
+                                    <div class="text-center position-relative mb-4">
+                                        <hr><span class="position-absolute top-50 start-50 translate-middle bg-white px-2 text-muted small">ODER</span>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label class="form-label fw-bold text-success small">
+                                            Neue Identität erstellen <kbd class="ms-1">N</kbd>
+                                        </label>
+                                        <input type="text"
+                                               data-model="newName"
+                                               class="form-control border-success shadow-sm mb-2"
+                                               placeholder="Rufname / Kurzname (z.B. Oma)"
+                                               autocomplete="off">
+
+                                        <input type="text"
+                                               data-model="newFullName"
+                                               class="form-control border-success shadow-sm mb-3"
+                                               placeholder="Voller Name (Vor- und Nachname)"
+                                               autocomplete="off">
+
+                                        <div class="row g-2 mb-3">
+                                            <div class="col-6">
+                                                <label class="form-label small fw-bold text-muted mb-1">Alter (ca.)</label>
+                                                <input type="number" data-model="newAge" class="form-control form-control-sm" placeholder="Alter">
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label small fw-bold text-muted mb-1">Geschlecht</label>
+                                                <select data-model="newGender" class="form-select form-select-sm">
+                                                    <option value="">Unbekannt</option>
+                                                    <option value="male">Männlich</option>
+                                                    <option value="female">Weiblich</option>
+                                                    <option value="other">Anderes</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label small fw-bold text-muted mb-1">Beziehung / Rolle</label>
+                                            <input type="text" data-model="newRelation" class="form-control form-control-sm" placeholder="Gast, Familie...">
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label small fw-bold text-muted mb-1">Besondere Merkmale</label>
+                                            <textarea data-model="newCharacteristics" class="form-control form-control-sm" rows="1" placeholder="Brille, Hut..."></textarea>
                                         </div>
                                     </div>
 
-                                    <div class="mb-3">
-                                        <label class="form-label small fw-bold text-muted mb-1">Beziehung / Rolle</label>
-                                        <input type="text" data-model="newRelation" class="form-control form-control-sm" placeholder="Gast, Familie...">
+                                    <div class="mt-auto d-grid gap-2">
+                                        <button type="button"
+                                                class="btn btn-primary btn-lg py-3 shadow fw-bold w-100"
+                                                data-action="live#action"
+                                                data-live-action-param="prevent|processIdentification"
+                                                id="btn-process-identification">
+                                            Speichern & Nächste <kbd class="ms-2">Strg + Enter</kbd>
+                                        </button>
+
+                                        <button type="button"
+                                                class="btn btn-outline-danger shadow-sm py-2 w-100"
+                                                data-action="live#action"
+                                                data-live-action-param="markAsUnknown"
+                                                id="btn-mark-as-unknown"
+                                                title="Als unbekannt/Fremde markieren">
+                                            <i class="bi bi-person-x-fill me-1"></i> Unbekannt <kbd class="ms-1">U</kbd>
+                                        </button>
                                     </div>
 
-                                    <div class="mb-3">
-                                        <label class="form-label small fw-bold text-muted mb-1">Besondere Merkmale</label>
-                                        <textarea data-model="newCharacteristics" class="form-control form-control-sm" rows="1" placeholder="Brille, Hut..."></textarea>
-                                    </div>
+                                    {{ form_rest(form) }}
+                                    {{ form_end(form, {'render_rest': false}) }}
                                 </div>
-
-                                <div class="mt-auto d-grid gap-2">
-                                    <button type="button"
-                                            class="btn btn-primary btn-lg py-3 shadow fw-bold w-100"
-                                            data-action="live#action"
-                                            data-live-action-param="prevent|processIdentification"
-                                            id="btn-process-identification">
-                                        Speichern & Nächste <kbd class="ms-2">Strg + Enter</kbd>
-                                    </button>
-
-                                    <div class="row g-2 mt-2">
-                                        <div class="col-12">
-                                            <button type="button"
-                                                    class="btn btn-outline-danger shadow-sm py-2 w-100"
-                                                    data-action="live#action"
-                                                    data-live-action-param="markAsUnknown"
-                                                    id="btn-mark-as-unknown"
-                                                    title="Als unbekannt/Fremde markieren">
-                                                <i class="bi bi-person-x-fill me-1"></i> Unbekannt <kbd class="ms-1">U</kbd>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                {# Verhindert doppeltes Rendern von Feldern #}
-                                {{ form_rest(form) }}
-                                {{ form_end(form, {'render_rest': false}) }}
                             </div>
-
                         </div>
+                    </div>
+
+                    {# ───────── Shortcut-Leiste ───────── #}
+                    <div class="d-flex flex-wrap justify-content-center gap-3 mt-3 small text-muted">
+                        <span><kbd>Strg</kbd>+<kbd>Enter</kbd> Speichern</span>
+                        <span><kbd>U</kbd> Unbekannt</span>
+                        <span><kbd>S</kbd> Überspringen</span>
+                        <span><kbd>R</kbd> Auftrennen</span>
+                        <span><kbd>←</kbd> <kbd>→</kbd> Gesicht wechseln</span>
+                        <span><kbd>1</kbd>–<kbd>9</kbd> Vorschlag</span>
+                        <span><kbd>N</kbd> Neuer Name</span>
+                        <span><kbd>Esc</kbd> Feld verlassen</span>
                     </div>
                 </div>
             </div>
-        </div>
-    {% else %}
-        <div class="text-center py-5">
-            <div class="display-1 text-muted mb-4"><i class="bi bi-check2-circle"></i></div>
-            <h3 class="text-muted fw-light">Keine Person zum Bearbeiten</h3>
-            <p class="text-secondary">Es wurde keine unidentifizierte Person gefunden, die den aktuellen Filtern entspricht.</p>
-            {% if showWasted == false %}
-                <div class="alert alert-info d-inline-block px-4 shadow-sm mt-3">
-                    <i class="bi bi-info-circle me-2"></i> Tipp: Aktiviere "Ausgeblendete zeigen", um bereits aussortierte Personen zu sehen.
+
+        {% else %}
+            {# ───────── Leerzustand ───────── #}
+            <div class="text-center py-5">
+                <div class="display-1 text-muted mb-4"><i class="bi bi-check2-circle"></i></div>
+
+                {% if this.skippedCount > 0 %}
+                    <h3 class="text-muted fw-light">Alles durchgesehen</h3>
+                    <p class="text-secondary">
+                        Du hast {{ this.skippedCount }} {{ this.skippedCount == 1 ? 'Person' : 'Personen' }} übersprungen.
+                        Sonst ist nichts mehr offen.
+                    </p>
+                {% else %}
+                    <h3 class="text-muted fw-light">Keine Person zum Bearbeiten</h3>
+                    <p class="text-secondary">Es wurde keine unidentifizierte Person gefunden, die den aktuellen Filtern entspricht.</p>
+                {% endif %}
+
+                {% if not showWasted %}
+                    <div class="alert alert-info d-inline-block px-4 shadow-sm mt-3">
+                        <i class="bi bi-info-circle me-2"></i> Tipp: Aktiviere "Ausgeblendete zeigen", um bereits aussortierte Personen zu sehen.
+                        <div class="form-check form-switch d-inline-block ms-3 mb-0 align-middle">
+                            <input class="form-check-input" type="checkbox" id="showWastedEmpty" data-model="showWasted">
+                        </div>
+                    </div>
+                {% endif %}
+
+                <div class="mt-4 d-flex justify-content-center gap-2">
+                    <a href="/" class="btn btn-outline-secondary px-4 shadow-sm">Dashboard</a>
+                    <button type="button" class="btn btn-primary px-4 shadow-sm"
+                            data-action="live#action"
+                            data-live-action-param="reload">
+                        {{ this.skippedCount > 0 ? 'Übersprungene erneut anzeigen' : 'Neu laden' }}
+                    </button>
                 </div>
-            {% endif %}
-            <div class="mt-4 d-flex justify-content-center gap-2">
-                <a href="/" class="btn btn-outline-secondary px-4 shadow-sm">Dashboard</a>
-                <button class="btn btn-primary px-4 shadow-sm" data-action="live#action" data-live-action-param="loadNextBestPerson">Neu laden</button>
+
+                {% if app.debug %}
+                    <div class="mt-5 small text-muted text-start border-top pt-3 mx-auto" style="max-width: 400px;">
+                        <strong>Debug Info:</strong><br>
+                        Current Person ID: {{ currentPersonId ?: 'null' }}<br>
+                        Show Wasted: {{ showWasted ? 'true' : 'false' }}<br>
+                        Skipped IDs: {{ skippedIds|join(', ') ?: '–' }}
+                    </div>
+                {% endif %}
             </div>
-            
-            {% if app.debug %}
-                <div class="mt-5 small text-muted text-start border-top pt-3 mx-auto" style="max-width: 400px;">
-                    <strong>Debug Info:</strong><br>
-                    Current Person ID: {{ currentPersonId ?: 'null' }}<br>
-                    Show Wasted: {{ showWasted ? 'true' : 'false' }}
-                </div>
-            {% endif %}
-        </div>
-    {% endif %}
+        {% endif %}
+    </div>
 </div>

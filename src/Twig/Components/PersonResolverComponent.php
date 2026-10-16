@@ -7,6 +7,7 @@ use App\Enum\PersonStatus;
 use App\Form\PersonResolverType;
 use App\Repository\PersonRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\QueryBuilder;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormInterface;
 use Symfony\UX\LiveComponent\Attribute\AsLiveComponent;
@@ -46,7 +47,7 @@ class PersonResolverComponent extends AbstractController
     #[LiveProp]
     public ?int $activeFaceId = null;
 
-    #[LiveProp(writable: true)]
+    #[LiveProp(writable: true, onUpdated: 'onShowWastedUpdated')]
     public bool $showWasted = false;
 
     #[LiveProp]
@@ -57,6 +58,15 @@ class PersonResolverComponent extends AbstractController
 
     #[LiveProp]
     public array $mergeIds = [];
+
+    /**
+     * IDs der in dieser Sitzung übersprungenen Personen.
+     * Sie werden bei der Suche nach der nächsten Person ausgeschlossen.
+     *
+     * @var int[]
+     */
+    #[LiveProp]
+    public array $skippedIds = [];
 
     public function __construct(
         private PersonRepository $personRepository,
@@ -73,7 +83,7 @@ class PersonResolverComponent extends AbstractController
         $this->fromQuickResolve = $fromQuickResolve;
         $this->fromTinder = $fromTinder;
         if ($mergeIds) {
-            $this->mergeIds = array_filter(array_map('intval', explode(',', $mergeIds)));
+            $this->mergeIds = array_values(array_filter(array_map('intval', explode(',', $mergeIds))));
         }
         if ($currentPersonId) {
             $this->currentPersonId = $currentPersonId;
@@ -88,43 +98,74 @@ class PersonResolverComponent extends AbstractController
         }
     }
 
+    /**
+     * Wird aufgerufen, wenn "Ausgeblendete zeigen" umgeschaltet wird.
+     * Ist gerade keine Person aktiv, wird sofort nach einer neuen gesucht.
+     */
+    public function onShowWastedUpdated(): void
+    {
+        if (!$this->getUnidentifiedPerson()) {
+            $this->loadNextBestPerson();
+        }
+    }
+
     public function getUnidentifiedPerson(): ?Person
     {
         return $this->currentPersonId ? $this->personRepository->find($this->currentPersonId) : null;
     }
 
-    private function loadNextBestPerson(): void
+    /**
+     * Basis-Query für alle Personen, die noch bearbeitet werden können
+     * (passender Status, nicht übersprungen).
+     */
+    private function createCandidateQueryBuilder(): QueryBuilder
     {
-        $statuses = [PersonStatus::NEW];
+        $statuses = [PersonStatus::NEW->value];
         if ($this->showWasted) {
-            $statuses[] = PersonStatus::WASTED;
+            $statuses[] = PersonStatus::WASTED->value;
         }
 
         $qb = $this->personRepository->createQueryBuilder('p')
-            ->select('p.id')
-            ->leftJoin('p.videoFaces', 'f')
             ->where('p.status IN (:statuses)')
             ->setParameter('statuses', $statuses);
+
+        if (!empty($this->skippedIds)) {
+            $qb->andWhere('p.id NOT IN (:skipped)')
+                ->setParameter('skipped', array_values($this->skippedIds));
+        }
+
+        return $qb;
+    }
+
+    private function loadNextBestPerson(): void
+    {
+        $qb = $this->createCandidateQueryBuilder()
+            ->select('p.id')
+            ->leftJoin('p.videoFaces', 'f')
+            ->addSelect('COUNT(DISTINCT f.videoScene) AS HIDDEN scene_count')
+            ->addSelect('COUNT(f.id) AS HIDDEN face_count');
 
         if ($this->currentPersonId) {
             $qb->andWhere('p.id != :cid')->setParameter('cid', $this->currentPersonId);
         }
 
         $qb->groupBy('p.id')
-            ->addSelect('COUNT(DISTINCT f.videoScene) as HIDDEN scene_count')
             ->orderBy('scene_count', 'DESC')
-            ->addOrderBy('COUNT(f.id)', 'DESC')
+            ->addOrderBy('face_count', 'DESC')
+            ->addOrderBy('p.id', 'ASC') // stabiler Tie-Breaker
             ->setMaxResults(1);
 
         $result = $qb->getQuery()->getOneOrNullResult();
 
         if ($result) {
             $this->currentPersonId = (int) $result['id'];
-            $this->activeFaceId = null;
         } else {
             $this->currentPersonId = null;
         }
+
+        $this->activeFaceId = null;
         $this->newName = '';
+        $this->newFullName = '';
         $this->newAge = null;
         $this->newGender = null;
         $this->newRelation = null;
@@ -153,8 +194,6 @@ class PersonResolverComponent extends AbstractController
     {
         $this->activeFaceId = $id;
     }
-
-
 
     #[LiveAction]
     public function markAsUnknown()
@@ -267,6 +306,24 @@ class PersonResolverComponent extends AbstractController
             return $this->redirectToRoute('app_identity_tinder_resolve');
         }
 
+        // Aktuelle Person merken, damit sie nicht sofort wieder auftaucht
+        if ($this->currentPersonId && !in_array($this->currentPersonId, $this->skippedIds, true)) {
+            $this->skippedIds[] = $this->currentPersonId;
+        }
+
+        $this->resetForm();
+        $this->loadNextBestPerson();
+    }
+
+    /**
+     * Übersprungene wieder zulassen und von vorne suchen
+     * (auch als "Neu laden" im Leerzustand).
+     */
+    #[LiveAction]
+    public function reload(): void
+    {
+        $this->skippedIds = [];
+        $this->currentPersonId = null;
         $this->resetForm();
         $this->loadNextBestPerson();
     }
@@ -289,6 +346,7 @@ class PersonResolverComponent extends AbstractController
             return $this->redirectToRoute('app_identity_tinder_resolve');
         }
 
+        $this->resetForm();
         $this->loadNextBestPerson();
         return null;
     }
@@ -315,7 +373,7 @@ class PersonResolverComponent extends AbstractController
             ->leftJoin('p.videoFaces', 'f_global')
             ->where('p.status = :status')
             ->setParameter('videoId', $videoId)
-            ->setParameter('status', PersonStatus::IDENTIFIED)
+            ->setParameter('status', PersonStatus::IDENTIFIED->value)
             ->groupBy('p.id')
             ->getQuery()
             ->getResult();
@@ -324,7 +382,7 @@ class PersonResolverComponent extends AbstractController
         usort($allIdentified, function($a_data, $b_data) use ($targetGender, $targetAge) {
             $a = $a_data[0];
             $b = $b_data[0];
-            
+
             // 1. Häufigkeit im Video
             if ($a_data['video_count'] !== $b_data['video_count']) {
                 return $b_data['video_count'] <=> $a_data['video_count'];
@@ -346,7 +404,7 @@ class PersonResolverComponent extends AbstractController
             // Wir vergleichen mit dem Alter des Profile-Faces der Person (falls vorhanden)
             $aAge = $a->getProfileFace()?->getAge();
             $bAge = $b->getProfileFace()?->getAge();
-            
+
             if ($targetAge && ($aAge || $bAge)) {
                 $aDiff = $aAge ? abs($aAge - $targetAge) : 100;
                 $bDiff = $bAge ? abs($bAge - $targetAge) : 100;
@@ -414,13 +472,19 @@ class PersonResolverComponent extends AbstractController
         return $this->personRepository->findBy(['id' => $this->mergeIds]);
     }
 
+    /**
+     * Noch offene Personen (ohne die übersprungenen, inkl. der aktuellen).
+     */
     public function getRemainingCount(): int
     {
-        $statuses = [PersonStatus::NEW];
-        if ($this->showWasted) {
-            $statuses[] = PersonStatus::WASTED;
-        }
+        return (int) $this->createCandidateQueryBuilder()
+            ->select('COUNT(p.id)')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
 
-        return $this->personRepository->count(['status' => $statuses]);
+    public function getSkippedCount(): int
+    {
+        return count($this->skippedIds);
     }
 }
