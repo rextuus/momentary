@@ -8,15 +8,16 @@ use App\Repository\VideoRepository;
 use App\Service\Storage\FileManager;
 use App\Service\Storage\FileStorageService;
 use App\Service\Storage\StoragePathProvider;
+use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Handler\Abstract\AbstractVideoMessageHandler;
 use App\Service\Video\Processing\Message\ConvertStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
-use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\EntityNotFoundException;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -48,7 +49,7 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
             return;
         }
 
-        $sourceAbsolutePath = $this->pathProvider->getStorageRoot() . '/' . $sourceFileEntity->getRelativePath();
+        $sourceAbsolutePath = $this->pathProvider->getAbsolutePath($sourceFileEntity);
 
         if (!file_exists($sourceAbsolutePath)) {
             $this->stopProcessing(
@@ -63,60 +64,61 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
 
         // Wenn es bereits eine MP4-Datei ist, überspringen wir die Konvertierung
         if (str_ends_with(strtolower($sourceAbsolutePath), '.mp4')) {
-            $this->finishCurrentStep(sprintf('[i] Video "%s" is already MP4.', $video->getTitle()));
+            $this->finishCurrentStep(sprintf('Video "%s" is already MP4.', $video->getTitle()));
             return;
         }
 
-        // Wenn bereits eine Datei konvertiert wurde, prüfe ob sie existiert
-        if ($video->getConvertedFile() !== null) {
-            $existingPath = $this->pathProvider->getStorageRoot() . '/' . $video->getConvertedFile()->getRelativePath();
-            if (file_exists($existingPath)) {
-                $this->finishCurrentStep(sprintf('[i] Video "%s" already converted.', $video->getTitle()));
+        // Bereits konvertierte Datei prüfen. Die Referenz kann auf eine gelöschte File-Zeile zeigen.
+        $existingConverted = $video->getConvertedFile();
+        if ($existingConverted !== null) {
+            $stillValid = false;
+            try {
+                $stillValid = file_exists($this->pathProvider->getAbsolutePath($existingConverted));
+            } catch (EntityNotFoundException) {
+                $stillValid = false;
+            }
+
+            if ($stillValid) {
+                $this->finishCurrentStep(sprintf('Video "%s" already converted.', $video->getTitle()));
                 return;
             }
-            $this->entityManager->remove($video->getConvertedFile());
+
             $video->setConvertedFile(null);
             $this->entityManager->flush();
+
+            try {
+                $this->entityManager->remove($existingConverted);
+                $this->entityManager->flush();
+            } catch (EntityNotFoundException) {
+                // Zeile existiert bereits nicht mehr, nichts zu tun
+            }
         }
 
-        // Temporäre Datei für die Konvertierung im Storage ablegen
+        // File-Entity zuerst erzeugen, damit Datei und DB-Eintrag denselben Pfad nutzen
         $tempFilename = 'converted_' . uniqid() . '.mp4';
-        $tempRelativePath = 'videos/' . $video->getId() . '/' . $tempFilename;
-        $tempAbsolutePath = $this->pathProvider->getStorageRoot() . '/' . $tempRelativePath;
+        $convertedFile = $this->fileManager->createConvertedVideoFile($video, $tempFilename);
+        $this->fileStorageService->ensureDirectoryExists($convertedFile);
+        $targetAbsolutePath = $this->pathProvider->getAbsolutePath($convertedFile);
 
-        $this->fileStorageService->createDirectoryStructure('videos/' . $video->getId());
-
-        if ($this->videoAnalyzer->convertToMp4($sourceAbsolutePath, $tempAbsolutePath)) {
-            try {
-                $convertedFile = $this->fileManager->createConvertedVideoFile($video, $tempFilename);
-                if (empty($convertedFile->getRelativePath())) {
-                    $convertedFile->setRelativePath($tempRelativePath);
-                }
-                $convertedFile->setFileSize($this->fileManager->getFileSize($convertedFile));
-
-                $existingFile = $this->entityManager->getRepository(\App\Entity\File::class)->findOneBy(['relativePath' => $convertedFile->getRelativePath()]);
-                if ($existingFile && $existingFile->getId() !== $sourceFileEntity->getId()) {
-                    $this->fileManager->deleteFile($existingFile);
-                }
-
-                $this->fileManager->saveFile($convertedFile);
-
-                $video->setConvertedFile($convertedFile);
-
-                $this->entityManager->persist($video);
-                $this->entityManager->flush();
-            } catch (\Exception $e) {
-                @unlink($tempAbsolutePath);
-                $this->stopProcessing(sprintf('[⚠] Conversion failed: %s', $e->getMessage()));
-                return;
-            }
-
-            $this->finishCurrentStep(sprintf('Conversion for video "%s" succeeded', $video->getTitle()));
+        if (!$this->videoAnalyzer->convertToMp4($sourceAbsolutePath, $targetAbsolutePath)) {
+            @unlink($targetAbsolutePath);
+            $this->stopProcessing(sprintf('[⚠] Conversion for video "%s" failed', $video->getTitle()));
             return;
         }
 
-        @unlink($tempAbsolutePath);
-        $this->stopProcessing(sprintf('[⚠] Conversion for video "%s" failed', $video->getTitle()));
+        try {
+            $convertedFile->setFileSize($this->fileManager->getFileSize($convertedFile));
+            $this->fileManager->saveFile($convertedFile, false);
+
+            $video->setConvertedFile($convertedFile);
+            $this->entityManager->flush();
+        } catch (\Throwable $e) {
+            @unlink($targetAbsolutePath);
+            $this->stopProcessing(sprintf('[⚠] Conversion failed: %s', $e->getMessage()));
+            return;
+        }
+
+        $this->finishCurrentStep(sprintf('Conversion for video "%s" succeeded', $video->getTitle()));
     }
 
     public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void

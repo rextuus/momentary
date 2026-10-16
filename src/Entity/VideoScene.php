@@ -42,7 +42,7 @@ class VideoScene
     #[Groups(['video:detail'])]
     private ?string $title = null;
 
-    #[ORM\ManyToOne(targetEntity: File::class, cascade: ['persist', 'remove'])]
+    #[ORM\ManyToOne(targetEntity: File::class, cascade: ['persist'])]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     #[Groups(['video:detail'])]
     private ?File $thumbnailFile = null;

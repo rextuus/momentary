@@ -1,157 +1,249 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>{% block title %}Momentary - Video AI{% endblock %}</title>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>🎬</text></svg>">
-        
-        <!-- Fonts & Icons -->
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Momentary - Video AI{% endblock %}</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>🎬</text></svg>">
 
-        {% block stylesheets %}
-            {{ importmap('app') }}
-        {% endblock %}
+    <!-- Fonts & Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-        <style>
-                :root {
-                    --primary-color: #4f46e5;
-                    --secondary-color: #64748b;
-                    --success-color: #10b981;
-                    --warning-color: #f59e0b;
-                    --danger-color: #ef4444;
-                    --bg-light: #f8fafc;
-                }
-                body {
-                    font-family: 'Inter', sans-serif;
-                    background-color: var(--bg-light);
-                    color: #1e293b;
-                }
-                .navbar {
-                    background: rgba(255, 255, 255, 0.8);
-                    backdrop-filter: blur(10px);
-                    border-bottom: 1px solid #e2e8f0;
-                }
-                .navbar-brand {
-                    font-weight: 700;
-                    letter-spacing: -0.5px;
-                    color: var(--primary-color) !important;
-                }
-                .nav-link {
-                    font-weight: 500;
-                    color: var(--secondary-color);
-                    transition: color 0.2s;
-                }
-                .nav-link:hover, .nav-link.active {
-                    color: var(--primary-color);
-                }
-                .btn-primary {
-                    background-color: var(--primary-color);
-                    border-color: var(--primary-color);
-                }
-                .btn-primary:hover {
-                    background-color: #4338ca;
-                    border-color: #4338ca;
-                }
-                .card {
-                    border: none;
-                    border-radius: 12px;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-                    transition: transform 0.2s ease, box-shadow 0.2s ease;
-                }
-                .hover-card:hover {
-                    transform: translateY(-4px);
-                    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
-                }
-                footer {
-                    background-color: #fff;
-                    border-top: 1px solid #e2e8f0;
-                    padding: 2rem 0;
-                    margin-top: 4rem;
-                }
-            </style>
-        {% block javascripts %}
-        {% endblock %}
-    </head>
-    <body>
-        <nav class="navbar navbar-expand-lg sticky-top mb-4">
-            <div class="container">
-                <a class="navbar-brand d-flex align-items-center" href="{{ path('app_dashboard') }}">
-                    <i class="fas fa-film me-2"></i>
-                    Momentary
-                </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="collapse navbar-collapse" id="navbarNav">
-                    <ul class="navbar-nav ms-auto">
-                        <li class="nav-item">
-                            <a class="nav-link {{ app.request.attributes.get('_route') == 'app_dashboard' ? 'active' }}" href="{{ path('app_dashboard') }}">
-                                <i class="fas fa-home me-1"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ app.request.attributes.get('_route') starts with 'app_video' or app.request.attributes.get('_route') starts with 'video_' ? 'active' }}" href="{{ path('app_video_index') }}">
-                                <i class="fas fa-video me-1"></i> Videos
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ app.request.attributes.get('_route') starts with 'person_' ? 'active' }}" href="{{ path('person_index') }}">
-                                <i class="fas fa-users me-1"></i> Personen
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ app.request.attributes.get('_route') == 'app_identity_resolve' ? 'active' }}" href="{{ path('app_identity_resolve') }}">
-                                <i class="fas fa-wand-magic-sparkles me-1"></i> Resolve
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ app.request.attributes.get('_route') == 'app_video_index' ? 'active' }}" href="{{ path('app_video_index') }}">
-                                <i class="fas fa-video me-1"></i> Videos
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ app.request.attributes.get('_route') == 'app_tag_admin' ? 'active' }}" href="{{ path('app_tag_admin') }}">
-                                <i class="fas fa-tags me-1"></i> Tags
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ app.request.attributes.get('_route') == 'app_upload' ? 'active' }}" href="{{ path('app_upload') }}">
-                                <i class="fas fa-cloud-upload-alt me-1"></i> Upload
-                            </a>
-                        </li>
+    {% block stylesheets %}
+        {{ importmap('app') }}
+    {% endblock %}
+
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --secondary-color: #64748b;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --bg-light: #f8fafc;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-light);
+            color: #1e293b;
+        }
+
+        /* ───── Navbar ───── */
+        .navbar {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .navbar-brand {
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            color: var(--primary-color) !important;
+        }
+        .navbar .nav-link {
+            font-weight: 500;
+            color: var(--secondary-color);
+            border-radius: 8px;
+            padding: 0.45rem 0.75rem;
+            transition: color 0.2s, background 0.2s;
+        }
+        .navbar .nav-link:hover,
+        .navbar .nav-link.active,
+        .navbar .nav-link.show {
+            color: var(--primary-color);
+        }
+        .navbar .nav-link.active {
+            background: rgba(79, 70, 229, 0.08);
+        }
+        .navbar .dropdown-menu {
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            min-width: 290px;
+            box-shadow: 0 12px 28px -8px rgba(15, 23, 42, 0.18);
+        }
+        .navbar .dropdown-item {
+            border-radius: 10px;
+            padding: 0.5rem 0.6rem;
+        }
+        .navbar .dropdown-item:hover,
+        .navbar .dropdown-item.active {
+            background: #f1f5f9;
+            color: inherit;
+        }
+        .nav-chip {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 0.9rem;
+        }
+
+        /* ───── Allgemein ───── */
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        .btn-primary:hover {
+            background-color: #4338ca;
+            border-color: #4338ca;
+        }
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .hover-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+        }
+        footer {
+            background-color: #fff;
+            border-top: 1px solid #e2e8f0;
+            padding: 1.25rem 0;
+            margin-top: 4rem;
+        }
+    </style>
+    {% block javascripts %}
+    {% endblock %}
+</head>
+<body>
+{% set route = app.request ? (app.request.attributes.get('_route') ?? '') : '' %}
+{% set counts = nav_counts() %}
+
+{% set inVideos = route starts with 'app_video' or route starts with 'video_' %}
+{% set inPersons = route starts with 'person_' %}
+{% set inIdentity = route starts with 'app_identity_' %}
+{% set inAdmin = route starts with 'app_admin_' or route in ['app_tag_admin', 'admin_files_ftp', 'app_search_test'] %}
+
+{# Menüpunkte der Dropdowns (einmal definiert, kein doppeltes Markup) #}
+{% set identityItems = [
+    {route: 'app_identity_resolve', icon: 'fa-wand-magic-sparkles', color: 'primary', title: 'Resolve', desc: 'Eine Person nach der anderen benennen', count: counts.new, countColor: 'primary'},
+    {route: 'app_identity_quick_resolve', icon: 'fa-bolt', color: 'info', title: 'Quick Resolve', desc: '10 Gesichter auf einmal zuordnen', count: 0, countColor: ''},
+    {route: 'app_identity_tinder_resolve', icon: 'fa-fire', color: 'danger', title: 'Tinder Resolve', desc: 'Bekannt oder unbekannt in Sekunden', count: 0, countColor: ''},
+    {route: 'app_identity_random_mass_face_resolve', icon: 'fa-th-large', color: 'success', title: 'Mass Resolve', desc: 'Gesichter einer Person prüfen', count: 0, countColor: ''},
+    {route: 'app_identity_reassign_faces', icon: 'fa-scissors', color: 'warning', title: 'Auftrennen', desc: 'Falsch gruppierte Gesichter trennen', count: counts.to_reassign, countColor: 'warning'},
+] %}
+{% set adminItems = [
+    {route: 'app_tag_admin', icon: 'fa-tags', color: 'secondary', title: 'Tag Manager', desc: 'Kategorien & Tags'},
+    {route: 'app_admin_queue', icon: 'fa-tasks', color: 'info', title: 'Warteschlange', desc: 'Worker & Jobs'},
+    {route: 'admin_files_ftp', icon: 'fa-file-upload', color: 'secondary', title: 'FTP Datei-Manager', desc: 'Uploads verwalten'},
+    {route: 'app_search_test', icon: 'fa-search', color: 'secondary', title: 'Search Explorer', desc: 'Meilisearch testen'},
+] %}
+
+<nav class="navbar navbar-expand-lg sticky-top mb-4">
+    <div class="container">
+        <a class="navbar-brand d-flex align-items-center" href="{{ path('app_dashboard') }}">
+            <i class="fas fa-film me-2"></i>
+            Momentary
+        </a>
+        <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Navigation umschalten">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto ms-lg-4 gap-lg-1">
+                <li class="nav-item">
+                    <a class="nav-link {{ route == 'app_dashboard' ? 'active' }}" href="{{ path('app_dashboard') }}">
+                        <i class="fas fa-home me-1"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ inVideos ? 'active' }}" href="{{ path('app_video_index') }}">
+                        <i class="fas fa-video me-1"></i> Videos
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ inPersons ? 'active' }}" href="{{ path('person_index') }}">
+                        <i class="fas fa-users me-1"></i> Personen
+                    </a>
+                </li>
+
+                {# Identifizieren ▾ #}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle {{ inIdentity ? 'active' }}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-wand-magic-sparkles me-1"></i> Identifizieren
+                        {% if counts.new > 0 %}
+                            <span class="badge rounded-pill bg-primary ms-1">{{ counts.new }}</span>
+                        {% endif %}
+                    </a>
+                    <ul class="dropdown-menu p-2">
+                        {% for item in identityItems %}
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-3 {{ route == item.route ? 'active' }}" href="{{ path(item.route) }}">
+                                    <span class="nav-chip bg-{{ item.color }} bg-opacity-10 text-{{ item.color }}"><i class="fas {{ item.icon }}"></i></span>
+                                    <span class="flex-grow-1">
+                                                <span class="d-block fw-semibold lh-sm">{{ item.title }}</span>
+                                                <span class="d-block small text-muted">{{ item.desc }}</span>
+                                            </span>
+                                    {% if item.count > 0 %}
+                                        <span class="badge rounded-pill bg-{{ item.countColor }}">{{ item.count }}</span>
+                                    {% endif %}
+                                </a>
+                            </li>
+                        {% endfor %}
                     </ul>
-                </div>
-            </div>
-        </nav>
+                </li>
 
-        <main>
-            {% for label, messages in app.flashes %}
-                <div class="container mt-3">
-                    {% for message in messages %}
-                        <div class="alert alert-{{ label }} alert-dismissible fade show shadow-sm border-0" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    {% endfor %}
+                {# Verwalten ▾ #}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle {{ inAdmin ? 'active' }}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-sliders-h me-1"></i> Verwalten
+                    </a>
+                    <ul class="dropdown-menu p-2">
+                        {% for item in adminItems %}
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-3 {{ route == item.route ? 'active' }}" href="{{ path(item.route) }}">
+                                    <span class="nav-chip bg-{{ item.color }} bg-opacity-10 text-{{ item.color }}"><i class="fas {{ item.icon }}"></i></span>
+                                    <span>
+                                                <span class="d-block fw-semibold lh-sm">{{ item.title }}</span>
+                                                <span class="d-block small text-muted">{{ item.desc }}</span>
+                                            </span>
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </li>
+            </ul>
+
+            <div class="d-flex mt-2 mt-lg-0">
+                <a class="btn btn-primary btn-sm rounded-pill px-3 {{ route == 'app_upload' ? 'active' }}" href="{{ path('app_upload') }}">
+                    <i class="fas fa-cloud-upload-alt me-1"></i> Upload
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<main>
+    {% for label, messages in app.flashes %}
+        {% set alertType = {error: 'danger', notice: 'info'}[label] ?? label %}
+        <div class="container mt-3">
+            {% for message in messages %}
+                <div class="alert alert-{{ alertType }} alert-dismissible fade show shadow-sm border-0" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             {% endfor %}
+        </div>
+    {% endfor %}
 
-            {% block body %}{% endblock %}
-        </main>
+    {% block body %}{% endblock %}
+</main>
 
-        <footer>
-            <div class="container text-center">
-                <p class="text-muted mb-0 small">&copy; {{ "now"|date("Y") }} Momentary - Video Intelligence Platform</p>
-                <p class="text-muted small">Automatische Personenerkennung & Video-Archivierung</p>
-            </div>
-        </footer>
+<footer>
+    <div class="container text-center">
+        <p class="text-muted mb-0 small">&copy; {{ "now"|date("Y") }} Momentary · Video Intelligence Platform</p>
+    </div>
+</footer>
 
-        {# Zentrales Modal für Bild-Vergrößerungen (wird von assets/app.js gesteuert) #}
-        {% include '_partials/_image_modal.html.twig' %}
-    </body>
+{# Zentrales Modal für Bild-Vergrößerungen (wird von assets/app.js gesteuert) #}
+{% include '_partials/_image_modal.html.twig' %}
+</body>
 </html>

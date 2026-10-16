@@ -3,314 +3,384 @@
 {% block title %}Dashboard - Momentary{% endblock %}
 
 {% block body %}
-    <div class="container pb-5">
-        <!-- Header -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="container pb-5" data-controller="shortcuts">
+
+        {# ───────── Kopfzeile ───────── #}
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
             <div>
                 <h1 class="fw-bold mb-0">Dashboard</h1>
-                <p class="text-muted">Video-Intelligence & Pipeline Control</p>
+                <p class="text-muted mb-0">Video-Intelligence & Pipeline Control</p>
             </div>
-            <a href="{{ path('video_new') }}" class="btn btn-primary shadow-sm rounded-pill px-4">
-                <i class="fas fa-plus me-2"></i>Neues Video scannen
-            </a>
-        </div>
-
-        <!-- Kompakt-Stats -->
-        <div class="row g-3 mb-4">
-            <div class="col-6 col-md-3">
-                <div class="card h-100 bg-white">
-                    <div class="card-body py-3">
-                        <div class="text-muted small fw-bold text-uppercase">Videos</div>
-                        <div class="h4 mb-0 fw-bold">{{ stats.videos }}</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="card h-100 bg-white">
-                    <div class="card-body py-3">
-                        <div class="text-muted small fw-bold text-uppercase">Personen</div>
-                        <div class="h4 mb-0 fw-bold">{{ stats.persons }}</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="card h-100 bg-white">
-                    <div class="card-body py-3">
-                        <div class="text-muted small fw-bold text-uppercase">Identifiziert</div>
-                        <div class="h4 mb-0 fw-bold text-success">{{ stats.identified }}</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <a href="{{ path('app_identity_quick_resolve') }}" class="card h-100 bg-white border-left-warning shadow-sm text-decoration-none">
-                    <div class="card-body py-3">
-                        <div class="text-muted small fw-bold text-uppercase">Auftrennen</div>
-                        <div class="h4 mb-0 fw-bold text-warning">{{ stats.to_reassign }}</div>
-                    </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <a href="{{ path('app_admin_queue') }}"
+                   class="queue-pill text-decoration-none {{ queueIsRunning ? 'is-ok' : 'is-down' }}"
+                   title="Zur Warteschlange">
+                    <span class="queue-dot"></span>
+                    {{ queueIsRunning ? 'Worker läuft' : 'Worker gestoppt' }}
+                </a>
+                <a href="{{ path('video_new') }}" class="btn btn-primary shadow-sm rounded-pill px-4" data-shortcut="n">
+                    <i class="fas fa-plus me-2"></i>Video scannen <kbd class="ms-2">N</kbd>
                 </a>
             </div>
         </div>
 
-        <!-- Identitäts-Werkzeuge -->
-        <div class="row g-3 mb-4">
-            <div class="col-md-3">
-                <a href="{{ path('app_identity_random_mass_face_resolve') }}" class="card h-100 p-3 text-decoration-none shadow-sm border-left-info">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-th-large text-info fa-2x me-3"></i>
-                        <div>
-                            <div class="fw-bold text-dark">Mass Resolve</div>
-                            <div class="text-muted small">Schnelle Massen-Verifizierung</div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="{{ path('app_identity_quick_resolve') }}" class="card h-100 p-3 text-decoration-none shadow-sm border-left-warning">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-scissors text-warning fa-2x me-3"></i>
-                        <div>
-                            <div class="fw-bold text-dark">Quick Resolve</div>
-                            <div class="text-muted small">Falsche Zuordnungen trennen</div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="{{ path('app_identity_tinder_resolve') }}" class="card h-100 p-3 text-decoration-none shadow-sm border-left-danger">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-heart text-danger fa-2x me-3"></i>
-                        <div>
-                            <div class="fw-bold text-dark">Tinder Resolve</div>
-                            <div class="text-muted small">Identitäten bestätigen</div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="{{ path('app_identity_resolve') }}" class="card h-100 p-3 text-decoration-none shadow-sm border-left-primary">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-user-friends text-primary fa-2x me-3"></i>
-                        <div>
-                            <div class="fw-bold text-dark">Identity Resolve</div>
-                            <div class="text-muted small">Manuelle Identitäts-Auflösung</div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-        </div>
-
-        <div class="row g-3 mb-4">
-            <div class="col-md-3">
-                <a href="{{ path('app_tag_admin') }}" class="card h-100 p-3 text-decoration-none shadow-sm border-left-secondary">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-tags text-secondary fa-2x me-3"></i>
-                        <div>
-                            <div class="fw-bold text-dark">Tag Manager</div>
-                            <div class="text-muted small">Kategorien & Tags</div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="{{ path('app_admin_queue') }}" class="card h-100 p-3 text-decoration-none shadow-sm border-left-info">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-tasks text-info fa-2x me-3"></i>
-                        <div>
-                            <div class="fw-bold text-dark">Warteschlange</div>
-                            <div class="text-muted small">
-                                {% if queueIsRunning %}
-                                    <span class="text-success"><i class="fas fa-check-circle"></i> Läuft</span>
+        {# ───────── Kennzahlen ───────── #}
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3 mb-4">
+            <div class="col">
+                <div class="card h-100">
+                    <div class="card-body d-flex gap-3">
+                        <div class="stat-icon bg-primary bg-opacity-10 text-primary"><i class="fas fa-video"></i></div>
+                        <div class="min-w-0">
+                            <div class="text-muted small fw-bold text-uppercase">Videos</div>
+                            <div class="h3 mb-0 fw-bold">{{ stats.videos }}</div>
+                            <div class="small mt-1">
+                                {% if videoStats.processing > 0 or videoStats.pending > 0 or videoStats.failed > 0 %}
+                                    {% if videoStats.processing > 0 %}<span class="text-primary fw-semibold">{{ videoStats.processing }} aktiv</span>{% endif %}
+                                    {% if videoStats.pending > 0 %}<span class="text-muted">{{ videoStats.processing > 0 ? ' · ' }}{{ videoStats.pending }} wartend</span>{% endif %}
+                                    {% if videoStats.failed > 0 %}<span class="text-danger fw-semibold">{{ (videoStats.processing > 0 or videoStats.pending > 0) ? ' · ' }}{{ videoStats.failed }} Fehler</span>{% endif %}
                                 {% else %}
-                                    <span class="text-danger"><i class="fas fa-exclamation-triangle"></i> Gestoppt</span>
+                                    <span class="text-success"><i class="fas fa-check-circle me-1"></i>alles verarbeitet</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="card h-100">
+                    <div class="card-body d-flex gap-3">
+                        <div class="stat-icon bg-info bg-opacity-10 text-info"><i class="fas fa-users"></i></div>
+                        <div class="min-w-0">
+                            <div class="text-muted small fw-bold text-uppercase">Personen</div>
+                            <div class="h3 mb-0 fw-bold">{{ stats.persons }}</div>
+                            <div class="small text-muted mt-1">{{ stats.merged }} gemergt · {{ stats.wasted }} ausgeblendet</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="card h-100">
+                    <div class="card-body d-flex gap-3">
+                        <div class="stat-icon bg-success bg-opacity-10 text-success"><i class="fas fa-user-check"></i></div>
+                        <div class="flex-grow-1 min-w-0">
+                            <div class="d-flex justify-content-between align-items-baseline">
+                                <div class="text-muted small fw-bold text-uppercase">Identifiziert</div>
+                                <span class="small fw-bold text-success">{{ stats.identified_pct }}%</span>
+                            </div>
+                            <div class="h3 mb-1 fw-bold">{{ stats.identified }}</div>
+                            <div class="progress" style="height: 5px;">
+                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ stats.identified_pct }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col">
+                <a href="{{ path('app_identity_resolve') }}" class="card h-100 text-decoration-none hover-card">
+                    <div class="card-body d-flex gap-3">
+                        <div class="stat-icon bg-warning bg-opacity-10 text-warning"><i class="fas fa-hourglass-half"></i></div>
+                        <div class="min-w-0">
+                            <div class="text-muted small fw-bold text-uppercase">Offen zu klären</div>
+                            <div class="h3 mb-0 fw-bold {{ stats.new > 0 ? 'text-dark' : 'text-success' }}">{{ stats.new }}</div>
+                            <div class="small mt-1">
+                                {% if stats.new > 0 %}
+                                    <span class="text-primary fw-semibold">Jetzt klären <i class="fas fa-arrow-right ms-1"></i></span>
+                                    {% if stats.to_reassign > 0 %}<span class="text-muted"> · {{ stats.to_reassign }} auftrennen</span>{% endif %}
+                                {% elseif stats.to_reassign > 0 %}
+                                    <span class="text-warning fw-semibold">{{ stats.to_reassign }} zum Auftrennen</span>
+                                {% else %}
+                                    <span class="text-success"><i class="fas fa-check-circle me-1"></i>alles erledigt</span>
                                 {% endif %}
                             </div>
                         </div>
                     </div>
                 </a>
             </div>
-            <div class="col-md-3">
-                <a href="{{ path('admin_files_ftp') }}" class="card h-100 p-3 text-decoration-none shadow-sm border-left-secondary">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-file-upload text-secondary fa-2x me-3"></i>
-                        <div>
-                            <div class="fw-bold text-dark">FTP Datei-Manager</div>
-                            <div class="text-muted small">Uploads verwalten</div>
+        </div>
+
+        {# ───────── Identitäten klären ───────── #}
+        <div class="d-flex justify-content-between align-items-end mb-2">
+            <h5 class="fw-bold mb-0">Identitäten klären</h5>
+            <span class="text-muted small d-none d-md-inline">Tastenkürzel direkt hier drücken</span>
+        </div>
+
+        {% set tools = [
+            {route: 'app_identity_tinder_resolve', icon: 'fa-fire', color: 'danger', title: 'Tinder', desc: 'Bekannt oder unbekannt in Sekunden', key: 'T', count: 0},
+            {route: 'app_identity_quick_resolve', icon: 'fa-bolt', color: 'info', title: 'Quick', desc: '10 Gesichter auf einmal zuordnen', key: 'Q', count: 0},
+            {route: 'app_identity_resolve', icon: 'fa-wand-magic-sparkles', color: 'primary', title: 'Resolve', desc: 'Eine Person nach der anderen benennen', key: 'R', count: stats.new},
+            {route: 'app_identity_random_mass_face_resolve', icon: 'fa-th-large', color: 'success', title: 'Mass', desc: 'Gesichter einer Person prüfen', key: 'M', count: 0},
+            {route: 'app_identity_reassign_faces', icon: 'fa-scissors', color: 'warning', title: 'Auftrennen', desc: 'Falsch gruppierte Gesichter trennen', key: 'A', count: stats.to_reassign},
+        ] %}
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-5 g-3 mb-4">
+            {% for tool in tools %}
+                <div class="col">
+                    <a href="{{ path(tool.route) }}" class="card h-100 text-decoration-none hover-card" data-shortcut="{{ tool.key|lower }}">
+                        <div class="card-body d-flex gap-3 align-items-start">
+                            <div class="tool-icon bg-{{ tool.color }} bg-opacity-10 text-{{ tool.color }}">
+                                <i class="fas {{ tool.icon }}"></i>
+                            </div>
+                            <div class="flex-grow-1 min-w-0">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="fw-bold text-dark">{{ tool.title }}</span>
+                                    {% if tool.count > 0 %}
+                                        <span class="badge rounded-pill bg-{{ tool.color }}">{{ tool.count }}</span>
+                                    {% endif %}
+                                    <kbd class="ms-auto opacity-75">{{ tool.key }}</kbd>
+                                </div>
+                                <div class="text-muted small lh-sm mt-1">{{ tool.desc }}</div>
+                            </div>
                         </div>
-                    </div>
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="{{ path('app_search_test') }}" class="card h-100 p-3 text-decoration-none shadow-sm border-left-secondary">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-search text-secondary fa-2x me-3"></i>
-                        <div>
-                            <div class="fw-bold text-dark">Search Explorer</div>
-                            <div class="text-muted small">Meilisearch testen</div>
-                        </div>
-                    </div>
-                </a>
-            </div>
+                    </a>
+                </div>
+            {% endfor %}
         </div>
 
         <div class="row g-4">
-            <!-- HAUPTSPALTEN: VIDEO PIPELINE -->
+            {# ───────── Pipeline ───────── #}
             <div class="col-lg-8">
                 <div class="card h-100">
                     <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
-                        <h5 class="fw-bold mb-0"><i class="fas fa-microchip me-2 text-primary"></i>Aktuelle Pipeline</h5>
+                        <div>
+                            <h5 class="fw-bold mb-0"><i class="fas fa-microchip me-2 text-primary"></i>Aktuelle Pipeline</h5>
+                            <div class="small text-muted">Die 5 neuesten Videos</div>
+                        </div>
                         <a href="{{ path('app_video_index') }}" class="btn btn-sm btn-outline-primary rounded-pill px-3">Alle Videos</a>
                     </div>
                     <div class="card-body px-4">
-                        <div class="row g-3">
-                                {% for video in recent_videos %}
-                                    {% set statusInfo = {
-                                        'pending': {'color': 'secondary', 'icon': 'clock'},
-                                        'downloading': {'color': 'info', 'icon': 'download'},
-                                        'scene_detection': {'color': 'warning', 'icon': 'cut'},
-                                        'splitting': {'color': 'primary', 'icon': 'film'},
-                                        'analyzing_faces': {'color': 'dark', 'icon': 'user-search'},
-                                        'optimizing': {'color': 'info', 'icon': 'magic'},
-                                        'completed': {'color': 'success', 'icon': 'check-circle'},
-                                        'error': {'color': 'danger', 'icon': 'exclamation-triangle'}
-                                    }[video.status.value] ?? {'color': 'secondary', 'icon': 'question'} %}
+                        <div class="d-flex flex-column gap-2">
+                            {% for video in recent_videos %}
+                                {% set statusInfo = {
+                                    'pending': {'color': 'secondary', 'icon': 'clock', 'label': 'Wartend'},
+                                    'downloading': {'color': 'info', 'icon': 'download', 'label': 'Download'},
+                                    'scene_detection': {'color': 'warning', 'icon': 'cut', 'label': 'Szenen-Erkennung'},
+                                    'splitting': {'color': 'primary', 'icon': 'film', 'label': 'Splitting'},
+                                    'analyzing_faces': {'color': 'dark', 'icon': 'user-search', 'label': 'Gesichtsanalyse'},
+                                    'optimizing': {'color': 'info', 'icon': 'magic', 'label': 'Optimierung'},
+                                    'completed': {'color': 'success', 'icon': 'check-circle', 'label': 'Fertig'},
+                                    'error': {'color': 'danger', 'icon': 'exclamation-triangle', 'label': 'Fehler'}
+                                }[video.status.value] ?? {'color': 'secondary', 'icon': 'question', 'label': video.status.value|upper} %}
+                                {% set isActive = video.status.value in ['downloading', 'scene_detection', 'splitting', 'analyzing_faces', 'optimizing'] %}
 
-                                    <div class="col-12">
-                                        <div class="card border-0 bg-light bg-opacity-50">
-                                            <div class="card-body p-2">
-                                                <div class="row g-3 align-items-center">
-                                                    <div class="col-auto">
-                                                        <div class="position-relative bg-white rounded overflow-hidden shadow-sm" style="width: 100px; height: 60px;">
-                                                            {% if video.thumbnailUrl %}
-                                                                {% set is_allowed = is_granted('VIDEO_VIEW', video) %}
-                                                                {% set blur = (not is_allowed and (app.user is null or (app.user.settings and app.user.settings.blurForbiddenContent))) ? 5 : 0 %}
-                                                                <img src="{{ imgproxy_url(video.thumbnailFile, 100, 60, 'fill', blur) }}" alt="{{ video.title }}" class="w-100 h-100 object-fit-cover position-absolute top-0 start-0">
-                                                            {% endif %}
-                                                            <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-{{ statusInfo.color }} bg-opacity-25" style="z-index: 1;">
-                                                                <i class="fas fa-{{ statusInfo.icon }} text-white shadow-sm" style="font-size: 0.8rem;"></i>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col">
-                                                        <div class="fw-bold text-dark text-truncate small" title="{{ video.title }}">{{ video.title }}</div>
-                                                        <div class="d-flex align-items-center gap-2">
-                                                            <span class="badge rounded-pill bg-{{ statusInfo.color }} bg-opacity-10 text-{{ statusInfo.color }} border border-{{ statusInfo.color }} px-1 py-0" style="font-size: 0.6rem;">
-                                                                {{ video.status.value|upper }}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-auto">
-                                                        <div class="btn-group btn-group-sm shadow-sm rounded">
-                                                            <a href="{{ path('app_video_show', {id: video.id}) }}" class="btn btn-white px-2" title="Details">
-                                                                <i class="fas fa-eye text-primary"></i>
-                                                            </a>
-                                                            <a href="{{ path('video_timeline', {id: video.id}) }}" class="btn btn-white px-2" title="Timeline">
-                                                                <i class="fas fa-stream text-primary"></i>
-                                                            </a>
-                                                            <form method="post" action="{{ path('video_delete', {id: video.id}) }}" onsubmit="return confirm('Soll dieses Video wirklich gelöscht werden?');" class="d-inline">
-                                                                <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ video.id) }}">
-                                                                <button class="btn btn-white px-2 text-danger" title="Löschen">
-                                                                    <i class="fas fa-trash-alt"></i>
-                                                                </button>
-                                                            </form>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                <div class="video-row d-flex align-items-center gap-3 p-2 rounded-3">
+                                    <a href="{{ path('app_video_show', {id: video.id}) }}" class="flex-shrink-0 text-decoration-none">
+                                        <div class="position-relative bg-white rounded overflow-hidden shadow-sm" style="width: 112px; height: 64px;">
+                                            {% if video.thumbnailUrl %}
+                                                {% set is_allowed = is_granted('VIDEO_VIEW', video) %}
+                                                {% set blur = (not is_allowed and (app.user is null or (app.user.settings and app.user.settings.blurForbiddenContent))) ? 5 : 0 %}
+                                                <img src="{{ imgproxy_url(video.thumbnailFile, 112, 64, 'fill', blur) }}"
+                                                     alt="{{ video.title }}"
+                                                     class="w-100 h-100 object-fit-cover position-absolute top-0 start-0">
+                                            {% endif %}
+                                            <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-{{ statusInfo.color }} bg-opacity-25" style="z-index: 1;">
+                                                <i class="fas fa-{{ statusInfo.icon }} text-white" style="font-size: 0.9rem; text-shadow: 0 1px 3px rgba(0,0,0,.5);"></i>
                                             </div>
                                         </div>
-                                    </div>
-                                {% else %}
-                                    <div class="col-12 text-center py-4 text-muted small">Keine aktuellen Videos.</div>
-                                {% endfor %}
-                            </div>
-                    </div>
-                </div>
-            </div>
+                                    </a>
 
-            <!-- NEBENSPALTE: PERSONEN & SCHNELLZUGRIFF -->
-            <div class="col-lg-4">
-                <div class="row g-2 mb-4">
-                    <div class="col-6 col-sm-3 col-lg-6">
-                        <a href="{{ path('person_index') }}" class="btn btn-light border shadow-sm w-100 py-3 hover-card">
-                            <i class="fas fa-users d-block mb-2 text-primary"></i>
-                            <span class="small fw-bold">Personen</span>
-                        </a>
-                    </div>
-                    <div class="col-6 col-sm-3 col-lg-6">
-                        <a href="{{ path('app_identity_resolve') }}" class="btn btn-light border shadow-sm w-100 py-3 hover-card">
-                            <i class="fas fa-wand-magic-sparkles d-block mb-2 text-warning"></i>
-                            <span class="small fw-bold">Resolve</span>
-                        </a>
-                    </div>
-                    <div class="col-6 col-sm-3 col-lg-6">
-                        <a href="{{ path('app_identity_quick_resolve') }}" class="btn btn-light border shadow-sm w-100 py-3 hover-card">
-                            <i class="fas fa-bolt d-block mb-2 text-info"></i>
-                            <span class="small fw-bold">Quick</span>
-                        </a>
-                    </div>
-                    <div class="col-6 col-sm-3 col-lg-6">
-                        <a href="{{ path('app_identity_tinder_resolve') }}" class="btn btn-light border shadow-sm w-100 py-3 hover-card">
-                            <i class="fas fa-fire d-block mb-2 text-danger"></i>
-                            <span class="small fw-bold">Tinder</span>
-                        </a>
-                    </div>
-                    <div class="col-6 col-sm-3 col-lg-6">
-                        <a href="{{ path('app_identity_reassign_faces') }}" class="btn btn-light border shadow-sm w-100 py-3 hover-card">
-                            <i class="fas fa-scissors d-block mb-2 text-warning"></i>
-                            <span class="small fw-bold">Auftrennen</span>
-                        </a>
-                    </div>
-                    <div class="col-6 col-sm-3 col-lg-6">
-                        <form action="{{ path('person_cleanup') }}" method="POST" onsubmit="return confirm('Sollen wirklich alle Personen ohne Sichtungen gelöscht werden?');">
-                            <input type="hidden" name="_token" value="{{ csrf_token('person_cleanup') }}">
-                            <button type="submit" class="btn btn-light border shadow-sm w-100 py-3 hover-card">
-                                <i class="fas fa-broom d-block mb-2 text-danger"></i>
-                                <span class="small fw-bold">Cleanup</span>
-                            </button>
-                        </form>
-                    </div>
-                    <div class="col-12 mt-2">
-                        <a href="{{ path('app_video_index') }}" class="btn btn-primary shadow-sm w-100 py-3 hover-card">
-                            <i class="fas fa-upload d-block mb-2"></i>
-                            <span class="small fw-bold text-white">Video Übersicht</span>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Zuletzt identifiziert -->
-                <div class="card">
-                    <div class="card-header bg-white border-0 pt-4 px-4">
-                        <h6 class="fw-bold mb-0">Zuletzt identifiziert</h6>
-                    </div>
-                    <div class="card-body px-4 pb-4">
-                        <div class="list-group list-group-flush">
-                            {% for person in recent_persons %}
-                                {% set displayFace = person.profileFace ?: person.videoFaces|first %}
-                                <a href="{{ path('person_detail', {id: person.id}) }}" class="list-group-item list-group-item-action border-0 px-0 d-flex align-items-center mb-2">
-                                    <div class="rounded-circle shadow-sm me-3 border border-2 border-white overflow-hidden flex-shrink-0" style="width: 38px; height: 38px; background-color: #f8f9fa;">
-                                        {% if displayFace %}
-                                            <div style="{{ face_zoom_style(imgproxy_url(displayFace.faceImage), displayFace.boundingBox, 0.1) }}"></div>
-                                        {% else %}
-                                            <div class="d-flex align-items-center justify-content-center h-100 text-muted small fw-bold">{{ person.name|slice(0,1)|upper }}</div>
+                                    <div class="flex-grow-1 min-w-0">
+                                        <a href="{{ path('app_video_show', {id: video.id}) }}" class="d-block fw-bold text-dark text-truncate text-decoration-none small" title="{{ video.title }}">
+                                            {{ video.title }}
+                                        </a>
+                                        <span class="badge rounded-pill bg-{{ statusInfo.color }} bg-opacity-10 text-{{ statusInfo.color }} border border-{{ statusInfo.color }} border-opacity-25 px-2 mt-1" style="font-size: 0.65rem;">
+                                            {{ statusInfo.label }}
+                                        </span>
+                                        {% if isActive %}
+                                            <div class="progress mt-2" style="height: 3px;">
+                                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-{{ statusInfo.color }}" style="width: 100%"></div>
+                                            </div>
                                         {% endif %}
                                     </div>
-                                    <div class="flex-grow-1 overflow-hidden">
-                                        <div class="small fw-bold text-dark text-truncate">{{ person.name }}</div>
-                                        <div class="text-muted" style="font-size: 0.7rem;">{{ person.videoFaces|length }} Sichtungen</div>
+
+                                    <div class="dropdown flex-shrink-0">
+                                        <button class="btn btn-sm btn-light border-0" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Aktionen">
+                                            <i class="fas fa-ellipsis-v text-muted"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                                            <li>
+                                                <a class="dropdown-item" href="{{ path('app_video_show', {id: video.id}) }}">
+                                                    <i class="fas fa-eye text-primary me-2"></i>Details
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="{{ path('video_timeline', {id: video.id}) }}">
+                                                    <i class="fas fa-stream text-primary me-2"></i>Timeline
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <form method="post" action="{{ path('video_delete', {id: video.id}) }}"
+                                                      onsubmit="return confirm('Soll dieses Video wirklich gelöscht werden?');">
+                                                    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ video.id) }}">
+                                                    <button type="submit" class="dropdown-item text-danger">
+                                                        <i class="fas fa-trash-alt me-2"></i>Löschen
+                                                    </button>
+                                                </form>
+                                            </li>
+                                        </ul>
                                     </div>
-                                </a>
+                                </div>
+                            {% else %}
+                                <div class="text-center py-5 text-muted">
+                                    <i class="fas fa-film fa-2x mb-2 d-block opacity-50"></i>
+                                    Noch keine Videos.
+                                    <div class="mt-2"><a href="{{ path('video_new') }}" class="btn btn-sm btn-primary rounded-pill px-3">Erstes Video scannen</a></div>
+                                </div>
                             {% endfor %}
                         </div>
                     </div>
                 </div>
             </div>
+
+            {# ───────── Personen ───────── #}
+            <div class="col-lg-4">
+                {# Status-Verteilung #}
+                <div class="card mb-4">
+                    <div class="card-body px-4 py-4">
+                        <h6 class="fw-bold mb-3">Personen nach Status</h6>
+
+                        {% set segments = [
+                            {key: 'identified', label: 'Identifiziert', color: 'success'},
+                            {key: 'new', label: 'Neu', color: 'primary'},
+                            {key: 'to_reassign', label: 'Auftrennen', color: 'warning'},
+                            {key: 'unknown', label: 'Unbekannt', color: 'secondary'},
+                            {key: 'wasted', label: 'Ausgeblendet', color: 'dark'},
+                            {key: 'merged', label: 'Gemergt', color: 'info'},
+                        ] %}
+
+                        {% if stats.persons > 0 %}
+                            <div class="progress mb-3" style="height: 10px;">
+                                {% for seg in segments %}
+                                    {% set n = attribute(stats, seg.key) %}
+                                    {% if n > 0 %}
+                                        <div class="progress-bar bg-{{ seg.color }}" role="progressbar"
+                                             style="width: {{ (n / stats.persons * 100)|round(2) }}%"
+                                             title="{{ seg.label }}: {{ n }}"></div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        <div class="row row-cols-2 g-2 small">
+                            {% for seg in segments %}
+                                <div class="col">
+                                    <span class="legend-dot bg-{{ seg.color }}"></span>
+                                    <span class="text-muted">{{ seg.label }}</span>
+                                    <span class="fw-bold ms-1">{{ attribute(stats, seg.key) }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                {# Zuletzt identifiziert #}
+                <div class="card">
+                    <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
+                        <h6 class="fw-bold mb-0">Zuletzt identifiziert</h6>
+                        <a href="{{ path('person_index') }}" class="small text-decoration-none">Alle Personen</a>
+                    </div>
+                    <div class="card-body px-3 pb-3">
+                        {% for person in recent_persons %}
+                            {% set displayFace = person.profileFace ?: (person.videoFaces|first) %}
+                            <a href="{{ path('person_detail', {id: person.id}) }}" class="person-row d-flex align-items-center gap-3 p-2 rounded-3 text-decoration-none">
+                                <div class="flex-shrink-0" style="width: 40px;">
+                                    {% if displayFace %}
+                                        {% include '_partials/face_zoom.html.twig' with {
+                                            face: displayFace,
+                                            canvasSize: 96,
+                                            padding: 2.2,
+                                            srcWidth: 480,
+                                            srcHeight: 360,
+                                            class: 'rounded-circle border border-2 border-white shadow-sm'
+                                        } only %}
+                                    {% else %}
+                                        <div class="rounded-circle bg-light d-flex align-items-center justify-content-center fw-bold text-muted" style="width: 40px; height: 40px;">
+                                            {{ person.name|slice(0, 1)|upper }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="flex-grow-1 min-w-0">
+                                    <div class="small fw-bold text-dark text-truncate">{{ person.name }}</div>
+                                    <div class="text-muted" style="font-size: 0.72rem;">{{ person.videoFaces|length }} Sichtungen</div>
+                                </div>
+                                <i class="fas fa-chevron-right text-muted small opacity-50"></i>
+                            </a>
+                        {% else %}
+                            <div class="text-center text-muted small py-4">Noch niemand identifiziert.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                {# Wartung (einzige Aktion, die nicht im Header steckt) #}
+                <form action="{{ path('person_cleanup') }}" method="POST"
+                      onsubmit="return confirm('Sollen wirklich alle Personen ohne Sichtungen gelöscht werden?');"
+                      class="text-center mt-3">
+                    <input type="hidden" name="_token" value="{{ csrf_token('person_cleanup') }}">
+                    <button type="submit" class="btn btn-link btn-sm text-muted text-decoration-none">
+                        <i class="fas fa-broom me-1"></i>Verwaiste Personen aufräumen
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 
     <style>
-        .btn-white { background: #fff; border: 1px solid #dee2e6; }
-        .btn-white:hover { background: #f8f9fa; }
+        .min-w-0 { min-width: 0; }
+
+        .stat-icon,
+        .tool-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            border-radius: 12px;
+        }
+        .stat-icon { width: 46px; height: 46px; font-size: 1.1rem; }
+        .tool-icon { width: 42px; height: 42px; font-size: 1.05rem; }
+
+        .queue-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.9rem;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            transition: box-shadow 0.2s;
+        }
+        .queue-pill:hover { box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); }
+        .queue-pill.is-ok { color: #047857; }
+        .queue-pill.is-down { color: #b91c1c; }
+        .queue-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        .queue-pill.is-ok .queue-dot { animation: queue-pulse 2s infinite; }
+        @keyframes queue-pulse {
+            0%   { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
+            70%  { box-shadow: 0 0 0 7px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .video-row,
+        .person-row { transition: background 0.15s; }
+        .video-row:hover,
+        .person-row:hover { background: #f1f5f9; }
+
+        .legend-dot {
+            display: inline-block;
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            margin-right: 0.35rem;
+        }
         .badge { font-weight: 600; letter-spacing: 0.3px; }
-        .list-group-item-action { transition: background 0.2s; }
-        .list-group-item-action:hover { background: #f1f5f9 !important; border-radius: 8px !important; }
     </style>
 {% endblock %}

@@ -4,15 +4,19 @@ declare(strict_types=1);
 
 namespace App\Service\Video\Analyze;
 
+use App\Entity\File;
 use App\Entity\Video;
+use App\Entity\VideoFace;
 use App\Entity\VideoScene;
 use App\Enum\VideoStatus;
 use App\Service\Video\Analyze\Result\EmptyScenesMergerResult;
 use Doctrine\ORM\EntityManagerInterface;
-use Throwable;
 
 class EmptyScenesMerger
 {
+    /** @var array<int, File> */
+    private array $orphanCandidates = [];
+
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
     ) {
@@ -20,36 +24,44 @@ class EmptyScenesMerger
 
     public function mergeEmptyScenes(Video $video): EmptyScenesMergerResult
     {
-        $scenes = $video->getScenes();
-        $originalCount = $scenes->count();
+        $originalCount = $video->getScenes()->count();
 
         if ($originalCount <= 1) {
             return EmptyScenesMergerResult::skipped('Not enough scenes to merge', $originalCount);
         }
 
-        if (!$this->lockAndVerifyStatus($video)) {
-            return EmptyScenesMergerResult::skipped('Status conflict or concurrent processing', $originalCount);
-        }
+        $this->orphanCandidates = [];
 
-        try {
-            /** @var array<VideoScene> $sceneArray */
-            $sceneArray = $scenes->toArray();
-            $scenesWithPerson = $this->extractScenesWithFaces($sceneArray);
+        $result = $this->entityManager->wrapInTransaction(
+            function () use ($video, $originalCount): EmptyScenesMergerResult {
+                if (!$this->lockAndVerifyStatus($video)) {
+                    return EmptyScenesMergerResult::skipped(
+                        'Status conflict or concurrent processing',
+                        $originalCount
+                    );
+                }
 
-            if (count($scenesWithPerson) === 0) {
-                $result = $this->mergeAllScenesIntoOne($video, $sceneArray, $originalCount);
-            } else {
-                $result = $this->mergeWithFaces($video, $sceneArray, $scenesWithPerson, $originalCount);
+                /** @var array<VideoScene> $sceneArray */
+                $sceneArray = array_values($video->getScenes()->toArray());
+                $scenesWithPerson = $this->extractScenesWithFaces($sceneArray);
+
+                if (count($scenesWithPerson) === 0) {
+                    $result = $this->mergeAllScenesIntoOne($video, $sceneArray, $originalCount);
+                } else {
+                    $result = $this->mergeWithFaces($video, $sceneArray, $scenesWithPerson, $originalCount);
+                }
+
+                $this->renumberScenes($video);
+                $this->entityManager->flush();
+
+                $this->removeUnreferencedFiles();
+                $this->entityManager->flush();
+
+                return $result;
             }
+        );
 
-            $this->renumberScenes($video);
-            $this->entityManager->flush();
-
-            return $result;
-        } catch (Throwable $e) {
-            $this->entityManager->rollback();
-            throw $e;
-        }
+        return $result;
     }
 
     /**
@@ -68,28 +80,18 @@ class EmptyScenesMerger
         return $scenesWithPerson;
     }
 
+    /**
+     * Sperrt die Video-Zeile innerhalb der laufenden Transaktion und prüft den Status.
+     * Den Statuswechsel erledigt anschließend der Workflow, nicht dieser Service.
+     */
     private function lockAndVerifyStatus(Video $video): bool
     {
-        $connection = $this->entityManager->getConnection();
-        $connection->beginTransaction();
-
-        $currentStatus = $connection->fetchOne(
+        $currentStatus = $this->entityManager->getConnection()->fetchOne(
             'SELECT status FROM video WHERE id = ? FOR UPDATE',
             [$video->getId()]
         );
 
-        if ($currentStatus !== VideoStatus::MERGING_SCENES->value) {
-            $connection->rollBack();
-            return false;
-        }
-
-        $connection->executeStatement(
-            'UPDATE video SET status = ? WHERE id = ? AND status = ?',
-            [VideoStatus::TAGGING_SCENES->value, $video->getId(), VideoStatus::MERGING_SCENES->value]
-        );
-
-        $connection->commit();
-        return true;
+        return $currentStatus === VideoStatus::MERGING_SCENES->value;
     }
 
     /**
@@ -98,7 +100,7 @@ class EmptyScenesMerger
     private function mergeAllScenesIntoOne(Video $video, array $scenes, int $originalCount): EmptyScenesMergerResult
     {
         $firstScene = $scenes[0];
-        $lastScene = end($scenes);
+        $lastScene = $scenes[count($scenes) - 1];
 
         $firstScene->setEndSeconds($lastScene->getEndSeconds());
 
@@ -159,8 +161,55 @@ class EmptyScenesMerger
 
     private function removeScene(Video $video, VideoScene $scene): void
     {
+        // Thumbnail entkoppeln, damit cascade "remove" keine ggf. geteilte File-Zeile mitlöscht.
+        $thumbnail = $scene->getThumbnailFile();
+        if ($thumbnail !== null) {
+            $scene->setThumbnailFile(null);
+            $this->orphanCandidates[spl_object_id($thumbnail)] = $thumbnail;
+        }
+
         $video->removeScene($scene);
         $this->entityManager->remove($scene);
+    }
+
+    /**
+     * Löscht File-Zeilen der entfernten Szenen nur, wenn nichts anderes sie referenziert.
+     * Die physischen Dateien bleiben bewusst unberührt.
+     */
+    private function removeUnreferencedFiles(): void
+    {
+        foreach ($this->orphanCandidates as $file) {
+            if ($file->getId() === null || $this->isFileReferenced($file)) {
+                continue;
+            }
+
+            $this->entityManager->remove($file);
+        }
+
+        $this->orphanCandidates = [];
+    }
+
+    private function isFileReferenced(File $file): bool
+    {
+        $queries = [
+            'SELECT COUNT(s.id) FROM ' . VideoScene::class . ' s WHERE s.thumbnailFile = :file',
+            'SELECT COUNT(v.id) FROM ' . Video::class . ' v
+                WHERE v.thumbnailFile = :file OR v.convertedFile = :file OR v.sourceFile = :file',
+            'SELECT COUNT(f.id) FROM ' . VideoFace::class . ' f WHERE f.faceImage = :file',
+        ];
+
+        foreach ($queries as $dql) {
+            $count = (int) $this->entityManager
+                ->createQuery($dql)
+                ->setParameter('file', $file)
+                ->getSingleScalarResult();
+
+            if ($count > 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function renumberScenes(Video $video): void
