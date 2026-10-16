@@ -1,0 +1,46 @@
+{#
+Wiederverwendbarer Gesichts-Zoom (Canvas, Stimulus "face-zoom").
+
+Parameter:
+  face        VideoFace (Pflicht)
+  interactive bool   Mausrad / Ziehen / Doppelklick   (Standard: false)
+  toolbar     bool   −/+/Reset-Buttons einblenden      (Standard: false)
+  padding     float  Sichtbarer Ausschnitt = größte Boxseite × padding (Standard: 2.6)
+  canvasSize  int    interne Canvas-Auflösung in px    (Standard: 480)
+  srcWidth    int    imgproxy-Breite                   (Standard: 1600)
+  srcHeight   int    imgproxy-Höhe                     (Standard: 1200)
+  class       string zusätzliche CSS-Klassen
+#}
+{% set box = face.boundingBox %}
+{% set boxJson = box ? ({left: box.Left, top: box.Top, width: box.Width, height: box.Height}|json_encode) : '{}' %}
+{% set isInteractive = interactive|default(false) %}
+{% set size = canvasSize|default(480) %}
+
+<div class="face-zoom position-relative overflow-hidden {{ class|default('') }}"
+     data-controller="face-zoom"
+     data-face-zoom-src-value="{{ imgproxy_url(face.faceImage, srcWidth|default(1600), srcHeight|default(1200), 'fit') }}"
+     data-face-zoom-box-value="{{ boxJson }}"
+     data-face-zoom-padding-value="{{ padding|default(2.6) }}"
+     data-face-zoom-interactive-value="{{ isInteractive ? 'true' : 'false' }}">
+    <canvas data-face-zoom-target="canvas"
+            width="{{ size }}" height="{{ size }}"
+            class="d-block w-100 bg-black"
+            style="aspect-ratio: 1 / 1; height: auto;{{ isInteractive ? ' cursor: grab; touch-action: none;' : '' }}"></canvas>
+
+    {% if toolbar|default(false) %}
+        <div class="position-absolute bottom-0 end-0 m-2 btn-group btn-group-sm shadow">
+            <button type="button" class="btn btn-dark" title="Rauszoomen (−)"
+                    data-action="face-zoom#zoomOut" data-shortcut="- _" data-shortcut-immediate>
+                <i class="bi bi-zoom-out"></i>
+            </button>
+            <button type="button" class="btn btn-dark" title="Zurücksetzen (0)"
+                    data-action="face-zoom#reset" data-shortcut="0" data-shortcut-immediate>
+                <i class="bi bi-arrow-counterclockwise"></i>
+            </button>
+            <button type="button" class="btn btn-dark" title="Reinzoomen (+)"
+                    data-action="face-zoom#zoomIn" data-shortcut="+ =" data-shortcut-immediate>
+                <i class="bi bi-zoom-in"></i>
+            </button>
+        </div>
+    {% endif %}
+</div>

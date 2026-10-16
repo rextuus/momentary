@@ -1,8 +1,7 @@
 <div {{ attributes }} class="person-resolver-container">
-    {# Eigener Stimulus-Controller auf innerem Wrapper (data-controller von {{ attributes }} ist schon "live") #}
-    <div data-controller="resolver-shortcuts">
+    {# Eigener Controller auf innerem Wrapper ({{ attributes }} belegt data-controller bereits mit "live") #}
+    <div data-controller="shortcuts">
 
-        {# Flash-Messages #}
         {% for label, messages in app.flashes %}
             {% for message in messages %}
                 <div class="alert alert-{{ label == 'error' ? 'danger' : label }} alert-dismissible fade show shadow-sm mx-auto mb-3" style="max-width: 90%;">
@@ -16,6 +15,7 @@
 
         {% if person %}
             {% set mainFace = this.activeFace %}
+            {% set adj = this.adjacentFaceIds %}
 
             <div class="row justify-content-center">
                 <div class="col-md-11">
@@ -42,12 +42,14 @@
                             <button type="button" class="btn btn-sm btn-outline-warning shadow-sm"
                                     data-action="live#action"
                                     data-live-action-param="markForReassignment"
+                                    data-shortcut="r"
                                     id="btn-reassign-person">
                                 <i class="bi bi-scissors me-1"></i> Auftrennen <kbd class="ms-1">R</kbd>
                             </button>
                             <button type="button" class="btn btn-sm btn-outline-secondary shadow-sm"
                                     data-action="live#action"
                                     data-live-action-param="skip"
+                                    data-shortcut="s"
                                     id="btn-skip-person">
                                 Überspringen <kbd class="ms-1">S</kbd>
                             </button>
@@ -69,38 +71,40 @@
                                         </span>
                                     </div>
 
-                                    <div class="d-flex flex-wrap gap-4 justify-content-center align-items-start mb-3">
-                                        {# ZOOM #}
-                                        <div class="text-center">
-                                            <small class="text-light opacity-50 d-block mb-2 text-uppercase fw-bold">Gesichts-Zoom</small>
-                                            <div class="d-inline-block shadow-lg border border-4 border-white rounded overflow-hidden bg-black"
-                                                 style="width: 250px; height: 250px; max-width: 100%;">
-                                                {% if mainFace and mainFace.boundingBox %}
-                                                    {% set box = mainFace.boundingBox %}
-                                                    {% set centerX = (box.Left + (box.Width / 2)) * 100 %}
-                                                    {% set centerY = (box.Top + (box.Height / 2)) * 100 %}
-                                                    <img src="{{ imgproxy_url(mainFace.faceImage, 800, 600, 'fit') }}"
-                                                         alt="Zoom"
-                                                         style="display: block; width: 250px; height: 250px;
-                                                                 object-fit: none;
-                                                                 object-position: {{ centerX }}% {{ centerY }}%;">
-                                                {% else %}
-                                                    <div class="text-white p-5">Vorschau nicht verfügbar</div>
-                                                {% endif %}
-                                            </div>
+                                    <div class="row g-3 align-items-start mb-3">
+                                        {# ZOOM (interaktiv) #}
+                                        <div class="col-md-7">
+                                            <small class="text-light opacity-50 d-block mb-2 text-uppercase fw-bold text-center">
+                                                Gesichts-Zoom
+                                                <span class="text-lowercase fw-normal">(Mausrad · Ziehen · + / −)</span>
+                                            </small>
+                                            {% if mainFace %}
+                                                {% include '_partials/face_zoom.html.twig' with {
+                                                    face: mainFace,
+                                                    interactive: true,
+                                                    toolbar: true,
+                                                    canvasSize: 720,
+                                                    padding: 2.4,
+                                                    srcWidth: 2400,
+                                                    srcHeight: 1800,
+                                                    class: 'border border-3 border-white rounded shadow-lg'
+                                                } only %}
+                                            {% else %}
+                                                <div class="text-white-50 text-center p-5 border rounded">Vorschau nicht verfügbar</div>
+                                            {% endif %}
                                         </div>
 
                                         {# KONTEXT #}
-                                        <div class="text-center flex-grow-1" style="min-width: 260px; max-width: 460px;">
-                                            <small class="text-light opacity-50 d-block mb-2 text-uppercase fw-bold">Kontext im Video</small>
-                                            <div class="position-relative d-inline-block shadow border border-1 border-secondary rounded overflow-hidden bg-black w-100">
+                                        <div class="col-md-5">
+                                            <small class="text-light opacity-50 d-block mb-2 text-uppercase fw-bold text-center">Kontext im Video</small>
+                                            <div class="position-relative shadow border border-1 border-secondary rounded overflow-hidden bg-black">
                                                 {% if mainFace %}
                                                     <img src="{{ imgproxy_url(mainFace.faceImage, 800, 600, 'fit') }}"
-                                                         class="img-fluid"
-                                                         style="width: 100%; opacity: 0.4; display: block;"
-                                                         alt="Context">
+                                                         class="img-fluid d-block w-100"
+                                                         style="opacity: 0.45;"
+                                                         alt="Kontext">
                                                     {% if mainFace.boundingBoxStyles %}
-                                                        <div style="position: absolute; border: 2px solid #ff0000;
+                                                        <div style="position: absolute; border: 2px solid #ff0000; box-sizing: border-box;
                                                                     box-shadow: 0 0 12px rgba(255,0,0,0.9); pointer-events: none;
                                                                     {{ mainFace.boundingBoxStyles|raw }}"></div>
                                                     {% endif %}
@@ -111,16 +115,34 @@
 
                                     {# GALERIE #}
                                     <div class="w-100 mt-auto pt-3 border-top border-secondary">
-                                        <small class="text-light opacity-50 d-block mb-2 text-uppercase fw-bold text-center">
-                                            Aufnahmen dieser Person <span class="text-lowercase">(← →)</span>
-                                        </small>
+                                        <div class="d-flex justify-content-center align-items-center gap-3 mb-2">
+                                            {% if person.videoFaces|length > 1 %}
+                                                <button type="button" class="btn btn-sm btn-outline-light py-0 px-2"
+                                                        data-action="live#action"
+                                                        data-live-action-param="selectFace"
+                                                        data-live-face-id-param="{{ adj.prev }}"
+                                                        data-shortcut="arrowleft"
+                                                        title="Voriges Gesicht (←)">
+                                                    <i class="bi bi-chevron-left"></i>
+                                                </button>
+                                            {% endif %}
+                                            <small class="text-light opacity-50 text-uppercase fw-bold">Aufnahmen dieser Person</small>
+                                            {% if person.videoFaces|length > 1 %}
+                                                <button type="button" class="btn btn-sm btn-outline-light py-0 px-2"
+                                                        data-action="live#action"
+                                                        data-live-action-param="selectFace"
+                                                        data-live-face-id-param="{{ adj.next }}"
+                                                        data-shortcut="arrowright"
+                                                        title="Nächstes Gesicht (→)">
+                                                    <i class="bi bi-chevron-right"></i>
+                                                </button>
+                                            {% endif %}
+                                        </div>
                                         <div class="d-flex flex-wrap justify-content-center gap-2 overflow-auto py-2" style="max-height: 160px;">
                                             {% for face in person.videoFaces %}
                                                 {% set isActive = mainFace and face.id == mainFace.id %}
                                                 <div class="position-relative"
                                                      style="cursor: pointer;"
-                                                     data-face-thumb
-                                                     data-active="{{ isActive ? '1' : '0' }}"
                                                      data-action="click->live#action"
                                                      data-live-action-param="selectFace"
                                                      data-live-face-id-param="{{ face.id }}">
@@ -142,7 +164,6 @@
                                     {{ form_start(form) }}
                                     <h5 class="fw-bold mb-3">Zuweisung</h5>
 
-                                    {# Vorschläge #}
                                     {% set suggestions = this.quickSuggestions %}
                                     {% if suggestions %}
                                         <div class="mb-4">
@@ -156,10 +177,10 @@
                                                         <button type="button"
                                                                 class="btn btn-outline-light p-1 border shadow-sm w-100 d-flex flex-column align-items-center position-relative"
                                                                 style="border-radius: 8px; transition: all 0.2s; min-height: 85px;"
-                                                                data-suggestion
                                                                 data-action="live#action"
                                                                 data-live-action-param="selectSuggestedPerson"
                                                                 data-live-id-param="{{ sug.id }}"
+                                                                {% if loop.index <= 9 %}data-shortcut="{{ loop.index }}"{% endif %}
                                                                 title="{{ sug.name }}">
                                                             {% if loop.index <= 9 %}
                                                                 <span class="position-absolute top-0 start-0 badge bg-dark opacity-75" style="font-size: 0.6rem; border-radius: 6px 0 6px 0;">{{ loop.index }}</span>
@@ -193,6 +214,7 @@
                                         </label>
                                         <input type="text"
                                                data-model="newName"
+                                               data-shortcut-focus="n"
                                                class="form-control border-success shadow-sm mb-2"
                                                placeholder="Rufname / Kurzname (z.B. Oma)"
                                                autocomplete="off">
@@ -235,6 +257,8 @@
                                                 class="btn btn-primary btn-lg py-3 shadow fw-bold w-100"
                                                 data-action="live#action"
                                                 data-live-action-param="prevent|processIdentification"
+                                                data-shortcut="ctrl+enter"
+                                                data-shortcut-submit
                                                 id="btn-process-identification">
                                             Speichern & Nächste <kbd class="ms-2">Strg + Enter</kbd>
                                         </button>
@@ -243,6 +267,7 @@
                                                 class="btn btn-outline-danger shadow-sm py-2 w-100"
                                                 data-action="live#action"
                                                 data-live-action-param="markAsUnknown"
+                                                data-shortcut="u"
                                                 id="btn-mark-as-unknown"
                                                 title="Als unbekannt/Fremde markieren">
                                             <i class="bi bi-person-x-fill me-1"></i> Unbekannt <kbd class="ms-1">U</kbd>
@@ -263,6 +288,7 @@
                         <span><kbd>S</kbd> Überspringen</span>
                         <span><kbd>R</kbd> Auftrennen</span>
                         <span><kbd>←</kbd> <kbd>→</kbd> Gesicht wechseln</span>
+                        <span><kbd>+</kbd> <kbd>−</kbd> <kbd>0</kbd> Zoom</span>
                         <span><kbd>1</kbd>–<kbd>9</kbd> Vorschlag</span>
                         <span><kbd>N</kbd> Neuer Name</span>
                         <span><kbd>Esc</kbd> Feld verlassen</span>
@@ -271,7 +297,6 @@
             </div>
 
         {% else %}
-            {# ───────── Leerzustand ───────── #}
             <div class="text-center py-5">
                 <div class="display-1 text-muted mb-4"><i class="bi bi-check2-circle"></i></div>
 
@@ -287,9 +312,9 @@
                 {% endif %}
 
                 {% if not showWasted %}
-                    <div class="alert alert-info d-inline-block px-4 shadow-sm mt-3">
-                        <i class="bi bi-info-circle me-2"></i> Tipp: Aktiviere "Ausgeblendete zeigen", um bereits aussortierte Personen zu sehen.
-                        <div class="form-check form-switch d-inline-block ms-3 mb-0 align-middle">
+                    <div class="alert alert-info d-inline-flex align-items-center gap-3 px-4 shadow-sm mt-3">
+                        <span><i class="bi bi-info-circle me-2"></i> "Ausgeblendete zeigen" aktivieren, um aussortierte Personen zu sehen.</span>
+                        <div class="form-check form-switch mb-0">
                             <input class="form-check-input" type="checkbox" id="showWastedEmpty" data-model="showWasted">
                         </div>
                     </div>

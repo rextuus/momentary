@@ -23,6 +23,8 @@ class PersonResolverComponent extends AbstractController
     use DefaultActionTrait;
     use ComponentWithFormTrait;
 
+    private const MAX_SHOWS = 10;
+
     #[LiveProp]
     public ?int $currentPersonId = null;
 
@@ -61,7 +63,6 @@ class PersonResolverComponent extends AbstractController
 
     /**
      * IDs der in dieser Sitzung übersprungenen Personen.
-     * Sie werden bei der Suche nach der nächsten Person ausgeschlossen.
      *
      * @var int[]
      */
@@ -87,8 +88,7 @@ class PersonResolverComponent extends AbstractController
         }
         if ($currentPersonId) {
             $this->currentPersonId = $currentPersonId;
-            // Wenn wir eine spezifische Person laden, die evtl. ausgeblendet ist,
-            // sollten wir den Filter automatisch aktivieren, damit man sie sieht
+            // Ausgeblendete Person gezielt geladen -> Filter automatisch aktivieren
             $person = $this->personRepository->find($currentPersonId);
             if ($person && $person->getStatus() === PersonStatus::WASTED) {
                 $this->showWasted = true;
@@ -98,10 +98,6 @@ class PersonResolverComponent extends AbstractController
         }
     }
 
-    /**
-     * Wird aufgerufen, wenn "Ausgeblendete zeigen" umgeschaltet wird.
-     * Ist gerade keine Person aktiv, wird sofort nach einer neuen gesucht.
-     */
     public function onShowWastedUpdated(): void
     {
         if (!$this->getUnidentifiedPerson()) {
@@ -114,10 +110,6 @@ class PersonResolverComponent extends AbstractController
         return $this->currentPersonId ? $this->personRepository->find($this->currentPersonId) : null;
     }
 
-    /**
-     * Basis-Query für alle Personen, die noch bearbeitet werden können
-     * (passender Status, nicht übersprungen).
-     */
     private function createCandidateQueryBuilder(): QueryBuilder
     {
         $statuses = [PersonStatus::NEW->value];
@@ -152,16 +144,12 @@ class PersonResolverComponent extends AbstractController
         $qb->groupBy('p.id')
             ->orderBy('scene_count', 'DESC')
             ->addOrderBy('face_count', 'DESC')
-            ->addOrderBy('p.id', 'ASC') // stabiler Tie-Breaker
+            ->addOrderBy('p.id', 'ASC')
             ->setMaxResults(1);
 
         $result = $qb->getQuery()->getOneOrNullResult();
 
-        if ($result) {
-            $this->currentPersonId = (int) $result['id'];
-        } else {
-            $this->currentPersonId = null;
-        }
+        $this->currentPersonId = $result ? (int) $result['id'] : null;
 
         $this->activeFaceId = null;
         $this->newName = '';
@@ -187,6 +175,41 @@ class PersonResolverComponent extends AbstractController
         }
 
         return $faces->first();
+    }
+
+    /**
+     * IDs des vorigen/nächsten Gesichts (zyklisch) für die Pfeil-Navigation.
+     *
+     * @return array{prev: ?int, next: ?int}
+     */
+    public function getAdjacentFaceIds(): array
+    {
+        $none = ['prev' => null, 'next' => null];
+
+        $person = $this->getUnidentifiedPerson();
+        $active = $this->getActiveFace();
+        if (!$person || !$active) {
+            return $none;
+        }
+
+        $ids = array_values(array_map(
+            static fn ($face) => $face->getId(),
+            $person->getVideoFaces()->toArray()
+        ));
+        $count = count($ids);
+        if ($count < 2) {
+            return $none;
+        }
+
+        $index = array_search($active->getId(), $ids, true);
+        if ($index === false) {
+            $index = 0;
+        }
+
+        return [
+            'prev' => $ids[($index - 1 + $count) % $count],
+            'next' => $ids[($index + 1) % $count],
+        ];
     }
 
     #[LiveAction]
@@ -298,15 +321,15 @@ class PersonResolverComponent extends AbstractController
     #[LiveAction]
     public function skip()
     {
-        if ($this->fromQuickResolve) {
-            return $this->redirectToRoute('app_identity_quick_resolve');
+        // Aus Quick/Tinder kommend: showCount erhöhen, sonst taucht dieselbe Person sofort wieder auf
+        if ($this->fromQuickResolve || $this->fromTinder) {
+            $this->bumpShowCount();
+
+            return $this->redirectToRoute(
+                $this->fromQuickResolve ? 'app_identity_quick_resolve' : 'app_identity_tinder_resolve'
+            );
         }
 
-        if ($this->fromTinder) {
-            return $this->redirectToRoute('app_identity_tinder_resolve');
-        }
-
-        // Aktuelle Person merken, damit sie nicht sofort wieder auftaucht
         if ($this->currentPersonId && !in_array($this->currentPersonId, $this->skippedIds, true)) {
             $this->skippedIds[] = $this->currentPersonId;
         }
@@ -316,8 +339,7 @@ class PersonResolverComponent extends AbstractController
     }
 
     /**
-     * Übersprungene wieder zulassen und von vorne suchen
-     * (auch als "Neu laden" im Leerzustand).
+     * Übersprungene wieder zulassen und von vorne suchen.
      */
     #[LiveAction]
     public function reload(): void
@@ -349,6 +371,20 @@ class PersonResolverComponent extends AbstractController
         $this->resetForm();
         $this->loadNextBestPerson();
         return null;
+    }
+
+    private function bumpShowCount(): void
+    {
+        $person = $this->getUnidentifiedPerson();
+        if (!$person) {
+            return;
+        }
+
+        $person->setShowCount($person->getShowCount() + 1);
+        if ($person->getShowCount() >= self::MAX_SHOWS) {
+            $person->setStatus(PersonStatus::UNKNOWN);
+        }
+        $this->entityManager->flush();
     }
 
     /**
@@ -401,7 +437,6 @@ class PersonResolverComponent extends AbstractController
             }
 
             // 4. Ähnliches Alter
-            // Wir vergleichen mit dem Alter des Profile-Faces der Person (falls vorhanden)
             $aAge = $a->getProfileFace()?->getAge();
             $bAge = $b->getProfileFace()?->getAge();
 

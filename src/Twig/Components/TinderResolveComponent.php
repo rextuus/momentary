@@ -2,28 +2,37 @@
 
 namespace App\Twig\Components;
 
-use Symfony\UX\LiveComponent\Attribute\LiveArg;
 use App\Entity\Person;
+use App\Entity\VideoFace;
 use App\Enum\PersonStatus;
 use App\Repository\PersonRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\QueryBuilder;
 use Symfony\UX\LiveComponent\Attribute\AsLiveComponent;
 use Symfony\UX\LiveComponent\Attribute\LiveAction;
+use Symfony\UX\LiveComponent\Attribute\LiveArg;
 use Symfony\UX\LiveComponent\Attribute\LiveProp;
 use Symfony\UX\LiveComponent\DefaultActionTrait;
-use Symfony\UX\LiveComponent\ComponentToolsTrait;
 
 #[AsLiveComponent]
 class TinderResolveComponent
 {
     use DefaultActionTrait;
-    use ComponentToolsTrait;
+
+    private const MAX_SHOWS = 10;
+    private const MAX_THUMBS = 8;
 
     #[LiveProp]
     public ?int $currentPersonId = null;
 
-    #[LiveProp(writable: true)]
+    #[LiveProp]
+    public ?int $activeFaceId = null;
+
+    #[LiveProp(writable: true, onUpdated: 'onStatusesUpdated')]
     public array $statuses = [];
+
+    /** @var array<int, VideoFace[]> */
+    private array $rankedCache = [];
 
     public function __construct(
         private PersonRepository $personRepository,
@@ -40,24 +49,85 @@ class TinderResolveComponent
         $this->loadNext();
     }
 
+    public function onStatusesUpdated(): void
+    {
+        $this->loadNext();
+    }
+
     public function getPerson(): ?Person
     {
-        if (!$this->currentPersonId) {
+        return $this->currentPersonId ? $this->personRepository->find($this->currentPersonId) : null;
+    }
+
+    /**
+     * Gesichter für die Miniaturen: Profilbild zuerst, dann nach Boxgröße (größte zuerst).
+     *
+     * @return VideoFace[]
+     */
+    public function getFaces(): array
+    {
+        $person = $this->getPerson();
+
+        return $person ? array_slice($this->rankFaces($person), 0, self::MAX_THUMBS) : [];
+    }
+
+    public function getActiveFace(): ?VideoFace
+    {
+        $faces = $this->getFaces();
+        if (empty($faces)) {
             return null;
         }
 
-        return $this->personRepository->find($this->currentPersonId);
+        if ($this->activeFaceId) {
+            foreach ($faces as $face) {
+                if ($face->getId() === $this->activeFaceId) {
+                    return $face;
+                }
+            }
+        }
+
+        return $faces[0];
+    }
+
+    /**
+     * @return array{prev: ?int, next: ?int}
+     */
+    public function getAdjacentFaceIds(): array
+    {
+        $none = ['prev' => null, 'next' => null];
+
+        $faces = $this->getFaces();
+        $active = $this->getActiveFace();
+        $count = count($faces);
+        if ($count < 2 || !$active) {
+            return $none;
+        }
+
+        $ids = array_map(static fn (VideoFace $f) => $f->getId(), $faces);
+        $index = array_search($active->getId(), $ids, true);
+        if ($index === false) {
+            $index = 0;
+        }
+
+        return [
+            'prev' => $ids[($index - 1 + $count) % $count],
+            'next' => $ids[($index + 1) % $count],
+        ];
+    }
+
+    #[LiveAction]
+    public function selectFace(#[LiveArg('faceId')] int $id): void
+    {
+        $this->activeFaceId = $id;
     }
 
     #[LiveAction]
     public function markAsUnknown(): void
     {
-        if ($this->currentPersonId) {
-            $person = $this->personRepository->find($this->currentPersonId);
-            if ($person) {
-                $person->setStatus(PersonStatus::UNKNOWN);
-                $this->entityManager->flush();
-            }
+        $person = $this->getPerson();
+        if ($person) {
+            $person->setStatus(PersonStatus::UNKNOWN);
+            $this->entityManager->flush();
         }
 
         $this->loadNext();
@@ -66,15 +136,13 @@ class TinderResolveComponent
     #[LiveAction]
     public function skip(): void
     {
-        if ($this->currentPersonId) {
-            $person = $this->personRepository->find($this->currentPersonId);
-            if ($person) {
-                $person->setShowCount($person->getShowCount() + 1);
-                if ($person->getShowCount() >= 10) {
-                    $person->setStatus(PersonStatus::UNKNOWN);
-                }
-                $this->entityManager->flush();
+        $person = $this->getPerson();
+        if ($person) {
+            $person->setShowCount($person->getShowCount() + 1);
+            if ($person->getShowCount() >= self::MAX_SHOWS) {
+                $person->setStatus(PersonStatus::UNKNOWN);
             }
+            $this->entityManager->flush();
         }
 
         $this->loadNext();
@@ -86,52 +154,135 @@ class TinderResolveComponent
         $person = $this->personRepository->find($personId);
         $detectedPerson = $this->personRepository->find($detectedPersonId);
 
-        if ($person && $detectedPerson) {
+        if ($person && $detectedPerson && $person !== $detectedPerson) {
             foreach ($person->getVideoFaces() as $face) {
                 $face->setPerson($detectedPerson);
             }
             $person->setStatus(PersonStatus::MERGED);
             $person->setMergedInto($detectedPerson);
-            $this->entityManager->persist($person);
+            $person->setIdentified(true);
             $this->entityManager->flush();
         }
 
         $this->loadNext();
     }
 
-    private function loadNext(): void
+    #[LiveAction]
+    public function reload(): void
     {
-        if (empty($this->statuses)) {
-            $this->currentPersonId = null;
-            return;
-        }
-
-        $qb = $this->personRepository->createQueryBuilder('p')
-            ->select('p.id')
-            ->where('p.status IN (:statuses)')
-            ->andWhere('p.showCount < 10')
-            ->setParameter('statuses', array_values($this->statuses))
-            ->orderBy('p.showCount', 'ASC')
-            ->addOrderBy('p.id', 'ASC')
-            ->setMaxResults(1);
-
-        $result = $qb->getQuery()->getOneOrNullResult();
-        $this->currentPersonId = $result ? (int)$result['id'] : null;
+        $this->loadNext();
     }
 
     public function getRemainingCount(): int
     {
-        if (empty($this->statuses)) {
+        $values = $this->statusValues();
+        if (empty($values)) {
             return 0;
         }
 
-        $count = $this->personRepository->createQueryBuilder('p')
+        return (int) $this->createCandidateQueryBuilder($values)
             ->select('COUNT(DISTINCT p.id)')
-            ->where('p.status IN (:statuses)')
-            ->setParameter('statuses', array_values($this->statuses))
             ->getQuery()
             ->getSingleScalarResult();
-            
-        return (int) $count;
+    }
+
+    // ───────── intern ─────────
+
+    private function loadNext(): void
+    {
+        $this->activeFaceId = null;
+        $this->currentPersonId = null;
+
+        $values = $this->statusValues();
+        if (empty($values)) {
+            return;
+        }
+
+        $result = $this->createCandidateQueryBuilder($values)
+            ->select('p.id AS id')
+            ->addSelect('p.showCount AS HIDDEN show_order')
+            ->addSelect('COUNT(f.id) AS HIDDEN face_count')
+            ->groupBy('p.id')
+            ->orderBy('show_order', 'ASC')        // selten gezeigte zuerst
+            ->addOrderBy('face_count', 'DESC')    // dann Personen mit vielen Sichtungen
+            ->addOrderBy('p.id', 'ASC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        $this->currentPersonId = $result ? (int) $result['id'] : null;
+    }
+
+    /**
+     * @param string[] $statusValues
+     */
+    private function createCandidateQueryBuilder(array $statusValues): QueryBuilder
+    {
+        // inner join: Personen ohne Gesichter sind nie sinnvoll anzeigbar
+        return $this->personRepository->createQueryBuilder('p')
+            ->join('p.videoFaces', 'f')
+            ->where('p.status IN (:statuses)')
+            ->andWhere('p.showCount < :maxShows')
+            ->setParameter('statuses', $statusValues)
+            ->setParameter('maxShows', self::MAX_SHOWS);
+    }
+
+    /**
+     * @return string[]
+     */
+    private function statusValues(): array
+    {
+        $values = [];
+        foreach ($this->statuses as $status) {
+            $enum = PersonStatus::tryFrom((string) $status);
+            if ($enum !== null) {
+                $values[] = $enum->value;
+            }
+        }
+
+        return array_values(array_unique($values));
+    }
+
+    /**
+     * @return VideoFace[]
+     */
+    private function rankFaces(Person $person): array
+    {
+        $id = (int) $person->getId();
+        if (isset($this->rankedCache[$id])) {
+            return $this->rankedCache[$id];
+        }
+
+        $faces = $person->getVideoFaces()->toArray();
+        $profile = $person->getProfileFace();
+
+        usort($faces, function (VideoFace $a, VideoFace $b) use ($profile) {
+            if ($profile) {
+                if ($a === $profile && $b !== $profile) {
+                    return -1;
+                }
+                if ($b === $profile && $a !== $profile) {
+                    return 1;
+                }
+            }
+
+            return $this->faceArea($b) <=> $this->faceArea($a);
+        });
+
+        return $this->rankedCache[$id] = $faces;
+    }
+
+    private function faceArea(VideoFace $face): float
+    {
+        if (!method_exists($face, 'getBoundingBox')) {
+            return 0.0;
+        }
+
+        $box = $face->getBoundingBox();
+        if (!is_array($box)) {
+            return 0.0;
+        }
+
+        return (float) ($box['Width'] ?? 0) * (float) ($box['Height'] ?? 0);
     }
 }

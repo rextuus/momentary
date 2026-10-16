@@ -1,138 +1,183 @@
 <div {{ attributes }} class="tinder-resolve-container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h4 class="mb-0">Tinder-Identifizierung</h4>
-        <span class="badge bg-secondary rounded-pill">Noch {{ this.remainingCount }} Personen</span>
-    </div>
+    <div data-controller="shortcuts">
 
-    <div class="card mb-4 shadow-sm border-0">
-        <div class="card-body p-3">
-            <h6 class="card-subtitle mb-2 text-muted small uppercase fw-bold">Status-Filter</h6>
-            <div class="d-flex flex-wrap gap-2 mb-3">
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="checkbox" id="tinder_status_new" value="new" data-model="statuses[]" {% if 'new' in statuses %}checked{% endif %}>
-                    <label class="form-check-label small" for="tinder_status_new">Neu</label>
-                </div>
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="checkbox" id="tinder_status_wasted" value="wasted" data-model="statuses[]" {% if 'wasted' in statuses %}checked{% endif %}>
-                    <label class="form-check-label small" for="tinder_status_wasted">Ausgeblendet</label>
-                </div>
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="checkbox" id="tinder_status_unknown" value="unknown" data-model="statuses[]" {% if 'unknown' in statuses %}checked{% endif %}>
-                    <label class="form-check-label small" for="tinder_status_unknown">Unbekannt</label>
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    {% set person = this.person %}
-    {% if person %}
-        {% set displayFace = person.profileFace ?: person.videoFaces|first %}
-        
-        <div class="tinder-card-wrapper mx-auto" style="max-width: 500px;">
-            <div class="card shadow-lg border-0 overflow-hidden mb-4 position-relative">
-                {% set detectedPerson = null %}
-                {% for face in person.videoFaces %}
-                    {% if face.detection %}
-                        {% set detectedPerson = face.detection %}
-                    {% endif %}
+        {# ───────── Kopf + Filter ───────── #}
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+            <h4 class="mb-0">Tinder-Identifizierung</h4>
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                {% for opt in [{v: 'new', l: 'Neu'}, {v: 'wasted', l: 'Ausgeblendet'}, {v: 'unknown', l: 'Unbekannt'}] %}
+                    <input type="checkbox" class="btn-check" id="tinder_status_{{ opt.v }}" value="{{ opt.v }}"
+                           data-model="statuses[]" autocomplete="off"
+                           {% if opt.v in statuses %}checked{% endif %}>
+                    <label class="btn btn-sm btn-outline-secondary" for="tinder_status_{{ opt.v }}">{{ opt.l }}</label>
                 {% endfor %}
+                <span class="badge bg-secondary rounded-pill ms-2">Noch {{ this.remainingCount }} Personen</span>
+            </div>
+        </div>
 
-                {% if detectedPerson %}
-                    <div class="bg-success text-white p-3 d-flex justify-content-between align-items-center animate__animated animate__fadeInDown" style="z-index: 20;">
-                        <div class="me-2">
-                            <i class="fas fa-magic me-2"></i> Ist das <strong>{{ detectedPerson.name }}</strong>?
-                            <div class="small opacity-75">Gefunden via KI</div>
-                        </div>
-                        <button type="button" 
-                                data-action="live#action" 
-                                data-live-action-param="assignToDetectedPerson" 
-                                data-live-person-id-param="{{ person.id }}" 
-                                data-live-detected-person-id-param="{{ detectedPerson.id }}" 
-                                class="btn btn-light btn-sm rounded-pill px-3 fw-bold shadow-sm">
-                            <i class="fas fa-check me-1"></i> Ja
-                        </button>
-                    </div>
+        {% set person = this.person %}
+        {% if person %}
+            {% set face = this.activeFace %}
+            {% set faces = this.faces %}
+            {% set adj = this.adjacentFaceIds %}
+
+            {# KI-Vorschlag suchen #}
+            {% set detectedPerson = null %}
+            {% for f in person.videoFaces %}
+                {% if f.detection %}
+                    {% set detectedPerson = f.detection %}
                 {% endif %}
+            {% endfor %}
 
-                <div class="card-img-top bg-dark position-relative overflow-hidden" style="aspect-ratio: 1/1;{% if displayFace %} cursor: zoom-in;{% endif %}"
-                     {% if displayFace %}
-                     data-bs-toggle="modal"
-                     data-bs-target="#imageModal"
-                     data-bs-img="{{ imgproxy_url(displayFace.faceImage, 800, 600, 'fit') }}"
-                     data-bs-box="{{ displayFace.boundingBoxStyles }}"
-                     data-bs-caption="Sichtung in {{ displayFace.video.title }}"
-                     {% endif %}>
-                    {% if displayFace %}
-                        <div class="position-relative w-100 h-100">
-                             <img src="{{ imgproxy_url(displayFace.faceImage, 800, 600, 'fit') }}"
-                                 class="img-fluid"
-                                 style="width: 100%; height: 100%; object-fit: contain;">
-                            <div class="position-absolute border border-danger border-3" style="{{ displayFace.boundingBoxStyles|raw }}; pointer-events: none;"></div>
-                        </div>
-                    {% else %}
-                        <div class="d-flex align-items-center justify-content-center h-100 text-white opacity-50">
-                            <i class="fas fa-user-slash fa-5x"></i>
+            <div class="tinder-card-wrapper mx-auto" style="max-width: 560px;">
+                <div class="card shadow-lg border-0 overflow-hidden mb-3">
+
+                    {% if detectedPerson %}
+                        <div class="bg-success text-white p-3 d-flex justify-content-between align-items-center">
+                            <div class="me-2">
+                                <i class="fas fa-magic me-2"></i> Ist das <strong>{{ detectedPerson.name }}</strong>?
+                                <div class="small opacity-75">Gefunden via KI</div>
+                            </div>
+                            <button type="button"
+                                    data-action="live#action"
+                                    data-live-action-param="assignToDetectedPerson"
+                                    data-live-person-id-param="{{ person.id }}"
+                                    data-live-detected-person-id-param="{{ detectedPerson.id }}"
+                                    data-shortcut="j y"
+                                    class="btn btn-light btn-sm rounded-pill px-3 fw-bold shadow-sm">
+                                <i class="fas fa-check me-1"></i> Ja <kbd class="ms-1">J</kbd>
+                            </button>
                         </div>
                     {% endif %}
-                </div>
-                
-                <div class="card-body text-center bg-white p-4">
-                    <h3 class="mb-1 text-dark">{{ person.videoFaces|length }} Sichtungen</h3>
-                    <div class="progress mb-3" style="height: 8px; border-radius: 4px;">
-                        <div class="progress-bar bg-info" role="progressbar" style="width: {{ person.showCount * 10 }}%" aria-valuenow="{{ person.showCount }}" aria-valuemin="0" aria-valuemax="10"></div>
+
+                    {# ───────── Bild: Zoom + Kontext-PiP ───────── #}
+                    <div class="position-relative bg-dark">
+                        {% if face %}
+                            {% include '_partials/face_zoom.html.twig' with {
+                                face: face,
+                                interactive: true,
+                                toolbar: true,
+                                canvasSize: 800,
+                                padding: 2.4,
+                                srcWidth: 2400,
+                                srcHeight: 1800
+                            } only %}
+
+                            <div class="position-absolute bottom-0 start-0 m-2 rounded overflow-hidden border border-2 border-white shadow"
+                                 style="width: 34%; cursor: zoom-in; z-index: 5;"
+                                 title="Kontext (Großansicht)"
+                                 data-bs-toggle="modal"
+                                 data-bs-target="#imageModal"
+                                 data-bs-img="{{ imgproxy_url(face.faceImage, 800, 600, 'fit') }}"
+                                 data-bs-box="{{ face.boundingBoxStyles }}"
+                                 data-bs-caption="Sichtung in {{ face.video.title ?? '' }}">
+                                <div class="position-relative bg-black">
+                                    <img src="{{ imgproxy_url(face.faceImage, 400, 300, 'fit') }}" class="d-block w-100" alt="Kontext">
+                                    {% if face.boundingBoxStyles %}
+                                        <div class="position-absolute border border-danger border-2"
+                                             style="{{ face.boundingBoxStyles|raw }}; box-sizing: border-box; pointer-events: none;"></div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="d-flex align-items-center justify-content-center text-white opacity-50" style="aspect-ratio: 1 / 1;">
+                                <i class="fas fa-user-slash fa-5x"></i>
+                            </div>
+                        {% endif %}
                     </div>
-                    <p class="text-muted small">Wurde bereits {{ person.showCount }} mal übersprungen.</p>
+
+                    {# ───────── Miniaturen ───────── #}
+                    {% if faces|length > 1 %}
+                        <div class="d-flex align-items-center justify-content-center gap-2 p-2 bg-dark border-top border-secondary">
+                            <button type="button" class="btn btn-sm btn-outline-light py-0 px-2"
+                                    data-action="live#action" data-live-action-param="selectFace"
+                                    data-live-face-id-param="{{ adj.prev }}" data-shortcut="arrowup" title="Voriges Gesicht (↑)">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            {% for f in faces %}
+                                {% set isActive = face and f.id == face.id %}
+                                <button type="button" class="p-0 border-0 bg-transparent"
+                                        data-action="live#action" data-live-action-param="selectFace"
+                                        data-live-face-id-param="{{ f.id }}">
+                                    {% include '_partials/face_zoom.html.twig' with {
+                                        face: f,
+                                        canvasSize: 120,
+                                        padding: 2.4,
+                                        srcWidth: 640,
+                                        srcHeight: 480,
+                                        class: 'rounded border border-3 ' ~ (isActive ? 'border-primary' : 'border-secondary opacity-50')
+                                    } only %}
+                                </button>
+                            {% endfor %}
+                            <button type="button" class="btn btn-sm btn-outline-light py-0 px-2"
+                                    data-action="live#action" data-live-action-param="selectFace"
+                                    data-live-face-id-param="{{ adj.next }}" data-shortcut="arrowdown" title="Nächstes Gesicht (↓)">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    {% endif %}
+
+                    {# ───────── Infos ───────── #}
+                    <div class="card-body text-center bg-white py-3">
+                        <h4 class="mb-1 text-dark">{{ person.videoFaces|length }} Sichtungen</h4>
+                        <div class="progress mb-2" style="height: 6px; border-radius: 4px;">
+                            <div class="progress-bar bg-info" role="progressbar" style="width: {{ person.showCount * 10 }}%"></div>
+                        </div>
+                        <p class="text-muted small mb-0">
+                            {{ person.showCount }}× übersprungen · nach 10× automatisch "unbekannt"
+                        </p>
+                    </div>
+
+                    {# ───────── Aktionen ───────── #}
+                    <div class="d-flex justify-content-around align-items-center p-3 border-top bg-light">
+                        <button type="button" class="btn btn-outline-danger btn-lg rounded-circle shadow-sm"
+                                style="width: 76px; height: 76px;"
+                                data-action="live#action" data-live-action-param="markAsUnknown"
+                                data-shortcut="arrowleft x" title="Unbekannt (← / X)">
+                            <i class="fas fa-times fa-2x"></i>
+                        </button>
+
+                        <button type="button" class="btn btn-outline-secondary btn-lg rounded-circle shadow-sm"
+                                style="width: 58px; height: 58px;"
+                                data-action="live#action" data-live-action-param="skip"
+                                data-shortcut="s space" title="Überspringen (S / Leertaste)">
+                            <i class="fas fa-forward"></i>
+                        </button>
+
+                        <a href="{{ path('app_identity_resolve', {currentPersonId: person.id, fromTinder: 1}) }}"
+                           class="btn btn-success btn-lg rounded-circle shadow-lg d-flex align-items-center justify-content-center"
+                           style="width: 76px; height: 76px;"
+                           data-shortcut="arrowright i enter" title="Identifizieren (→ / I / Enter)">
+                            <i class="fas fa-heart fa-2x"></i>
+                        </a>
+                    </div>
                 </div>
 
-                <!-- Swipe Buttons / Action Buttons -->
-                <div class="d-flex justify-content-around p-4 border-top bg-light">
-                    <!-- DISLIKE (Unknown) -->
-                    <button data-action="live#action" data-live-action-param="markAsUnknown" class="btn btn-outline-danger btn-lg rounded-circle shadow-sm" style="width: 80px; height: 80px;">
-                        <i class="fas fa-times fa-2x"></i>
-                    </button>
-
-                    <!-- SKIP (Next) -->
-                    <button data-action="live#action" data-live-action-param="skip" class="btn btn-outline-secondary btn-lg rounded-circle shadow-sm" style="width: 60px; height: 60px; margin-top: 10px;">
-                        <i class="fas fa-forward"></i>
-                    </button>
-
-                    <!-- LIKE (Identify) -->
-                    <a href="{{ path('app_identity_resolve', {currentPersonId: person.id, fromTinder: 1}) }}" class="btn btn-success btn-lg rounded-circle shadow-lg d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
-                        <i class="fas fa-heart fa-2x"></i>
-                    </a>
+                <div class="d-flex flex-wrap justify-content-center gap-3 small text-muted">
+                    <span><kbd>←</kbd>/<kbd>X</kbd> Unbekannt</span>
+                    <span><kbd>S</kbd>/<kbd>Space</kbd> Überspringen</span>
+                    <span><kbd>→</kbd>/<kbd>I</kbd> Identifizieren</span>
+                    <span><kbd>↑</kbd><kbd>↓</kbd> Gesicht</span>
+                    <span><kbd>+</kbd><kbd>−</kbd><kbd>0</kbd> Zoom</span>
                 </div>
             </div>
-            
-            <div class="text-center text-muted small mt-2">
-                <p><i class="fas fa-info-circle me-1"></i> Klicke auf das Herz, um diese Person zu benennen. Klicke auf das X, wenn sie unbekannt ist.</p>
+        {% else %}
+            <div class="alert alert-info text-center py-5 shadow-sm border-0">
+                <i class="fas fa-check-circle fa-4x mb-3 d-block text-success"></i>
+                <h3>Alle Personen durchgesehen!</h3>
+                <p class="mb-0">Es gibt keine weiteren Personen, die deinen Filterkriterien entsprechen.</p>
+                <div class="mt-4">
+                    <button type="button" class="btn btn-primary"
+                            data-action="live#action" data-live-action-param="reload">
+                        Neu laden
+                    </button>
+                </div>
             </div>
-        </div>
-    {% else %}
-        <div class="alert alert-info text-center py-5 shadow-sm border-0">
-            <i class="fas fa-check-circle fa-4x mb-3 d-block text-success"></i>
-            <h3>Alle Personen durchgesehen!</h3>
-            <p class="mb-0">Es gibt keine weiteren Personen, die deinen Filterkriterien entsprechen.</p>
-            <div class="mt-4">
-                <button class="btn btn-primary" data-action="live#emit" data-event="refresh">Neu laden</button>
-            </div>
-        </div>
-    {% endif %}
+        {% endif %}
+    </div>
 
     <style>
-        .tinder-card-wrapper {
-            animation: fadeIn 0.3s ease-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .tinder-resolve-container .btn-lg {
-            transition: transform 0.1s;
-        }
-        .tinder-resolve-container .btn-lg:active {
-            transform: scale(0.9);
-        }
+        .tinder-resolve-container .btn-lg { transition: transform 0.1s; }
+        .tinder-resolve-container .btn-lg:active { transform: scale(0.92); }
     </style>
-
 </div>

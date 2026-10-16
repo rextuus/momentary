@@ -1,39 +1,155 @@
 <div {{ attributes }}>
-    {% set person = this.person %}
-    
-    <div class="container mt-4">
-        <h3>Massen-Identifizierung für {{ person.name }}</h3>
-        <p class="text-muted">Klicke auf Gesichter, die <strong>nicht</strong> zu dieser Person gehören (sie werden grau). Klicke anschließend auf "Weiter", um die Verifizierung abzuschließen.</p>
+    <div data-controller="shortcuts">
+        {% set person = this.person %}
 
-        <div class="row g-2">
-            {% for face in this.unverifiedFaces %}
-                {% set isSelected = face.id in selectedForRemoval %}
-                <div class="col-6 col-md-4 col-lg-3">
-                    <button type="button" class="card h-100 border-2 {{ isSelected ? 'border-danger' : 'border-success' }} shadow-sm overflow-hidden position-relative appearance-card bg-black w-100 p-0 text-start" 
-                         style="cursor: pointer; {{ isSelected ? 'filter: grayscale(1); opacity: 0.6;' : '' }}"
-                         data-action="live#action"
-                         data-live-action-param="toggleSelection"
-                         data-live-face-id-param="{{ face.id }}">
-                        
-                        <div class="position-relative d-inline-block w-100">
-                            <img src="{{ imgproxy_url(face.faceImage, 800, 600, 'fit') }}"
-                                 class="img-fluid"
-                                 style="width: 100%;">
-                            {% if face.boundingBox %}
-                                <div class="position-absolute border border-danger border-2" style="{{ face.boundingBoxStyles|raw }}; box-sizing: border-box; pointer-events: none;"></div>
-                            {% endif %}
+        {% if not person %}
+            <div class="container mt-4">
+                <div class="alert alert-warning">Diese Person existiert nicht mehr.</div>
+                <a href="{{ path('app_identity_random_mass_face_resolve') }}" class="btn btn-primary">Nächste Person</a>
+            </div>
+        {% else %}
+            {% set faces = this.unverifiedFaces %}
+            {% set total = this.totalCount %}
+            {% set open = this.unverifiedCount %}
+            {% set profileFace = person.profileFaceObject %}
+
+            <div class="container mt-4 pb-5">
+
+                {# ───────── Kopf ───────── #}
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    {% if profileFace %}
+                        <div style="width: 64px;" class="flex-shrink-0">
+                            {% include '_partials/face_zoom.html.twig' with {
+                                face: profileFace,
+                                canvasSize: 128,
+                                padding: 2.2,
+                                srcWidth: 640,
+                                srcHeight: 480,
+                                class: 'rounded-circle border border-2 border-white shadow-sm'
+                            } only %}
                         </div>
-                    </button>
+                    {% endif %}
+                    <div class="flex-grow-1">
+                        <h3 class="mb-0">Massen-Prüfung: {{ person.name }}</h3>
+                        <div class="text-muted small">
+                            {{ total - open }} von {{ total }} geprüft · {{ open }} offen
+                        </div>
+                    </div>
                 </div>
-            {% endfor %}
-        </div>
 
-        <div class="mt-4">
-            <button class="btn btn-primary btn-lg"
-                    data-action="live#action"
-                    data-live-action-param="submit">
-                Weiter
-            </button>
-        </div>
+                {% if total > 0 %}
+                    <div class="progress mb-4" style="height: 6px;">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ ((total - open) / total * 100)|round }}%"></div>
+                    </div>
+                {% endif %}
+
+                {% if faces|length > 0 %}
+                    <p class="text-muted">
+                        Klicke auf Gesichter, die <strong>nicht</strong> zu <em>{{ person.name }}</em> gehören (rot markiert).
+                        Alle anderen gelten mit "Weiter" als bestätigt.
+                    </p>
+
+                    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                data-action="live#action" data-live-action-param="selectAll" data-shortcut="a">
+                            Alle markieren <kbd>A</kbd>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                data-action="live#action" data-live-action-param="clearSelection" data-shortcut="escape">
+                            Auswahl aufheben <kbd>Esc</kbd>
+                        </button>
+                        <span class="ms-auto small text-muted">
+                            <strong class="{{ selectedForRemoval|length > 0 ? 'text-danger' : '' }}">{{ selectedForRemoval|length }}</strong> von {{ faces|length }} werden entfernt
+                        </span>
+                    </div>
+
+                    {# ───────── Kacheln ───────── #}
+                    <div class="row row-cols-2 row-cols-md-3 row-cols-xl-5 g-3">
+                        {% for face in faces %}
+                            {% set isSelected = face.id in selectedForRemoval %}
+                            {% set key = loop.index < 10 ? loop.index : (loop.index == 10 ? '0' : '') %}
+                            <div class="col">
+                                <button type="button"
+                                        class="mass-tile w-100 p-0 border-0 bg-transparent position-relative text-start {{ isSelected ? 'is-selected' : '' }}"
+                                        data-action="live#action"
+                                        data-live-action-param="toggleSelection"
+                                        data-live-face-id-param="{{ face.id }}"
+                                        {% if key != '' %}data-shortcut="{{ key }}"{% endif %}>
+                                    {% include '_partials/face_zoom.html.twig' with {
+                                        face: face,
+                                        canvasSize: 360,
+                                        padding: 3,
+                                        srcWidth: 1200,
+                                        srcHeight: 900,
+                                        class: 'rounded'
+                                    } only %}
+
+                                    {% if key != '' %}
+                                        <span class="position-absolute top-0 start-0 m-2 badge bg-dark opacity-75">{{ key }}</span>
+                                    {% endif %}
+
+                                    {% if isSelected %}
+                                        <span class="position-absolute top-50 start-50 translate-middle badge bg-danger fs-6 shadow">
+                                            <i class="bi bi-x-lg me-1"></i> gehört nicht dazu
+                                        </span>
+                                    {% endif %}
+                                </button>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mt-4 d-flex align-items-center gap-3">
+                        <button type="button" class="btn btn-primary btn-lg px-5 shadow"
+                                data-action="live#action" data-live-action-param="submit"
+                                data-shortcut="enter">
+                            Weiter <kbd class="ms-2">Enter</kbd>
+                        </button>
+                        <span class="text-muted small">
+                            {% if selectedForRemoval|length > 0 %}
+                                {{ selectedForRemoval|length }} werden zu "Unbekannt" verschoben, {{ faces|length - selectedForRemoval|length }} bestätigt.
+                            {% else %}
+                                Alle {{ faces|length }} werden als korrekt bestätigt.
+                            {% endif %}
+                        </span>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-3 mt-4 small text-muted">
+                        <span><kbd>1</kbd>–<kbd>9</kbd>, <kbd>0</kbd> Kachel markieren</span>
+                        <span><kbd>A</kbd> Alle markieren</span>
+                        <span><kbd>Esc</kbd> Auswahl aufheben</span>
+                        <span><kbd>Enter</kbd> Weiter</span>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <div class="display-1 text-success mb-3"><i class="bi bi-check2-circle"></i></div>
+                        <h3 class="fw-light">Alle Gesichter von {{ person.name }} sind geprüft</h3>
+                        <div class="mt-4 d-flex justify-content-center gap-2">
+                            <a href="{{ path('app_identity_random_mass_face_resolve') }}" class="btn btn-primary px-4" data-shortcut="enter n">
+                                Nächste Person <kbd class="ms-1">Enter</kbd>
+                            </a>
+                            <a href="{{ path('person_detail', {id: person.id}) }}" class="btn btn-outline-secondary px-4">Zur Person</a>
+                            <a href="{{ path('app_dashboard') }}" class="btn btn-outline-secondary px-4">Dashboard</a>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
     </div>
+
+    <style>
+        .mass-tile {
+            cursor: pointer;
+            border-radius: 0.5rem;
+            outline: 3px solid transparent;
+            outline-offset: -3px;
+            transition: outline-color 0.15s, filter 0.15s, opacity 0.15s;
+        }
+        .mass-tile:hover { outline-color: rgba(var(--bs-success-rgb), 0.6); }
+        .mass-tile.is-selected {
+            outline-color: var(--bs-danger);
+            filter: grayscale(1);
+            opacity: 0.65;
+        }
+        .mass-tile.is-selected .badge { filter: none; }
+    </style>
 </div>
