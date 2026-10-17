@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Security\Voter;
 
 use App\Entity\User;
@@ -14,19 +16,23 @@ class VideoSceneAccessVoter extends Voter
     public const VIEW = 'SCENE_VIEW';
 
     public function __construct(
-        private Security $security
-    ) {
-    }
+        private Security $security,
+    ) {}
 
     protected function supports(string $attribute, mixed $subject): bool
     {
         return $attribute === self::VIEW && $subject instanceof VideoScene;
     }
 
-    protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token, ?Vote $vote = null): bool
-    {
+    protected function voteOnAttribute(
+        string $attribute,
+        mixed $subject,
+        #[\SensitiveParameter]
+        TokenInterface $token,
+        ?Vote $vote = null,
+    ): bool {
         $user = $token->getUser();
-        
+
         // Admin always has access
         if ($this->security->isGranted('ROLE_ADMIN')) {
             return true;
@@ -58,7 +64,7 @@ class VideoSceneAccessVoter extends Voter
         if ($this->security->isGranted(VideoAccessVoter::VIEW, $scene->getVideo())) {
             return true;
         }
-        
+
         return false;
     }
 }

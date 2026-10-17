@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller;
 
 use App\Enum\PersonStatus;
@@ -12,14 +14,23 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-class DashboardController extends AbstractController
+final class DashboardController extends AbstractController
 {
     /** Video-Status, die "in Bearbeitung" bedeuten. */
-    private const VIDEO_ACTIVE_STATUSES = ['downloading', 'scene_detection', 'splitting', 'analyzing_faces', 'optimizing'];
+    private const VIDEO_ACTIVE_STATUSES = [
+        'downloading',
+        'scene_detection',
+        'splitting',
+        'analyzing_faces',
+        'optimizing',
+    ];
 
     #[Route('/', name: 'app_dashboard')]
-    public function index(PersonRepository $personRepo, VideoRepository $videoRepo, QueueHealthChecker $queueHealthChecker): Response
-    {
+    public function index(
+        PersonRepository $personRepo,
+        VideoRepository $videoRepo,
+        QueueHealthChecker $queueHealthChecker,
+    ): Response {
         // Personen: eine einzige gruppierte Query statt 5 einzelner counts
         $personCounts = $this->countByStatus($personRepo->createQueryBuilder('p'), 'p');
 
@@ -30,10 +41,11 @@ class DashboardController extends AbstractController
 
         // Anteil der "relevanten" Personen (ohne gemergte/ausgeblendete), die identifiziert sind
         $relevant = max(0, $total - $merged - $wasted);
-        $identifiedPct = $relevant > 0 ? (int) round($identified / $relevant * 100) : 0;
+        $identifiedPct = $relevant > 0 ? (int) round(($identified / $relevant) * 100) : 0;
 
         // Videos: Pipeline-Zähler (bei abweichendem Property-Namen einfach leer lassen)
         $videoCounts = [];
+        // @mago-expect lint:no-empty-catch-clause
         try {
             $videoCounts = $this->countByStatus($videoRepo->createQueryBuilder('v'), 'v');
         } catch (QueryException) {

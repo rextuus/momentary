@@ -13,9 +13,9 @@ use Symfony\Component\Messenger\Middleware\StackInterface;
 
 final class DiscardGoneVideoMessageMiddleware implements MiddlewareInterface
 {
-    public function __construct(private readonly LoggerInterface $logger)
-    {
-    }
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
 
     public function handle(Envelope $envelope, StackInterface $stack): Envelope
     {
@@ -29,7 +29,7 @@ final class DiscardGoneVideoMessageMiddleware implements MiddlewareInterface
                 $this->logger->info(sprintf(
                     'Verwerfe Message %s: %s',
                     get_class($envelope->getMessage()),
-                    $gone[array_key_first($gone)]->getMessage()
+                    $gone[array_key_first($gone)]->getMessage(),
                 ));
 
                 return $envelope; // gilt als erfolgreich verarbeitet -> ack

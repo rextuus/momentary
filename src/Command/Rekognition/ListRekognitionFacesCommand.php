@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Command\Rekognition;
 
 use App\Service\Aws\AmazonRekognitionService;
@@ -16,7 +18,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class ListRekognitionFacesCommand extends Command
 {
     public function __construct(
-        private AmazonRekognitionService $rekognitionService
+        private AmazonRekognitionService $rekognitionService,
     ) {
         parent::__construct();
     }
@@ -30,26 +32,23 @@ class ListRekognitionFacesCommand extends Command
 
         try {
             $faces = $this->rekognitionService->listFaces();
-            
+
             if (empty($faces)) {
-                $io->warning("Die Collection ist leer.");
+                $io->warning('Die Collection ist leer.');
                 return Command::SUCCESS;
             }
 
-            $io->table(
-                ['FaceId', 'ImageId', 'ExternalImageId', 'Confidence'],
-                array_map(fn($face) => [
-                    $face['FaceId'],
-                    $face['ImageId'],
-                    $face['ExternalImageId'] ?? 'N/A',
-                    $face['Confidence']
-                ], $faces)
-            );
+            $io->table(['FaceId', 'ImageId', 'ExternalImageId', 'Confidence'], array_map(static fn($face) => [
+                $face['FaceId'],
+                $face['ImageId'],
+                $face['ExternalImageId'] ?? 'N/A',
+                $face['Confidence'],
+            ], $faces));
 
-            $io->success(sprintf("Es wurden %d Gesichter gefunden.", count($faces)));
+            $io->success(sprintf('Es wurden %d Gesichter gefunden.', count($faces)));
             return Command::SUCCESS;
         } catch (\Exception $e) {
-            $io->error("AWS Fehler: " . $e->getMessage());
+            $io->error('AWS Fehler: ' . $e->getMessage());
             return Command::FAILURE;
         }
     }

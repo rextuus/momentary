@@ -6,7 +6,7 @@ Momentary ist ein System zur automatisierten Analyse und Katalogisierung von Vid
 Das Ziel ist es, große Mengen an Videomaterial durchsuchbar zu machen, indem automatisch erkannt wird, wer wann in welchem Video zu sehen ist.
 
 ## 2. Tech Stack
-- **Backend:** PHP 8.5+ mit Symfony 8.0 (Full-Stack Framework)
+- **Backend:** PHP 8.5+ mit Symfony 8.1 (Full-Stack Framework)
 - **Datenbank:** MySQL 8.0 (verwaltet über Doctrine ORM)
 - **Frontend:** Twig-Templates, Symfony UX (Twig Components, Live Components), Sass für Styling, Webpack Encore
 - **Asynchrone Verarbeitung:** Symfony Messenger (mit Doctrine-Transport)

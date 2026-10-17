@@ -6,15 +6,12 @@ namespace App\Service\Video\Processing\Handler\ThumbnailExtraction;
 
 use App\Repository\VideoRepository;
 use App\Repository\VideoSceneRepository;
-use App\Service\Storage\FileManager;
 use App\Service\Storage\StoragePathProvider;
 use App\Service\Video\Analyze\SceneThumbnailExtractor;
 use App\Service\Video\Processing\Attribute\StepOrder;
-use App\Service\Video\Processing\Message\Splitting\Video\SplitVideoInFramesStepMessage;
 use App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractLastSceneThumbnailStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
-use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
@@ -60,7 +57,7 @@ class ExtractLastSceneThumbnailStepMessageHandler extends AbstractExtractSceneTh
 
             $successMsg = sprintf(
                 'Video "%s" seems to contain only 1 Scene!! All scenes successfully thumbnail decorated.',
-                $video->getTitle()
+                $video->getTitle(),
             );
 
             $this->finishCurrentStep($successMsg);
@@ -74,15 +71,15 @@ class ExtractLastSceneThumbnailStepMessageHandler extends AbstractExtractSceneTh
             'Decorated scene #%d with thumbnail. Video "%s" was completely decorated with scene thumbnail: %d scenes decorated!',
             $message->getCurrentSceneId(),
             $video->getTitle(),
-            $message->getCurrentSceneId()
+            $message->getCurrentSceneId(),
         );
         $this->finishCurrentStep($successMsg);
     }
 
     public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
     {
-//        /** @var SplitVideoInFramesStepMessage $nextStepMessage */
-//        $nextStepMessage->videoPath = "";
+        //        /** @var SplitVideoInFramesStepMessage $nextStepMessage */
+        //        $nextStepMessage->videoPath = "";
     }
 
     public function isIntermediateStep(): bool

@@ -52,13 +52,11 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
         $sourceAbsolutePath = $this->pathProvider->getAbsolutePath($sourceFileEntity);
 
         if (!file_exists($sourceAbsolutePath)) {
-            $this->stopProcessing(
-                sprintf(
-                    '[⚠] Video "%s" source file could not be found in storage: "%s".',
-                    $video->getId(),
-                    $sourceFileEntity->getRelativePath()
-                )
-            );
+            $this->stopProcessing(sprintf(
+                '[⚠] Video "%s" source file could not be found in storage: "%s".',
+                $video->getId(),
+                $sourceFileEntity->getRelativePath(),
+            ));
             return;
         }
 
@@ -86,6 +84,7 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
             $video->setConvertedFile(null);
             $this->entityManager->flush();
 
+            // @mago-expect lint:no-empty-catch-clause
             try {
                 $this->entityManager->remove($existingConverted);
                 $this->entityManager->flush();
@@ -101,7 +100,9 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
         $targetAbsolutePath = $this->pathProvider->getAbsolutePath($convertedFile);
 
         if (!$this->videoAnalyzer->convertToMp4($sourceAbsolutePath, $targetAbsolutePath)) {
-            @unlink($targetAbsolutePath);
+            if (is_file($targetAbsolutePath)) {
+                unlink($targetAbsolutePath);
+            }
             $this->stopProcessing(sprintf('[⚠] Conversion for video "%s" failed', $video->getTitle()));
             return;
         }
@@ -113,7 +114,9 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
             $video->setConvertedFile($convertedFile);
             $this->entityManager->flush();
         } catch (\Throwable $e) {
-            @unlink($targetAbsolutePath);
+            if (is_file($targetAbsolutePath)) {
+                unlink($targetAbsolutePath);
+            }
             $this->stopProcessing(sprintf('[⚠] Conversion failed: %s', $e->getMessage()));
             return;
         }
@@ -121,7 +124,5 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
         $this->finishCurrentStep(sprintf('Conversion for video "%s" succeeded', $video->getTitle()));
     }
 
-    public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
-    {
-    }
+    public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void {}
 }

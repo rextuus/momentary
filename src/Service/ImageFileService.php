@@ -1,17 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service;
 
 use App\Service\Storage\StoragePathProvider;
 use League\Flysystem\FilesystemOperator;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
-use App\Service\PathConstants;
 
 class ImageFileService
 {
     public function __construct(
         private FilesystemOperator $filesystem,
-        private StoragePathProvider $pathProvider
+        private StoragePathProvider $pathProvider,
     ) {}
 
     public function getFilesystem(): FilesystemOperator

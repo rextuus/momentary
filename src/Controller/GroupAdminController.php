@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller;
 
+use App\Entity\User;
 use App\Entity\UserGroup;
 use App\Repository\UserGroupRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -13,11 +16,11 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/admin/groups')]
 #[IsGranted('ROLE_ADMIN')]
-class GroupAdminController extends AbstractController
+final class GroupAdminController extends AbstractController
 {
     public function __construct(
         private UserGroupRepository $repository,
-        private EntityManagerInterface $entityManager
+        private EntityManagerInterface $entityManager,
     ) {}
 
     #[Route('/', name: 'app_admin_groups', methods: ['GET'])]
@@ -31,8 +34,13 @@ class GroupAdminController extends AbstractController
     #[Route('/create', name: 'app_admin_groups_create', methods: ['GET', 'POST'])]
     public function create(Request $request): Response
     {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            throw $this->createAccessDeniedException();
+        }
+
         $group = new UserGroup();
-        $group->setOwner($this->getUser()); // Admin as owner for now
+        $group->setOwner($user); // Admin as owner for now
         $form = $this->createForm(\App\Form\UserGroupType::class, $group);
         $form->handleRequest($request);
 
@@ -44,7 +52,7 @@ class GroupAdminController extends AbstractController
 
         return $this->render('admin/groups/form.html.twig', [
             'form' => $form,
-            'title' => 'Gruppe erstellen'
+            'title' => 'Gruppe erstellen',
         ]);
     }
 
@@ -58,7 +66,7 @@ class GroupAdminController extends AbstractController
 
         $member = new \App\Entity\UserGroupMember();
         $member->setUserGroup($group);
-        
+
         $form = $this->createForm(\App\Form\UserGroupMemberType::class, $member);
         $form->handleRequest($request);
 
@@ -67,7 +75,7 @@ class GroupAdminController extends AbstractController
             $this->entityManager->flush();
             return $this->redirectToRoute('app_admin_groups_members', ['id' => $id]);
         }
-        
+
         return $this->render('admin/groups/members.html.twig', [
             'group' => $group,
             'form' => $form->createView(),
@@ -82,7 +90,7 @@ class GroupAdminController extends AbstractController
             $this->entityManager->remove($member);
             $this->entityManager->flush();
         }
-        
+
         return $this->redirectToRoute('app_admin_groups_members', ['id' => $id]);
     }
 }

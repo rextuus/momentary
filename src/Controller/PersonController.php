@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 namespace App\Controller;
 
 use App\Entity\Person;
@@ -9,16 +12,17 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/person')]
-class PersonController extends AbstractController
+final class PersonController extends AbstractController
 {
     #[Route('/{id}/detail', name: 'person_detail')]
     public function details(Person $person): Response
     {
         // Get VideoFaces sorted by their associated timestamps
         $videoFaces = $person->getVideoFaces()->toArray();
-        usort($videoFaces, fn ($a, $b) => $a->getTimestamp() <=> $b->getTimestamp());
+        usort($videoFaces, static fn($a, $b) => $a->getTimestamp() <=> $b->getTimestamp());
 
         return $this->render('person/detail.html.twig', [
             'person' => $person,
@@ -42,8 +46,12 @@ class PersonController extends AbstractController
     }
 
     #[Route('/cleanup', name: 'person_cleanup', methods: ['POST'])]
-    public function cleanup(PersonRepository $personRepository, EntityManagerInterface $entityManager, Request $request): Response
-    {
+    #[IsGranted('ROLE_ADMIN')]
+    public function cleanup(
+        PersonRepository $personRepository,
+        EntityManagerInterface $entityManager,
+        Request $request,
+    ): Response {
         if (!$this->isCsrfTokenValid('person_cleanup', $request->request->get('_token'))) {
             $this->addFlash('danger', 'Ungültiges CSRF-Token.');
             return $this->redirectToRoute('app_dashboard');

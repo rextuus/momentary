@@ -61,6 +61,8 @@
                                     <a href="{{ path('app_admin_video_groups', {id: video.id}) }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 ms-2">
                                         <i class="fas fa-shield-alt me-1"></i> Zugriff verwalten
                                     </a>
+                                {% endif %}
+                                {% if is_granted('VIDEO_EDIT', video) %}
                                     <div class="mt-2 d-flex gap-2">
                                         <form action="{{ path('video_update_scenes_public', {id: video.id}) }}" method="post" onsubmit="return confirm('Möchtest du wirklich alle Szenen auf öffentlich setzen?');">
                                             <input type="hidden" name="_token" value="{{ csrf_token('update-scenes-public' ~ video.id) }}">
@@ -152,9 +154,11 @@
                                 <h5 class="alert-heading fw-bold mb-1">Analyse fehlgeschlagen</h5>
                                 <p class="mb-0 font-monospace small">{{ video.errorMessage }}</p>
                                 <hr>
+                                {% if is_granted('VIDEO_EDIT', video) %}
                                 <div class="d-flex gap-2 mt-3">
                                     <a href="{{ path('app_video_trigger', {id: video.id, step: 'reset'}) }}" class="btn btn-sm btn-outline-danger">Analyse zurücksetzen</a>
                                 </div>
+                                {% endif %}
                             </div>
                         </div>
                     {% endif %}
@@ -196,6 +200,7 @@
                         <a href="{{ path('video_timeline', {id: video.id}) }}" class="btn btn-outline-primary rounded-pill mb-2">
                             <i class="fas fa-chart-line me-2"></i> Timeline anzeigen
                         </a>
+                        {% if is_granted('VIDEO_EDIT', video) %}
                         <hr>
                         <h6 class="small text-muted fw-bold text-uppercase mb-3">Thumbnail</h6>
                         <form action="{{ path('video_extract_thumbnail', {id: video.id}) }}" method="post" id="extract-thumbnail-form" data-action="submit->video-player#prepareThumbnail">
@@ -216,9 +221,11 @@
                         </form>
                         <hr>
                         <h6 class="small text-muted fw-bold text-uppercase mb-3">Jellyfin Integration</h6>
-                        {% if video.status.value == 'completed' %}
+                        {% if video.jellyfinItemId %}
+                            <p class="small text-muted"><i class="fas fa-check-circle text-success me-1"></i> Bereits in Jellyfin vorhanden.</p>
+                        {% elseif video.status.value == 'completed' %}
                             <form action="{{ path('app_jellyfin_export', {id: video.id}) }}" method="post">
-                                <input type="hidden" name="video_id" value="{{ video.id }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token('jellyfin-export' ~ video.id) }}">
                                 <p class="small text-muted mb-2">Exportiere dieses Video in deine Jellyfin-Mediathek.</p>
                                 <button type="submit" class="btn btn-primary w-100 rounded-pill" {{ not video.sourceFile ? 'disabled' }}>
                                     <i class="fas fa-share-square me-2"></i> Zu Jellyfin exportieren
@@ -245,6 +252,7 @@
                             <span><i class="fas fa-trash-alt me-2"></i> Lokale Dateien löschen</span>
                             <i class="fas fa-chevron-right small opacity-50"></i>
                         </a>
+                        {% endif %}
                     </div>
                 </div>
             </div>

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service\Tag;
 
 use App\Entity\Tag;
@@ -9,16 +11,15 @@ use Doctrine\ORM\EntityManagerInterface;
 class TagInitializer
 {
     public function __construct(
-        private EntityManagerInterface $entityManager
-    ) {
-    }
+        private EntityManagerInterface $entityManager,
+    ) {}
 
     public function initialize(): void
     {
         $data = [
             'Metadata' => [
                 'color' => '#9b59b6',
-                'tags' => ['Smartphone', 'Camera', 'Actioncam', 'Drohne', 'Hochkant', 'Querformat']
+                'tags' => ['Smartphone', 'Camera', 'Actioncam', 'Drohne', 'Hochkant', 'Querformat'],
             ],
         ];
 
@@ -32,7 +33,9 @@ class TagInitializer
             }
 
             foreach ($config['tags'] as $tagName) {
-                $tag = $this->entityManager->getRepository(Tag::class)->findOneBy(['name' => $tagName, 'category' => $category]);
+                $tag = $this->entityManager
+                    ->getRepository(Tag::class)
+                    ->findOneBy(['name' => $tagName, 'category' => $category]);
                 if (!$tag) {
                     $tag = new Tag();
                     $tag->setName($tagName);

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Command\Rekognition;
 
 use App\Service\Aws\AmazonRekognitionService;
@@ -9,14 +11,11 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(
-    name: 'app:rekognition:setup',
-    description: 'Erstellt die Amazon Rekognition Collection für das Projekt',
-)]
+#[AsCommand(name: 'app:rekognition:setup', description: 'Erstellt die Amazon Rekognition Collection für das Projekt')]
 class SetupRekognitionCommand extends Command
 {
     public function __construct(
-        private AmazonRekognitionService $rekognitionService
+        private AmazonRekognitionService $rekognitionService,
     ) {
         parent::__construct();
     }
@@ -33,8 +32,8 @@ class SetupRekognitionCommand extends Command
             $collections = $client->listCollections();
             $ids = $collections['CollectionIds'] ?? [];
 
-            if (in_array($collectionId, $ids)) {
-                $io->success("Die Collection existiert bereits!");
+            if (in_array($collectionId, $ids, strict: true)) {
+                $io->success('Die Collection existiert bereits!');
                 return Command::SUCCESS;
             }
 
@@ -42,9 +41,8 @@ class SetupRekognitionCommand extends Command
 
             $io->success("Collection '{$collectionId}' wurde erfolgreich erstellt.");
             return Command::SUCCESS;
-
         } catch (\Exception $e) {
-            $io->error("AWS Fehler: " . $e->getMessage());
+            $io->error('AWS Fehler: ' . $e->getMessage());
             return Command::FAILURE;
         }
     }

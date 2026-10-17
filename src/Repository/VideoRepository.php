@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repository;
 
 use App\Entity\Video;
@@ -41,39 +43,19 @@ class VideoRepository extends ServiceEntityRepository
     //        ;
     //    }
 
-    public function getAverageDurationRatio(\App\Enum\VideoStatus $status): float
-    {
-        $durationField = match($status) {
-            \App\Enum\VideoStatus::CONVERTING => 'conversionDuration',
-            \App\Enum\VideoStatus::SCENE_DETECTION => 'sceneDetectionDuration',
-            \App\Enum\VideoStatus::VIDEO_SPLITTING => 'frameExtractionDuration',
-            \App\Enum\VideoStatus::ANALYZING_FACES => 'faceAnalysisDuration',
-            default => null,
-        };
-
-        if (!$durationField) return 0.0;
-
-        $qb = $this->createQueryBuilder('v')
-            ->select("AVG(v.$durationField / v.duration)")
-            ->where('v.status = :status')
-            ->andWhere("v.$durationField IS NOT NULL")
-            ->andWhere('v.duration > 0')
-            ->setParameter('status', \App\Enum\VideoStatus::COMPLETED);
-
-        return (float) $qb->getQuery()->getSingleScalarResult();
-    }
-
     public function findFullVideo(int $id): ?Video
     {
-        return $this->createQueryBuilder('v')
+        return $this
+            ->createQueryBuilder('v')
             ->leftJoin('v.scenes', 's')
             ->addSelect('s')
             ->where('v.id = :id')
             ->setParameter('id', $id)
-            ->orderBy('s.startSeconds', 'ASC')
+            ->orderBy('s.startSeconds', \SortDirection::Ascending)
             ->getQuery()
             ->getOneOrNullResult();
     }
+
     public function getEntityManagerPublic(): \Doctrine\ORM\EntityManagerInterface
     {
         return $this->getEntityManager();

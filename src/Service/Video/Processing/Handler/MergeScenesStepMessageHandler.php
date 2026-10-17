@@ -6,7 +6,6 @@ namespace App\Service\Video\Processing\Handler;
 
 use App\Repository\VideoRepository;
 use App\Service\Video\Analyze\BetterVideoAnalyzer;
-use App\Service\Video\Analyze\EmptyScenesMerger;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Handler\Abstract\AbstractVideoMessageHandler;
 use App\Service\Video\Processing\Message\MergeScenesStepMessage;
@@ -25,7 +24,7 @@ class MergeScenesStepMessageHandler extends AbstractVideoMessageHandler
         VideoProcessMessageDispatcher $dispatcher,
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
-        private readonly BetterVideoAnalyzer $betterVideoAnalyzer
+        private readonly BetterVideoAnalyzer $betterVideoAnalyzer,
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
     }
@@ -42,7 +41,7 @@ class MergeScenesStepMessageHandler extends AbstractVideoMessageHandler
             $errorMsg = sprintf(
                 'Merging empty scenes for video "%s" skipped: %s',
                 $video->getTitle(),
-                $result->getSkippedReason() ?? 'Unknown reason'
+                $result->getSkippedReason() ?? 'Unknown reason',
             );
             $this->finishCurrentStep($errorMsg);
 
@@ -54,13 +53,11 @@ class MergeScenesStepMessageHandler extends AbstractVideoMessageHandler
             $video->getTitle(),
             $result->getOriginalSceneCount(),
             $result->getMergedSceneCount(),
-            $result->getRemovedSceneCount()
+            $result->getRemovedSceneCount(),
         );
 
         $this->finishCurrentStep($successMsg);
     }
 
-    public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
-    {
-    }
+    public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void {}
 }

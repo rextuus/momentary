@@ -21,11 +21,14 @@ class VideoSceneNormalizer implements NormalizerInterface, NormalizerAwareInterf
     public function __construct(
         private ImgproxyService $imgproxyService,
         private Security $security,
-        private JellyfinPlaybackService $jellyfinPlaybackService
+        private JellyfinPlaybackService $jellyfinPlaybackService,
     ) {}
 
-    public function normalize($object, ?string $format = null, array $context = []): array|string|int|float|bool|\ArrayObject|null
-    {
+    public function normalize(
+        $object,
+        ?string $format = null,
+        array $context = [],
+    ): array|string|int|float|bool|\ArrayObject|null {
         $context[self::ALREADY_CALLED] = true;
 
         if (!$object instanceof VideoScene) {
@@ -48,13 +51,7 @@ class VideoSceneNormalizer implements NormalizerInterface, NormalizerAwareInterf
             $cacheBuster = 'v=' . ($object->isPublic() ? 'p' : 'priv');
             $thumbnailUrl .= (str_contains($thumbnailUrl, '?') ? '&' : '?') . $cacheBuster;
 
-            $data['thumbnailUrl'] = $this->imgproxyService->generateUrl(
-                $thumbnailUrl,
-                320,
-                180,
-                'fill',
-                $blur
-            );
+            $data['thumbnailUrl'] = $this->imgproxyService->generateUrl($thumbnailUrl, 320, 180, 'fill', $blur);
         }
 
         return $data;

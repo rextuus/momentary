@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
+use ApiPlatform\Doctrine\Orm\Filter\PartialSearchFilter;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
-use ApiPlatform\Metadata\ApiFilter;
-use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Metadata\QueryParameter;
 use App\Repository\TagRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -14,18 +16,16 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: TagRepository::class)]
-#[ApiResource(
-    operations: [
-        new GetCollection(
-            uriTemplate: '/tags',
-            normalizationContext: ['groups' => ['tag:read']]
-        ),
-        new Get(
-            normalizationContext: ['groups' => ['tag:read']]
-        )
-    ]
-)]
-#[ApiFilter(SearchFilter::class, properties: ['name' => 'partial'])]
+#[ApiResource(operations: [
+    new GetCollection(
+        uriTemplate: '/tags',
+        normalizationContext: ['groups' => ['tag:read']],
+        parameters: [
+            'name' => new QueryParameter(filter: new PartialSearchFilter(), property: 'name'),
+        ],
+    ),
+    new Get(normalizationContext: ['groups' => ['tag:read']]),
+])]
 class Tag
 {
     #[ORM\Id]

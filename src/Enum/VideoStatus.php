@@ -26,11 +26,15 @@ enum VideoStatus: string
 
     public function isProcessing(): bool
     {
-        return !in_array($this, [
-            self::PENDING,
-            self::QUEUED,
-            self::COMPLETED,
-            self::ERROR,
-        ], true);
+        return !in_array(
+            $this,
+            [
+                self::PENDING,
+                self::QUEUED,
+                self::COMPLETED,
+                self::ERROR,
+            ],
+            true,
+        );
     }
 }

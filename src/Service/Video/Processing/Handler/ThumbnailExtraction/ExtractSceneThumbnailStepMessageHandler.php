@@ -6,7 +6,6 @@ namespace App\Service\Video\Processing\Handler\ThumbnailExtraction;
 
 use App\Repository\VideoRepository;
 use App\Repository\VideoSceneRepository;
-use App\Service\Storage\FileManager;
 use App\Service\Storage\StoragePathProvider;
 use App\Service\Video\Analyze\SceneThumbnailExtractor;
 use App\Service\Video\Processing\Attribute\StepOrder;
@@ -14,7 +13,6 @@ use App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractLastSceneThu
 use App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractSceneThumbnailStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
-use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
@@ -63,12 +61,12 @@ class ExtractSceneThumbnailStepMessageHandler extends AbstractExtractSceneThumbn
         $currentSceneId = $message->getCurrentSceneId();
         $thumbnailGenerationError = $this->generateThumbnail($message);
 
-        if ($thumbnailGenerationError !== null){
+        if ($thumbnailGenerationError !== null) {
             $errorMsg = sprintf(
                 '[⚠] Error during thumbnail generation for video "%s" in scene: %d: %s',
                 $video->getTitle(),
                 $currentSceneId,
-                $thumbnailGenerationError
+                $thumbnailGenerationError,
             );
             $this->stopProcessing($errorMsg);
 
@@ -81,12 +79,12 @@ class ExtractSceneThumbnailStepMessageHandler extends AbstractExtractSceneThumbn
         $this->remainingSceneIds = $sceneIds;
 
         // Normal-Case: There is still a scene but no remaining ones => we dispatch same type of message again
-        if ($sceneIds !== []){
+        if ($sceneIds !== []) {
             $logMessage = sprintf(
-              'Decorated scene #%d with thumbnail. Remaining Scenes for video with id "%s": %d',
+                'Decorated scene #%d with thumbnail. Remaining Scenes for video with id "%s": %d',
                 $message->getCurrentSceneId(),
                 $video->getTitle(),
-                count($sceneIds)
+                count($sceneIds),
             );
             $this->dispatchNextMessageOfCurrentStep($logMessage);
 
@@ -97,14 +95,14 @@ class ExtractSceneThumbnailStepMessageHandler extends AbstractExtractSceneThumbn
         $successMsg = sprintf(
             'Decorated scene #%d with thumbnail. Nearly all scenes for video "%s" successfully thumbnail decorate. Next step will process the last scene',
             $message->getCurrentSceneId(),
-            $video->getTitle()
+            $video->getTitle(),
         );
 
         // Special-Case: Video has only one single scene => we dispatch the lastScene message, but its handler will do nothing
         if ($this->nextSceneId === null) {
             $successMsg = sprintf(
                 'All scenes for video "%s" successfully thumbnail decorate. Next step will immoderately finish',
-                $video->getTitle()
+                $video->getTitle(),
             );
         }
 

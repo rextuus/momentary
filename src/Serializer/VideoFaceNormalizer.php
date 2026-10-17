@@ -16,10 +16,15 @@ class VideoFaceNormalizer implements NormalizerInterface, NormalizerAwareInterfa
 
     private const ALREADY_CALLED = 'VIDEO_FACE_NORMALIZER_ALREADY_CALLED';
 
-    public function __construct(private ImgproxyService $imgproxyService) {}
+    public function __construct(
+        private ImgproxyService $imgproxyService,
+    ) {}
 
-    public function normalize($object, ?string $format = null, array $context = []): array|string|int|float|bool|\ArrayObject|null
-    {
+    public function normalize(
+        $object,
+        ?string $format = null,
+        array $context = [],
+    ): array|string|int|float|bool|\ArrayObject|null {
         $context[self::ALREADY_CALLED] = true;
 
         $data = $this->normalizer->normalize($object, $format, $context);
@@ -28,14 +33,14 @@ class VideoFaceNormalizer implements NormalizerInterface, NormalizerAwareInterfa
             $groups = (array) ($context['groups'] ?? []);
 
             // Quadratischer Ausschnitt für Gesichter-Thumbnails (z.B. 80x80 in Listen)
-            $width = in_array('video:list', $groups) || in_array('videoface:list', $groups) ? 80 : 250;
-            $height = in_array('video:list', $groups) || in_array('videoface:list', $groups) ? 80 : 250;
+            $width = in_array('video:list', $groups, strict: true) || in_array('videoface:list', $groups, strict: true)
+                ? 80
+                : 250;
+            $height = in_array('video:list', $groups, strict: true) || in_array('videoface:list', $groups, strict: true)
+                ? 80
+                : 250;
 
-            $data['imageUrl'] = $this->imgproxyService->generateUrl(
-                $data['imageUrl'],
-                $width,
-                $height
-            );
+            $data['imageUrl'] = $this->imgproxyService->generateUrl($data['imageUrl'], $width, $height);
         }
 
         return $data;

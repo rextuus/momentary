@@ -13,11 +13,10 @@ class TagService
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-    ) {
-    }
+    ) {}
 
     /**
-     * @param array<string, array<string>> $allTagsStructured
+     * @param array<string, mixed> $allTagsStructured Rohdaten aus der Gemini-Antwort
      */
     public function assignAiTagsToScene(VideoScene $scene, array $allTagsStructured): void
     {
@@ -39,10 +38,12 @@ class TagService
                     continue;
                 }
 
-                $tag = $this->entityManager->getRepository(Tag::class)->findOneBy([
-                    'name' => $tagName,
-                    'category' => $category
-                ]);
+                $tag = $this->entityManager
+                    ->getRepository(Tag::class)
+                    ->findOneBy([
+                        'name' => $tagName,
+                        'category' => $category,
+                    ]);
 
                 if (!$tag) {
                     $tag = new Tag();

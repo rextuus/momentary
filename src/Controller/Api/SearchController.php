@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller\Api;
 
 use App\Entity\User;
@@ -16,7 +18,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Serializer\SerializerInterface;
 
-class SearchController extends AbstractController
+final class SearchController extends AbstractController
 {
     private const MAX_RESULTS = 20;
 
@@ -25,7 +27,7 @@ class SearchController extends AbstractController
         private VideoRepository $videoRepository,
         private VideoSceneRepository $videoSceneRepository,
         private SerializerInterface $serializer,
-        private ImgproxyService $imgproxyService
+        private ImgproxyService $imgproxyService,
     ) {}
 
     #[Route('/api/search', name: 'api_search', methods: ['GET'])]
@@ -55,7 +57,9 @@ class SearchController extends AbstractController
                 ->search($query === '' ? null : $query, $options)
                 ->getHits();
         } catch (\Throwable $e) {
-            return new JsonResponse(['error' => 'Suche nicht erreichbar: ' . $e->getMessage()], Response::HTTP_BAD_GATEWAY);
+            return new JsonResponse([
+                'error' => 'Suche nicht erreichbar: ' . $e->getMessage(),
+            ], Response::HTTP_BAD_GATEWAY);
         }
 
         if ($hits === []) {
@@ -87,19 +91,36 @@ class SearchController extends AbstractController
 
             $data = json_decode($this->serializer->serialize($video, 'json', ['groups' => ['video:list']]), true);
             $data['id'] = $video->getId();
-            $data['scenes'] = json_decode(
-                $this->serializer->serialize($scenesByVideo[$videoId] ?? [], 'json', ['groups' => ['video:detail']]),
-                true
-            );
+            $data['scenes'] = json_decode($this->serializer->serialize(
+                $scenesByVideo[$videoId] ?? [],
+                'json',
+                ['groups' => ['video:detail']],
+            ), true);
 
             // Auch das Haupt-Thumbnail des Videos bei fehlender Berechtigung unscharf machen
             if (isset($data['thumbnailUrl'])) {
-                $data['thumbnailUrl'] = $this->imgproxyService->generateUrl($data['thumbnailUrl'], 160, 90, 'fill', $blur);
+                $data['thumbnailUrl'] = $this->imgproxyService->generateUrl(
+                    $data['thumbnailUrl'],
+                    160,
+                    90,
+                    'fill',
+                    $blur,
+                );
             }
 
             $result[] = array_merge($data, [
-                'persons_with_scenes' => $this->prepareSceneItems($hit['persons_with_scenes'] ?? [], $persons, $blur, $sceneByStart[$videoId] ?? []),
-                'tags_with_scenes' => $this->prepareSceneItems($hit['tags_with_scenes'] ?? [], $tags, $blur, $sceneByStart[$videoId] ?? []),
+                'persons_with_scenes' => $this->prepareSceneItems(
+                    $hit['persons_with_scenes'] ?? [],
+                    $persons,
+                    $blur,
+                    $sceneByStart[$videoId] ?? [],
+                ),
+                'tags_with_scenes' => $this->prepareSceneItems(
+                    $hit['tags_with_scenes'] ?? [],
+                    $tags,
+                    $blur,
+                    $sceneByStart[$videoId] ?? [],
+                ),
                 'blur' => $blur,
                 'accessInfo' => $this->describeAccess($video),
                 'availabilityStatus' => $video->isPublic() ? 'Öffentlich' : 'Privat',
@@ -115,7 +136,7 @@ class SearchController extends AbstractController
     private function prepareSceneItems(array $items, array $requestedNames, int $blur, array $sceneByStart): array
     {
         if ($requestedNames !== []) {
-            $items = array_filter($items, fn ($item) => in_array($item['name'] ?? null, $requestedNames, true));
+            $items = array_filter($items, static fn($item) => in_array($item['name'] ?? null, $requestedNames, true));
         }
 
         foreach ($items as &$item) {
@@ -124,13 +145,19 @@ class SearchController extends AbstractController
             }
 
             $itemBlur = $blur;
-            $scene = isset($item['start']) ? ($sceneByStart[(int) $item['start']] ?? null) : null;
+            $scene = isset($item['start']) ? $sceneByStart[(int) $item['start']] ?? null : null;
             if ($scene !== null) {
                 $itemBlur = $this->isGranted('SCENE_VIEW', $scene) ? 0 : 5;
                 $item['endSeconds'] = $scene->getEndSeconds();
             }
 
-            $item['thumbnailUrl'] = $this->imgproxyService->generateUrl($item['thumbnailUrl'], 160, 90, 'fill', $itemBlur);
+            $item['thumbnailUrl'] = $this->imgproxyService->generateUrl(
+                $item['thumbnailUrl'],
+                160,
+                90,
+                'fill',
+                $itemBlur,
+            );
         }
         unset($item);
 

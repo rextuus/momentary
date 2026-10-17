@@ -9,8 +9,8 @@ use App\Entity\VideoChapter;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\UX\LiveComponent\Attribute\AsLiveComponent;
 use Symfony\UX\LiveComponent\Attribute\LiveAction;
-use Symfony\UX\LiveComponent\Attribute\LiveProp;
 use Symfony\UX\LiveComponent\Attribute\LiveArg;
+use Symfony\UX\LiveComponent\Attribute\LiveProp;
 use Symfony\UX\LiveComponent\DefaultActionTrait;
 
 #[AsLiveComponent]
@@ -42,14 +42,19 @@ class ChapterManagerComponent
     #[LiveProp(writable: true)]
     public ?int $editingEndSceneId = null;
 
-    public function __construct(private EntityManagerInterface $entityManager) {}
+    public function __construct(
+        private EntityManagerInterface $entityManager,
+    ) {}
 
     public function getSceneCountForChapter(VideoChapter $chapter): int
     {
         $count = 0;
         foreach ($this->video->getScenes() as $scene) {
             // Überlappungsprüfung analog zur TimelineComponent
-            if ($scene->getStartSeconds() < $chapter->getEndSeconds() && $scene->getEndSeconds() > $chapter->getStartSeconds()) {
+            if (
+                $scene->getStartSeconds() < $chapter->getEndSeconds()
+                && $scene->getEndSeconds() > $chapter->getStartSeconds()
+            ) {
                 $count++;
             }
         }
@@ -62,7 +67,7 @@ class ChapterManagerComponent
     public function getChapters(): array
     {
         $chapters = $this->video->getChapters()->toArray();
-        usort($chapters, fn($a, $b) => $a->getStartSeconds() <=> $b->getStartSeconds());
+        usort($chapters, static fn($a, $b) => $a->getStartSeconds() <=> $b->getStartSeconds());
         return $chapters;
     }
 
@@ -110,14 +115,18 @@ class ChapterManagerComponent
         $this->editingTitle = $chapter->getTitle();
 
         // Szenen anhand der Zeiten finden
-        $startScene = $this->entityManager->getRepository(\App\Entity\VideoScene::class)->findOneBy([
-            'video' => $this->video,
-            'startSeconds' => $chapter->getStartSeconds()
-        ]);
-        $endScene = $this->entityManager->getRepository(\App\Entity\VideoScene::class)->findOneBy([
-            'video' => $this->video,
-            'endSeconds' => $chapter->getEndSeconds()
-        ]);
+        $startScene = $this->entityManager
+            ->getRepository(\App\Entity\VideoScene::class)
+            ->findOneBy([
+                'video' => $this->video,
+                'startSeconds' => $chapter->getStartSeconds(),
+            ]);
+        $endScene = $this->entityManager
+            ->getRepository(\App\Entity\VideoScene::class)
+            ->findOneBy([
+                'video' => $this->video,
+                'endSeconds' => $chapter->getEndSeconds(),
+            ]);
 
         $this->editingStartSceneId = $startScene?->getId();
         $this->editingEndSceneId = $endScene?->getId();
@@ -135,7 +144,9 @@ class ChapterManagerComponent
             return;
         }
 
-        $startScene = $this->entityManager->getRepository(\App\Entity\VideoScene::class)->find($this->editingStartSceneId);
+        $startScene = $this->entityManager
+            ->getRepository(\App\Entity\VideoScene::class)
+            ->find($this->editingStartSceneId);
         $endScene = $this->entityManager->getRepository(\App\Entity\VideoScene::class)->find($this->editingEndSceneId);
 
         if (!$startScene || !$endScene) {

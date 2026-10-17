@@ -1,0 +1,52 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Bulk Import - Momentary{% endblock %}
+
+{% block body %}
+    <div class="container pb-5">
+        <h2 class="fw-bold mb-4">Bulk Import</h2>
+
+        <form method="POST" action="{{ path('admin_video_import') }}">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;"></th>
+                        <th>Dateiname</th>
+                        <th>Größe</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for file in files %}
+                        <tr class="{{ file.exists ? 'table-secondary' : '' }}">
+                            <td>
+                                {% if not file.exists %}
+                                    <input type="checkbox" name="files[]" value="{{ file.name }}" class="form-check-input">
+                                {% else %}
+                                    <input type="checkbox" disabled class="form-check-input">
+                                {% endif %}
+                            </td>
+                            <td>{{ file.name }}</td>
+                            <td>{{ (file.size / 1024 / 1024)|round(2) }} MB</td>
+                            <td>
+                                {% if file.exists %}
+                                    <span class="badge bg-warning text-dark">Bereits vorhanden</span>
+                                {% else %}
+                                    <span class="badge bg-success">Bereit</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center">Keine Dateien im Import-Verzeichnis gefunden.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% if files|filter(f => not f.exists)|length > 0 %}
+                <button type="submit" class="btn btn-primary">Ausgewählte Videos importieren</button>
+            {% endif %}
+        </form>
+    </div>
+{% endblock %}

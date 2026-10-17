@@ -8,8 +8,7 @@ readonly class RefinementAnalyzeResult
 {
     private function __construct(
         private array $sceneIds,
-    ) {
-    }
+    ) {}
 
     /**
      * @param array<int> $sceneIds

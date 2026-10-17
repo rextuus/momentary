@@ -34,12 +34,7 @@ abstract class AbstractTagSceneStepMessageHandler extends AbstractVideoMessageHa
     protected function processSceneTagging(?int $sceneId): TaggingResult
     {
         if ($sceneId === null) {
-            return new TaggingResult(
-                false,
-                true,
-                [],
-                'No Scene given'
-            );
+            return new TaggingResult(false, true, [], 'No Scene given');
         }
 
         $scene = $this->videoSceneRepository->find($sceneId);
@@ -47,12 +42,7 @@ abstract class AbstractTagSceneStepMessageHandler extends AbstractVideoMessageHa
         if (!$scene instanceof VideoScene) {
             $this->stopProcessing(sprintf('Scene with ID %d not found for tagging.', $sceneId));
 
-            return new TaggingResult(
-                false,
-                true,
-                [],
-                sprintf('Scene with ID %d not found for tagging.', $sceneId)
-            );
+            return new TaggingResult(false, true, [], sprintf('Scene with ID %d not found for tagging.', $sceneId));
         }
 
         return $this->taggingService->tagScene($scene);

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Twig\Components;
 
 use App\Entity\Person;
@@ -32,7 +34,7 @@ class QuickResolveComponent
 
     public function __construct(
         private PersonRepository $personRepository,
-        private EntityManagerInterface $entityManager
+        private EntityManagerInterface $entityManager,
     ) {
         $this->statuses = [PersonStatus::NEW->value, PersonStatus::WASTED->value];
     }
@@ -59,7 +61,8 @@ class QuickResolveComponent
             return [];
         }
 
-        $persons = $this->personRepository->createQueryBuilder('p')
+        $persons = $this->personRepository
+            ->createQueryBuilder('p')
             ->select('p, f, d') // Gesichter + Detections vorladen
             ->leftJoin('p.videoFaces', 'f')
             ->leftJoin('f.detection', 'd')
@@ -70,7 +73,7 @@ class QuickResolveComponent
 
         // Reihenfolge des Batches beibehalten
         $order = array_flip(array_values($this->currentPersonIds));
-        usort($persons, fn (Person $a, Person $b) => ($order[$a->getId()] ?? 0) <=> ($order[$b->getId()] ?? 0));
+        usort($persons, static fn(Person $a, Person $b) => ($order[$a->getId()] ?? 0) <=> ($order[$b->getId()] ?? 0));
 
         return $persons;
     }
@@ -154,7 +157,8 @@ class QuickResolveComponent
             return 0;
         }
 
-        return (int) $this->createCandidateQueryBuilder($values)
+        return (int) $this
+            ->createCandidateQueryBuilder($values)
             ->select('COUNT(DISTINCT p.id)')
             ->getQuery()
             ->getSingleScalarResult();
@@ -178,16 +182,13 @@ class QuickResolveComponent
         $ids = array_map('intval', $ids);
 
         $this->currentPersonIds = array_values(array_diff($this->currentPersonIds, $ids));
-        $this->selectedPersonIds = array_map(
-            'strval',
-            array_values(array_diff($this->selectedIds(), $ids))
-        );
+        $this->selectedPersonIds = array_map('strval', array_values(array_diff($this->selectedIds(), $ids)));
 
         $missing = self::BATCH_SIZE - count($this->currentPersonIds);
         if ($missing > 0) {
             $this->currentPersonIds = array_merge(
                 $this->currentPersonIds,
-                $this->fetchCandidateIds($missing, $this->currentPersonIds)
+                $this->fetchCandidateIds($missing, $this->currentPersonIds),
             );
         }
     }
@@ -203,24 +204,22 @@ class QuickResolveComponent
             return [];
         }
 
-        $qb = $this->createCandidateQueryBuilder($values)
+        $qb = $this
+            ->createCandidateQueryBuilder($values)
             ->select('p.id AS id')
             ->addSelect('p.showCount AS HIDDEN show_order')
             ->addSelect('COUNT(f.id) AS HIDDEN face_count')
             ->groupBy('p.id')
-            ->orderBy('show_order', 'ASC')          // selten gezeigte zuerst
-            ->addOrderBy('face_count', 'DESC')      // dann relevantere
-            ->addOrderBy('p.id', 'ASC')
+            ->orderBy('show_order', \SortDirection::Ascending) // selten gezeigte zuerst
+            ->addOrderBy('face_count', \SortDirection::Descending) // dann relevantere
+            ->addOrderBy('p.id', \SortDirection::Ascending)
             ->setMaxResults($limit);
 
         if (!empty($exclude)) {
             $qb->andWhere('p.id NOT IN (:exclude)')->setParameter('exclude', array_values($exclude));
         }
 
-        return array_map(
-            static fn (array $row) => (int) $row['id'],
-            $qb->getQuery()->getArrayResult()
-        );
+        return array_map(static fn(array $row) => (int) $row['id'], $qb->getQuery()->getArrayResult());
     }
 
     /**
@@ -230,7 +229,8 @@ class QuickResolveComponent
      */
     private function createCandidateQueryBuilder(array $statusValues): QueryBuilder
     {
-        return $this->personRepository->createQueryBuilder('p')
+        return $this->personRepository
+            ->createQueryBuilder('p')
             ->join('p.videoFaces', 'f')
             ->where('p.status IN (:statuses)')
             ->andWhere('p.showCount < :maxShows')

@@ -8,10 +8,10 @@ use App\Entity\Tag;
 use App\Entity\TagCategory;
 use App\Entity\UserGroup;
 use App\Entity\VideoScene;
+use App\Service\Video\Analyze\SceneThumbnailExtractor;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\UX\LiveComponent\Attribute\AsLiveComponent;
 use Symfony\UX\LiveComponent\Attribute\LiveAction;
 use Symfony\UX\LiveComponent\Attribute\LiveArg;
@@ -37,7 +37,7 @@ class SceneSectionComponent extends AbstractController
 
     public function __construct(
         private EntityManagerInterface $entityManager,
-        private MessageBusInterface $messageBus
+        private SceneThumbnailExtractor $thumbnailExtractor,
     ) {}
 
     public function getCategories(): array
@@ -54,7 +54,9 @@ class SceneSectionComponent extends AbstractController
     public function toggleTag(#[LiveArg] int $tagId): void
     {
         $tag = $this->entityManager->getRepository(Tag::class)->find($tagId);
-        if (!$tag) return;
+        if (!$tag) {
+            return;
+        }
 
         $hasTag = false;
         foreach ($this->scene->getSceneTags() as $sceneTag) {
@@ -77,7 +79,9 @@ class SceneSectionComponent extends AbstractController
     public function toggleGroup(#[LiveArg] int $groupId): void
     {
         $group = $this->entityManager->getRepository(UserGroup::class)->find($groupId);
-        if (!$group) return;
+        if (!$group) {
+            return;
+        }
 
         if ($this->scene->getAllowedGroups()->contains($group)) {
             $this->scene->removeAllowedGroup($group);
@@ -97,7 +101,9 @@ class SceneSectionComponent extends AbstractController
 
     public function getChapters(): array
     {
-        return $this->entityManager->getRepository(\App\Entity\VideoChapter::class)->findBy(['video' => $this->scene->getVideo()]);
+        return $this->entityManager
+            ->getRepository(\App\Entity\VideoChapter::class)
+            ->findBy(['video' => $this->scene->getVideo()]);
     }
 
     public function getFramesForScene(): array
@@ -124,8 +130,10 @@ class SceneSectionComponent extends AbstractController
         foreach ($files as $file) {
             $stem = pathinfo($file, PATHINFO_FILENAME);
             $parts = explode('_', $stem);
-            if (count($parts) < 2) continue;
-            
+            if (count($parts) < 2) {
+                continue;
+            }
+
             $number = (int) $parts[1];
             $timestamp = $number * (1 / $fps);
 
@@ -133,7 +141,7 @@ class SceneSectionComponent extends AbstractController
                 $relativePath = str_replace($this->getParameter('kernel.project_dir') . '/public/', '', $file);
                 $frames[] = [
                     'path' => $relativePath,
-                    'timestamp' => $timestamp
+                    'timestamp' => $timestamp,
                 ];
             }
         }
@@ -159,7 +167,7 @@ class SceneSectionComponent extends AbstractController
 
         $this->entityManager->flush();
         $this->assignToChapterId = null;
-        
+
         return $this->redirectToRoute('video_timeline', ['id' => $this->scene->getVideo()->getId()]);
     }
 
@@ -172,7 +180,7 @@ class SceneSectionComponent extends AbstractController
 
         $video = $this->scene->getVideo();
         $scenes = $video->getScenes();
-        
+
         $maxEndTime = $this->scene->getEndSeconds();
         foreach ($scenes as $s) {
             if ($s->getSceneNumber() >= $this->scene->getSceneNumber()) {
@@ -206,7 +214,7 @@ class SceneSectionComponent extends AbstractController
     #[LiveAction]
     public function refreshThumbnail(): void
     {
-        $this->messageBus->dispatch(new \App\Message\ExtractSceneThumbnailMessage($this->scene->getId()));
+        $this->thumbnailExtractor->extractSceneThumbnail($this->scene);
     }
 
     #[LiveAction]
@@ -236,7 +244,10 @@ class SceneSectionComponent extends AbstractController
 
         // Alle Szenen zwischen targetScene und der aktuellen (inklusive) finden
         foreach ($video->getScenes() as $s) {
-            if ($s->getSceneNumber() > $targetScene->getSceneNumber() && $s->getSceneNumber() <= $this->scene->getSceneNumber()) {
+            if (
+                $s->getSceneNumber() > $targetScene->getSceneNumber()
+                && $s->getSceneNumber() <= $this->scene->getSceneNumber()
+            ) {
                 $scenesToDelete[] = $s;
             }
         }
@@ -271,9 +282,9 @@ class SceneSectionComponent extends AbstractController
     {
         $video = $this->scene->getVideo();
         $scenes = $video->getScenes()->toArray();
-        
+
         // Sortieren nach Szenennummer absteigend, startend vor der aktuellen Szene
-        usort($scenes, fn($a, $b) => $b->getSceneNumber() <=> $a->getSceneNumber());
+        usort($scenes, static fn($a, $b) => $b->getSceneNumber() <=> $a->getSceneNumber());
 
         foreach ($scenes as $s) {
             if ($s->getSceneNumber() >= $this->scene->getSceneNumber()) {
@@ -316,9 +327,9 @@ class SceneSectionComponent extends AbstractController
     {
         $video = $this->scene->getVideo();
         $this->entityManager->refresh($video);
-        
+
         $scenes = $video->getScenes()->toArray();
-        usort($scenes, fn($a, $b) => $a->getStartSeconds() <=> $b->getStartSeconds());
+        usort($scenes, static fn($a, $b) => $a->getStartSeconds() <=> $b->getStartSeconds());
 
         foreach ($scenes as $index => $s) {
             $s->setSceneNumber($index + 1);

@@ -8,8 +8,8 @@ use App\Repository\VideoRepository;
 use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Handler\FrameAnalyze\AbstractAnalyzeFrameStepMessageHandler;
-use App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeVideoFrameStepMessage;
 use App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeLastVideoFrameStepMessage;
+use App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeVideoFrameStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
 use App\Service\VideoProcessingService;
@@ -37,10 +37,10 @@ class AnalyzeVideoFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessag
         $this->startCurrentStep();
 
         // Special-Case: There was only one frame which was already analyzed in the firstFrameMessage
-        if ($message->getCurrentFrame() === null){
+        if ($message->getCurrentFrame() === null) {
             $successMsg = sprintf(
                 'Video %d contains only one frame. This is already analyzed. Go to final frame analyze step. Next message will be immediately set to finished',
-                $video->getId()
+                $video->getId(),
             );
             $this->finishCurrentStep($successMsg);
 
@@ -51,18 +51,16 @@ class AnalyzeVideoFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessag
         if ($message->getRemainingFrames() === []) {
             $successMsg = sprintf(
                 'All frames for video %d analyzed already successfully. Next message will be immediately set to finished',
-                $video->getId()
+                $video->getId(),
             );
 
             $rawPath = $message->getCurrentFrame()->getPath();
-            $framePath = str_starts_with($rawPath, '/')
-                ? $rawPath
-                : $this->videoAnalyzer->getAbsolutePath($rawPath);
+            $framePath = str_starts_with($rawPath, '/') ? $rawPath : $this->videoAnalyzer->getAbsolutePath($rawPath);
 
             $this->videoAnalyzer->analyzeFrame(
                 $message->getVideoId(),
                 $framePath,
-                $message->getCurrentFrame()->getTimestamp()
+                $message->getCurrentFrame()->getTimestamp(),
             );
 
             $this->finishCurrentStep($successMsg);
@@ -80,11 +78,11 @@ class AnalyzeVideoFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessag
         $this->frame = array_shift($remainingFrames);
         $this->remainingFrames = $remainingFrames;
 
-        if ($this->remainingFrames === []){
+        if ($this->remainingFrames === []) {
             $successMsg = sprintf(
                 'Frame #? of Video "%s" at timestamp "%d" analyzed. Only 1 left. Dispatch final message',
                 $video->getTitle(),
-                $oldFrame->getTimestamp()
+                $oldFrame->getTimestamp(),
             );
             $remainingFrames = $message->getRemainingFrames();
             $this->frame = array_shift($remainingFrames);
@@ -99,7 +97,7 @@ class AnalyzeVideoFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessag
             'Frame #? of Video "%s" at timestamp "%d" analyzed. %d left',
             $video->getTitle(),
             $oldFrame->getTimestamp(),
-            count($this->remainingFrames)
+            count($this->remainingFrames),
         );
 
         $this->dispatchNextMessageOfCurrentStep($successMsg);

@@ -34,7 +34,7 @@ class FrameExtractor
         ?float $fps = null,
         array|float|null $startTime = null,
         array|float|null $duration = null,
-        bool $isRefinement = false
+        bool $isRefinement = false,
     ): FrameSplittingResult {
         $video = $this->videoRepository->find($videoId);
         $fps ??= $video?->getAnalysisFps() ?? $this->defaultFps;
@@ -82,14 +82,14 @@ class FrameExtractor
             throw new FrameExtractionException(sprintf(
                 'extract_frames.py failed (exit code %s): %s',
                 (string) $process->getExitCode(),
-                trim($process->getErrorOutput()) ?: trim($process->getOutput())
+                trim($process->getErrorOutput()) ?: trim($process->getOutput()),
             ));
         }
 
         $frameList = json_decode($process->getOutput(), true);
         if (!is_array($frameList)) {
             throw new FrameExtractionException(
-                'extract_frames.py returned no valid JSON: ' . substr(trim($process->getOutput()), 0, 300)
+                'extract_frames.py returned no valid JSON: ' . substr(trim($process->getOutput()), 0, 300),
             );
         }
 

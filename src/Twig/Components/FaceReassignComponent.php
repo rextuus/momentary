@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Twig\Components;
 
 use App\Entity\Person;
@@ -36,17 +38,18 @@ class FaceReassignComponent extends AbstractController
     public function __construct(
         private VideoFaceRepository $videoFaceRepository,
         private PersonRepository $personRepository,
-        private EntityManagerInterface $entityManager
+        private EntityManagerInterface $entityManager,
     ) {}
 
     public function getFaces(): array
     {
-        return $this->videoFaceRepository->createQueryBuilder('vf')
+        return $this->videoFaceRepository
+            ->createQueryBuilder('vf')
             ->join('vf.person', 'p')
             ->where('p.status = :status')
             ->setParameter('status', PersonStatus::TO_REASSIGN)
-            ->orderBy('p.id', 'ASC')
-            ->addOrderBy('vf.timestamp', 'ASC')
+            ->orderBy('p.id', \SortDirection::Ascending)
+            ->addOrderBy('vf.timestamp', \SortDirection::Ascending)
             ->getQuery()
             ->getResult();
     }
@@ -71,19 +74,21 @@ class FaceReassignComponent extends AbstractController
     public function assignToNewPerson(): void
     {
         $face = $this->getActiveFace();
-        if (!$face) return;
+        if (!$face) {
+            return;
+        }
 
         $oldPerson = $face->getPerson();
-        
+
         $newPerson = new Person();
         $newPerson->setName('Neu zugewiesen ' . uniqid());
         $newPerson->setStatus(PersonStatus::NEW);
-        
+
         $this->entityManager->persist($newPerson);
         $face->setPerson($newPerson);
-        
+
         $this->checkOldPerson($oldPerson);
-        
+
         $this->entityManager->flush();
         $this->activeFaceId = null;
     }
@@ -93,20 +98,25 @@ class FaceReassignComponent extends AbstractController
     {
         $face = $this->getActiveFace();
         $targetPerson = $this->personRepository->find($personId);
-        
-        if (!$face || !$targetPerson) return;
+
+        if (!$face || !$targetPerson) {
+            return;
+        }
 
         $oldPerson = $face->getPerson();
         $face->setPerson($targetPerson);
-        
-        // Falls die Zielperson UNKNOWN oder WASTED war, aber nun aktiv zugewiesen wird, 
+
+        // Falls die Zielperson UNKNOWN oder WASTED war, aber nun aktiv zugewiesen wird,
         // setzen wir sie auf IDENTIFIED (optional, je nach Workflow)
-        if ($targetPerson->getStatus() === PersonStatus::UNKNOWN || $targetPerson->getStatus() === PersonStatus::WASTED) {
+        if (
+            $targetPerson->getStatus() === PersonStatus::UNKNOWN
+            || $targetPerson->getStatus() === PersonStatus::WASTED
+        ) {
             $targetPerson->setStatus(PersonStatus::IDENTIFIED);
         }
 
         $this->checkOldPerson($oldPerson);
-        
+
         $this->entityManager->flush();
         $this->activeFaceId = null;
     }
@@ -115,26 +125,30 @@ class FaceReassignComponent extends AbstractController
     public function markAsUnknown(): void
     {
         $face = $this->getActiveFace();
-        if (!$face) return;
+        if (!$face) {
+            return;
+        }
 
         $oldPerson = $face->getPerson();
-        
+
         $newPerson = new Person();
         $newPerson->setName('Unbekannt ' . uniqid());
         $newPerson->setStatus(PersonStatus::UNKNOWN);
-        
+
         $this->entityManager->persist($newPerson);
         $face->setPerson($newPerson);
-        
+
         $this->checkOldPerson($oldPerson);
-        
+
         $this->entityManager->flush();
         $this->activeFaceId = null;
     }
 
     private function checkOldPerson(?Person $person): void
     {
-        if (!$person) return;
+        if (!$person) {
+            return;
+        }
 
         // Wenn die Person keine Gesichter mehr hat, löschen wir sie
         $remainingFaces = $this->videoFaceRepository->count(['person' => $person]);
@@ -145,7 +159,8 @@ class FaceReassignComponent extends AbstractController
 
     public function getSuggestions(): array
     {
-        $qb = $this->personRepository->createQueryBuilder('p')
+        $qb = $this->personRepository
+            ->createQueryBuilder('p')
             ->leftJoin('p.videoFaces', 'vf')
             ->addSelect('COUNT(vf.id) as HIDDEN faceCount')
             ->where('p.status = :status')
@@ -153,26 +168,28 @@ class FaceReassignComponent extends AbstractController
             ->groupBy('p.id');
 
         if ($this->search) {
-            $qb->andWhere('p.name LIKE :search')
-               ->setParameter('search', '%' . $this->search . '%');
+            $qb->andWhere('p.name LIKE :search')->setParameter('search', '%' . $this->search . '%');
             $limit = 20;
         } else {
             $limit = 12; // 4 Reihen à 3 Spalten mobil/desktop
         }
 
-        return $qb->orderBy('faceCount', 'DESC')
-            ->addOrderBy('p.name', 'ASC')
+        return $qb
+            ->orderBy('faceCount', \SortDirection::Descending)
+            ->addOrderBy('p.name', \SortDirection::Ascending)
             ->setMaxResults($limit)
             ->getQuery()
             ->getResult();
     }
-    
+
     #[LiveAction]
     public function finishPerson(): void
     {
         $face = $this->getActiveFace();
-        if (!$face) return;
-        
+        if (!$face) {
+            return;
+        }
+
         $person = $face->getPerson();
         if ($person) {
             // Alle restlichen Gesichter dieser Person als "Gemerged" oder "Identifiziert" lassen?

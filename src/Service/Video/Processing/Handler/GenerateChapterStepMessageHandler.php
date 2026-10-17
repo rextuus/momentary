@@ -24,7 +24,7 @@ class GenerateChapterStepMessageHandler extends AbstractVideoMessageHandler
         VideoProcessMessageDispatcher $dispatcher,
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
-        private readonly BetterVideoAnalyzer $betterVideoAnalyzer
+        private readonly BetterVideoAnalyzer $betterVideoAnalyzer,
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
     }
@@ -42,15 +42,10 @@ class GenerateChapterStepMessageHandler extends AbstractVideoMessageHandler
             return;
         }
 
-        $successMsg = sprintf(
-            'Chapters generated successfully: %d chapters created.',
-            $result->getChapterCount()
-        );
+        $successMsg = sprintf('Chapters generated successfully: %d chapters created.', $result->getChapterCount());
 
         $this->finishCurrentStep($successMsg);
     }
 
-    public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
-    {
-    }
+    public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void {}
 }

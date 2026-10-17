@@ -13,11 +13,11 @@ readonly class FrameSplittingResult
 
     public function __construct(
         array $rawFrameList,
-        private string $frameDirPath
+        private string $frameDirPath,
     ) {
         $this->frameList = array_map(
-            fn(array $frame) => new VideoFrame($frame['path'], (int)$frame['timestamp']),
-            $rawFrameList
+            static fn(array $frame) => new VideoFrame($frame['path'], (int) $frame['timestamp']),
+            $rawFrameList,
         );
     }
 

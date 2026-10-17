@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Command\System;
 
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -9,10 +11,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(
-    name: 'app:system:reset',
-    description: 'Leert die Datenbank (außer User) und alle RabbitMQ Queues',
-)]
+#[AsCommand(name: 'app:system:reset', description: 'Leert die Datenbank (außer User) und alle RabbitMQ Queues')]
 class FullResetCommand extends Command
 {
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -41,8 +40,8 @@ class FullResetCommand extends Command
 
         // Run meilisearch clear
         $io->note('Führe Meilisearch-Clear aus...');
-//        $meiliCommand = $this->getApplication()->find('app:meilisearch:clear');
-//        $meiliCommand->run(new ArrayInput([]), $output);
+        //        $meiliCommand = $this->getApplication()->find('app:meilisearch:clear');
+        //        $meiliCommand->run(new ArrayInput([]), $output);
 
         $io->success('System wurde erfolgreich zurückgesetzt.');
         return Command::SUCCESS;

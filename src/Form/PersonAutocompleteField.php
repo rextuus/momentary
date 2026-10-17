@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Form;
 
 use App\Entity\Person;
@@ -18,13 +20,11 @@ class PersonAutocompleteField extends AbstractType
             'class' => Person::class,
             'placeholder' => 'Search for a person...',
             'choice_label' => 'name',
-            'query_builder' => function(PersonRepository $personRepository) {
-                // Nur Personen anzeigen, die bereits identifiziert wurden
-                return $personRepository->createQueryBuilder('p')
-                    ->andWhere('p.identified = :identified')
-                    ->setParameter('identified', true)
-                    ->orderBy('p.name', 'ASC');
-            },
+            'query_builder' => static fn(PersonRepository $personRepository) => $personRepository
+                ->createQueryBuilder('p')
+                ->andWhere('p.identified = :identified')
+                ->setParameter('identified', true)
+                ->orderBy('p.name', \SortDirection::Ascending),
         ]);
     }
 

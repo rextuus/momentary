@@ -49,6 +49,7 @@ security:
         - { path: ^/authorize, roles: PUBLIC_ACCESS }
         - { path: ^/search-test, roles: PUBLIC_ACCESS }
         - { path: ^/api,       roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/admin, roles: ROLE_ADMIN }
         - { path: ^/, roles: ROLE_USER }
 
 when@test:

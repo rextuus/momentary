@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
@@ -12,16 +14,10 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: VideoFaceRepository::class)]
-#[ApiResource(
-    operations: [
-        new GetCollection(
-            normalizationContext: ['groups' => ['videoface:list']]
-        ),
-        new Get(
-            normalizationContext: ['groups' => ['videoface:detail']]
-        )
-    ]
-)]
+#[ApiResource(operations: [
+    new GetCollection(normalizationContext: ['groups' => ['videoface:list']]),
+    new Get(normalizationContext: ['groups' => ['videoface:detail']]),
+])]
 class VideoFace
 {
     #[ORM\Id]
@@ -201,7 +197,7 @@ class VideoFace
             ($this->boundingBox['Top'] ?? 0) * 100,
             ($this->boundingBox['Left'] ?? 0) * 100,
             ($this->boundingBox['Width'] ?? 0) * 100,
-            ($this->boundingBox['Height'] ?? 0) * 100
+            ($this->boundingBox['Height'] ?? 0) * 100,
         );
     }
 

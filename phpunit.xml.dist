@@ -1,39 +1,61 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
-<!-- https://phpunit.readthedocs.io/en/latest/configuration.html -->
+<!-- https://docs.phpunit.de/en/13.4/configuration.html -->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
-         backupGlobals="false"
          colors="true"
          bootstrap="tests/bootstrap.php"
-         convertDeprecationsToExceptions="false"
->
-    <php>
-        <ini name="display_errors" value="1" />
-        <ini name="error_reporting" value="-1" />
-        <server name="APP_ENV" value="test" force="true" />
-        <server name="SHELL_VERBOSITY" value="-1" />
-        <server name="SYMFONY_PHPUNIT_REMOVE" value="" />
-        <server name="SYMFONY_PHPUNIT_VERSION" value="9.5" />
-        <server name="STORAGE_ROOT" value="var/storage" />
-    </php>
+         cacheDirectory="var/cache/.phpunit"
+         executionOrder="defects"
+         resolveDependencies="true"
+         failOnRisky="true"
+         failOnWarning="true"
+         beStrictAboutOutputDuringTests="true"
+         displayDetailsOnTestsThatTriggerDeprecations="true"
+         displayDetailsOnPhpunitDeprecations="true">
+  <php>
+    <ini name="display_errors" value="1"/>
+    <ini name="error_reporting" value="-1"/>
+    <!-- Als server und env, damit auch ein in Docker gesetztes APP_ENV=prod überschrieben wird -->
+    <server name="APP_ENV" value="test" force="true"/>
+    <env name="APP_ENV" value="test" force="true"/>
+    <env name="APP_DEBUG" value="1" force="true"/>
+    <server name="SHELL_VERBOSITY" value="-1"/>
+    <server name="STORAGE_ROOT" value="var/storage"/>
+  </php>
 
-    <testsuites>
-        <testsuite name="Project Test Suite">
-            <directory>tests</directory>
-        </testsuite>
-    </testsuites>
+  <testsuites>
+    <testsuite name="unit">
+      <directory>tests/Unit</directory>
+    </testsuite>
+    <testsuite name="integration">
+      <directory>tests/Integration</directory>
+    </testsuite>
+    <testsuite name="functional">
+      <directory>tests/Functional</directory>
+    </testsuite>
+  </testsuites>
 
-    <coverage processUncoveredFiles="true">
-        <include>
-            <directory suffix=".php">src</directory>
-        </include>
-    </coverage>
+  <groups>
+    <exclude>
+      <!-- Echte ffmpeg/PySceneDetect-Pipeline, nur per "composer test:slow" -->
+      <group>slow</group>
+    </exclude>
+  </groups>
 
-    <listeners>
-        <listener class="Symfony\Bridge\PhpUnit\SymfonyTestsListener" />
-    </listeners>
+  <source ignoreSuppressionOfDeprecations="true">
+    <include>
+      <directory suffix=".php">src</directory>
+    </include>
+  </source>
 
-    <extensions>
-    </extensions>
+  <extensions>
+    <bootstrap class="Symfony\Bridge\PhpUnit\SymfonyExtension">
+      <parameter name="clock-mock-namespaces" value="App"/>
+      <parameter name="dns-mock-namespaces" value="App"/>
+    </bootstrap>
+    <bootstrap class="DAMA\DoctrineTestBundle\PHPUnit\PHPUnitExtension"/>
+    <bootstrap class="Zenstruck\Foundry\PHPUnit\FoundryExtension">
+      <parameter name="enabled-auto-reset" value="true"/>
+    </bootstrap>
+  </extensions>
 </phpunit>

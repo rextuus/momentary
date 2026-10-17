@@ -24,8 +24,7 @@ final class FailedStepSubscriber implements EventSubscriberInterface
         private readonly WorkflowMachine $workflowMachine,
         private readonly VideoProcessingService $processingService,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     public static function getSubscribedEvents(): array
     {
@@ -59,10 +58,12 @@ final class FailedStepSubscriber implements EventSubscriberInterface
             $this->processingService->failStep(
                 $video,
                 $message->getVideoStatusForCurrentProcessStepEntity(),
-                mb_substr($event->getThrowable()->getMessage(), 0, 1000)
+                mb_substr($event->getThrowable()->getMessage(), 0, 1000),
             );
         } catch (\Throwable $e) {
-            $this->logger->warning('FailedStepSubscriber: Video konnte nicht auf FAIL gesetzt werden: ' . $e->getMessage());
+            $this->logger->warning(
+                'FailedStepSubscriber: Video konnte nicht auf FAIL gesetzt werden: ' . $e->getMessage(),
+            );
         }
     }
 }

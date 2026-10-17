@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Command\Admin;
 
 use App\Service\Storage\StoragePathProvider;
@@ -10,14 +12,11 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Finder\Finder;
 
-#[AsCommand(
-    name: 'app:storage:reset',
-    description: 'Leert das gesamte Storage-Verzeichnis (Videos, Thumbnails, etc.)',
-)]
+#[AsCommand(name: 'app:storage:reset', description: 'Leert das gesamte Storage-Verzeichnis (Videos, Thumbnails, etc.)')]
 class StorageResetCommand extends Command
 {
     public function __construct(
-        private readonly StoragePathProvider $pathProvider
+        private readonly StoragePathProvider $pathProvider,
     ) {
         parent::__construct();
     }
@@ -37,7 +36,7 @@ class StorageResetCommand extends Command
 
                     $subFinder = new Finder();
                     $subFinder->in($item->getRealPath())->files(); // Nur Dateien
-                    
+
                     $count = 0;
                     foreach ($subFinder as $file) {
                         $io->text('  - ' . $file->getRelativePathname());
@@ -53,7 +52,10 @@ class StorageResetCommand extends Command
             }
         }
 
-        if (!$io->confirm('Sind Sie sicher, dass Sie das gesamte Storage-Verzeichnis leeren möchten? Das kann nicht rückgängig gemacht werden.', true)) {
+        if (!$io->confirm(
+            'Sind Sie sicher, dass Sie das gesamte Storage-Verzeichnis leeren möchten? Das kann nicht rückgängig gemacht werden.',
+            true,
+        )) {
             $io->warning('Abgebrochen.');
             return Command::FAILURE;
         }

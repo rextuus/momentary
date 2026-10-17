@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Twig;
 
 use App\Enum\PersonStatus;
@@ -16,9 +18,9 @@ final class NavStatsExtension extends AbstractExtension
     /** @var array{new: int, to_reassign: int}|null */
     private ?array $cache = null;
 
-    public function __construct(private readonly PersonRepository $personRepository)
-    {
-    }
+    public function __construct(
+        private readonly PersonRepository $personRepository,
+    ) {}
 
     public function getFunctions(): array
     {

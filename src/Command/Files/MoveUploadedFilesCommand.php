@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Command\Files;
 
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -18,7 +20,7 @@ class MoveUploadedFilesCommand extends Command
 
     public function __construct(
         #[Autowire(param: 'app.ftp_source_dirs')]
-        private array $sourceDirs
+        private array $sourceDirs,
     ) {
         parent::__construct();
     }
@@ -44,13 +46,13 @@ class MoveUploadedFilesCommand extends Command
 
             foreach ($finder as $file) {
                 $targetPath = self::TARGET_DIR . DIRECTORY_SEPARATOR . $file->getFilename();
-                
+
                 // Avoid overwriting if file already exists
                 if ($fs->exists($targetPath)) {
                     $io->note('File already exists in target, skipping: ' . $file->getFilename());
                     continue;
                 }
-                
+
                 $fs->rename($file->getRealPath(), $targetPath);
                 $io->text('Moved: ' . $file->getFilename());
                 $count++;

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Twig\Components;
 
 use App\Entity\Person;
@@ -31,16 +33,12 @@ class PersonDetailComponent extends AbstractController
 
     public function __construct(
         private VideoFaceRepository $videoFaceRepository,
-        private EntityManagerInterface $entityManager
+        private EntityManagerInterface $entityManager,
     ) {}
 
     protected function instantiateForm(): FormInterface
     {
-        return $this->createForm(
-            PersonCombineType::class,
-            $this->initialFormData,
-            ['source' => $this->person]
-        );
+        return $this->createForm(PersonCombineType::class, $this->initialFormData, ['source' => $this->person]);
     }
 
     #[LiveAction]
@@ -113,7 +111,7 @@ class PersonDetailComponent extends AbstractController
 
         // 1. Neue temporäre Person anlegen, die nur für das Reassignment dient
         $newPerson = new Person();
-        $uniqueId = substr(md5((string)hrtime(true)), 0, 8);
+        $uniqueId = substr(md5((string) hrtime(true)), 0, 8);
         $newPerson->setName('split_' . $uniqueId);
         $newPerson->setIdentified(false);
         $newPerson->setStatus(\App\Enum\PersonStatus::TO_REASSIGN);

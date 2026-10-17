@@ -10,10 +10,7 @@ readonly class FileSystem
 {
     public function __construct(
         private FilesystemOperator $filesystem,
-        private FlysystemPublicUrlGenerator $publicUrlGenerator
-    )
-    {
-    }
+    ) {}
 
     public function getFilesystem(): FilesystemOperator
     {

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service\Jellyfin;
 
 use App\Entity\VideoScene;
@@ -10,10 +12,9 @@ class JellyfinPlaybackService
     private string $jellyfinHost;
     private ?string $jellyfinApiKey;
 
-    public function __construct(
-        #[Autowire('%env(JELLYFIN_HOST)%')] string $jellyfinHost,
-        #[Autowire('%env(JELLYFIN_API_KEY)%')] ?string $jellyfinApiKey
-    ) {
+    public function __construct(#[Autowire('%env(JELLYFIN_HOST)%')] string $jellyfinHost, #[\SensitiveParameter]
+        #[Autowire('%env(JELLYFIN_API_KEY)%')] ?string $jellyfinApiKey)
+    {
         $this->jellyfinHost = rtrim($jellyfinHost, '/');
         $this->jellyfinApiKey = $jellyfinApiKey;
     }
@@ -34,12 +35,12 @@ class JellyfinPlaybackService
         }
 
         $itemId = $video->getJellyfinItemId();
-        $startTicks = (int)($scene->getStartSeconds() * 10000000);
-        
+        $startTicks = (int) ($scene->getStartSeconds() * 10000000);
+
         // URL-Encoding für den API-Key falls nötig, aber Emby/Jellyfin erwartet diesen oft als Header oder Query-Param
         $params = http_build_query([
             'api_key' => $this->jellyfinApiKey,
-            'StartTimeTicks' => $startTicks
+            'StartTimeTicks' => $startTicks,
         ]);
 
         return "{$this->jellyfinHost}/Videos/{$itemId}/stream?{$params}";

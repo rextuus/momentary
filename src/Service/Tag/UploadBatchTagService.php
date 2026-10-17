@@ -18,9 +18,9 @@ final class UploadBatchTagService
     private const CATEGORY_NAME = 'Upload-Ordner';
     private const MAX_NAME_LENGTH = 100;
 
-    public function __construct(private readonly EntityManagerInterface $entityManager)
-    {
-    }
+    public function __construct(
+        private readonly EntityManagerInterface $entityManager,
+    ) {}
 
     public function tagVideo(Video $video, string $batchName): Tag
     {
@@ -35,8 +35,7 @@ final class UploadBatchTagService
     {
         $batchName = mb_substr(trim($batchName), 0, self::MAX_NAME_LENGTH);
 
-        $category = $this->entityManager->getRepository(TagCategory::class)
-            ->findOneBy(['name' => self::CATEGORY_NAME]);
+        $category = $this->entityManager->getRepository(TagCategory::class)->findOneBy(['name' => self::CATEGORY_NAME]);
 
         if ($category === null) {
             $category = new TagCategory();
@@ -45,7 +44,8 @@ final class UploadBatchTagService
             $this->entityManager->flush();
         }
 
-        $tag = $this->entityManager->getRepository(Tag::class)
+        $tag = $this->entityManager
+            ->getRepository(Tag::class)
             ->findOneBy(['name' => $batchName, 'category' => $category]);
 
         if ($tag === null) {

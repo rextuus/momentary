@@ -24,7 +24,7 @@ class UploadToJellyfinStepMessageHandler extends AbstractVideoMessageHandler
         VideoProcessMessageDispatcher $dispatcher,
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
-        private readonly BetterVideoAnalyzer $betterVideoAnalyzer
+        private readonly BetterVideoAnalyzer $betterVideoAnalyzer,
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
     }
@@ -37,7 +37,9 @@ class UploadToJellyfinStepMessageHandler extends AbstractVideoMessageHandler
 
         // Idempotenz-Prüfung: Wenn bereits eine ID existiert, ist der Schritt erledigt.
         if ($video->getJellyfinItemId() !== null) {
-            $this->finishCurrentStep('Video is already exported to Jellyfin (Item ID: ' . $video->getJellyfinItemId() . ')');
+            $this->finishCurrentStep(
+                'Video is already exported to Jellyfin (Item ID: ' . $video->getJellyfinItemId() . ')',
+            );
             return;
         }
 
@@ -52,13 +54,11 @@ class UploadToJellyfinStepMessageHandler extends AbstractVideoMessageHandler
             'Video "%s" successfully exported to Jellyfin at path: %s (Item ID: %s)',
             $video->getTitle(),
             $result->getJellyfinPath(),
-            $result->getJellyfinItemId() ?? 'Not found'
+            $result->getJellyfinItemId() ?? 'Not found',
         );
 
         $this->finishCurrentStep($successMsg);
     }
 
-    public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
-    {
-    }
+    public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void {}
 }

@@ -10,7 +10,7 @@ readonly class JellyfinExportResult
         private bool $success,
         private ?string $jellyfinPath = null,
         private ?string $jellyfinItemId = null,
-        private ?string $errorMessage = null
+        private ?string $errorMessage = null,
     ) {}
 
     public function isSuccess(): bool

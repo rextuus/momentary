@@ -24,7 +24,7 @@ class VideoNamingStepMessageHandler extends AbstractVideoMessageHandler
         VideoProcessMessageDispatcher $dispatcher,
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
-        private readonly VideoNamingService $videoNamingService
+        private readonly VideoNamingService $videoNamingService,
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
     }
@@ -41,7 +41,5 @@ class VideoNamingStepMessageHandler extends AbstractVideoMessageHandler
         $this->finishCurrentStep(sprintf('Video named to "%s".', $video->getTitle()));
     }
 
-    public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
-    {
-    }
+    public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void {}
 }

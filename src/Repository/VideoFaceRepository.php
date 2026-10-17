@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repository;
 
 use App\Entity\VideoFace;
@@ -30,7 +32,6 @@ class VideoFaceRepository extends ServiceEntityRepository
     //            ->getResult()
     //        ;
     //    }
-
     //    public function findOneBySomeField($value): ?VideoFace
     //    {
     //        return $this->createQueryBuilder('v')

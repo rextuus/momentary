@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\EventListener;
 
 use App\Entity\Video;
@@ -18,8 +20,7 @@ final class VideoSearchIndexRemovalListener
     public function __construct(
         private readonly VideoSearchIndex $searchIndex,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     public function preRemove(Video $video): void
     {
@@ -31,7 +32,11 @@ final class VideoSearchIndexRemovalListener
         try {
             $this->searchIndex->remove($id);
         } catch (\Throwable $e) {
-            $this->logger->warning(sprintf('VideoSearchIndexRemovalListener: Video %d nicht aus Index entfernt: %s', $id, $e->getMessage()));
+            $this->logger->warning(sprintf(
+                'VideoSearchIndexRemovalListener: Video %d nicht aus Index entfernt: %s',
+                $id,
+                $e->getMessage(),
+            ));
         }
     }
 }

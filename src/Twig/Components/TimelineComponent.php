@@ -10,7 +10,6 @@ use App\Entity\VideoScene;
 use App\Repository\VideoSceneRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\UX\LiveComponent\Attribute\AsLiveComponent;
-use Symfony\UX\LiveComponent\Attribute\Computed;
 use Symfony\UX\LiveComponent\Attribute\LiveAction;
 use Symfony\UX\LiveComponent\Attribute\LiveArg;
 use Symfony\UX\LiveComponent\Attribute\LiveProp;
@@ -42,7 +41,7 @@ class TimelineComponent
 
     public function __construct(
         private VideoSceneRepository $sceneRepository,
-        private EntityManagerInterface $entityManager
+        private EntityManagerInterface $entityManager,
     ) {}
 
     #[LiveAction]
@@ -61,7 +60,6 @@ class TimelineComponent
         $this->page++;
     }
 
-    #[Computed]
     public function getItems(): array
     {
         if ($this->video->getChapters()->count() > 0) {
@@ -81,7 +79,7 @@ class TimelineComponent
                             if (!isset($persons[$personId])) {
                                 $persons[$personId] = [
                                     'person' => $face->getPerson(),
-                                    'count' => 0
+                                    'count' => 0,
                                 ];
                             }
                             $persons[$personId]['count']++;
@@ -89,15 +87,13 @@ class TimelineComponent
                     }
                 }
 
-                usort($persons, function ($a, $b) {
-                    return $b['count'] <=> $a['count'];
-                });
+                usort($persons, static fn($a, $b) => $b['count'] <=> $a['count']);
 
                 $sortedPersons = [];
                 foreach ($persons as $index => $personData) {
                     $sortedPersons[] = [
                         'person' => $personData['person'],
-                        'isTop5' => $index < 5
+                        'isTop5' => $index < 5,
                     ];
                 }
 
@@ -115,7 +111,7 @@ class TimelineComponent
             ['video' => $this->video],
             ['startSeconds' => 'ASC'],
             $this->page * self::PAGE_SIZE,
-            0
+            0,
         );
         $result = [];
         foreach ($scenes as $scene) {
@@ -129,9 +125,14 @@ class TimelineComponent
 
     private function getScenesForChapter(VideoChapter $chapter): array
     {
-        return $this->video->getScenes()->filter(function(VideoScene $scene) use ($chapter) {
-            // Überlappungsprüfung: Szene startet vor Kapitelende UND endet nach Kapitelstart
-            return $scene->getStartSeconds() < $chapter->getEndSeconds() && $scene->getEndSeconds() > $chapter->getStartSeconds();
-        })->toArray();
+        return $this->video
+            ->getScenes()
+            ->filter(
+                static fn(VideoScene $scene) => (
+                    $scene->getStartSeconds() < $chapter->getEndSeconds()
+                    && $scene->getEndSeconds() > $chapter->getStartSeconds()
+                ),
+            )
+            ->toArray();
     }
 }

@@ -28,8 +28,7 @@ readonly class BetterVideoAnalyzer
         private VideoFileService $videoFileService,
         #[Autowire('%env(default:app.min_scene_length_for_refinement:MIN_SCENE_LENGTH_FOR_REFINEMENT)%')]
         private float $minSceneLengthForRefinement = 2.0,
-    ) {
-    }
+    ) {}
 
     public function getAbsolutePath(string $path): string
     {
@@ -50,7 +49,7 @@ readonly class BetterVideoAnalyzer
         string $videoPath,
         int $videoId,
         float $threshold = 27.0,
-        string $detector = 'content'
+        string $detector = 'content',
     ): array {
         return $this->sceneDetector->detectScenes($videoPath, $videoId, $threshold, $detector);
     }
@@ -66,16 +65,9 @@ readonly class BetterVideoAnalyzer
         ?float $fps = null,
         array|float|null $startTime = null,
         array|float|null $duration = null,
-        bool $isRefinement = false
+        bool $isRefinement = false,
     ): FrameSplittingResult {
-        return $this->frameExtractor->extractFrames(
-            $videoId,
-            $videoPath,
-            $fps,
-            $startTime,
-            $duration,
-            $isRefinement
-        );
+        return $this->frameExtractor->extractFrames($videoId, $videoPath, $fps, $startTime, $duration, $isRefinement);
     }
 
     public function refineSceneAnalysis(Video $video): RefinementAnalyzeResult
@@ -87,7 +79,7 @@ readonly class BetterVideoAnalyzer
             $duration = $scene->getEndSeconds() - $scene->getStartSeconds();
 
             if ($scene->getVideoFaces()->isEmpty() && $duration >= $minSceneLength) {
-                $scenesToRefine[] = $scene;
+                $scenesToRefine[] = $scene->getId();
             }
         }
 

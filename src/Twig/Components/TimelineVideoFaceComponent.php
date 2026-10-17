@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Twig\Components;
 
 use App\Entity\VideoFace;
@@ -13,9 +15,9 @@ final class TimelineVideoFaceComponent
     public int $width = 80;
     public int $height = 80;
 
-    public function __construct(private readonly ImgproxyService $imgproxyService)
-    {
-    }
+    public function __construct(
+        private readonly ImgproxyService $imgproxyService,
+    ) {}
 
     public function getVideoUrl(): ?string
     {
@@ -23,15 +25,11 @@ final class TimelineVideoFaceComponent
             return null;
         }
 
-        return $this->imgproxyService->generateUrl(
-            $this->videoFace->getFaceImagePath(),
-            $this->width,
-            $this->height
-        );
+        return $this->imgproxyService->generateUrl($this->videoFace->getFaceImagePath(), $this->width, $this->height);
     }
 
     public function getImageDimensions(): string
     {
-        return sprintf('style="max-width: %dpx; max-height: %dpx;"',$this->width, $this->height );
+        return sprintf('style="max-width: %dpx; max-height: %dpx;"', $this->width, $this->height);
     }
 }

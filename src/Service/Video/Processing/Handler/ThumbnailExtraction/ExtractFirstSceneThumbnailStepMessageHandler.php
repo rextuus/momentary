@@ -6,7 +6,6 @@ namespace App\Service\Video\Processing\Handler\ThumbnailExtraction;
 
 use App\Repository\VideoRepository;
 use App\Repository\VideoSceneRepository;
-use App\Service\Storage\FileManager;
 use App\Service\Storage\StoragePathProvider;
 use App\Service\Video\Analyze\SceneThumbnailExtractor;
 use App\Service\Video\Processing\Attribute\StepOrder;
@@ -14,7 +13,6 @@ use App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractFirstSceneTh
 use App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractSceneThumbnailStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
-use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
@@ -55,7 +53,7 @@ class ExtractFirstSceneThumbnailStepMessageHandler extends AbstractExtractSceneT
 
         $this->startCurrentStep();
 
-        $sceneIds = array_values(array_map(fn($s) => $s->getId(), $video->getScenes()->toArray()));
+        $sceneIds = array_values(array_map(static fn($s) => $s->getId(), $video->getScenes()->toArray()));
 
         // should in fact never occur cause last step already marked chain as failed/stopped
         if ($sceneIds === []) {
@@ -71,7 +69,7 @@ class ExtractFirstSceneThumbnailStepMessageHandler extends AbstractExtractSceneT
         $successMsg = sprintf(
             'Dispatched message to extract thumbnail for scene #%d of in total %d scenes',
             $firstId,
-            count($sceneIds) + 1
+            count($sceneIds) + 1,
         );
 
         $this->finishCurrentStep($successMsg);

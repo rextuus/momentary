@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
@@ -15,18 +17,14 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: PersonRepository::class)]
-#[ApiResource(
-    operations: [
-        new GetCollection(
-            uriTemplate: '/persons',
-            normalizationContext: ['groups' => ['person:list']],
-            provider: PersonCollectionProvider::class
-        ),
-        new Get(
-            normalizationContext: ['groups' => ['person:detail']]
-        )
-    ]
-)]
+#[ApiResource(operations: [
+    new GetCollection(
+        uriTemplate: '/persons',
+        normalizationContext: ['groups' => ['person:list']],
+        provider: PersonCollectionProvider::class,
+    ),
+    new Get(normalizationContext: ['groups' => ['person:detail']]),
+])]
 class Person
 {
     #[ORM\Id]
@@ -266,7 +264,7 @@ class Person
             return null;
         }
 
-        if (in_array(ucfirst(strtolower($input)), ['Male', 'Female'])) {
+        if (in_array(ucfirst(strtolower($input)), ['Male', 'Female'], strict: true)) {
             return ucfirst(strtolower($input));
         }
 
@@ -339,11 +337,10 @@ class Person
     {
         $face = $this->detectionFaces->first();
         if (!$face) {
-            dd($this->name);
-            throw new \Exception('No detection face set');
+            throw new \Exception(sprintf('No detection face set for person "%s"', $this->name));
         }
 
-        return $this->detectionFaces->first();
+        return $face;
     }
 
     public function getStatus(): PersonStatus

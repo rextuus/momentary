@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\EventSubscriber;
 
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -24,8 +26,8 @@ class UserAgentSubscriber implements EventSubscriberInterface
 
         // Wir stellen die Information als Request-Attribut bereit
         $request->attributes->set('is_native_app', $isNative);
-        
-        // Optional: Auch im Service-Container oder als globales Flag, 
+
+        // Optional: Auch im Service-Container oder als globales Flag,
         // aber Request-Attribute sind der Symfony-Standard für Request-spezifischen Kontext.
     }
 

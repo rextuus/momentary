@@ -18,6 +18,7 @@ class GeminiService
     private Client $client;
 
     public function __construct(
+        #[\SensitiveParameter]
         #[Autowire('%env(GEMINI_API_KEY)%')]
         private readonly string $apiKey,
     ) {
@@ -34,21 +35,23 @@ class GeminiService
             ->withGenerationConfig($generationConfig)
             ->generateContent([
                 $prompt,
-                new Blob(
-                    mimeType: MimeType::IMAGE_JPEG,
-                    data: base64_encode(
-                        file_get_contents($imageUrl)
-                    )
-                )
+                new Blob(mimeType: MimeType::IMAGE_JPEG, data: base64_encode(file_get_contents($imageUrl))),
             ]);
 
         foreach ($response->parts() as $part) {
             if ($part->inlineData !== null) {
-                return base64_decode($part->inlineData->data);
+                $image = base64_decode($part->inlineData->data, strict: true);
+                if ($image === false) {
+                    throw new RuntimeException('Gemini returned image data that is not valid base64.');
+                }
+
+                return $image;
             }
         }
 
-        throw new RuntimeException('Gemini did not return an image in the response. Check safety ratings or response content.');
+        throw new RuntimeException(
+            'Gemini did not return an image in the response. Check safety ratings or response content.',
+        );
     }
 
     public function analyzeImage(string $imagePath): array
@@ -70,21 +73,16 @@ class GeminiService
             ->generativeModel(model: 'gemini-3.1-flash-lite')
             ->generateContent([
                 $prompt,
-                new Blob(
-                    mimeType: MimeType::IMAGE_JPEG,
-                    data: base64_encode(
-                        file_get_contents($imagePath)
-                    )
-                )
+                new Blob(mimeType: MimeType::IMAGE_JPEG, data: base64_encode(file_get_contents($imagePath))),
             ]);
 
         $text = $response->text();
-        fwrite(STDOUT, "[Gemini] Raw response: " . $text . PHP_EOL);
+        fwrite(STDOUT, '[Gemini] Raw response: ' . $text . PHP_EOL);
         $text = str_replace(['```json', '```'], '', $text);
-        
+
         $decoded = json_decode(trim($text), true);
         if ($decoded === null) {
-            fwrite(STDOUT, "[Gemini] JSON decode failed for: " . $text . PHP_EOL);
+            fwrite(STDOUT, '[Gemini] JSON decode failed for: ' . $text . PHP_EOL);
         }
         return $decoded ?? [];
     }
@@ -96,13 +94,16 @@ class GeminiService
             $scene = $scenesData[0];
             return [[
                 'title' => $scene['title'] ?? 'Kapitel 1',
-                'startSeconds' => (int)$scene['start'],
-                'endSeconds' => (int)$scene['end'],
+                'startSeconds' => (int) $scene['start'],
+                'endSeconds' => (int) $scene['end'],
                 'description' => 'Zusammenfassung des gesamten Videos.',
             ]];
         }
 
-        $prompt = 'Hier ist eine Übersicht über alle Szenen eines Videos mit ihren zugeordneten Titeln und Tags/Kategorien: ' . json_encode($scenesData) . '.
+        $prompt =
+            'Hier ist eine Übersicht über alle Szenen eines Videos mit ihren zugeordneten Titeln und Tags/Kategorien: '
+            . json_encode($scenesData)
+            . '.
             Bitte schlage basierend auf diesen Informationen sinnvolle Kapitel vor, um das Video zu strukturieren.
             Wichtig:
             - Wenn die Szenen inhaltlich sehr ähnlich oder identisch sind, oder wenn das Video insgesamt kurz ist, erstelle zwingend nur ein einziges, umfassendes Kapitel für das gesamte Video.
@@ -122,27 +123,31 @@ class GeminiService
         $response = $this->client
             ->generativeModel(model: 'gemini-3.1-flash-lite')
             ->generateContent([
-                $prompt
+                $prompt,
             ]);
 
         $text = $response->text();
         $text = str_replace(['```json', '```'], '', $text);
-        
+
         return json_decode(trim($text), true) ?? [];
     }
 
     public function suggestVideoName(array $tags, array $sceneSummaries, string $filename, ?string $createdAt): string
     {
         $promptParts = ['Schlage einen prägnanten Titel für dieses Video vor.'];
-        
+
         if (!empty($tags)) {
             $promptParts[] = 'Tags: ' . implode(', ', $tags) . '.';
         }
         if (!empty($sceneSummaries)) {
-             $promptParts[] = 'Szenen/Kapitel-Zusammenfassungen: ' . json_encode($sceneSummaries) . '.';
+            $promptParts[] = 'Szenen/Kapitel-Zusammenfassungen: ' . json_encode($sceneSummaries) . '.';
         }
-        
-        $promptParts[] = sprintf('Falls diese Informationen nicht ausreichen, hier ergänzende Daten: Dateiname: %s, Erstellungsdatum: %s.', $filename, $createdAt ?? 'unbekannt');
+
+        $promptParts[] = sprintf(
+            'Falls diese Informationen nicht ausreichen, hier ergänzende Daten: Dateiname: %s, Erstellungsdatum: %s.',
+            $filename,
+            $createdAt ?? 'unbekannt',
+        );
         $promptParts[] = 'Antworte ausschließlich mit dem Titel.';
 
         $prompt = implode(' ', $promptParts);
@@ -150,10 +155,9 @@ class GeminiService
         $response = $this->client
             ->generativeModel(model: 'gemini-3.1-flash-lite')
             ->generateContent([
-                $prompt
+                $prompt,
             ]);
 
         return trim($response->text());
     }
 }
-

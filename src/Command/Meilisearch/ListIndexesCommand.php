@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Command\Meilisearch;
 
 use Meilisearch\Client as MeiliSearchClient;
@@ -11,22 +13,18 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(
-    name: 'app:meilisearch:list-indexes',
-    description: 'Lists all MeiliSearch indexes and shows their content',
-)]
+#[AsCommand(name: 'app:meilisearch:list-indexes', description: 'Lists all MeiliSearch indexes and shows their content')]
 class ListIndexesCommand extends Command
 {
     public function __construct(
-        private MeiliSearchClient $meiliSearchClient
+        private MeiliSearchClient $meiliSearchClient,
     ) {
         parent::__construct();
     }
 
     protected function configure(): void
     {
-        $this
-            ->addOption('show-documents', null, InputOption::VALUE_NONE, 'Show documents in the indexes');
+        $this->addOption('show-documents', null, InputOption::VALUE_NONE, 'Show documents in the indexes');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -60,7 +58,7 @@ class ListIndexesCommand extends Command
 
             if ($showDocuments) {
                 $io->text('Documents (first 5):');
-                $documents = $index->getDocuments((new DocumentsQuery())->setLimit(5))->getResults();
+                $documents = $index->getDocuments(new DocumentsQuery()->setLimit(5))->getResults();
 
                 if (count($documents) === 0) {
                     $io->text('No documents found.');

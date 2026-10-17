@@ -8,15 +8,15 @@ use App\Enum\VideoStatus;
 use App\Repository\VideoRepository;
 use App\Service\Video\Queue\QueueHealthChecker;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/admin/queue', name: 'app_admin_queue', methods: ['GET'])]
-class QueueController extends AbstractController
+final class QueueController extends AbstractController
 {
     public function __construct(
         private readonly VideoRepository $videoRepository,
-        private readonly QueueHealthChecker $queueHealthChecker
+        private readonly QueueHealthChecker $queueHealthChecker,
     ) {}
 
     public function __invoke(): Response

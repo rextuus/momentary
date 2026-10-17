@@ -1,9 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repository;
 
 use App\Entity\File;
-use App\Entity\Person;
 use App\Entity\Video;
 use App\Entity\VideoScene;
 use App\Enum\FilePurpose;
@@ -43,7 +44,8 @@ class FileRepository extends ServiceEntityRepository
         // Da die File-Relation nun direkt auf der Video-Entity liegt (sourceFile, convertedFile, thumbnailFile),
         // prüfen wir über den Join oder direkt, falls File eine Rückwärtsreferenz hat.
         // Mit Ansatz A (Video hat die File-Spalten): Wir suchen das File über die Video-Objekt-Eigenschaften.
-        return $this->createQueryBuilder('f')
+        return $this
+            ->createQueryBuilder('f')
             ->innerJoin(Video::class, 'v', 'WITH', 'v.sourceFile = f OR v.convertedFile = f OR v.thumbnailFile = f')
             ->andWhere('v = :video')
             ->andWhere('f.purpose = :purpose')
@@ -58,7 +60,8 @@ class FileRepository extends ServiceEntityRepository
      */
     public function findByVideoAndPurposes(Video $video, array $purposes): array
     {
-        return $this->createQueryBuilder('f')
+        return $this
+            ->createQueryBuilder('f')
             ->innerJoin(Video::class, 'v', 'WITH', 'v.sourceFile = f OR v.convertedFile = f OR v.thumbnailFile = f')
             ->andWhere('v = :video')
             ->andWhere('f.purpose IN (:purposes)')
@@ -73,7 +76,8 @@ class FileRepository extends ServiceEntityRepository
      */
     public function findByScene(VideoScene $scene): array
     {
-        return $this->createQueryBuilder('f')
+        return $this
+            ->createQueryBuilder('f')
             ->innerJoin(VideoScene::class, 's', 'WITH', 's.thumbnailFile = f')
             ->andWhere('s = :scene')
             ->setParameter('scene', $scene)
@@ -81,24 +85,10 @@ class FileRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    /**
-     * @return File[]
-     */
-    public function findByPerson(Person $person): array
-    {
-        // Personen verweisen über VideoFace auf das File (faceImage) oder über ProfileFace
-        return $this->createQueryBuilder('f')
-            ->innerJoin('p.videoFaces', 'vf')
-            ->innerJoin('vf.faceImage', 'f')
-            ->andWhere('vf.person = :person')
-            ->setParameter('person', $person)
-            ->getQuery()
-            ->getResult();
-    }
-
     public function deleteByRelativePath(string $path): int
     {
-        return $this->createQueryBuilder('f')
+        return $this
+            ->createQueryBuilder('f')
             ->delete()
             ->andWhere('f.relativePath = :path')
             ->setParameter('path', $path)

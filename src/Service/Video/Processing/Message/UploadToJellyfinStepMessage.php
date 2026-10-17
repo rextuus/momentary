@@ -41,4 +41,3 @@ class UploadToJellyfinStepMessage extends AbstractVideoProcessStepMessage
         return true;
     }
 }
-

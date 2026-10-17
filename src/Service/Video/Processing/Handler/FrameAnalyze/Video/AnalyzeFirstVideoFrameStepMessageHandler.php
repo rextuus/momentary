@@ -41,10 +41,7 @@ class AnalyzeFirstVideoFrameStepMessageHandler extends AbstractAnalyzeFrameStepM
             $frames = $message->getRemainingFrames();
             $this->frame = array_shift($frames);
 
-            $successMsg = sprintf(
-                'Video %d contains only one frame. Analyzed this successfully',
-                $video->getId()
-            );
+            $successMsg = sprintf('Video %d contains only one frame. Analyzed this successfully', $video->getId());
 
             $this->analyzeFrame($message);
             $this->finishCurrentStep($successMsg);
@@ -60,7 +57,7 @@ class AnalyzeFirstVideoFrameStepMessageHandler extends AbstractAnalyzeFrameStepM
             'Frame #1 of Video "%s" at timestamp "%d" analyzed. %d left',
             $video->getTitle(),
             $this->frame->getTimestamp(),
-            count($message->getRemainingFrames())
+            count($message->getRemainingFrames()),
         );
 
         // prepare the next

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller;
 
 use App\Repository\PersonRepository;
@@ -7,7 +9,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-class SimplePersonController extends AbstractController
+final class SimplePersonController extends AbstractController
 {
     #[Route('/admin/simple-person-list', name: 'app_simple_person_list')]
     public function index(PersonRepository $personRepository): Response

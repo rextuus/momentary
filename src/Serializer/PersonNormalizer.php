@@ -16,10 +16,15 @@ class PersonNormalizer implements NormalizerInterface, NormalizerAwareInterface
 
     private const ALREADY_CALLED = 'PERSON_NORMALIZER_ALREADY_CALLED';
 
-    public function __construct(private ImgproxyService $imgproxyService) {}
+    public function __construct(
+        private ImgproxyService $imgproxyService,
+    ) {}
 
-    public function normalize($object, ?string $format = null, array $context = []): array|string|int|float|bool|\ArrayObject|null
-    {
+    public function normalize(
+        $object,
+        ?string $format = null,
+        array $context = [],
+    ): array|string|int|float|bool|\ArrayObject|null {
         // 1. Schranke für diesen spezifischen Durchlauf schließen
         $context[self::ALREADY_CALLED] = true;
 
@@ -31,8 +36,8 @@ class PersonNormalizer implements NormalizerInterface, NormalizerAwareInterface
             $groups = $context['groups'] ?? [];
 
             // Auflösung bestimmen (Kiosk-Grid vs. Detailansicht)
-            $width = in_array('person:list', $groups) ? 150 : 400;
-            $height = in_array('person:list', $groups) ? 150 : 400;
+            $width = in_array('person:list', $groups, strict: true) ? 150 : 400;
+            $height = in_array('person:list', $groups, strict: true) ? 150 : 400;
 
             // Pfad-Logik mit Fallbacks (Punkt 3 der Anforderung)
             $imagePath = null;
@@ -54,11 +59,7 @@ class PersonNormalizer implements NormalizerInterface, NormalizerAwareInterface
 
             // Wenn wir einen Pfad gefunden haben, generieren wir die signierte URL
             if ($imagePath) {
-                $data['profileImageUrl'] = $this->imgproxyService->generateUrl(
-                    $imagePath,
-                    $width,
-                    $height
-                );
+                $data['profileImageUrl'] = $this->imgproxyService->generateUrl($imagePath, $width, $height);
             } else {
                 // Optional: Explizit null setzen, falls gar kein Bild existiert
                 $data['profileImageUrl'] = null;

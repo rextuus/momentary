@@ -38,10 +38,10 @@ class AnalyzeSceneFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessag
         $this->startCurrentStep();
 
         // Special-Case: There was only one frame which was already analyzed in the firstFrameMessage
-        if ($message->getCurrentFrame() === null){
+        if ($message->getCurrentFrame() === null) {
             $successMsg = sprintf(
                 'Video %d contains only one frame. This is already analyzed. Go to final frame analyze step. Next message will be immediately set to finished',
-                $video->getId()
+                $video->getId(),
             );
             $this->finishCurrentStep($successMsg);
 
@@ -52,7 +52,7 @@ class AnalyzeSceneFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessag
         if ($message->getRemainingFrames() === []) {
             $successMsg = sprintf(
                 'All frames for video %d analyzed already successfully. Next message will be immediately set to finished',
-                $video->getId()
+                $video->getId(),
             );
 
             $this->analyzeFrame($message);
@@ -72,11 +72,11 @@ class AnalyzeSceneFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessag
         $this->frame = array_shift($remainingFrames);
         $this->remainingFrames = $remainingFrames;
 
-        if ($this->remainingFrames === []){
+        if ($this->remainingFrames === []) {
             $successMsg = sprintf(
                 'Frame #? of Video "%s" at timestamp "%d" analyzed. Only 1 left. Dispatch final message',
                 $video->getTitle(),
-                $oldFrame['timestamp']
+                $oldFrame['timestamp'],
             );
             $remainingFrames = $message->getRemainingFrames();
             $this->frame = array_shift($remainingFrames);
@@ -91,7 +91,7 @@ class AnalyzeSceneFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessag
             'Frame #? of Video "%s" at timestamp "%d" analyzed. %d left',
             $video->getTitle(),
             $oldFrame['timestamp'],
-            count($this->remainingFrames)
+            count($this->remainingFrames),
         );
 
         $this->dispatchNextMessageOfCurrentStep($successMsg);

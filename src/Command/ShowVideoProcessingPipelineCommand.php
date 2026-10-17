@@ -18,15 +18,14 @@ use Symfony\Component\Finder\Finder;
 
 #[AsCommand(
     name: 'app:video:processing-pipeline:show',
-    description: 'Visualisiert die komplette Video-Processing-Pipeline-Kette mit allen Steps.'
+    description: 'Visualisiert die komplette Video-Processing-Pipeline-Kette mit allen Steps.',
 )]
 class ShowVideoProcessingPipelineCommand extends Command
 {
     private string $projectDir;
 
-    public function __construct(
-        #[Target('kernel.project_dir')] string $projectDir
-    ) {
+    public function __construct(#[Target('kernel.project_dir')] string $projectDir)
+    {
         parent::__construct();
         $this->projectDir = $projectDir;
     }
@@ -51,11 +50,8 @@ class ShowVideoProcessingPipelineCommand extends Command
 
         foreach ($finder as $file) {
             $relativePath = $file->getRelativePathname();
-            $className = 'App\\Service\\Video\\Processing\\Message\\' . str_replace(
-                    ['/', '.php'],
-                    ['\\', ''],
-                    $relativePath
-                );
+            $className =
+                'App\\Service\\Video\\Processing\\Message\\' . str_replace(['/', '.php'], ['\\', ''], $relativePath);
 
             if (!class_exists($className)) {
                 continue;
@@ -76,10 +72,7 @@ class ShowVideoProcessingPipelineCommand extends Command
             /** @var StepOrder $stepOrderInstance */
             $stepOrderInstance = $stepOrderAttributes[0]->newInstance();
 
-            $stepNumber = method_exists($stepOrderInstance, 'getStepNumber')
-                ? $stepOrderInstance->getStepNumber()
-                : $stepOrderInstance->stepNumber;
-
+            $stepNumber = $stepOrderInstance->getStepNumber();
 
             /** @var AbstractVideoProcessStepMessage $dummyInstance */
             $dummyInstance = $reflection->newInstanceWithoutConstructor();
@@ -94,7 +87,7 @@ class ShowVideoProcessingPipelineCommand extends Command
 
             $transitionName = '';
             $needsTransition = '<fg=yellow>Nein</>';
-            if ($dummyInstance->nextStepNeedsTransition()){
+            if ($dummyInstance->nextStepNeedsTransition()) {
                 $needsTransition = '<fg=green>Ja</>';
                 $transitionName = $dummyInstance->getTransitionToStatusNextStepIsBelonging()->name;
             }
@@ -144,7 +137,10 @@ class ShowVideoProcessingPipelineCommand extends Command
         $table->render();
 
         $io->newLine();
-        $io->success(sprintf('Pipeline erfolgreich visualisiert. Insgesamt %d Schritte registriert.', count($pipelineSteps)));
+        $io->success(sprintf(
+            'Pipeline erfolgreich visualisiert. Insgesamt %d Schritte registriert.',
+            count($pipelineSteps),
+        ));
 
         return Command::SUCCESS;
     }

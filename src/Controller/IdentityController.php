@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller;
 
 use App\Repository\PersonRepository;
@@ -8,7 +10,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\MapQueryParameter;
 use Symfony\Component\Routing\Attribute\Route;
 
-class IdentityController extends AbstractController
+final class IdentityController extends AbstractController
 {
     #[Route('/admin/mass-face-resolve/{personId}', name: 'app_identity_mass_face_resolve')]
     public function massFaceResolve(int $personId): Response
@@ -50,14 +52,18 @@ class IdentityController extends AbstractController
         ]);
     }
 
-    #[Route('/admin/resolve-identities/{currentPersonId}', name: 'app_identity_resolve', defaults: ['currentPersonId' => null])]
+    #[Route('/admin/resolve-identities/{currentPersonId}', name: 'app_identity_resolve', defaults: [
+        'currentPersonId' => null,
+    ])]
     public function resolve(
         ?int $currentPersonId = null,
-        #[MapQueryParameter] bool $fromQuickResolve = false,
-        #[MapQueryParameter] bool $fromTinder = false,
-        #[MapQueryParameter] ?string $mergeIds = null
-    ): Response
-    {
+        #[MapQueryParameter]
+        bool $fromQuickResolve = false,
+        #[MapQueryParameter]
+        bool $fromTinder = false,
+        #[MapQueryParameter]
+        ?string $mergeIds = null,
+    ): Response {
         return $this->render('identity/resolve.html.twig', [
             'currentPersonId' => $currentPersonId,
             'fromQuickResolve' => $fromQuickResolve,

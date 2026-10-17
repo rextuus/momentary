@@ -1,9 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use App\Repository\VideoSceneRepository;
-use App\Entity\UserGroup;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -18,7 +19,7 @@ class VideoScene
     #[Groups(['video:detail'])]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(targetEntity: Video::class, inversedBy: "scenes", cascade: ["persist"])]
+    #[ORM\ManyToOne(targetEntity: Video::class, inversedBy: 'scenes', cascade: ['persist'])]
     #[ORM\JoinColumn(nullable: false)]
     private ?Video $video = null;
 
@@ -56,7 +57,12 @@ class VideoScene
     /**
      * @var Collection<int, VideoSceneTag>
      */
-    #[ORM\OneToMany(targetEntity: VideoSceneTag::class, mappedBy: 'videoScene', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OneToMany(
+        targetEntity: VideoSceneTag::class,
+        mappedBy: 'videoScene',
+        cascade: ['persist', 'remove'],
+        orphanRemoval: true,
+    )]
     #[Groups(['video:detail'])]
     private Collection $sceneTags;
 

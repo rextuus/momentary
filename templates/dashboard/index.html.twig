@@ -209,6 +209,7 @@
                                                     <i class="fas fa-stream text-primary me-2"></i>Timeline
                                                 </a>
                                             </li>
+                                            {% if is_granted('VIDEO_EDIT', video) %}
                                             <li><hr class="dropdown-divider"></li>
                                             <li>
                                                 <form method="post" action="{{ path('video_delete', {id: video.id}) }}"
@@ -219,6 +220,7 @@
                                                     </button>
                                                 </form>
                                             </li>
+                                            {% endif %}
                                         </ul>
                                     </div>
                                 </div>
@@ -314,6 +316,7 @@
                 </div>
 
                 {# Wartung (einzige Aktion, die nicht im Header steckt) #}
+                {% if is_granted('ROLE_ADMIN') %}
                 <form action="{{ path('person_cleanup') }}" method="POST"
                       onsubmit="return confirm('Sollen wirklich alle Personen ohne Sichtungen gelöscht werden?');"
                       class="text-center mt-3">
@@ -322,6 +325,7 @@
                         <i class="fas fa-broom me-1"></i>Verwaiste Personen aufräumen
                     </button>
                 </form>
+                {% endif %}
             </div>
         </div>
     </div>

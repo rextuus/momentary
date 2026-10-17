@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service\Jellyfin;
 
 use App\Service\PathConstants;
@@ -17,11 +19,12 @@ class JellyfinUploadService
     public function __construct(
         #[Autowire(env: 'JELLYFIN_HOST')]
         string $jellyfinHost,
+        #[\SensitiveParameter]
         #[Autowire(env: 'JELLYFIN_API_KEY')]
         ?string $jellyfinApiKey,
         private readonly HttpClientInterface $httpClient,
         private readonly LoggerInterface $logger,
-        private readonly VideoFileService $videoFileService
+        private readonly VideoFileService $videoFileService,
     ) {
         // Wir nutzen den VideoFileService, um den absoluten Pfad für das Jellyfin-Upload-Verzeichnis aufzulösen
         $relativeUploadDir = PathConstants::JELLYFIN_UPLOADS;
@@ -48,7 +51,7 @@ class JellyfinUploadService
 
         if (!is_dir($this->uploadDir)) {
             $this->logger->info("Creating upload directory: $this->uploadDir");
-            mkdir($this->uploadDir, 0777, true);
+            mkdir($this->uploadDir, 0o777, true);
         }
 
         $destinationPath = $this->uploadDir . DIRECTORY_SEPARATOR . $filename;
@@ -63,11 +66,13 @@ class JellyfinUploadService
         }
 
         if (copy($sourcePath, $destinationPath)) {
-            @chmod($destinationPath, 0666);
+            // Auf gemounteten Volumes darf chmod scheitern, die Datei ist trotzdem lesbar
+            // @mago-expect lint:no-error-control-operator
+            @chmod($destinationPath, 0o666);
             $this->logger->info("Video successfully copied to Jellyfin directory: $destinationPath");
 
             // Trigger Jellyfin library scan if API key is provided
-            $this->logger->info("Triggering Jellyfin library scan...");
+            $this->logger->info('Triggering Jellyfin library scan...');
             $this->triggerScan();
 
             return $destinationPath;
@@ -83,7 +88,7 @@ class JellyfinUploadService
     public function triggerScan(): void
     {
         if (!$this->jellyfinApiKey) {
-            $this->logger->warning("Jellyfin API key not configured, skipping library scan trigger.");
+            $this->logger->warning('Jellyfin API key not configured, skipping library scan trigger.');
             return;
         }
 
@@ -94,13 +99,13 @@ class JellyfinUploadService
                 'headers' => ['X-Emby-Token' => $this->jellyfinApiKey],
                 'timeout' => 5,
             ]);
-            
+
             $folders = $responseFolders->toArray();
             $libraryId = null;
 
             foreach ($folders as $folder) {
                 // Jellyfin speichert Locations oft mit dem Pfad wie er im Container konfiguriert ist
-                if (isset($folder['Locations']) && in_array('/uploads', $folder['Locations'])) {
+                if (isset($folder['Locations']) && in_array('/uploads', $folder['Locations'], strict: true)) {
                     $libraryId = $folder['Id'] ?? $folder['id'] ?? null;
                     break;
                 }
@@ -125,12 +130,12 @@ class JellyfinUploadService
             $this->logger->info("Jellyfin API responded with status code: $statusCode");
 
             if ($statusCode === 204 || $statusCode === 200) {
-                $this->logger->info("Triggered Jellyfin library refresh.");
+                $this->logger->info('Triggered Jellyfin library refresh.');
             } else {
-                $this->logger->error("Jellyfin refresh returned status: " . $statusCode);
+                $this->logger->error('Jellyfin refresh returned status: ' . $statusCode);
             }
         } catch (\Exception $e) {
-            $this->logger->error("Failed to trigger Jellyfin scan: " . $e->getMessage());
+            $this->logger->error('Failed to trigger Jellyfin scan: ' . $e->getMessage());
         }
     }
 
@@ -144,11 +149,15 @@ class JellyfinUploadService
             // Wir suchen nach dem Pfad, wie Jellyfin ihn sieht.
             // Jellyfin speichert den Pfad relativ zur Mediathek-Root, also inkl. "/uploads/".
             $internalPath = '/uploads/' . ltrim(basename($path), '/');
-            
+
             $normalizedInternalPath = str_replace('\\', '/', $internalPath);
-            
+
             $url = "{$this->jellyfinHost}/Items";
-            $this->logger->info("Searching for Jellyfin Item ID for path: $normalizedInternalPath (internal: $internalPath, basename: " . basename($path) . ", original: $path)");
+            $this->logger->info(
+                "Searching for Jellyfin Item ID for path: $normalizedInternalPath (internal: $internalPath, basename: "
+                . basename($path)
+                . ", original: $path)",
+            );
 
             $response = $this->httpClient->request('GET', $url, [
                 'headers' => [
@@ -169,7 +178,14 @@ class JellyfinUploadService
                 foreach ($data['Items'] as $item) {
                     if (isset($item['Path'])) {
                         $jellyfinItemPath = str_replace('\\', '/', $item['Path']);
-                        $this->logger->info("Jellyfin Item: " . $item['Id'] . " Path: " . $jellyfinItemPath . " Search: " . $normalizedInternalPath);
+                        $this->logger->info(
+                            'Jellyfin Item: '
+                            . $item['Id']
+                            . ' Path: '
+                            . $jellyfinItemPath
+                            . ' Search: '
+                            . $normalizedInternalPath,
+                        );
                         if ($jellyfinItemPath === $normalizedInternalPath) {
                             return $item['Id'];
                         }
@@ -179,7 +195,7 @@ class JellyfinUploadService
 
             $this->logger->warning("Could not find Jellyfin Item ID for path: $normalizedInternalPath");
         } catch (\Exception $e) {
-            $this->logger->error("Error finding Jellyfin Item ID: " . $e->getMessage());
+            $this->logger->error('Error finding Jellyfin Item ID: ' . $e->getMessage());
         }
 
         return null;

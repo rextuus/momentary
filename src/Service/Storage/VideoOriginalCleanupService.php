@@ -28,8 +28,7 @@ final class VideoOriginalCleanupService
         private readonly FileStorageService $fileStorageService,
         private readonly StoragePathProvider $pathProvider,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     /**
      * Wendet alle aktivierten Richtlinien auf ein fertig verarbeitetes Video an.
@@ -76,7 +75,10 @@ final class VideoOriginalCleanupService
 
         // Sicherheitsnetz: nur löschen, wenn die Ersatzdatei wirklich existiert
         if (!is_file($convertedPath) || filesize($convertedPath) === 0) {
-            $this->logger->warning(sprintf('Cleanup: Video %d übersprungen (konvertierte Datei fehlt/leer).', $video->getId()));
+            $this->logger->warning(sprintf(
+                'Cleanup: Video %d übersprungen (konvertierte Datei fehlt/leer).',
+                $video->getId(),
+            ));
 
             return 0;
         }
@@ -95,7 +97,11 @@ final class VideoOriginalCleanupService
 
         $this->fileManager->deleteFile($source, true);
 
-        $this->logger->info(sprintf('Cleanup: Video %d: Original gelöscht, %.1f MB frei.', $video->getId(), $bytes / 1048576));
+        $this->logger->info(sprintf(
+            'Cleanup: Video %d: Original gelöscht, %.1f MB frei.',
+            $video->getId(),
+            $bytes / 1048576,
+        ));
 
         return $bytes;
     }
@@ -117,7 +123,11 @@ final class VideoOriginalCleanupService
 
         if (!$dryRun) {
             $this->fileStorageService->deleteDirectory($relative);
-            $this->logger->info(sprintf('Cleanup: Video %d: Frames gelöscht, %.1f MB frei.', $video->getId(), $bytes / 1048576));
+            $this->logger->info(sprintf(
+                'Cleanup: Video %d: Frames gelöscht, %.1f MB frei.',
+                $video->getId(),
+                $bytes / 1048576,
+            ));
         }
 
         return $bytes;
@@ -131,8 +141,11 @@ final class VideoOriginalCleanupService
      *
      * @return array<string, int> relativer Pfad => Bytes
      */
-    public function cleanupOrphanDirectories(array $existingVideoIds, bool $dryRun = false, int $minAgeSeconds = 21600): array
-    {
+    public function cleanupOrphanDirectories(
+        array $existingVideoIds,
+        bool $dryRun = false,
+        int $minAgeSeconds = 21600,
+    ): array {
         $root = $this->pathProvider->getStorageRoot();
         $existing = array_flip(array_map('intval', $existingVideoIds));
         $result = [];
@@ -169,9 +182,10 @@ final class VideoOriginalCleanupService
     private function directorySize(string $dir): int
     {
         $size = 0;
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS)
-        );
+        $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(
+            $dir,
+            \FilesystemIterator::SKIP_DOTS,
+        ));
 
         foreach ($iterator as $file) {
             if ($file->isFile()) {

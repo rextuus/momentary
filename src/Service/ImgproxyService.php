@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service;
 
-use Onliner\ImgProxy\UrlBuilder;
-use Onliner\ImgProxy\Options\Width;
+use Onliner\ImgProxy\Options\Blur;
 use Onliner\ImgProxy\Options\Height;
 use Onliner\ImgProxy\Options\ResizingType;
-use Onliner\ImgProxy\Options\Blur;
+use Onliner\ImgProxy\Options\Width;
+use Onliner\ImgProxy\UrlBuilder;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 class ImgproxyService
@@ -20,14 +22,19 @@ class ImgproxyService
         #[Autowire('%imgproxy_salt%')]
         string $salt,
         #[Autowire('%imgproxy_public_host%')]
-        string $publicHost
+        string $publicHost,
     ) {
         $this->builder = UrlBuilder::signed($key, $salt);
         $this->publicHost = $publicHost;
     }
 
-    public function generateUrl(string $sourceUrl, int $width = 300, int $height = 300, string $resizingType = 'fill', int $blur = 0): string
-    {
+    public function generateUrl(
+        string $sourceUrl,
+        int $width = 300,
+        int $height = 300,
+        string $resizingType = 'fill',
+        int $blur = 0,
+    ): string {
         $pureSourceUrl = $sourceUrl;
 
         // Falls die URL bereits den publicHost enthält, entfernen wir ihn
@@ -36,9 +43,19 @@ class ImgproxyService
         }
 
         // Falls es sich bereits um eine signierte Imgproxy-URL handelt, dekodieren wir sie für den Re-Sign-Fall
-        if (str_starts_with($pureSourceUrl, '/') && (str_contains($pureSourceUrl, '/w:') || str_contains($pureSourceUrl, '/h:'))) {
-            $parts = explode('/', trim($pureSourceUrl, '/'));
-            $encodedUrl = implode('/', array_slice($parts, 4));
+        if (
+            str_starts_with($pureSourceUrl, '/')
+            && (str_contains($pureSourceUrl, '/w:') || str_contains($pureSourceUrl, '/h:'))
+        ) {
+            // Aufbau: /{signatur}/{option:wert}/.../{base64-quelle in Segmenten}.{ext}[?query]
+            // Die Query steckt bereits in der kodierten Quelle.
+            $path = strtok($pureSourceUrl, '?');
+            $segments = array_slice(explode('/', trim($path, '/')), 1);
+            $encodedSegments = array_filter(
+                $segments,
+                static fn(string $segment): bool => !str_contains($segment, ':'),
+            );
+            $encodedUrl = preg_replace('/\.[a-z0-9]+$/i', '', implode('', $encodedSegments));
             $decodedSourceUrl = $this->base64UrlDecode($encodedUrl);
 
             return $this->generateUrl($decodedSourceUrl, $width, $height, $resizingType, $blur);
@@ -51,7 +68,11 @@ class ImgproxyService
         }
 
         // Falls kein Schema angegeben ist, standardmäßig als lokales File behandeln
-        if (!str_starts_with($pureSourceUrl, 'http://') && !str_starts_with($pureSourceUrl, 'https://') && !str_starts_with($pureSourceUrl, 'local:///')) {
+        if (
+            !str_starts_with($pureSourceUrl, 'http://')
+            && !str_starts_with($pureSourceUrl, 'https://')
+            && !str_starts_with($pureSourceUrl, 'local:///')
+        ) {
             $pureSourceUrl = 'local:///' . ltrim($pureSourceUrl, '/');
         }
 
@@ -62,9 +83,7 @@ class ImgproxyService
             $options[] = new Blur($blur);
         }
 
-        $generatedUrl = $this->publicHost . $this->builder
-                ->with(...$options)
-                ->url($finalSourceUrl, 'jpg');
+        $generatedUrl = $this->publicHost . $this->builder->with(...$options)->url($finalSourceUrl, 'jpg');
 
         if ($queryString) {
             $generatedUrl .= (str_contains($generatedUrl, '?') ? '&' : '?') . ltrim($queryString, '?');
@@ -80,6 +99,14 @@ class ImgproxyService
 
     private function base64UrlDecode(string $data): string
     {
-        return base64_decode(strtr($data, '-_', '+/') . str_repeat('=', 3 - (3 + strlen($data)) % 4));
+        $decoded = base64_decode(
+            strtr($data, '-_', '+/') . str_repeat('=', 3 - ((3 + strlen($data)) % 4)),
+            strict: true,
+        );
+        if ($decoded === false) {
+            throw new \InvalidArgumentException('Signed imgproxy URL contains an invalid source segment.');
+        }
+
+        return $decoded;
     }
 }

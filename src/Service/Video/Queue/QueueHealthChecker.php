@@ -6,9 +6,7 @@ namespace App\Service\Video\Queue;
 
 class QueueHealthChecker
 {
-    public function __construct()
-    {
-    }
+    public function __construct() {}
 
     /**
      * Prüft, ob Nachrichten in der Queue hängen (älter als 5 Minuten).

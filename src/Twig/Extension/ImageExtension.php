@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Twig\Extension;
 
 use App\Entity\VideoFace;
@@ -10,9 +12,8 @@ use Twig\TwigFunction;
 class ImageExtension extends AbstractExtension
 {
     public function __construct(
-        private readonly ImgproxyService $imgproxyService
-    ) {
-    }
+        private readonly ImgproxyService $imgproxyService,
+    ) {}
 
     public function getFunctions(): array
     {

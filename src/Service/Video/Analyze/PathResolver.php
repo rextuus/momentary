@@ -11,8 +11,7 @@ class PathResolver
     public function __construct(
         #[Autowire('%kernel.project_dir%')]
         private readonly string $projectDir,
-    ) {
-    }
+    ) {}
 
     public function resolvePath(string $path): string
     {

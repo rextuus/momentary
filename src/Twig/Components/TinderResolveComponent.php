@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Twig\Components;
 
 use App\Entity\Person;
@@ -36,7 +38,7 @@ class TinderResolveComponent
 
     public function __construct(
         private PersonRepository $personRepository,
-        private EntityManagerInterface $entityManager
+        private EntityManagerInterface $entityManager,
     ) {
         $this->statuses = [PersonStatus::NEW->value, PersonStatus::WASTED->value];
     }
@@ -103,7 +105,7 @@ class TinderResolveComponent
             return $none;
         }
 
-        $ids = array_map(static fn (VideoFace $f) => $f->getId(), $faces);
+        $ids = array_map(static fn(VideoFace $f) => $f->getId(), $faces);
         $index = array_search($active->getId(), $ids, true);
         if ($index === false) {
             $index = 0;
@@ -180,7 +182,8 @@ class TinderResolveComponent
             return 0;
         }
 
-        return (int) $this->createCandidateQueryBuilder($values)
+        return (int) $this
+            ->createCandidateQueryBuilder($values)
             ->select('COUNT(DISTINCT p.id)')
             ->getQuery()
             ->getSingleScalarResult();
@@ -198,14 +201,15 @@ class TinderResolveComponent
             return;
         }
 
-        $result = $this->createCandidateQueryBuilder($values)
+        $result = $this
+            ->createCandidateQueryBuilder($values)
             ->select('p.id AS id')
             ->addSelect('p.showCount AS HIDDEN show_order')
             ->addSelect('COUNT(f.id) AS HIDDEN face_count')
             ->groupBy('p.id')
-            ->orderBy('show_order', 'ASC')        // selten gezeigte zuerst
-            ->addOrderBy('face_count', 'DESC')    // dann Personen mit vielen Sichtungen
-            ->addOrderBy('p.id', 'ASC')
+            ->orderBy('show_order', \SortDirection::Ascending) // selten gezeigte zuerst
+            ->addOrderBy('face_count', \SortDirection::Descending) // dann Personen mit vielen Sichtungen
+            ->addOrderBy('p.id', \SortDirection::Ascending)
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
@@ -219,7 +223,8 @@ class TinderResolveComponent
     private function createCandidateQueryBuilder(array $statusValues): QueryBuilder
     {
         // inner join: Personen ohne Gesichter sind nie sinnvoll anzeigbar
-        return $this->personRepository->createQueryBuilder('p')
+        return $this->personRepository
+            ->createQueryBuilder('p')
             ->join('p.videoFaces', 'f')
             ->where('p.status IN (:statuses)')
             ->andWhere('p.showCount < :maxShows')
@@ -274,10 +279,6 @@ class TinderResolveComponent
 
     private function faceArea(VideoFace $face): float
     {
-        if (!method_exists($face, 'getBoundingBox')) {
-            return 0.0;
-        }
-
         $box = $face->getBoundingBox();
         if (!is_array($box)) {
             return 0.0;

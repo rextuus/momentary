@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Form;
 
 use Symfony\Component\Form\AbstractType;
@@ -10,11 +12,10 @@ class PersonResolverType extends AbstractType
 {
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
-        $builder
-            ->add('targetPerson', PersonAutocompleteField::class, [
-                'label' => 'Existing Person',
-                'required' => false,
-            ]);
+        $builder->add('targetPerson', PersonAutocompleteField::class, [
+            'label' => 'Existing Person',
+            'required' => false,
+        ]);
     }
 
     public function configureOptions(OptionsResolver $resolver): void

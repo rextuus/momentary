@@ -14,7 +14,7 @@ class ChapterGenerator
 {
     public function __construct(
         private readonly GeminiService $geminiService,
-        private readonly EntityManagerInterface $entityManager
+        private readonly EntityManagerInterface $entityManager,
     ) {}
 
     public function generateChapters(Video $video): ChapterGenerationResult
@@ -23,7 +23,7 @@ class ChapterGenerator
             // Re-fetch video to ensure it's managed by the current entity manager
             $video = $this->entityManager->find(Video::class, $video->getId());
             if (!$video) {
-                return new ChapterGenerationResult(false, 0, "Video not found.");
+                return new ChapterGenerationResult(false, 0, 'Video not found.');
             }
 
             foreach ($video->getChapters() as $chapter) {
@@ -45,7 +45,7 @@ class ChapterGenerator
                     'start' => $scene->getStartSeconds(),
                     'end' => $scene->getEndSeconds(),
                     'title' => $scene->getTitle(),
-                    'tags' => array_map(fn($tag) => $tag->getName(), $scene->getTags()),
+                    'tags' => array_map(static fn($tag) => $tag->getName(), $scene->getTags()),
                 ];
             }
 
@@ -60,7 +60,6 @@ class ChapterGenerator
 
             $this->entityManager->flush();
             return new ChapterGenerationResult(true, count($chaptersData));
-
         } catch (\Exception $e) {
             return new ChapterGenerationResult(false, 0, $e->getMessage());
         }
@@ -70,10 +69,10 @@ class ChapterGenerator
     {
         $chapter = new VideoChapter();
         $chapter->setVideo($video);
-        $chapter->setTitle("Full Video");
+        $chapter->setTitle('Full Video');
         $chapter->setStartSeconds(0);
-        $chapter->setEndSeconds((int)($video->getDuration() ?? 0));
-        $chapter->setDescription("Summary of the entire video.");
+        $chapter->setEndSeconds((int) ($video->getDuration() ?? 0));
+        $chapter->setDescription('Summary of the entire video.');
         $this->entityManager->persist($chapter);
         $this->entityManager->flush();
     }
@@ -83,8 +82,8 @@ class ChapterGenerator
         $chapter = new VideoChapter();
         $chapter->setVideo($video);
         $chapter->setTitle($data['title']);
-        $chapter->setStartSeconds((int)$data['startSeconds']);
-        $chapter->setEndSeconds((int)$data['endSeconds']);
+        $chapter->setStartSeconds((int) $data['startSeconds']);
+        $chapter->setEndSeconds((int) $data['endSeconds']);
         $chapter->setDescription($data['description'] ?? null);
         $this->entityManager->persist($chapter);
     }

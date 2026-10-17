@@ -2,26 +2,24 @@
 flysystem:
     storages:
         default.storage:
-            adapter: 'local'
-            options:
+            local:
                 directory: '%kernel.project_dir%/media/images'
                 permissions:
                     file:
-                        public: 0644
-                        private: 0644
+                        public: 0o644
+                        private: 0o644
                     dir:
-                        public: 0755
-                        private: 0755
+                        public: 0o755
+                        private: 0o755
             public_url_generator: App\Service\File\FlysystemPublicUrlGenerator
 
         video.storage:
-            adapter: 'local'
-            options:
+            local:
                 directory: '%kernel.project_dir%/storage'
                 permissions:
                     file:
-                        public: 0644
-                        private: 0644
+                        public: 0o644
+                        private: 0o644
                     dir:
-                        public: 0755
-                        private: 0755
+                        public: 0o755
+                        private: 0o755

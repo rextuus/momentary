@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\Video;
-use App\Enum\VideoStatus;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
-use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Workflow\WorkflowInterface;
 
@@ -17,9 +15,8 @@ readonly class WorkflowMachine
     public function __construct(
         #[Target('video_processing')]
         private WorkflowInterface $videoProcessingWorkflow,
-        private EntityManagerInterface $entityManager
-    ) {
-    }
+        private EntityManagerInterface $entityManager,
+    ) {}
 
     public function can(Video $video, string $transition): bool
     {

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Security\Voter;
 
 use App\Entity\User;
@@ -12,21 +14,26 @@ use Symfony\Component\Security\Core\Authorization\Voter\Voter;
 class VideoAccessVoter extends Voter
 {
     public const VIEW = 'VIDEO_VIEW';
+    public const EDIT = 'VIDEO_EDIT';
 
     public function __construct(
-        private Security $security
-    ) {
-    }
+        private Security $security,
+    ) {}
 
     protected function supports(string $attribute, mixed $subject): bool
     {
-        return $attribute === self::VIEW && $subject instanceof Video;
+        return \in_array($attribute, [self::VIEW, self::EDIT], true) && $subject instanceof Video;
     }
 
-    protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token, ?Vote $vote = null): bool
-    {
+    protected function voteOnAttribute(
+        string $attribute,
+        mixed $subject,
+        #[\SensitiveParameter]
+        TokenInterface $token,
+        ?Vote $vote = null,
+    ): bool {
         $user = $token->getUser();
-        
+
         // Admin always has access
         if ($this->security->isGranted('ROLE_ADMIN')) {
             return true;
@@ -35,13 +42,18 @@ class VideoAccessVoter extends Voter
         /** @var Video $video */
         $video = $subject;
 
-        // Public check
-        if ($video->isPublic()) {
+        // Owner check
+        if ($user instanceof User && $video->getOwner() && $video->getOwner()->getId() === $user->getId()) {
             return true;
         }
 
-        // Owner check
-        if ($user instanceof User && $video->getOwner() && $video->getOwner()->getId() === $user->getId()) {
+        // Bearbeiten dürfen nur Admin und Eigentümer
+        if ($attribute === self::EDIT) {
+            return false;
+        }
+
+        // Public check
+        if ($video->isPublic()) {
             return true;
         }
 

@@ -13,7 +13,6 @@ abstract class AbstractExtractSceneThumbnailStepMessage extends AbstractVideoPro
 {
     use VideoMessageTrait;
 
-    private ?int $currentSceneId = null;
     private array $remainingSceneIds = [];
     private int $processedScenes = 0;
     private int $totalScenes = 0;

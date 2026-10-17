@@ -13,7 +13,7 @@ use Symfony\Component\Workflow\Event\Event;
 final class VideoWorkflowSubscriber
 {
     public function __construct(
-        private readonly ImportQueueManager $importQueueManager
+        private readonly ImportQueueManager $importQueueManager,
     ) {}
 
     #[AsEventListener(event: 'workflow.video_processing.completed')]
@@ -23,7 +23,7 @@ final class VideoWorkflowSubscriber
         if (!$subject instanceof Video) {
             return;
         }
-        
+
         $status = $subject->getStatus();
         if ($status === VideoStatus::COMPLETED || $status === VideoStatus::ERROR) {
             $this->importQueueManager->processQueue();

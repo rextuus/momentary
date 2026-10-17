@@ -7,7 +7,6 @@ namespace App\Service\Video\Processing\Message\FrameAnalyze\Scene;
 use App\Enum\VideoStatus;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Message\FrameAnalyze\AbstractAnalyzeFrameStepMessage;
-use App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeVideoFrameStepMessage;
 
 #[StepOrder(stepNumber: 14)]
 class AnalyzeFirstSceneFrameStepMessage extends AbstractAnalyzeFrameStepMessage

@@ -1,8 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller;
 
-use App\Entity\File;
 use App\Entity\Video;
 use App\Entity\VideoChapter;
 use App\Entity\VideoProcessingStep;
@@ -11,21 +12,16 @@ use App\Form\VideoType;
 use App\Repository\VideoRepository;
 use App\Service\Storage\FileManager;
 use App\Service\Storage\FileStorageService;
-use App\Service\Storage\StoragePathProvider;
 use App\Service\Tag\TagInitializer;
 use App\Service\Video\VideoCreationService;
-use App\Service\Video\Processing\Message\ConvertStepMessage;
-use App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractSceneThumbnailStepMessage;
-use App\Service\Video\Processing\VideoProcessMessageDispatcher;
-use App\Service\VideoFileService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\ExpressionLanguage\Expression;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -33,11 +29,10 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 final class VideoController extends AbstractController
 {
     public function __construct(
-        private readonly VideoProcessMessageDispatcher $videoProcessMessageDispatcher,
         private readonly VideoRepository $videoRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly TagInitializer $tagInitializer,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
@@ -55,10 +50,8 @@ final class VideoController extends AbstractController
      * Neues Video hinzufügen
      */
     #[Route('/new', name: 'video_new', methods: ['GET', 'POST'])]
-    public function new(
-        Request $request,
-        VideoCreationService $videoCreationService
-    ): Response {
+    public function new(Request $request, VideoCreationService $videoCreationService): Response
+    {
         error_log('VideoController: new action called');
         $this->tagInitializer->initialize();
 
@@ -108,11 +101,12 @@ final class VideoController extends AbstractController
     }
 
     #[Route('/{id}/delete', name: 'video_delete', methods: ['POST'])]
+    #[IsGranted('VIDEO_EDIT', subject: 'video')]
     public function delete(
         Request $request,
         Video $video,
         FileManager $fileManager,
-        FileStorageService $fileStorageService
+        FileStorageService $fileStorageService,
     ): Response {
         if ($this->isCsrfTokenValid('delete' . $video->getId(), $request->request->get('_token'))) {
             $videoId = $video->getId();
@@ -146,6 +140,7 @@ final class VideoController extends AbstractController
     }
 
     #[Route('/{id}/update-scenes-public', name: 'video_update_scenes_public', methods: ['POST'])]
+    #[IsGranted('VIDEO_EDIT', subject: 'video')]
     public function updateScenesPublic(Request $request, Video $video): Response
     {
         if ($this->isCsrfTokenValid('update-scenes-public' . $video->getId(), $request->request->get('_token'))) {
@@ -161,14 +156,23 @@ final class VideoController extends AbstractController
     }
 
     #[Route('/chapter/{id}/update-scenes-public', name: 'chapter_update_scenes_public', methods: ['POST'])]
+    #[IsGranted('VIDEO_EDIT', subject: new Expression('args["chapter"].getVideo()'))]
     public function updateChapterScenesPublic(Request $request, VideoChapter $chapter): Response
     {
-        if ($this->isCsrfTokenValid('update-chapter-scenes-public' . $chapter->getId(), $request->request->get('_token'))) {
+        if (
+            $this->isCsrfTokenValid(
+                'update-chapter-scenes-public' . $chapter->getId(),
+                $request->request->get('_token'),
+            )
+        ) {
             $isPublic = $request->request->getBoolean('isPublic');
             $video = $chapter->getVideo();
 
             foreach ($video->getScenes() as $scene) {
-                if ($scene->getStartSeconds() >= $chapter->getStartSeconds() && $scene->getEndSeconds() <= $chapter->getEndSeconds()) {
+                if (
+                    $scene->getStartSeconds() >= $chapter->getStartSeconds()
+                    && $scene->getEndSeconds() <= $chapter->getEndSeconds()
+                ) {
                     $scene->setIsPublic($isPublic);
                 }
             }
@@ -181,6 +185,7 @@ final class VideoController extends AbstractController
     }
 
     #[Route('/{id}/extract-thumbnail', name: 'video_extract_thumbnail', methods: ['POST'])]
+    #[IsGranted('VIDEO_EDIT', subject: 'video')]
     public function extractThumbnail(Video $video, Request $request): RedirectResponse
     {
         // TODO: Needs to be adjusted to new Analyzer
@@ -189,12 +194,18 @@ final class VideoController extends AbstractController
 
         // Auf neue Step-Message umgestellt statt alter ExtractThumbnailMessage
 
-        $this->addFlash('success', 'Thumbnail-Erstellung wurde in die Warteschlange eingereiht (Zeit: ' . ($timeInSeconds > 0 ? round($timeInSeconds, 2) . 's' : 'zufällig') . ').');
+        $this->addFlash(
+            'success',
+            'Thumbnail-Erstellung wurde in die Warteschlange eingereiht (Zeit: '
+            . ($timeInSeconds > 0 ? round($timeInSeconds, 2) . 's' : 'zufällig')
+            . ').',
+        );
 
         return $this->redirectToRoute('app_video_show', ['id' => $video->getId()]);
     }
 
     #[Route('/{id}/trigger/{step}', name: 'app_video_trigger', methods: ['GET'])]
+    #[IsGranted('VIDEO_EDIT', subject: 'video')]
     public function trigger(Video $video): Response
     {
         return $this->redirectToRoute('app_video_show', ['id' => $video->getId()]);
@@ -224,11 +235,9 @@ final class VideoController extends AbstractController
      */
     #[Route('/{id}', name: 'app_video_show', methods: ['GET'])]
     #[IsGranted('VIDEO_VIEW', subject: 'video')]
-    public function show(
-        Video $video,
-        #[Autowire('%env(JELLYFIN_HOST)%')] string $jellyfinHost,
-        #[Autowire('%env(JELLYFIN_API_KEY)%')] string $jellyfinApiKey
-    ): Response {
+    public function show(Video $video, #[Autowire('%env(JELLYFIN_HOST)%')] string $jellyfinHost, #[\SensitiveParameter]
+        #[Autowire('%env(JELLYFIN_API_KEY)%')] string $jellyfinApiKey): Response
+    {
         $publicJellyfinHost = str_replace('http://jellyfin:', 'http://localhost:', $jellyfinHost);
         $publicJellyfinHost = rtrim($publicJellyfinHost, '/');
 
@@ -240,6 +249,7 @@ final class VideoController extends AbstractController
     }
 
     #[Route('/admin/video/processing-step/{id}', name: 'app_video_processing_step_show', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
     public function showProcessingStep(VideoProcessingStep $processingStep): Response
     {
         return $this->render('video/processing_step_show.html.twig', [
@@ -254,9 +264,14 @@ final class VideoController extends AbstractController
         $this->entityManager->refresh($video);
         $this->denyAccessUnlessGranted('VIDEO_VIEW', $video);
 
-        $scenes = $video->getScenes()->filter(function(VideoScene $scene) use ($chapter) {
-            return $scene->getStartSeconds() < $chapter->getEndSeconds() && $scene->getEndSeconds() > $chapter->getStartSeconds();
-        });
+        $scenes = $video
+            ->getScenes()
+            ->filter(
+                static fn(VideoScene $scene) => (
+                    $scene->getStartSeconds() < $chapter->getEndSeconds()
+                    && $scene->getEndSeconds() > $chapter->getStartSeconds()
+                ),
+            );
 
         return $this->render('video/chapter_show.html.twig', [
             'chapter' => $chapter,

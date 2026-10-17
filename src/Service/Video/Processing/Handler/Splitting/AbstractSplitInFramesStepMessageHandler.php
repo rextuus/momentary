@@ -9,11 +9,11 @@ use App\Entity\Video;
 use App\Entity\VideoScene;
 use App\Repository\VideoRepository;
 use App\Service\Storage\StoragePathProvider;
+use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\Video\Analyze\Result\FrameSplittingResult;
 use App\Service\Video\Processing\Handler\Abstract\AbstractVideoMessageHandler;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
-use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
@@ -32,41 +32,31 @@ abstract class AbstractSplitInFramesStepMessageHandler extends AbstractVideoMess
         VideoProcessingService $processingService,
         protected readonly BetterVideoAnalyzer $videoAnalyzer,
         protected readonly StoragePathProvider $pathProvider,
-        protected readonly EntityManagerInterface $entityManager
+        protected readonly EntityManagerInterface $entityManager,
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
     }
 
-    protected function prepareFirstFramesForAnalyzing(
-        FrameSplittingResult $frameSplitResult,
-        float $startTime
-    ): void {
+    protected function prepareFirstFramesForAnalyzing(FrameSplittingResult $frameSplitResult, float $startTime): void
+    {
         $preparedFrames = [];
         foreach ($frameSplitResult->getFrameList() as $frame) {
             $timestamp = $frame->getTimestamp();
             $timestamp += (int) $startTime;
 
-            $preparedFrames[] = new VideoFrame(
-                $frame->getPath(),
-                $timestamp
-            );
+            $preparedFrames[] = new VideoFrame($frame->getPath(), $timestamp);
         }
         $this->framePathCollection = $preparedFrames;
     }
 
-    protected function addFramesToAnalyzingStep(
-        FrameSplittingResult $frameSplitResult,
-        float $startTime
-    ): void {
+    protected function addFramesToAnalyzingStep(FrameSplittingResult $frameSplitResult, float $startTime): void
+    {
         $preparedFrames = [];
         foreach ($frameSplitResult->getFrameList() as $frame) {
             $timestamp = $frame->getTimestamp();
             $timestamp += (int) $startTime;
 
-            $preparedFrames[] = new VideoFrame(
-                $frame->getPath(),
-                $timestamp
-            );
+            $preparedFrames[] = new VideoFrame($frame->getPath(), $timestamp);
         }
 
         $this->framePathCollection = array_merge($this->framePathCollection, $preparedFrames);
@@ -82,7 +72,10 @@ abstract class AbstractSplitInFramesStepMessageHandler extends AbstractVideoMess
         $fileEntity = $video->getConvertedFile() ?? $video->getSourceFile();
 
         if ($fileEntity === null) {
-            $this->stopProcessing(sprintf('Video file entity for video-entity with id "%s" is missing.', $video->getId()));
+            $this->stopProcessing(sprintf(
+                'Video file entity for video-entity with id "%s" is missing.',
+                $video->getId(),
+            ));
             return '';
         }
 
@@ -92,7 +85,7 @@ abstract class AbstractSplitInFramesStepMessageHandler extends AbstractVideoMess
             $errorMsg = sprintf(
                 'Video file for video-entity with id "%s" not found at "%s"',
                 $video->getId(),
-                $localVideoPath
+                $localVideoPath,
             );
             $this->stopProcessing($errorMsg);
             return '';
@@ -104,19 +97,17 @@ abstract class AbstractSplitInFramesStepMessageHandler extends AbstractVideoMess
     protected function splitSceneIntoFrames(
         VideoScene $scene,
         Video $video,
-        string $localVideoPath
+        string $localVideoPath,
     ): FrameSplittingResult {
         $startTime = $scene->getStartSeconds();
         $endTime = $scene->getEndSeconds();
 
-        $result = $this->videoAnalyzer->extractFrames(
+        return $this->videoAnalyzer->extractFrames(
             $video->getId(),
             $localVideoPath,
             $video->getAnalysisFps(),
             $startTime,
-            $endTime - $startTime
+            $endTime - $startTime,
         );
-
-        return $result;
     }
 }

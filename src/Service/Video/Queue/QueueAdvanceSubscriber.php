@@ -19,8 +19,7 @@ final class QueueAdvanceSubscriber implements EventSubscriberInterface
     public function __construct(
         private readonly ImportQueueManager $importQueueManager,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     public static function getSubscribedEvents(): array
     {

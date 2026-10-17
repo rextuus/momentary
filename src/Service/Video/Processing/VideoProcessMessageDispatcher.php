@@ -14,9 +14,8 @@ readonly class VideoProcessMessageDispatcher
 {
     public function __construct(
         private MessageBusInterface $bus,
-        private LoggerInterface $logger
-    ) {
-    }
+        private LoggerInterface $logger,
+    ) {}
 
     public function dispatch(VideoProcessStepMessageInterface $message): bool
     {

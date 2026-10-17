@@ -15,7 +15,6 @@ class TagLastSceneStepMessage extends AbstractVideoProcessStepMessage
 {
     protected const string MESSAGE_LOGGING_IDENT = 'TAG LAST SCENE';
 
-    private ?int $currentSceneId = null;
     /** @var int[] */
     private array $remainingSceneIds = [];
 

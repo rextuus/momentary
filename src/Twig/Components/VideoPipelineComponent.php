@@ -21,7 +21,7 @@ class VideoPipelineComponent
 
     public function __construct(
         private VideoRepository $videoRepository,
-        private ?\App\Service\VideoDurationEstimator $estimator = null
+        private ?\App\Service\VideoDurationEstimator $estimator = null,
     ) {}
 
     public function getEstimatedProgress(string $statusName): int

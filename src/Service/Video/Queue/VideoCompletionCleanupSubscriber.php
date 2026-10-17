@@ -20,8 +20,7 @@ final class VideoCompletionCleanupSubscriber implements EventSubscriberInterface
         private readonly VideoRepository $videoRepository,
         private readonly VideoOriginalCleanupService $cleanupService,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     public static function getSubscribedEvents(): array
     {

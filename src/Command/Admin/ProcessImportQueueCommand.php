@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Command\Admin;
 
 use App\Service\Video\Queue\ImportQueueManager;
@@ -13,7 +15,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class ProcessImportQueueCommand extends Command
 {
     public function __construct(
-        private readonly ImportQueueManager $importQueueManager
+        private readonly ImportQueueManager $importQueueManager,
     ) {
         parent::__construct();
     }
@@ -26,7 +28,7 @@ class ProcessImportQueueCommand extends Command
         if ($started > 0) {
             $io->success("Started processing $started new videos.");
         } else {
-            $io->note("No new videos started (limit reached or queue empty).");
+            $io->note('No new videos started (limit reached or queue empty).');
         }
 
         return Command::SUCCESS;

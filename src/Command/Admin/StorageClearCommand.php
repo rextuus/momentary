@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Command\Admin;
 
 use App\Service\PathConstants;
@@ -11,15 +13,12 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Finder\Finder;
 
-#[AsCommand(
-    name: 'app:storage:clear',
-    description: 'Leert die Upload-Verzeichnisse (Jellyfin Uploads & App Uploads)',
-)]
+#[AsCommand(name: 'app:storage:clear', description: 'Leert die Upload-Verzeichnisse (Jellyfin Uploads & App Uploads)')]
 class StorageClearCommand extends Command
 {
     public function __construct(
         #[Autowire('%kernel.project_dir%')]
-        private string $projectDir
+        private string $projectDir,
     ) {
         parent::__construct();
     }
@@ -27,7 +26,7 @@ class StorageClearCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        
+
         $pathsToClear = [
             $this->projectDir . '/' . PathConstants::JELLYFIN_UPLOADS,
             $this->projectDir . '/' . PathConstants::APP_UPLOADS,
@@ -52,7 +51,10 @@ class StorageClearCommand extends Command
             $io->note('Keine Dateien zum Löschen in den Upload-Verzeichnissen gefunden.');
         }
 
-        if (!$io->confirm('Sind Sie sicher, dass Sie alle Upload-Verzeichnisse leeren möchten? Das kann nicht rückgängig gemacht werden.', false)) {
+        if (!$io->confirm(
+            'Sind Sie sicher, dass Sie alle Upload-Verzeichnisse leeren möchten? Das kann nicht rückgängig gemacht werden.',
+            false,
+        )) {
             $io->warning('Abgebrochen.');
             return Command::FAILURE;
         }
@@ -64,11 +66,11 @@ class StorageClearCommand extends Command
             }
 
             $io->note(sprintf('Leere Verzeichnis: %s', $path));
-            
+
             $finder = new Finder();
             // Finder findet Dateien und Verzeichnisse, depth(0) begrenzt auf die erste Ebene
             $finder->in($path)->depth(0);
-            
+
             foreach ($finder as $file) {
                 if ($file->isDir()) {
                     // Verzeichnisse rekursiv löschen
@@ -89,7 +91,7 @@ class StorageClearCommand extends Command
         if (!is_dir($dir)) {
             return;
         }
-        
+
         $files = array_diff(scandir($dir), ['.', '..']);
         foreach ($files as $file) {
             $path = $dir . DIRECTORY_SEPARATOR . $file;

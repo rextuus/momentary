@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
@@ -12,12 +14,10 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: TagCategoryRepository::class)]
-#[ApiResource(
-    operations: [
-        new GetCollection(),
-        new Get()
-    ]
-)]
+#[ApiResource(operations: [
+    new GetCollection(),
+    new Get(),
+])]
 class TagCategory
 {
     #[ORM\Id]
@@ -34,6 +34,9 @@ class TagCategory
     #[Groups(['tag:read'])]
     private ?string $color = null;
 
+    /**
+     * @var Collection<int, Tag>
+     */
     #[ORM\OneToMany(mappedBy: 'category', targetEntity: Tag::class, orphanRemoval: true)]
     private Collection $tags;
 

@@ -14,6 +14,7 @@ abstract class AbstractVideoProcessStepMessage implements VideoProcessStepMessag
 
     protected int $videoId;
     protected int $messageNrInVideoStack;
+    protected ?int $currentSceneId = null;
 
     /**
      * @var class-string

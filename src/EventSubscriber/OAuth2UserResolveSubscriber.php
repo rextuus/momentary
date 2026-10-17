@@ -1,8 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\EventSubscriber;
 
-use App\Entity\User;
 use App\Repository\UserRepository;
 use League\Bundle\OAuth2ServerBundle\Event\UserResolveEvent;
 use League\Bundle\OAuth2ServerBundle\OAuth2Events;

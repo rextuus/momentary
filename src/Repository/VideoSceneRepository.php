@@ -1,8 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repository;
 
-use App\Entity\Video;
 use App\Entity\VideoScene;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -31,7 +32,6 @@ class VideoSceneRepository extends ServiceEntityRepository
     //            ->getResult()
     //        ;
     //    }
-
     //    public function findOneBySomeField($value): ?VideoScene
     //    {
     //        return $this->createQueryBuilder('v')
@@ -41,14 +41,4 @@ class VideoSceneRepository extends ServiceEntityRepository
     //            ->getOneOrNullResult()
     //        ;
     //    }
-    public function countUntaggedScenes(Video $video): int
-    {
-        return (int) $this->createQueryBuilder('s')
-            ->select('COUNT(s.id)')
-            ->where('s.video = :video')
-            ->andWhere('s.tags IS EMPTY')
-            ->setParameter('video', $video)
-            ->getQuery()
-            ->getSingleScalarResult();
-    }
 }

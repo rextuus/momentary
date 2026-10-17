@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service;
 
 use App\Entity\Video;
@@ -21,8 +23,7 @@ class VideoSearchIndex
         private readonly MeiliSearchClient $client,
         private readonly VideoIndexer $indexer,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     public function ensureIndex(): Indexes
     {
@@ -36,7 +37,10 @@ class VideoSearchIndex
 
         $current = $index->getFilterableAttributes();
         if (array_diff(self::FILTERABLE, $current) !== []) {
-            $task = $index->updateFilterableAttributes(array_values(array_unique(array_merge($current, self::FILTERABLE))));
+            $task = $index->updateFilterableAttributes(array_values(array_unique(array_merge(
+                $current,
+                self::FILTERABLE,
+            ))));
             $this->client->waitForTask($task['taskUid']);
         }
 

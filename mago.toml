@@ -1,0 +1,51 @@
+# Mago: Formatter (einheitlicher Code-Stil, PER-CS) und Linter mit Auto-Fix.
+# Statische Typanalyse übernimmt PHPStan (phpstan.dist.neon), der Mago-Analyzer ist hier nicht im Einsatz.
+#
+#   composer cs        prüfen (Formatierung + Lint)
+#   composer cs:fix    automatisch beheben
+php-version = "8.5"
+
+[source]
+paths = ["src", "tests", "config", "migrations", "public/index.php"]
+excludes = ["config/reference.php", "config/bundles.php"]
+
+[formatter]
+print-width = 120
+
+[linter]
+integrations = ["symfony", "doctrine", "phpunit"]
+
+[linter.rules]
+# --- Einheitlichkeit (auto-fixbar) ---
+assertion-style = { style = "self" }
+strict-types = { level = "error" }
+no-redundant-use = { level = "error" }
+final-controller = { level = "error" }
+explicit-octal = { level = "error" }
+
+# --- Echte Fehlerquellen ---
+no-debug-symbols = { level = "error" }
+strict-behavior = { level = "error" }
+sensitive-parameter = { level = "error" }
+no-insecure-comparison = { level = "error" }
+
+# --- Geschmackssache: bewusst abgeschaltet ---
+literal-named-argument = { enabled = false }
+no-else-clause = { enabled = false }
+prefer-early-continue = { enabled = false }
+no-isset = { enabled = false }
+no-empty = { enabled = false }
+no-shorthand-ternary = { enabled = false }
+no-boolean-flag-parameter = { enabled = false }
+readable-literal = { enabled = false }
+tagged-todo = { enabled = false }
+braced-string-interpolation = { enabled = false }
+
+# --- Komplexitätsmetriken: bei Entities und DI-Konstruktoren nur Rauschen ---
+excessive-parameter-list = { enabled = false }
+too-many-methods = { enabled = false }
+too-many-properties = { enabled = false }
+halstead = { enabled = false }
+kan-defect = { enabled = false }
+cyclomatic-complexity = { level = "warning", threshold = 20 }
+

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller;
 
 use App\Entity\Person;
@@ -14,10 +16,13 @@ use Symfony\Component\Routing\Attribute\Route;
 final class ApiController extends AbstractController
 {
     #[Route('/known-faces', name: 'api_known_faces', methods: ['GET'])]
-    public function knownFaces(VideoFaceRepository $videoFaceRepository, PersonRepository $personRepository): JsonResponse
-    {
+    public function knownFaces(
+        VideoFaceRepository $videoFaceRepository,
+        PersonRepository $personRepository,
+    ): JsonResponse {
         /** @var array<VideoFace> $videoFaces */
-        $videoFaces = $videoFaceRepository->createQueryBuilder('vf')
+        $videoFaces = $videoFaceRepository
+            ->createQueryBuilder('vf')
             ->join('vf.person', 'p')
             ->addSelect('p')
             ->where('vf.embedding IS NOT NULL')
@@ -32,11 +37,14 @@ final class ApiController extends AbstractController
         foreach ($persons as $person) {
             $personId = $person->getId();
             if (!isset($known[$personId])) {
-                $embeddings = array_map(fn (VideoFace $face) => $face->getEmbedding(), $person->getDetectionFaces()->toArray());
+                $embeddings = array_map(
+                    static fn(VideoFace $face) => $face->getEmbedding(),
+                    $person->getDetectionFaces()->toArray(),
+                );
 
                 $known[$personId] = [
                     'label' => $person->getName(),
-                    'embeddings' => $embeddings
+                    'embeddings' => $embeddings,
                 ];
             }
         }
@@ -45,14 +53,16 @@ final class ApiController extends AbstractController
     }
 
     #[Route('/current-unknown', name: 'api_current_unknown', methods: ['GET'])]
-    public function currentUnknown(VideoFaceRepository $videoFaceRepository, PersonRepository $personRepository): JsonResponse
-    {
+    public function currentUnknown(
+        VideoFaceRepository $videoFaceRepository,
+        PersonRepository $personRepository,
+    ): JsonResponse {
         $qb = $personRepository->createQueryBuilder('p');
         $qb->select('p');
         $qb->where($qb->expr()->like('p.name', ':name'));
         $qb->setParameter('name', 'unknown%');
         $qb->setMaxResults(1);
-        $qb->orderBy('p.id', 'DESC');
+        $qb->orderBy('p.id', \SortDirection::Descending);
 
         $person = $qb->getQuery()->getResult();
         if (count($person) === 0) {

@@ -8,9 +8,8 @@ readonly class AnalyzeSceneRefinementResult
 {
     public function __construct(
         private array $frameList,
-        private string $frameDirPath
-    ) {
-    }
+        private string $frameDirPath,
+    ) {}
 
     public function getFrameList(): array
     {

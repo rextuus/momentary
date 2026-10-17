@@ -17,7 +17,7 @@ readonly class VideoProcessingService
     public function __construct(
         private EntityManagerInterface $entityManager,
         private VideoProcessingStepRepository $repository,
-        private \Psr\Log\LoggerInterface $logger
+        private \Psr\Log\LoggerInterface $logger,
     ) {}
 
     public function getLogger(): \Psr\Log\LoggerInterface
@@ -30,7 +30,7 @@ readonly class VideoProcessingService
         $info = 'Started';
         $isIntermediateStep = $message?->isIntermediateStep() ?? false;
 
-        if ($isIntermediateStep){
+        if ($isIntermediateStep) {
             $info = 'Go on with next part of';
         }
 
@@ -39,11 +39,11 @@ readonly class VideoProcessingService
             $info,
             $message?->getMessageLoggingIdent() ?? 'unknown',
             $step->value,
-            $video->getTitle()
+            $video->getTitle(),
         );
         echo $logMsg . PHP_EOL;
 
-        if (!$isIntermediateStep){
+        if (!$isIntermediateStep) {
             $existingStep = $this->repository->findOneBy(['video' => $video, 'step' => $step]);
             if (!$existingStep) {
                 $existingStep = new VideoProcessingStep();
@@ -67,7 +67,7 @@ readonly class VideoProcessingService
         $info = 'Finished';
         $isIntermediateStep = $message?->isIntermediateStep() ?? false;
 
-        if ($isIntermediateStep){
+        if ($isIntermediateStep) {
             $info = 'Go on with next part of';
         }
 
@@ -76,11 +76,11 @@ readonly class VideoProcessingService
             $info,
             $message?->getMessageLoggingIdent() ?? 'unknown',
             $step->value,
-            $video->getTitle()
+            $video->getTitle(),
         );
         echo $logMsg . PHP_EOL . PHP_EOL;
 
-        if(!$isIntermediateStep){
+        if (!$isIntermediateStep) {
             $stepEntity = $this->repository->findOneBy(['video' => $video, 'step' => $step]);
             if ($stepEntity) {
                 $finishedAt = new DateTimeImmutable();
@@ -99,7 +99,7 @@ readonly class VideoProcessingService
         $logMsg = sprintf(
             '[⚠] Processing for video "%s" ended with error in step |%s|',
             $video->getTitle(),
-            $step->value
+            $step->value,
         );
         echo $logMsg . PHP_EOL;
 

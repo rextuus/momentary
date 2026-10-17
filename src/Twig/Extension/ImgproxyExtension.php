@@ -1,10 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Twig\Extension;
 
 use App\Entity\File;
 use App\Service\ImgproxyService;
-use App\Service\Storage\StoragePathProvider;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 
@@ -12,9 +13,7 @@ class ImgproxyExtension extends AbstractExtension
 {
     public function __construct(
         private readonly ImgproxyService $imgproxyService,
-        private readonly StoragePathProvider $pathProvider
-    ) {
-    }
+    ) {}
 
     public function getFunctions(): array
     {
@@ -23,8 +22,13 @@ class ImgproxyExtension extends AbstractExtension
         ];
     }
 
-    public function generateUrl(?File $source, int $width = 300, int $height = 300, string $resizingType = 'fill', int $blur = 0): string
-    {
+    public function generateUrl(
+        ?File $source,
+        int $width = 300,
+        int $height = 300,
+        string $resizingType = 'fill',
+        int $blur = 0,
+    ): string {
         if ($source === null) {
             return '';
         }

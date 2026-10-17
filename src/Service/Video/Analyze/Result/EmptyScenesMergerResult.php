@@ -12,9 +12,8 @@ readonly class EmptyScenesMergerResult
         private int $mergedSceneCount,
         private int $removedSceneCount,
         private bool $fallbackAllMerged,
-        private ?string $skippedReason = null
-    ) {
-    }
+        private ?string $skippedReason = null,
+    ) {}
 
     public static function skipped(string $reason, int $sceneCount = 0): self
     {
@@ -24,21 +23,21 @@ readonly class EmptyScenesMergerResult
             mergedSceneCount: $sceneCount,
             removedSceneCount: 0,
             fallbackAllMerged: false,
-            skippedReason: $reason
+            skippedReason: $reason,
         );
     }
 
     public static function success(
         int $originalSceneCount,
         int $mergedSceneCount,
-        bool $fallbackAllMerged = false
+        bool $fallbackAllMerged = false,
     ): self {
         return new self(
             processed: true,
             originalSceneCount: $originalSceneCount,
             mergedSceneCount: $mergedSceneCount,
             removedSceneCount: $originalSceneCount - $mergedSceneCount,
-            fallbackAllMerged: $fallbackAllMerged
+            fallbackAllMerged: $fallbackAllMerged,
         );
     }
 

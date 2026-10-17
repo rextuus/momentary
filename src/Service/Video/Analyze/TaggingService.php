@@ -16,8 +16,7 @@ class TaggingService
         private readonly BetterVideoAnalyzer $videoAnalyzer,
         private readonly StoragePathProvider $pathProvider,
         private readonly TagService $tagService,
-    ) {
-    }
+    ) {}
 
     public function tagScene(VideoScene $scene): TaggingResult
     {
@@ -41,7 +40,11 @@ class TaggingService
                 }
             }
 
-            echo "[TaggingService] Starte Analyse für Szene ID: {$scene->getId()} (Duration: {$duration}s, Timestamps: " . count($timestamps) . ")" . PHP_EOL;
+            echo
+                "[TaggingService] Starte Analyse für Szene ID: {$scene->getId()} (Duration: {$duration}s, Timestamps: "
+                    . count($timestamps)
+                    . ')'
+                    . PHP_EOL;
 
             $allTags = [];
 
@@ -49,10 +52,13 @@ class TaggingService
                 $thumbnailFile = $this->videoAnalyzer->extractThumbnail(
                     $video,
                     $time,
-                    sprintf('scene_analysis_%d_%d.jpg', $scene->getId(), (int)$time)
+                    sprintf('scene_analysis_%d_%d.jpg', $scene->getId(), (int) $time),
                 );
 
-                echo "[TaggingService] Thumbnail RelPath: " . var_export($thumbnailFile?->getRelativePath(), true) . PHP_EOL;
+                echo
+                    '[TaggingService] Thumbnail RelPath: '
+                        . var_export($thumbnailFile?->getRelativePath(), true)
+                        . PHP_EOL;
 
                 if (!$thumbnailFile) {
                     echo "[TaggingService] Kein Thumbnail-Pfad zurückgegeben für Timestamp {$time}" . PHP_EOL;
@@ -66,11 +72,14 @@ class TaggingService
                     ? $cleanPath
                     : $this->pathProvider->getAbsoluteFilePath($cleanPath);
 
-                echo "[TaggingService] Geprüfter ResolvedPath: {$resolvedPath} | Exists: " . (file_exists($resolvedPath) ? 'JA' : 'NEIN') . PHP_EOL;
+                echo
+                    "[TaggingService] Geprüfter ResolvedPath: {$resolvedPath} | Exists: "
+                        . (file_exists($resolvedPath) ? 'JA' : 'NEIN')
+                        . PHP_EOL;
 
                 if (file_exists($resolvedPath)) {
                     $tagsData = $this->geminiService->analyzeImage($resolvedPath);
-                    echo "[TaggingService] Gemini Raw Data: " . json_encode($tagsData) . PHP_EOL;
+                    echo '[TaggingService] Gemini Raw Data: ' . json_encode($tagsData) . PHP_EOL;
 
                     if ($scene->getTitle() === null && isset($tagsData['Titel'])) {
                         $scene->setTitle($tagsData['Titel']);
@@ -90,7 +99,7 @@ class TaggingService
                 }
             }
 
-            echo "[TaggingService] Gesammelte Tags vor Übergabe an TagService: " . json_encode($allTags) . PHP_EOL;
+            echo '[TaggingService] Gesammelte Tags vor Übergabe an TagService: ' . json_encode($allTags) . PHP_EOL;
 
             // Delegation an den neuen TagService
             $this->tagService->assignAiTagsToScene($scene, $allTags);
@@ -101,17 +110,11 @@ class TaggingService
                 true,
                 true,
                 [],
-                sprintf('Successfully analyzed and tagged scene %d.', $scene->getId())
+                sprintf('Successfully analyzed and tagged scene %d.', $scene->getId()),
             );
-
         } catch (\Throwable $e) {
-            echo "[TaggingService FEHLER]: " . $e->getMessage() . PHP_EOL;
-            return new TaggingResult(
-                false,
-                false,
-                [],
-                $e->getMessage()
-            );
+            echo '[TaggingService FEHLER]: ' . $e->getMessage() . PHP_EOL;
+            return new TaggingResult(false, false, [], $e->getMessage());
         }
     }
 }

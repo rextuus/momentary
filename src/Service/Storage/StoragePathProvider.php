@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service\Storage;
 
 use App\Entity\File;
@@ -12,16 +14,15 @@ class StoragePathProvider
         #[Autowire('%kernel.project_dir%')]
         private readonly string $projectDir,
         #[Autowire('%env(string:STORAGE_ROOT)%')]
-        private readonly string $storageRoot
-    ) {
-    }
+        private readonly string $storageRoot,
+    ) {}
 
     /**
      * Gibt den absoluten Dateipfad auf dem Dateisystem zurück.
      */
     public function getAbsolutePath(File $file): string
     {
-        return $this->getStorageRoot() . '/' . ltrim($file->getRelativePath(), '/');
+        return $this->getAbsoluteFilePath($file->getRelativePath());
     }
 
     /**
@@ -38,8 +39,14 @@ class StoragePathProvider
     public function getRelativePath(FilePurpose $purpose, string $filename, ?string $directoryIdentifier = null): string
     {
         return match ($purpose) {
-            FilePurpose::VIDEO_SOURCE, FilePurpose::VIDEO_CONVERTED, FilePurpose::VIDEO_FRAME => $this->createVideoPath($directoryIdentifier ?? '0', $filename),
-            FilePurpose::THUMBNAIL_SCENE, FilePurpose::THUMBNAIL_VIDEO => $this->createThumbnailPath($filename, $directoryIdentifier),
+            FilePurpose::VIDEO_SOURCE, FilePurpose::VIDEO_CONVERTED, FilePurpose::VIDEO_FRAME => $this->createVideoPath(
+                $directoryIdentifier ?? '0',
+                $filename,
+            ),
+            FilePurpose::THUMBNAIL_SCENE, FilePurpose::THUMBNAIL_VIDEO => $this->createThumbnailPath(
+                $filename,
+                $directoryIdentifier,
+            ),
             FilePurpose::IMAGE_PROFILE => $this->createProfileImagePath($directoryIdentifier ?? '0', $filename),
             FilePurpose::IMAGE_FACE => $this->createFacePath($directoryIdentifier ?? '0', $filename),
         };

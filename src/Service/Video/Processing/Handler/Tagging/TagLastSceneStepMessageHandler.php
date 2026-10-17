@@ -27,7 +27,14 @@ class TagLastSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
         TaggingService $taggingService,
         VideoSceneRepository $videoSceneRepository,
     ) {
-        parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService, $taggingService, $videoSceneRepository);
+        parent::__construct(
+            $videoRepository,
+            $dispatcher,
+            $workflowMachine,
+            $processingService,
+            $taggingService,
+            $videoSceneRepository,
+        );
     }
 
     public function __invoke(TagLastSceneStepMessage $message): void
@@ -36,10 +43,7 @@ class TagLastSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
         $video = $this->getVideo();
         $this->startCurrentStep();
 
-        $successMsg = sprintf(
-            'All scenes for video %d tagged successfully.',
-            $video->getId()
-        );
+        $successMsg = sprintf('All scenes for video %d tagged successfully.', $video->getId());
 
         if ($message->getCurrentSceneId() !== null) {
             $this->currentSceneId = $message->getCurrentSceneId();
@@ -48,14 +52,12 @@ class TagLastSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
             $successMsg = sprintf(
                 'Last scene (ID %d) for video "%s" tagged successfully.',
                 $this->currentSceneId,
-                $video->getTitle()
+                $video->getTitle(),
             );
         }
 
         $this->finishCurrentStep($successMsg);
     }
 
-    public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
-    {
-    }
+    public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void {}
 }

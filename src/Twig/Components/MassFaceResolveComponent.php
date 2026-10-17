@@ -1,12 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Twig\Components;
 
 use App\Entity\Person;
 use App\Entity\VideoFace;
 use App\Enum\PersonStatus;
 use App\Repository\PersonRepository;
-use App\Repository\VideoFaceRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\UX\LiveComponent\Attribute\AsLiveComponent;
 use Symfony\UX\LiveComponent\Attribute\LiveAction;
@@ -31,10 +32,8 @@ class MassFaceResolveComponent
 
     public function __construct(
         private PersonRepository $personRepository,
-        private VideoFaceRepository $videoFaceRepository,
-        private EntityManagerInterface $entityManager
-    ) {
-    }
+        private EntityManagerInterface $entityManager,
+    ) {}
 
     public function getPerson(): ?Person
     {
@@ -77,8 +76,8 @@ class MassFaceResolveComponent
     public function selectAll(): void
     {
         $this->selectedForRemoval = array_map(
-            static fn (VideoFace $face) => $face->getId(),
-            $this->getUnverifiedFaces()
+            static fn(VideoFace $face) => $face->getId(),
+            $this->getUnverifiedFaces(),
         );
     }
 
@@ -125,8 +124,11 @@ class MassFaceResolveComponent
             return [];
         }
 
-        $faces = $person->getVideoFaces()->filter(fn (VideoFace $face) => !$face->isVerified())->toArray();
-        usort($faces, fn (VideoFace $a, VideoFace $b) => $a->getId() <=> $b->getId());
+        $faces = $person
+            ->getVideoFaces()
+            ->filter(static fn(VideoFace $face) => !$face->isVerified())
+            ->toArray();
+        usort($faces, static fn(VideoFace $a, VideoFace $b) => $a->getId() <=> $b->getId());
 
         return $faces;
     }

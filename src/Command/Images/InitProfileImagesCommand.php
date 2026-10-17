@@ -1,10 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Command\Images;
 
-use App\Entity\Person;
 use App\Repository\PersonRepository;
-use App\Service\ImgproxyService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -21,8 +21,6 @@ class InitProfileImagesCommand extends Command
     public function __construct(
         private PersonRepository $personRepository,
         private EntityManagerInterface $entityManager,
-        private ImgproxyService $imgproxyService,
-        private string $internalApiHost = 'http://app'
     ) {
         parent::__construct();
     }
@@ -37,9 +35,9 @@ class InitProfileImagesCommand extends Command
         foreach ($persons as $person) {
             $profileFace = $person->getProfileFace();
             if ($profileFace && $profileFace->getFaceImagePath()) {
-                // Wir initialisieren nichts mehr direkt in der Entity, 
+                // Wir initialisieren nichts mehr direkt in der Entity,
                 // da getProfileImageUrl() jetzt dynamisch den Pfad zurückgibt.
-                // $person->setCachedImageUrl($cachedUrl); 
+                // $person->setCachedImageUrl($cachedUrl);
             }
             $io->progressAdvance();
         }

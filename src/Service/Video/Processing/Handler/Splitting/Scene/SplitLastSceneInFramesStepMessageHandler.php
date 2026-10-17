@@ -31,7 +31,7 @@ class SplitLastSceneInFramesStepMessageHandler extends AbstractSplitInFramesStep
         BetterVideoAnalyzer $videoAnalyzer,
         StoragePathProvider $pathProvider,
         EntityManagerInterface $entityManager,
-        private readonly VideoSceneRepository $sceneRepository
+        private readonly VideoSceneRepository $sceneRepository,
     ) {
         parent::__construct(
             $videoRepository,
@@ -40,7 +40,7 @@ class SplitLastSceneInFramesStepMessageHandler extends AbstractSplitInFramesStep
             $processingService,
             $videoAnalyzer,
             $pathProvider,
-            $entityManager
+            $entityManager,
         );
     }
 
@@ -53,10 +53,7 @@ class SplitLastSceneInFramesStepMessageHandler extends AbstractSplitInFramesStep
 
         // Special case < 2 scenes => here comes null as currentScene
         if ($message->getCurrentSceneId() === null) {
-            $successMsg = sprintf(
-                'Last scene for video with id %d already split into frames',
-                $video->getId()
-            );
+            $successMsg = sprintf('Last scene for video with id %d already split into frames', $video->getId());
 
             $this->finishCurrentStep($successMsg);
 
@@ -79,7 +76,7 @@ class SplitLastSceneInFramesStepMessageHandler extends AbstractSplitInFramesStep
             $frameSplitResult->getFrameCount(),
             $scene->getId(),
             $video->getTitle(),
-            count($this->framePathCollection)
+            count($this->framePathCollection),
         );
 
         $this->finishCurrentStep($successMsg);

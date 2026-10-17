@@ -6,7 +6,4 @@ namespace App\Service\Video\Processing\Exception;
 
 use Exception;
 
-class CommonProcessStepException extends Exception
-{
-
-}
+class CommonProcessStepException extends Exception {}

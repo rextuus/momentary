@@ -16,7 +16,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'app:video:cleanup-originals',
-    description: 'Räumt Speicher auf: Originale und Frames fertiger Videos sowie verwaiste Ordner.'
+    description: 'Räumt Speicher auf: Originale und Frames fertiger Videos sowie verwaiste Ordner.',
 )]
 class CleanupOriginalsCommand extends Command
 {
@@ -52,7 +52,8 @@ class CleanupOriginalsCommand extends Command
         $io->writeln(sprintf('%s (fertige Videos): %s in %d Video(s)', $verb, $this->format($totalBytes), $count));
 
         // 2. Verwaiste Ordner ohne zugehöriges Video
-        $existingIds = $this->videoRepository->createQueryBuilder('v')
+        $existingIds = $this->videoRepository
+            ->createQueryBuilder('v')
             ->select('v.id')
             ->getQuery()
             ->getSingleColumnResult();
@@ -62,7 +63,12 @@ class CleanupOriginalsCommand extends Command
         foreach ($orphans as $path => $bytes) {
             $io->writeln(sprintf('  %s: %s', $path, $this->format($bytes)));
         }
-        $io->writeln(sprintf('%s (verwaiste Ordner): %s in %d Ordner(n)', $verb, $this->format($orphanBytes), count($orphans)));
+        $io->writeln(sprintf(
+            '%s (verwaiste Ordner): %s in %d Ordner(n)',
+            $verb,
+            $this->format($orphanBytes),
+            count($orphans),
+        ));
 
         $io->success(sprintf('%s insgesamt: %s', $verb, $this->format($totalBytes + $orphanBytes)));
 
@@ -71,8 +77,6 @@ class CleanupOriginalsCommand extends Command
 
     private function format(int|float $bytes): string
     {
-        return $bytes >= 1073741824
-            ? round($bytes / 1073741824, 2) . ' GB'
-            : round($bytes / 1048576, 1) . ' MB';
+        return $bytes >= 1073741824 ? round($bytes / 1073741824, 2) . ' GB' : round($bytes / 1048576, 1) . ' MB';
     }
 }

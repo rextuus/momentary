@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller;
 
 use App\Entity\Video;
@@ -14,9 +16,23 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-class UploadController extends AbstractController
+final class UploadController extends AbstractController
 {
-    private const ALLOWED_EXTENSIONS = ['mp4', 'mov', 'mkv', 'webm', 'avi', 'm4v', 'mts', 'm2ts', 'mpg', 'mpeg', 'wmv', 'flv', '3gp'];
+    private const ALLOWED_EXTENSIONS = [
+        'mp4',
+        'mov',
+        'mkv',
+        'webm',
+        'avi',
+        'm4v',
+        'mts',
+        'm2ts',
+        'mpg',
+        'mpeg',
+        'wmv',
+        'flv',
+        '3gp',
+    ];
 
     public function __construct(
         private readonly VideoCreationService $videoCreationService,

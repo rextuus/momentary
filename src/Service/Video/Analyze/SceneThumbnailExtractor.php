@@ -6,10 +6,10 @@ namespace App\Service\Video\Analyze;
 
 use App\Entity\File;
 use App\Entity\Video;
+use App\Entity\VideoScene;
 use App\Service\Storage\FileManager;
 use App\Service\Storage\FileStorageService;
 use App\Service\VideoFileService;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Process\Exception\RuntimeException;
 use Symfony\Component\Process\Process;
 
@@ -24,9 +24,33 @@ class SceneThumbnailExtractor
         private readonly FileManager $fileManager,
         private readonly FileStorageService $storageService,
         private readonly \Doctrine\ORM\EntityManagerInterface $entityManager,
-        #[Autowire('%env(PYTHON_BINARY)%')]
-        string $pythonBinary = '/usr/bin/python3',
-    ) {
+    ) {}
+
+    /**
+     * Erzeugt das Thumbnail einer Szene aus deren Mitte neu und hinterlegt es an der Szene
+     * (und am Video, falls dieses noch keins hat).
+     */
+    public function extractSceneThumbnail(VideoScene $scene): ?File
+    {
+        $video = $scene->getVideo();
+        if ($video === null) {
+            return null;
+        }
+
+        $time = ($scene->getStartSeconds() + $scene->getEndSeconds()) / 2;
+        $thumbnailFile = $this->extractThumbnail($video, $time, sprintf('scene_%d.jpg', $scene->getId()));
+        if ($thumbnailFile === null) {
+            return null;
+        }
+
+        $scene->setThumbnailFile($thumbnailFile);
+        if ($video->getThumbnailFile() === null) {
+            $video->setThumbnailFile($thumbnailFile);
+        }
+
+        $this->entityManager->flush();
+
+        return $thumbnailFile;
     }
 
     public function extractThumbnail(Video $video, float $timeInSeconds = 0.0, ?string $customFilename = null): ?File
@@ -46,10 +70,13 @@ class SceneThumbnailExtractor
             try {
                 $ffprobeProcess = new Process([
                     'ffprobe',
-                    '-v', 'error',
-                    '-show_entries', 'format=duration',
-                    '-of', 'default=noprint_wrappers=1:nokey=1',
-                    $videoPath
+                    '-v',
+                    'error',
+                    '-show_entries',
+                    'format=duration',
+                    '-of',
+                    'default=noprint_wrappers=1:nokey=1',
+                    $videoPath,
                 ]);
                 $ffprobeProcess->run();
                 if ($ffprobeProcess->isSuccessful()) {
@@ -71,25 +98,33 @@ class SceneThumbnailExtractor
         $thumbnailFile = $this->fileManager->createVideoThumbnailFile($video, $thumbnailName);
 
         // Vorab prüfen, ob bereits ein File-Eintrag mit diesem Pfad existiert, um Duplicate Entry zu vermeiden
-        $existingFile = $this->entityManager->getRepository(File::class)->findOneBy(['relativePath' => $thumbnailFile->getRelativePath()]);
+        $existingFile = $this->entityManager
+            ->getRepository(File::class)
+            ->findOneBy(['relativePath' => $thumbnailFile->getRelativePath()]);
         if ($existingFile) {
             $thumbnailFile = $existingFile;
         }
 
         $this->storageService->ensureDirectoryExists($thumbnailFile);
         $absoluteThumbnailPath = $this->videoFileService->getAbsolutePath($thumbnailFile);
-        error_log("DEBUG: Attempting to create thumbnail at: " . $absoluteThumbnailPath);
+        error_log('DEBUG: Attempting to create thumbnail at: ' . $absoluteThumbnailPath);
 
         $command = [
             'ffmpeg',
-            '-loglevel', 'error',
+            '-loglevel',
+            'error',
             '-y',
-            '-ss', (string)$timeInSeconds,
-            '-i', $videoPath,
-            '-vframes', '1',
-            '-q:v', '2',
-            '-pix_fmt', 'yuv420p',
-            $absoluteThumbnailPath
+            '-ss',
+            (string) $timeInSeconds,
+            '-i',
+            $videoPath,
+            '-vframes',
+            '1',
+            '-q:v',
+            '2',
+            '-pix_fmt',
+            'yuv420p',
+            $absoluteThumbnailPath,
         ];
 
         $process = new Process($command);
@@ -102,18 +137,18 @@ class SceneThumbnailExtractor
         }
 
         if (!$process->isSuccessful()) {
-            error_log("DEBUG: ffmpeg failed: " . $process->getErrorOutput());
-            error_log("DEBUG: Command: " . implode(' ', $command));
+            error_log('DEBUG: ffmpeg failed: ' . $process->getErrorOutput());
+            error_log('DEBUG: Command: ' . implode(' ', $command));
             return null;
         }
 
         if (!file_exists($absoluteThumbnailPath)) {
-            error_log("DEBUG: File does not exist after ffmpeg: " . $absoluteThumbnailPath);
-            error_log("DEBUG: Command: " . implode(' ', $command));
+            error_log('DEBUG: File does not exist after ffmpeg: ' . $absoluteThumbnailPath);
+            error_log('DEBUG: Command: ' . implode(' ', $command));
             return null;
         }
 
-        @touch($absoluteThumbnailPath);
+        touch($absoluteThumbnailPath);
 
         // Dateigröße aktualisieren und Datei über den FileManager persistieren
         $thumbnailFile->setFileSize(filesize($absoluteThumbnailPath) ?: 0);

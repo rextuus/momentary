@@ -28,7 +28,14 @@ class TagSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
         TaggingService $taggingService,
         VideoSceneRepository $videoSceneRepository,
     ) {
-        parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService, $taggingService, $videoSceneRepository);
+        parent::__construct(
+            $videoRepository,
+            $dispatcher,
+            $workflowMachine,
+            $processingService,
+            $taggingService,
+            $videoSceneRepository,
+        );
     }
 
     public function __invoke(TagSceneStepMessage $message): void
@@ -41,7 +48,7 @@ class TagSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
         if ($message->getCurrentSceneId() === null) {
             $successMsg = sprintf(
                 'Video %d contained only one scene which was already tagged. Proceeding to final tag step.',
-                $video->getId()
+                $video->getId(),
             );
             $this->finishCurrentStep($successMsg);
 
@@ -50,10 +57,7 @@ class TagSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
 
         // Special-Case: Last scene reached
         if (count($message->getRemainingSceneIds()) === 0) {
-            $successMsg = sprintf(
-                'All scenes for video %d tagged. Forwarding to final step.',
-                $video->getId()
-            );
+            $successMsg = sprintf('All scenes for video %d tagged. Forwarding to final step.', $video->getId());
 
             $result = $this->processSceneTagging($message->getCurrentSceneId());
             if (!$result->isSuccess()) {
@@ -83,7 +87,7 @@ class TagSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
             $successMsg = sprintf(
                 'Scene ID %d of Video "%s" tagged. Only 1 left. Dispatching final message.',
                 $oldSceneId,
-                $video->getTitle()
+                $video->getTitle(),
             );
 
             $this->finishCurrentStep($successMsg);
@@ -95,7 +99,7 @@ class TagSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
             'Scene ID %d of Video "%s" tagged. %d left.',
             $oldSceneId,
             $video->getTitle(),
-            count($this->remainingSceneIds)
+            count($this->remainingSceneIds),
         );
 
         $this->dispatchNextMessageOfCurrentStep($successMsg);

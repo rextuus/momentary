@@ -13,6 +13,12 @@
             "src/ApiResource/.gitignore"
         ]
     },
+    "carthage-software/mago": {
+        "version": "1.57.0"
+    },
+    "dama/doctrine-test-bundle": {
+        "version": "v8.7.0"
+    },
     "doctrine/deprecations": {
         "version": "1.1",
         "recipe": {
@@ -98,6 +104,9 @@
         "files": [
             "config/packages/http_discovery.yaml"
         ]
+    },
+    "phpstan/phpstan": {
+        "version": "2.3.1"
     },
     "phpunit/phpunit": {
         "version": "9.6",
@@ -438,22 +447,6 @@
             "config/packages/messenger.yaml"
         ]
     },
-    "symfony/webpack-encore-bundle": {
-        "version": "2.2",
-        "recipe": {
-            "repo": "github.com/symfony/recipes",
-            "branch": "main",
-            "version": "2.0",
-            "ref": "9ef5412a4a2a8415aca3a3f2b4edd3866aab9a19"
-        },
-        "files": [
-            "assets/app.js",
-            "assets/styles/app.css",
-            "config/packages/webpack_encore.yaml",
-            "package.json",
-            "webpack.config.js"
-        ]
-    },
     "symfony/workflow": {
         "version": "8.0",
         "recipe": {
@@ -481,5 +474,18 @@
     },
     "twig/extra-bundle": {
         "version": "v3.20.0"
+    },
+    "zenstruck/foundry": {
+        "version": "2.14",
+        "recipe": {
+            "repo": "github.com/symfony/recipes",
+            "branch": "main",
+            "version": "2.7",
+            "ref": "9bd824886195ebe64a24438db1b6d17eb833ac56"
+        },
+        "files": [
+            "config/packages/zenstruck_foundry.yaml",
+            "src/Story/AppStory.php"
+        ]
     }
 }

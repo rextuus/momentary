@@ -19,8 +19,7 @@ class EmptyScenesMerger
 
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-    ) {
-    }
+    ) {}
 
     public function mergeEmptyScenes(Video $video): EmptyScenesMergerResult
     {
@@ -32,36 +31,32 @@ class EmptyScenesMerger
 
         $this->orphanCandidates = [];
 
-        $result = $this->entityManager->wrapInTransaction(
-            function () use ($video, $originalCount): EmptyScenesMergerResult {
-                if (!$this->lockAndVerifyStatus($video)) {
-                    return EmptyScenesMergerResult::skipped(
-                        'Status conflict or concurrent processing',
-                        $originalCount
-                    );
-                }
-
-                /** @var array<VideoScene> $sceneArray */
-                $sceneArray = array_values($video->getScenes()->toArray());
-                $scenesWithPerson = $this->extractScenesWithFaces($sceneArray);
-
-                if (count($scenesWithPerson) === 0) {
-                    $result = $this->mergeAllScenesIntoOne($video, $sceneArray, $originalCount);
-                } else {
-                    $result = $this->mergeWithFaces($video, $sceneArray, $scenesWithPerson, $originalCount);
-                }
-
-                $this->renumberScenes($video);
-                $this->entityManager->flush();
-
-                $this->removeUnreferencedFiles();
-                $this->entityManager->flush();
-
-                return $result;
+        return $this->entityManager->wrapInTransaction(function () use (
+            $video,
+            $originalCount,
+        ): EmptyScenesMergerResult {
+            if (!$this->lockAndVerifyStatus($video)) {
+                return EmptyScenesMergerResult::skipped('Status conflict or concurrent processing', $originalCount);
             }
-        );
 
-        return $result;
+            /** @var array<VideoScene> $sceneArray */
+            $sceneArray = array_values($video->getScenes()->toArray());
+            $scenesWithPerson = $this->extractScenesWithFaces($sceneArray);
+
+            if (count($scenesWithPerson) === 0) {
+                $result = $this->mergeAllScenesIntoOne($video, $sceneArray, $originalCount);
+            } else {
+                $result = $this->mergeWithFaces($video, $sceneArray, $scenesWithPerson, $originalCount);
+            }
+
+            $this->renumberScenes($video);
+            $this->entityManager->flush();
+
+            $this->removeUnreferencedFiles();
+            $this->entityManager->flush();
+
+            return $result;
+        });
     }
 
     /**
@@ -86,10 +81,7 @@ class EmptyScenesMerger
      */
     private function lockAndVerifyStatus(Video $video): bool
     {
-        $currentStatus = $this->entityManager->getConnection()->fetchOne(
-            'SELECT status FROM video WHERE id = ? FOR UPDATE',
-            [$video->getId()]
-        );
+        $currentStatus = $this->entityManager->getConnection()->fetchOne('SELECT status FROM video WHERE id = ? FOR UPDATE', [$video->getId()]);
 
         return $currentStatus === VideoStatus::MERGING_SCENES->value;
     }
@@ -120,7 +112,7 @@ class EmptyScenesMerger
         Video $video,
         array $allScenes,
         array $scenesWithPerson,
-        int $originalCount
+        int $originalCount,
     ): EmptyScenesMergerResult {
         $lastSceneWithPerson = null;
         $currentPersonSceneIndex = 0;
@@ -152,11 +144,7 @@ class EmptyScenesMerger
             }
         }
 
-        return EmptyScenesMergerResult::success(
-            $originalCount,
-            $video->getScenes()->count(),
-            fallbackAllMerged: false
-        );
+        return EmptyScenesMergerResult::success($originalCount, $video->getScenes()->count(), fallbackAllMerged: false);
     }
 
     private function removeScene(Video $video, VideoScene $scene): void
@@ -193,7 +181,9 @@ class EmptyScenesMerger
     {
         $queries = [
             'SELECT COUNT(s.id) FROM ' . VideoScene::class . ' s WHERE s.thumbnailFile = :file',
-            'SELECT COUNT(v.id) FROM ' . Video::class . ' v
+            'SELECT COUNT(v.id) FROM '
+                . Video::class
+                . ' v
                 WHERE v.thumbnailFile = :file OR v.convertedFile = :file OR v.sourceFile = :file',
             'SELECT COUNT(f.id) FROM ' . VideoFace::class . ' f WHERE f.faceImage = :file',
         ];

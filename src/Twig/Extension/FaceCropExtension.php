@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Twig\Extension;
 
 use App\Service\ImgproxyService;
@@ -9,9 +11,8 @@ use Twig\TwigFunction;
 class FaceCropExtension extends AbstractExtension
 {
     public function __construct(
-        private readonly ImgproxyService $imgproxyService
-    ) {
-    }
+        private readonly ImgproxyService $imgproxyService,
+    ) {}
 
     public function getFunctions(): array
     {
@@ -21,8 +22,12 @@ class FaceCropExtension extends AbstractExtension
         ];
     }
 
-    public function getImgproxyUrl(string $path, int $width = 300, int $height = 300, string $resizingType = 'fill'): string
-    {
+    public function getImgproxyUrl(
+        string $path,
+        int $width = 300,
+        int $height = 300,
+        string $resizingType = 'fill',
+    ): string {
         return $this->imgproxyService->generateUrl($path, $width, $height, $resizingType);
     }
 
@@ -36,7 +41,7 @@ class FaceCropExtension extends AbstractExtension
         if (!$boundingBox) {
             return sprintf(
                 'background-image: url("%s"); background-size: cover; background-position: center; width: 100%%; height: 100%%;',
-                $imagePath
+                $imagePath,
             );
         }
 
@@ -46,7 +51,7 @@ class FaceCropExtension extends AbstractExtension
         if ($zoomFactor <= 0) {
             return sprintf(
                 'background-image: url("%s"); background-size: 100%% 100%%; background-repeat: no-repeat; background-position: center; width: 100%%; height: 100%%;',
-                $imagePath
+                $imagePath,
             );
         }
 
@@ -58,7 +63,7 @@ class FaceCropExtension extends AbstractExtension
                 100 / max(0.01, $box->Width),
                 100 / max(0.01, $box->Height),
                 ($box->Left / max(0.01, 1 - $box->Width)) * -100,
-                ($box->Top / max(0.01, 1 - $box->Height)) * -100
+                ($box->Top / max(0.01, 1 - $box->Height)) * -100,
             );
         }
 
@@ -74,7 +79,7 @@ class FaceCropExtension extends AbstractExtension
             'background-image: url("%s"); background-size: cover; background-position: %f%% %f%%; width: 100%%; height: 100%%;',
             $imagePath,
             $posX,
-            $posY
+            $posY,
         );
     }
 }

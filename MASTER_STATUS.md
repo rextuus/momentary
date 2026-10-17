@@ -15,9 +15,9 @@ Das Frontend (Momentary Hub) und die Mobile-App (Momentary Mobile) senden REST-A
 ### Tech-Stack-Übersicht & Infrastruktur
 | Rolle | Service / Komponente | Port | Identifikation / Zweck |
 | :--- | :--- | :--- | :--- |
-| **Backend** | Symfony 8.0 (API Platform v3+) | `8088` | Interne REST-API (JSON-LD / Hydra) |
+| **Backend** | Symfony 8.1 (API Platform v3+) | `8088` | Interne REST-API (JSON-LD / Hydra) |
 | **Bildverarbeitung**| Imgproxy | `8080` | Dynamische On-the-fly-Bildquelle |
-| **Frontend** | Symfony 8.0 & Hotwire Turbo Hub | `8089` | Zustandsloses Web-User-Interface |
+| **Frontend** | Symfony 8.1 & Hotwire Turbo Hub | `8089` | Zustandsloses Web-User-Interface |
 | **Mobile** | Turbo Hybrid Shell (Android Studio) | *N/A* | Android WebView via Hotwire Native |
 | **Streaming** | Jellyfin Server | *TBD* | Finaler Export & Video-Streaming-Infrastruktur |
 

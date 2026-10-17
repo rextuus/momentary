@@ -10,9 +10,11 @@ use App\Repository\PersonRepository;
 
 final class PersonCollectionProvider implements ProviderInterface
 {
-    public function __construct(private PersonRepository $personRepository) {}
+    public function __construct(
+        private PersonRepository $personRepository,
+    ) {}
 
-    public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
+    public function provide(Operation $operation, array $uriVariables = [], array $context = []): array
     {
         return $this->personRepository->findActiveKnown();
     }

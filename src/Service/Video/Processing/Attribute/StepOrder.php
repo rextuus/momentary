@@ -11,8 +11,7 @@ readonly class StepOrder
 {
     public function __construct(
         public int $stepNumber,
-    ) {
-    }
+    ) {}
 
     public function getStepNumber(): int
     {

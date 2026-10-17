@@ -53,10 +53,6 @@ services:
 
     App\Service\VideoFileService:
 
-    App\Command\Images\InitProfileImagesCommand:
-        arguments:
-            $internalApiHost: '%app.internal_api_host%'
-
     Meilisearch\Client:
         arguments:
             $url: '%env(MEILISEARCH_URL)%'

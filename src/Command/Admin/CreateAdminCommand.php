@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Command\Admin;
 
 use App\Entity\User;
@@ -18,15 +20,18 @@ class CreateAdminCommand extends Command
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly UserPasswordHasherInterface $passwordHasher
+        private readonly UserPasswordHasherInterface $passwordHasher,
     ) {
         parent::__construct();
     }
 
     protected function configure(): void
     {
-        $this->addArgument('email', InputArgument::REQUIRED, 'The email of the admin')
-             ->addArgument('password', InputArgument::REQUIRED, 'The password of the admin');
+        $this->addArgument('email', InputArgument::REQUIRED, 'The email of the admin')->addArgument(
+            'password',
+            InputArgument::REQUIRED,
+            'The password of the admin',
+        );
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int

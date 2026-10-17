@@ -9,15 +9,25 @@ use Symfony\Component\Process\Process;
 class Mp4Converter
 {
     public function __construct(
-        private readonly \Psr\Log\LoggerInterface $logger
+        private readonly \Psr\Log\LoggerInterface $logger,
     ) {}
 
     public function convertToMp4(string $sourcePath, string $targetPath): bool
     {
         $process = new Process([
-            'ffmpeg', '-y', '-i', $sourcePath,
-            '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23',
-            '-c:a', 'aac', $targetPath
+            'ffmpeg',
+            '-y',
+            '-i',
+            $sourcePath,
+            '-c:v',
+            'libx264',
+            '-preset',
+            'ultrafast',
+            '-crf',
+            '23',
+            '-c:a',
+            'aac',
+            $targetPath,
         ]);
         $process->setTimeout(1800);
         $process->run();

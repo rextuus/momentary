@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Command\Tags;
 
 use App\Entity\Tag;
@@ -12,14 +14,11 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(
-    name: 'app:tags:cleanup',
-    description: 'Merge duplicate tags and categories',
-)]
+#[AsCommand(name: 'app:tags:cleanup', description: 'Merge duplicate tags and categories')]
 class CleanupTagsCommand extends Command
 {
     public function __construct(
-        private EntityManagerInterface $entityManager
+        private EntityManagerInterface $entityManager,
     ) {
         parent::__construct();
     }
@@ -77,7 +76,7 @@ class CleanupTagsCommand extends Command
             $name = strtolower($tag->getName());
             $catId = $tag->getCategory()?->getId() ?? 'no_cat';
             $key = $name . '_' . $catId;
-            
+
             if (!isset($byNameAndCategory[$key])) {
                 $byNameAndCategory[$key] = [];
             }
@@ -88,11 +87,12 @@ class CleanupTagsCommand extends Command
             if (count($tagList) > 1) {
                 $io->note("Merging tags with key: $key");
                 $keptTag = array_shift($tagList);
-                
+
                 foreach ($tagList as $tag) {
-                    foreach ($tag->getScenes() as $scene) {
+                    foreach ($tag->getSceneTags()->toArray() as $sceneTag) {
+                        $scene = $sceneTag->getVideoScene();
+                        $scene->addSceneTag($keptTag, $sceneTag->isAiGenerated(), $sceneTag->getConfidence());
                         $scene->removeTag($tag);
-                        $scene->addTag($keptTag);
                     }
                     $this->entityManager->remove($tag);
                 }
@@ -115,9 +115,9 @@ class CleanupTagsCommand extends Command
                     $seenTags[$id] = $tag;
                 }
             }
-            
+
             if (count($duplicates) > 0) {
-                $io->note("Removing " . count($duplicates) . " duplicate tag assignments in scene " . $scene->getId());
+                $io->note('Removing ' . count($duplicates) . ' duplicate tag assignments in scene ' . $scene->getId());
                 foreach ($duplicates as $duplicate) {
                     $scene->removeTag($duplicate);
                 }

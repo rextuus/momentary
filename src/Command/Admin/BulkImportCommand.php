@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Command\Admin;
 
 use App\Entity\Video;
@@ -21,7 +23,7 @@ class BulkImportCommand extends Command
         private readonly StoragePathProvider $pathProvider,
         private readonly EntityManagerInterface $entityManager,
         private readonly VideoRepository $videoRepository,
-        private readonly ImportQueueManager $importQueueManager
+        private readonly ImportQueueManager $importQueueManager,
     ) {
         parent::__construct();
     }

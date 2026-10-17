@@ -29,7 +29,7 @@ class SplitVideoInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
         VideoProcessingService $processingService,
         BetterVideoAnalyzer $videoAnalyzer,
         StoragePathProvider $pathProvider,
-        EntityManagerInterface $entityManager
+        EntityManagerInterface $entityManager,
     ) {
         parent::__construct(
             $videoRepository,
@@ -38,7 +38,7 @@ class SplitVideoInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
             $processingService,
             $videoAnalyzer,
             $pathProvider,
-            $entityManager
+            $entityManager,
         );
     }
 
@@ -58,14 +58,11 @@ class SplitVideoInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
             $localVideoPath,
             $video->getAnalysisFps(),
             $startTime,
-            $video->getDuration()
+            $video->getDuration(),
         );
 
         if ($frameSplitResult->getFrameCount() === 0) {
-            $errorMsg = sprintf(
-                'Video file for vide-entity with id "%s" was split into 0 frames',
-                $video->getId()
-            );
+            $errorMsg = sprintf('Video file for vide-entity with id "%s" was split into 0 frames', $video->getId());
             $this->stopProcessing($errorMsg);
 
             return;
@@ -82,7 +79,7 @@ class SplitVideoInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
             'Split video "%s" into %d frames in path "%s"',
             $video->getTitle(),
             $video->getTotalFrames(),
-            $frameSplitResult->getFrameDirPath()
+            $frameSplitResult->getFrameDirPath(),
         );
 
         $this->prepareFirstFramesForAnalyzing($frameSplitResult, $startTime);

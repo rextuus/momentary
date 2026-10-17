@@ -29,7 +29,14 @@ class TagFirstSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
         TaggingService $taggingService,
         VideoSceneRepository $videoSceneRepository,
     ) {
-        parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService, $taggingService, $videoSceneRepository);
+        parent::__construct(
+            $videoRepository,
+            $dispatcher,
+            $workflowMachine,
+            $processingService,
+            $taggingService,
+            $videoSceneRepository,
+        );
     }
 
     public function __invoke(TagFirstSceneStepMessage $message): void
@@ -39,7 +46,7 @@ class TagFirstSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
         $this->startCurrentStep();
 
         $scenes = $video->getScenes()->toArray();
-        $sceneIds = array_map(static fn (VideoScene $scene) => $scene->getId(), $scenes);
+        $sceneIds = array_map(static fn(VideoScene $scene) => $scene->getId(), $scenes);
 
         if (count($sceneIds) === 0) {
             $this->stopProcessing(sprintf('No scenes found for video %d to tag.', $video->getId()));
@@ -74,7 +81,7 @@ class TagFirstSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
             'First scene (ID %d) of Video "%s" tagged. %d left.',
             $this->currentSceneId,
             $video->getTitle(),
-            count($sceneIds)
+            count($sceneIds),
         );
 
         // Prepare next

@@ -4,17 +4,16 @@ declare(strict_types=1);
 
 namespace App\Service\Video\Analyze;
 
+use App\Entity\File;
 use App\Entity\Person;
 use App\Entity\VideoFace;
 use App\Entity\VideoScene;
+use App\Enum\FilePurpose;
 use App\Repository\VideoRepository;
 use App\Service\Aws\AmazonRekognitionService;
 use App\Service\ImageFileService;
-use App\Service\VideoFileService;
 use App\Service\Storage\StoragePathProvider;
 use Doctrine\ORM\EntityManagerInterface;
-use App\Entity\File;
-use App\Enum\FilePurpose;
 use Ramsey\Uuid\Uuid;
 
 class FrameAnalyzer
@@ -24,10 +23,8 @@ class FrameAnalyzer
         private readonly VideoRepository $videoRepository,
         private readonly AmazonRekognitionService $rekognitionService,
         private readonly ImageFileService $imageFileService,
-        private readonly VideoFileService $videoFileService,
         private readonly StoragePathProvider $pathProvider,
-    ) {
-    }
+    ) {}
 
     public function analyzeFrame(int $videoId, string $framePath, int $timestamp): bool
     {
@@ -45,7 +42,8 @@ class FrameAnalyzer
             return false;
         }
 
-        $currentScene = $this->entityManager->getRepository(VideoScene::class)
+        $currentScene = $this->entityManager
+            ->getRepository(VideoScene::class)
             ->createQueryBuilder('s')
             ->where('s.video = :video')
             ->andWhere(':ts >= s.startSeconds')
@@ -60,39 +58,31 @@ class FrameAnalyzer
         if (empty($allFacesData)) {
             return false;
         }
-
-        echo "FrameAnalyzer: File exists: " . (file_exists($framePath) ? 'yes' : 'no') . "\n";
+        // Während des Rekognition-Requests kann die Datei verschwinden; ohne clearstatcache lieferte PHP das alte Ergebnis
+        clearstatcache(true, $framePath);
         if (!file_exists($framePath)) {
             throw new \RuntimeException("Frame file disappeared before processing: {$framePath}");
         }
 
         $imageContent = file_get_contents($framePath);
-        echo "FrameAnalyzer: Got image content\n";
         $uuid = Uuid::uuid4()->toString();
 
-        $storagePath = $this->pathProvider->createFacePath((string)$videoId, $uuid . '.jpg');
-        echo "FrameAnalyzer: Storage path: $storagePath\n";
+        $storagePath = $this->pathProvider->createFacePath((string) $videoId, $uuid . '.jpg');
 
         $this->imageFileService->getFilesystem()->write($storagePath, $imageContent);
-        echo "FrameAnalyzer: File written\n";
 
         $file = $this->entityManager->getRepository(File::class)->findOneBy(['relativePath' => $storagePath]);
-        echo "FrameAnalyzer: Found file entity\n";
         if (!$file) {
-            echo "FrameAnalyzer: Creating new file entity\n";
             $file = new File();
             $file->setRelativePath($storagePath);
             $file->setMimeType('image/jpeg');
             $file->setFileSize(strlen($imageContent));
             $file->setPurpose(FilePurpose::IMAGE_FACE);
             $this->entityManager->persist($file);
-            echo "FrameAnalyzer: Persisted new file entity\n";
         }
 
         $allFacesData = array_values($allFacesData);
-        echo "FrameAnalyzer: About to enter loop. Count: " . count($allFacesData) . "\n";
         foreach ($allFacesData as $faceData) {
-            echo "FrameAnalyzer: Iterating faceData\n";
             $this->saveFaceData($video, $faceData, $timestamp, $file, $currentScene);
         }
 
@@ -103,57 +93,54 @@ class FrameAnalyzer
 
     private function saveFaceData($video, $faceData, $timestamp, $file, $currentScene): void
     {
-        echo "FrameAnalyzer: Entering saveFaceData\n";
-        $this->entityManager->wrapInTransaction(
-            function () use ($video, $faceData, $timestamp, $file, $currentScene) {
-                echo "FrameAnalyzer: Inside transaction\n";
-                $person = null;
-                $matchedFace = null;
+        $this->entityManager->wrapInTransaction(function () use ($video, $faceData, $timestamp, $file, $currentScene) {
+            $person = null;
+            $matchedFace = null;
 
-                if (!empty($faceData['matchedFaceId'])) {
-                    $matchedFace = $this->entityManager->getRepository(VideoFace::class)
-                        ->findOneBy(['faceLabel' => $faceData['matchedFaceId']]);
-                    $person = $matchedFace?->getPerson();
-                }
-
-                if ($person === null) {
-                    $person = new Person();
-                    $faceId = $faceData['faceId'] ?? 'unknown';
-                    if ($faceId === null) {
-                        $faceId = 'unknown';
-                    }
-                    $person->setName('unknown_' . substr((string) $faceId, 0, 8));
-                    $person->setIdentified(false);
-                    $this->entityManager->persist($person);
-                }
-
-                $videoFace = new VideoFace();
-                $videoFace->setVideo($video);
-                $videoFace->setPerson($person);
-                $videoFace->setTimestamp($timestamp);
-                $videoFace->setFaceImage($file);
-                $videoFace->setFaceLabel($faceData['faceId']);
-                $videoFace->setAge((int) $faceData['age']);
-                $videoFace->setGender((string) $faceData['gender']);
-                $videoFace->setEmotion((string) $faceData['emotion']);
-                $videoFace->setBoundingBox($faceData['boundingBox']);
-
-                if ($currentScene) {
-                    $videoFace->setVideoScene($currentScene);
-                    $currentScene->addVideoFace($videoFace);
-                }
-                if ($matchedFace) {
-                    $videoFace->setMatchedBy($matchedFace);
-                    $videoFace->setMatchSimilarity((float) $faceData['similarity']);
-
-                    if ($faceData['similarity'] >= 80.0 && $matchedFace->getPerson() && $matchedFace->getPerson()->isIdentified()) {
-                        $videoFace->setDetection($matchedFace->getPerson());
-                    }
-                }
-
-                $this->entityManager->persist($videoFace);
-                echo "FrameAnalyzer: Persisted VideoFace for video ID " . ($video->getId() ?? 'null') . " and scene ID " . ($currentScene ? $currentScene->getId() : 'null') . "\n";
+            if (!empty($faceData['matchedFaceId'])) {
+                $matchedFace = $this->entityManager
+                    ->getRepository(VideoFace::class)
+                    ->findOneBy(['faceLabel' => $faceData['matchedFaceId']]);
+                $person = $matchedFace?->getPerson();
             }
-        );
+
+            if ($person === null) {
+                $person = new Person();
+                $faceId = $faceData['faceId'] ?? 'unknown';
+                $person->setName('unknown_' . substr((string) $faceId, 0, 8));
+                $person->setIdentified(false);
+                $this->entityManager->persist($person);
+            }
+
+            $videoFace = new VideoFace();
+            $videoFace->setVideo($video);
+            $videoFace->setPerson($person);
+            $videoFace->setTimestamp($timestamp);
+            $videoFace->setFaceImage($file);
+            $videoFace->setFaceLabel($faceData['faceId']);
+            $videoFace->setAge((int) $faceData['age']);
+            $videoFace->setGender((string) $faceData['gender']);
+            $videoFace->setEmotion((string) $faceData['emotion']);
+            $videoFace->setBoundingBox($faceData['boundingBox']);
+
+            if ($currentScene) {
+                $videoFace->setVideoScene($currentScene);
+                $currentScene->addVideoFace($videoFace);
+            }
+            if ($matchedFace) {
+                $videoFace->setMatchedBy($matchedFace);
+                $videoFace->setMatchSimilarity((float) $faceData['similarity']);
+
+                if (
+                    $faceData['similarity'] >= 80.0
+                    && $matchedFace->getPerson()
+                    && $matchedFace->getPerson()->isIdentified()
+                ) {
+                    $videoFace->setDetection($matchedFace->getPerson());
+                }
+            }
+
+            $this->entityManager->persist($videoFace);
+        });
     }
 }

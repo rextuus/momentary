@@ -6,7 +6,6 @@ namespace App\Service\Video\Processing\Message\Tagging;
 
 use App\Enum\VideoStatus;
 use App\Service\Video\Processing\Attribute\StepOrder;
-use App\Service\Video\Processing\Enum\VideoWorkflowProcessTransition;
 use App\Service\Video\Processing\Message\Abstract\AbstractVideoProcessStepMessage;
 
 #[StepOrder(stepNumber: 18)]
@@ -14,7 +13,6 @@ class TagFirstSceneStepMessage extends AbstractVideoProcessStepMessage
 {
     protected const string MESSAGE_LOGGING_IDENT = 'TAG FIRST SCENE';
 
-    private ?int $currentSceneId = null;
     /** @var int[] */
     private array $remainingSceneIds = [];
 

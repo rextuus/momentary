@@ -6,7 +6,4 @@ namespace App\Service\Video\Processing\Exception;
 
 use Exception;
 
-class StepMessageTransitionException extends Exception
-{
-
-}
+class StepMessageTransitionException extends Exception {}

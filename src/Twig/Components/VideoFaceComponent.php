@@ -1,12 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Twig\Components;
 
 use App\Entity\VideoFace;
-use App\Form\PersonCombineType;
 use App\Form\VideoFaceSwitchType;
 use App\Service\ImgproxyService;
-use App\Service\Person\Data\PersonCombineData;
 use App\Service\Video\VideoFaceSwitchData;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -17,7 +17,6 @@ use Symfony\UX\LiveComponent\Attribute\LiveAction;
 use Symfony\UX\LiveComponent\Attribute\LiveProp;
 use Symfony\UX\LiveComponent\ComponentWithFormTrait;
 use Symfony\UX\LiveComponent\DefaultActionTrait;
-use Symfony\UX\TwigComponent\Attribute\AsTwigComponent;
 
 #[AsLiveComponent]
 final class VideoFaceComponent extends AbstractController
@@ -35,16 +34,12 @@ final class VideoFaceComponent extends AbstractController
 
     public function __construct(
         private readonly ImgproxyService $imgproxyService,
-        private readonly EntityManagerInterface $entityManager
-    ) {
-    }
+        private readonly EntityManagerInterface $entityManager,
+    ) {}
 
     protected function instantiateForm(): FormInterface
     {
-        return $this->createForm(
-            VideoFaceSwitchType::class,
-            $this->initialFormData
-        );
+        return $this->createForm(VideoFaceSwitchType::class, $this->initialFormData);
     }
 
     #[LiveAction]
@@ -113,11 +108,7 @@ final class VideoFaceComponent extends AbstractController
         $width = $this->small ? 80 : 250;
         $height = $this->small ? 80 : 250;
 
-        return $this->imgproxyService->generateUrl(
-            $this->videoFace->getFaceImagePath(),
-            $width,
-            $height
-        );
+        return $this->imgproxyService->generateUrl($this->videoFace->getFaceImagePath(), $width, $height);
     }
 
     public function getMatchImageUrl(): ?string
@@ -132,7 +123,7 @@ final class VideoFaceComponent extends AbstractController
         return $this->imgproxyService->generateUrl(
             $this->videoFace->getMatchedBy()->getFaceImagePath(),
             $width,
-            $height
+            $height,
         );
     }
 

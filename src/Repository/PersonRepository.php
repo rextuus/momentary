@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repository;
 
 use App\Entity\Person;
@@ -36,12 +38,13 @@ class PersonRepository extends ServiceEntityRepository
      */
     public function findActiveKnown(): array
     {
-        return $this->createQueryBuilder('p')
+        return $this
+            ->createQueryBuilder('p')
             ->where('p.wasted = :wasted')
             ->andWhere('p.name NOT LIKE :unknownPrefix')
             ->setParameter('wasted', false)
             ->setParameter('unknownPrefix', 'unknown_%')
-            ->orderBy('p.name', 'ASC')
+            ->orderBy('p.name', \SortDirection::Ascending)
             ->getQuery()
             ->getResult();
     }
@@ -51,7 +54,8 @@ class PersonRepository extends ServiceEntityRepository
      */
     public function findIdentifiedWithUnverifiedFaces(): array
     {
-        return $this->createQueryBuilder('p')
+        return $this
+            ->createQueryBuilder('p')
             ->innerJoin('p.videoFaces', 'vf')
             ->andWhere('p.status = :status')
             ->andWhere('vf.isVerified = :isVerified')

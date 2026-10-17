@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service;
 
 use App\Entity\Video;
@@ -99,7 +101,7 @@ class VideoIndexer
             return [];
         }
 
-        usort($intervals, fn ($a, $b) => $a['start'] <=> $b['start']);
+        usort($intervals, static fn($a, $b) => $a['start'] <=> $b['start']);
 
         $merged = [];
         $current = $intervals[0];

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Twig\Components;
 
 use App\Entity\Person;
@@ -27,18 +29,15 @@ final class PersonName extends AbstractController
     #[LiveProp(writable: true)]
     public ?PersonNameData $initialFormData = null;
 
-    public function __construct(private readonly EntityManagerInterface $entityManager)
-    {
-    }
-
+    public function __construct(
+        private readonly EntityManagerInterface $entityManager,
+    ) {}
 
     protected function instantiateForm(): FormInterface
     {
-        return $this->createForm(
-            PersonNameType::class,
-            $this->initialFormData,
-            ['current' => $this->person->getName()]
-        );
+        return $this->createForm(PersonNameType::class, $this->initialFormData, [
+            'current' => $this->person->getName(),
+        ]);
     }
 
     #[LiveAction]
@@ -51,12 +50,11 @@ final class PersonName extends AbstractController
 
         $this->person->setName($nameData->getName());
         $this->person->setIdentified(true);
-        $this->person->setDescription(
-            sprintf('Was identified as %s at %s',
-                $this->person->getName(),
-                (new \DateTime())->format('Y-m-d H:i:s')
-            )
-        );
+        $this->person->setDescription(sprintf(
+            'Was identified as %s at %s',
+            $this->person->getName(),
+            new \DateTime()->format('Y-m-d H:i:s'),
+        ));
         $this->entityManager->persist($this->person);
         $this->entityManager->flush();
 

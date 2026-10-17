@@ -8,9 +8,8 @@ class VideoFrame
 {
     public function __construct(
         private string $path,
-        private int $timestamp
-    ) {
-    }
+        private int $timestamp,
+    ) {}
 
     public function getPath(): string
     {

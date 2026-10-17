@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service;
 
 use App\Service\Storage\StoragePathProvider;
@@ -11,16 +13,16 @@ readonly class VideoFileService
     public function __construct(
         #[Autowire(service: 'video.storage')]
         private FilesystemOperator $filesystem,
-        private StoragePathProvider $pathProvider
+        private StoragePathProvider $pathProvider,
     ) {}
 
     // Gibt den absoluten Pfad für interne Prozesse (FFMPEG etc.) zurück
-    public function getAbsolutePath(string| \App\Entity\File $path): string
+    public function getAbsolutePath(string|\App\Entity\File $path): string
     {
         if ($path instanceof \App\Entity\File) {
             return $this->pathProvider->getAbsoluteFilePath($path->getRelativePath());
         }
-        
+
         return $this->pathProvider->getAbsoluteFilePath($path);
     }
 

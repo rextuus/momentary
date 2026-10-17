@@ -19,7 +19,7 @@ class ImportQueueManager
         private readonly VideoRepository $videoRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly VideoProcessMessageDispatcher $videoProcessMessageDispatcher,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
     ) {}
 
     public function processQueue(): int
@@ -35,7 +35,7 @@ class ImportQueueManager
         $queuedVideos = $this->videoRepository->findBy(
             ['status' => VideoStatus::QUEUED],
             ['createdAt' => 'ASC'],
-            $needed
+            $needed,
         );
 
         $started = 0;
@@ -50,7 +50,8 @@ class ImportQueueManager
 
             if (!$this->videoProcessMessageDispatcher->dispatchInitialProcessMessage($video)) {
                 // Dispatch fehlgeschlagen -> zurück in die Warteschlange
-                $this->entityManager->createQueryBuilder()
+                $this->entityManager
+                    ->createQueryBuilder()
                     ->update(Video::class, 'v')
                     ->set('v.status', ':queued')
                     ->where('v.id = :id')
@@ -71,15 +72,16 @@ class ImportQueueManager
     private function countProcessing(): int
     {
         $processingStates = array_values(array_map(
-            static fn (VideoStatus $s): string => $s->value,
-            array_filter(VideoStatus::cases(), static fn (VideoStatus $s): bool => $s->isProcessing())
+            static fn(VideoStatus $s): string => $s->value,
+            array_filter(VideoStatus::cases(), static fn(VideoStatus $s): bool => $s->isProcessing()),
         ));
 
         if ($processingStates === []) {
             return 0;
         }
 
-        return (int) $this->entityManager->createQueryBuilder()
+        return (int) $this->entityManager
+            ->createQueryBuilder()
             ->select('COUNT(v.id)')
             ->from(Video::class, 'v')
             ->where('v.status IN (:states)')
@@ -90,7 +92,8 @@ class ImportQueueManager
 
     private function claim(Video $video): bool
     {
-        $affected = $this->entityManager->createQueryBuilder()
+        $affected = $this->entityManager
+            ->createQueryBuilder()
             ->update(Video::class, 'v')
             ->set('v.status', ':converting')
             ->where('v.id = :id')

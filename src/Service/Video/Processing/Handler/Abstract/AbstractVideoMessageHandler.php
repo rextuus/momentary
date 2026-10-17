@@ -6,12 +6,12 @@ namespace App\Service\Video\Processing\Handler\Abstract;
 
 use App\Entity\Video;
 use App\Repository\VideoRepository;
+use App\Service\Video\Processing\Enum\VideoWorkflowProcessTransition;
 use App\Service\Video\Processing\Exception\StepMessageDecorationException;
 use App\Service\Video\Processing\Exception\VideoGoneException;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageHandlerInterface;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
-use App\Service\Video\Processing\Enum\VideoWorkflowProcessTransition;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use LogicException;
@@ -25,9 +25,8 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
         protected VideoRepository $videoRepository,
         protected VideoProcessMessageDispatcher $dispatcher,
         protected WorkflowMachine $workflowMachine,
-        protected VideoProcessingService $processingService
-    ) {
-    }
+        protected VideoProcessingService $processingService,
+    ) {}
 
     protected function initHandler(VideoProcessStepMessageInterface $message): Video
     {
@@ -91,10 +90,7 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
 
         // processing chain finished
         if (null === $nextStepMessage) {
-            $finalMessage = sprintf(
-                'Processing chain finished for video "%s"',
-                $video->getTitle()
-            );
+            $finalMessage = sprintf('Processing chain finished for video "%s"', $video->getTitle());
             echo '[✓✓] ' . $finalMessage . PHP_EOL;
 
             $transition = $currentMessage->getTransitionToStatusNextStepIsBelonging()->value;
@@ -128,7 +124,7 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
         $nextStepMessage = new $nextStepMessageClass(
             $message->getVideoId(),
             $message->getMessageNrInVideoStack() + 1,
-            get_class($message)
+            get_class($message),
         );
 
         $this->decorateNextStepMessage($nextStepMessage);
@@ -142,7 +138,7 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
         $nextCurrentStepMessage = new $nextCurrentStepMessageClass(
             $message->getVideoId(),
             $message->getMessageNrInVideoStack() + 1,
-            get_class($message)
+            get_class($message),
         );
 
         $this->decorateNextCurrentStepMessage($nextCurrentStepMessage);
@@ -170,7 +166,7 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
         $this->processingService->failStep(
             $video,
             $this->getCurrentMessage()->getVideoStatusForCurrentProcessStepEntity(),
-            $errorMsg
+            $errorMsg,
         );
     }
 
@@ -179,7 +175,7 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
         $this->processingService->startStep(
             $this->getVideo(),
             $this->getCurrentMessage()->getVideoStatusForCurrentProcessStepEntity(),
-            $this->getCurrentMessage()
+            $this->getCurrentMessage(),
         );
 
         $initialTransition = $this->getCurrentMessage()->getInitialTransition();
@@ -198,7 +194,7 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
         $this->processingService->finishStep(
             $this->getVideo(),
             $this->getCurrentMessage()->getVideoStatusForCurrentProcessStepEntity(),
-            $this->getCurrentMessage()
+            $this->getCurrentMessage(),
         );
 
         $this->dispatchFirstMessageOfNextStep();

@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace App\Service\Video\Processing\Handler;
 
-use Doctrine\ORM\EntityManagerInterface;
 use App\Repository\VideoRepository;
 use App\Service\Storage\StoragePathProvider;
+use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Handler\Abstract\AbstractVideoMessageHandler;
 use App\Service\Video\Processing\Message\SceneDetectionStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
 use App\Service\Video\VideoSceneService;
-use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -30,9 +30,10 @@ class SceneDetectionStepMessageHandler extends AbstractVideoMessageHandler
         private readonly BetterVideoAnalyzer $videoAnalyzer,
         private readonly StoragePathProvider $pathProvider,
         private readonly VideoSceneService $videoSceneService,
-        private readonly EntityManagerInterface $entityManager
+        private readonly EntityManagerInterface $entityManager,
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
+
         // Wir setzen $this->entityManager hier explizit, falls die Elternklasse es nicht tut,
         // obwohl das Property hier als readonly in der Klasse deklariert ist.
         // Die Fehlermeldung deutet darauf hin, dass das Property nicht initialisiert ist.
@@ -44,19 +45,19 @@ class SceneDetectionStepMessageHandler extends AbstractVideoMessageHandler
     {
         // Video neu laden, um sicherzustellen, dass es managed ist
         $video = $this->videoRepository->find($message->getVideoId());
-        
+
         if (!$video) {
-            $this->stopProcessing("Video not found: " . $message->getVideoId());
+            $this->stopProcessing('Video not found: ' . $message->getVideoId());
             return;
         }
-        
+
         $this->video = $video;
         $this->setCurrentMessage($message);
         $this->startCurrentStep();
-        
+
         $sourceFileEntity = $video->getSourceFile();
         if ($sourceFileEntity === null) {
-            $this->stopProcessing("Source file entity is missing for video: " . $video->getId());
+            $this->stopProcessing('Source file entity is missing for video: ' . $video->getId());
             return;
         }
 
@@ -68,10 +69,7 @@ class SceneDetectionStepMessageHandler extends AbstractVideoMessageHandler
             return;
         }
 
-        $scenes = $this->videoAnalyzer->detectScenes(
-            $videoPath,
-            $message->getVideoId()
-        );
+        $scenes = $this->videoAnalyzer->detectScenes($videoPath, $message->getVideoId());
 
         // Save scenes
         $this->entityManager->persist($video); // Sicherstellen, dass Video persistiert ist
@@ -80,7 +78,7 @@ class SceneDetectionStepMessageHandler extends AbstractVideoMessageHandler
         if ($scenes === []) {
             $errorMsg = sprintf(
                 '[⚠] Splitting Scenes for video "%s" failed! 0 scenes added to DB!',
-                $video->getTitle()
+                $video->getTitle(),
             );
             $this->stopProcessing($errorMsg);
             return;
@@ -89,12 +87,10 @@ class SceneDetectionStepMessageHandler extends AbstractVideoMessageHandler
         $successMsg = sprintf(
             'Splitting Scenes for video "%s" successfully! %d scenes added to DB!',
             $video->getTitle(),
-            count($scenes)
+            count($scenes),
         );
         $this->finishCurrentStep($successMsg);
     }
 
-    public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
-    {
-    }
+    public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void {}
 }

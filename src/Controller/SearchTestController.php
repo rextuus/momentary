@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller;
 
 use App\Repository\TagRepository;
@@ -8,7 +10,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-class SearchTestController extends AbstractController
+final class SearchTestController extends AbstractController
 {
     #[Route('/search-test', name: 'app_search_test')]
     public function index(TagRepository $tagRepository, VideoSearchIndex $searchIndex): Response
@@ -28,7 +30,7 @@ class SearchTestController extends AbstractController
         }
         ksort($tagsByCategory, SORT_NATURAL | SORT_FLAG_CASE);
         foreach ($tagsByCategory as $category => $items) {
-            usort($items, fn ($a, $b) => strcasecmp($a['name'], $b['name']));
+            usort($items, static fn($a, $b) => strcasecmp($a['name'], $b['name']));
             $tagsByCategory[$category] = $items;
         }
 
@@ -36,7 +38,10 @@ class SearchTestController extends AbstractController
         foreach ($facets['persons'] as $name => $count) {
             $persons[] = ['name' => (string) $name, 'count' => (int) $count];
         }
-        usort($persons, fn ($a, $b) => [$b['count'], strtolower($a['name'])] <=> [$a['count'], strtolower($b['name'])]);
+        usort(
+            $persons,
+            static fn($a, $b) => [$b['count'], strtolower($a['name'])] <=> [$a['count'], strtolower($b['name'])],
+        );
 
         return $this->render('search/test.html.twig', [
             'tagsByCategory' => $tagsByCategory,

@@ -18,7 +18,7 @@ class JellyfinUploader
     public function __construct(
         private readonly JellyfinUploadService $jellyfinUploadService,
         private readonly VideoFileService $videoFileService,
-        private readonly EntityManagerInterface $entityManager
+        private readonly EntityManagerInterface $entityManager,
     ) {}
 
     public function exportVideo(Video $video): JellyfinExportResult
@@ -34,7 +34,12 @@ class JellyfinUploader
 
             $sourcePath = $this->videoFileService->getAbsolutePath($file->getRelativePath());
             if (!file_exists($sourcePath)) {
-                return new JellyfinExportResult(false, null, null, sprintf('Local file "%s" does not exist.', $sourcePath));
+                return new JellyfinExportResult(
+                    false,
+                    null,
+                    null,
+                    sprintf('Local file "%s" does not exist.', $sourcePath),
+                );
             }
 
             $filename = basename($sourcePath);
@@ -72,7 +77,7 @@ class JellyfinUploader
                 return $itemId;
             }
 
-            if ($i < self::ITEM_LOOKUP_ATTEMPTS - 1) {
+            if ($i < (self::ITEM_LOOKUP_ATTEMPTS - 1)) {
                 sleep(self::ITEM_LOOKUP_DELAY_SECONDS);
             }
         }

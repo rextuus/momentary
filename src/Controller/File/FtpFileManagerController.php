@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller\File;
 
 use App\Service\File\FtpFileManager;
@@ -8,10 +10,10 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-class FtpFileManagerController extends AbstractController
+final class FtpFileManagerController extends AbstractController
 {
     public function __construct(
-        private FtpFileManager $ftpFileManager
+        private FtpFileManager $ftpFileManager,
     ) {}
 
     #[Route('/admin/files/ftp', name: 'admin_files_ftp', methods: ['GET'])]
@@ -26,7 +28,7 @@ class FtpFileManagerController extends AbstractController
     public function listFiles(Request $request): Response
     {
         $dir = $request->query->get('dir');
-        
+
         try {
             $files = $this->ftpFileManager->listFiles($dir);
         } catch (\Exception $e) {
@@ -45,7 +47,7 @@ class FtpFileManagerController extends AbstractController
     {
         $path = $request->request->get('path');
         $dir = $request->request->get('dir');
-        
+
         try {
             $this->ftpFileManager->moveFile($path);
             $this->addFlash('success', 'Datei erfolgreich verschoben.');
@@ -62,7 +64,7 @@ class FtpFileManagerController extends AbstractController
         $path = $request->request->get('path');
         $newName = $request->request->get('new_name');
         $dir = $request->request->get('dir');
-        
+
         try {
             $this->ftpFileManager->renameFile($path, $newName);
             $this->addFlash('success', 'Datei erfolgreich umbenannt.');

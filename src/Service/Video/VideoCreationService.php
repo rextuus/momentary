@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service\Video;
 
 use App\Entity\Tag;
@@ -27,14 +29,19 @@ class VideoCreationService
         private VideoNamingService $videoNamingService,
         private ImportQueueManager $importQueueManager,
         private SluggerInterface $slugger,
-        private LoggerInterface $logger
+        private LoggerInterface $logger,
     ) {}
 
     /**
      * @throws Exception
      */
-    public function createVideo(Video $video, UploadedFile $uploadedFile, ?Tag $cameraTag, ?Tag $formatTag, bool $autoProcess = false): Video
-    {
+    public function createVideo(
+        Video $video,
+        UploadedFile $uploadedFile,
+        ?Tag $cameraTag,
+        ?Tag $formatTag,
+        bool $autoProcess = false,
+    ): Video {
         $this->logger->info('VideoCreationService: createVideo called with direct uploaded file.');
 
         if ($autoProcess && empty($video->getTitle())) {

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Twig\Components;
 
 use App\Entity\Tag;
@@ -42,9 +44,8 @@ class TagManagerComponent
     public function __construct(
         private TagCategoryRepository $categoryRepository,
         private TagRepository $tagRepository,
-        private EntityManagerInterface $entityManager
-    ) {
-    }
+        private EntityManagerInterface $entityManager,
+    ) {}
 
     /**
      * @return array<TagCategory>
@@ -126,7 +127,9 @@ class TagManagerComponent
     #[LiveAction]
     public function saveCategory(): void
     {
-        if (!$this->editingCategoryId) return;
+        if (!$this->editingCategoryId) {
+            return;
+        }
 
         $category = $this->categoryRepository->find($this->editingCategoryId);
         if ($category) {
@@ -149,7 +152,9 @@ class TagManagerComponent
     #[LiveAction]
     public function saveTag(): void
     {
-        if (!$this->editingTagId) return;
+        if (!$this->editingTagId) {
+            return;
+        }
 
         $tag = $this->tagRepository->find($this->editingTagId);
         if ($tag) {

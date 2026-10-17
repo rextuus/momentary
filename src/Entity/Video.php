@@ -1,36 +1,38 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
+use ApiPlatform\Doctrine\Orm\Filter\ExactFilter;
+use ApiPlatform\Doctrine\Orm\Filter\PartialSearchFilter;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\QueryParameter;
 use App\Enum\VideoStatus;
 use App\Repository\VideoRepository;
-use App\Entity\User;
-use App\Entity\UserGroup;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
-use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
-use ApiPlatform\Metadata\ApiFilter;
-use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 
 #[ORM\Entity(repositoryClass: VideoRepository::class)]
-#[ApiResource(
-    operations: [
-        new GetCollection(
-            normalizationContext: ['groups' => ['video:list']]
+#[ApiResource(operations: [
+    new GetCollection(normalizationContext: ['groups' => ['video:list']], parameters: [
+        'title' => new QueryParameter(filter: new PartialSearchFilter(), property: 'title'),
+        'videoFaces.person.name' => new QueryParameter(
+            filter: new PartialSearchFilter(),
+            property: 'videoFaces.person.name',
         ),
-        new Get(
-            normalizationContext: ['groups' => ['video:detail']]
-        )
-    ]
-)]
-#[ApiFilter(SearchFilter::class, properties: ['title' => 'partial'])]
-#[ApiFilter(SearchFilter::class, properties: ['videoFaces.person.name' => 'partial'])]
-#[ApiFilter(SearchFilter::class, properties: ['scenes.tags.name' => 'partial', 'scenes.tags.id' => 'exact'])]
+        'scenes.tags.name' => new QueryParameter(
+            filter: new PartialSearchFilter(),
+            property: 'scenes.sceneTags.tag.name',
+        ),
+        'scenes.tags.id' => new QueryParameter(filter: new ExactFilter(), property: 'scenes.sceneTags.tag.id'),
+    ]),
+    new Get(normalizationContext: ['groups' => ['video:detail']]),
+])]
 class Video
 {
     #[ORM\Id]
@@ -43,7 +45,7 @@ class Video
     #[Groups(['video:list', 'video:detail'])]
     private ?string $title = null;
     #[ORM\Column(length: 64, nullable: true)]
-    #[Groups(["video:detail"])]
+    #[Groups(['video:detail'])]
     private ?string $fileHash = null;
 
     #[ORM\ManyToOne(targetEntity: File::class, cascade: ['persist', 'remove'])]
@@ -68,7 +70,12 @@ class Video
     /**
      * @var Collection<int, VideoFace>
      */
-    #[ORM\OneToMany(targetEntity: VideoFace::class, mappedBy: 'video', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OneToMany(
+        targetEntity: VideoFace::class,
+        mappedBy: 'video',
+        cascade: ['persist', 'remove'],
+        orphanRemoval: true,
+    )]
     #[Groups(['video:detail'])]
     private Collection $videoFaces;
 
@@ -99,8 +106,13 @@ class Video
     /**
      * @var Collection<int, VideoScene>
      */
-    #[ORM\OneToMany(targetEntity: VideoScene::class, mappedBy: 'video', cascade: ['persist', 'remove'], orphanRemoval: true)]
-    #[ORM\OrderBy(['sceneNumber' => 'ASC'])]
+    #[ORM\OneToMany(
+        targetEntity: VideoScene::class,
+        mappedBy: 'video',
+        cascade: ['persist', 'remove'],
+        orphanRemoval: true,
+    )]
+    #[ORM\OrderBy(['sceneNumber' => \SortDirection::Ascending])]
     #[Groups(['video:detail'])]
     private Collection $scenes;
 
@@ -114,8 +126,13 @@ class Video
     /**
      * @var Collection<int, VideoProcessingStep>
      */
-    #[ORM\OneToMany(targetEntity: VideoProcessingStep::class, mappedBy: 'video', cascade: ['persist', 'remove'], orphanRemoval: true)]
-    #[ORM\OrderBy(['createdAt' => 'ASC'])]
+    #[ORM\OneToMany(
+        targetEntity: VideoProcessingStep::class,
+        mappedBy: 'video',
+        cascade: ['persist', 'remove'],
+        orphanRemoval: true,
+    )]
+    #[ORM\OrderBy(['createdAt' => \SortDirection::Ascending])]
     #[Groups(['video:detail'])]
     private Collection $processingSteps;
 
@@ -154,7 +171,7 @@ class Video
     #[ORM\ManyToOne(targetEntity: User::class)]
     private ?User $owner = null;
 
-    #[ORM\Column(options: ["default" => false])]
+    #[ORM\Column(options: ['default' => false])]
     #[Groups(['video:list', 'video:detail'])]
     private bool $isPublic = false;
 

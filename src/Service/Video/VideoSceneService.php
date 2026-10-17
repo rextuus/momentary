@@ -12,8 +12,7 @@ readonly class VideoSceneService
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
-    ) {
-    }
+    ) {}
 
     public function storeScenes(Video $video, array $scenes): void
     {

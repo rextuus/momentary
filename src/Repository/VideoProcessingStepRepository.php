@@ -21,7 +21,8 @@ class VideoProcessingStepRepository extends ServiceEntityRepository
 
     public function getAverageDurationForStep(\App\Enum\VideoStatus $step): ?int
     {
-        return (int) $this->createQueryBuilder('s')
+        return (int) $this
+            ->createQueryBuilder('s')
             ->select('AVG(s.duration)')
             ->where('s.step = :step')
             ->andWhere('s.duration IS NOT NULL')

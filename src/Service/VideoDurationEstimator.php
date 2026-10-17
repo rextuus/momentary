@@ -10,31 +10,37 @@ use App\Repository\VideoRepository;
 
 readonly class VideoDurationEstimator
 {
-    public function __construct(private VideoRepository $videoRepository) {}
+    public function __construct(
+        private VideoRepository $videoRepository,
+    ) {}
 
     public function estimateDuration(Video $video, VideoStatus $status): int
     {
         $averageSecondsPerVideoSecond = $this->getAverageSecondsPerVideoSecond($status);
         $videoDuration = $video->getDuration() ?? 60.0; // Fallback 60s
-        
+
         return (int) ($videoDuration * $averageSecondsPerVideoSecond);
     }
 
     private function getAverageSecondsPerVideoSecond(VideoStatus $status): float
     {
         // Whitelist of statuses that are supported for duration estimation
-        if (!in_array($status, [
-            VideoStatus::CONVERTING, 
-            VideoStatus::SCENE_DETECTION, 
-            VideoStatus::VIDEO_SPLITTING,
-            VideoStatus::ANALYZING_FACES
-        ])) {
+        if (!in_array(
+            $status,
+            [
+                VideoStatus::CONVERTING,
+                VideoStatus::SCENE_DETECTION,
+                VideoStatus::VIDEO_SPLITTING,
+                VideoStatus::ANALYZING_FACES_INITIAL,
+            ],
+            true,
+        )) {
             return 1.0; // Fallback
         }
 
         // Suche alle fertig verarbeiteten Videos
         $videos = $this->videoRepository->findBy(['status' => VideoStatus::COMPLETED]);
-        
+
         $totalSeconds = 0.0;
         $totalVideoSeconds = 0.0;
         $count = 0;
@@ -47,15 +53,15 @@ readonly class VideoDurationEstimator
                     break;
                 }
             }
-            
+
             if ($duration !== null && $video->getDuration() !== null && $video->getDuration() > 0) {
-                $totalSeconds += (float)$duration;
+                $totalSeconds += (float) $duration;
                 $totalVideoSeconds += $video->getDuration();
                 $count++;
             }
         }
 
-        if ($count === 0 || $totalVideoSeconds === 0) {
+        if ($count === 0 || $totalVideoSeconds === 0.0) {
             return 1.0; // Fallback
         }
 

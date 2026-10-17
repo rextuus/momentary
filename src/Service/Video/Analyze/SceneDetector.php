@@ -33,7 +33,7 @@ class SceneDetector
         string $videoPath,
         int $videoId,
         float $threshold = 27.0,
-        string $detector = 'content'
+        string $detector = 'content',
     ): array {
         $video = $this->entityManager->find(Video::class, $videoId);
 
@@ -47,7 +47,7 @@ class SceneDetector
             '--threshold',
             (string) $threshold,
             '--detector',
-            $detector
+            $detector,
         ]);
 
         $process->setTimeout(900);
@@ -96,20 +96,13 @@ class SceneDetector
                     '23',
                     '-c:a',
                     'aac',
-                    $tempMp4
+                    $tempMp4,
                 ]);
                 $convProcess->setTimeout(1800);
                 $convProcess->run();
 
                 if ($convProcess->isSuccessful()) {
-                    // Wir nutzen den konvertierten Pfad für den Rest der Pipeline
-                    $video->setConvertedVideoPath($tempMp4);
-                    $video->setLocalPath($tempMp4);
-                    $this->entityManager->flush();
-
-                    // FIX: Wir müssen auch den Pfad im Message-Objekt für den nächsten Schritt (Splitting) aktualisieren,
-                    // aber detectScenes wird oft synchron aufgerufen oder gibt Daten zurück.
-                    // Da detectScenes rekursiv aufgerufen wird, wird der neue Pfad zurückgegeben.
+                    // Erneute Erkennung auf der konvertierten Kopie; die Zeitstempel gelten auch für das Original
                     return $this->detectScenes($tempMp4, $videoId, $threshold, $detector);
                 }
             }
@@ -123,16 +116,10 @@ class SceneDetector
         $connection = $this->entityManager->getConnection();
 
         // 1. Alle Faces löschen, die an Szenen dieses Videos hängen
-        $connection->executeStatement(
-            'DELETE FROM video_face WHERE video_id = ?',
-            [$video->getId()]
-        );
+        $connection->executeStatement('DELETE FROM video_face WHERE video_id = ?', [$video->getId()]);
 
         // 2. Alle Szenen des Videos löschen
-        $connection->executeStatement(
-            'DELETE FROM video_scene WHERE video_id = ?',
-            [$video->getId()]
-        );
+        $connection->executeStatement('DELETE FROM video_scene WHERE video_id = ?', [$video->getId()]);
 
         // 3. Fortschrittszähler zurücksetzen
         $video->setProcessedFrames(0);

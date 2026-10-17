@@ -22,9 +22,7 @@ class FileWithoutPathListener
 
         $property = new ReflectionProperty(File::class, 'relativePath');
         if (!$property->isInitialized($entity)) {
-            throw new \LogicException(
-                'File without relativePath is being persisted: ' . get_debug_type($entity)
-            );
+            throw new \LogicException('File without relativePath is being persisted: ' . get_debug_type($entity));
         }
     }
 }

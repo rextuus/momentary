@@ -1,13 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Form;
 
 use App\Entity\Tag;
-use Symfony\Bridge\Doctrine\Form\Type\EntityType;
-use Doctrine\ORM\EntityRepository;
 use App\Entity\Video;
 use App\Repository\VideoRepository;
 use App\Service\Storage\StoragePathProvider;
+use Doctrine\ORM\EntityRepository;
+use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
@@ -27,7 +29,7 @@ class VideoType extends AbstractType
         private readonly float $minSceneLengthForRefinement,
         #[Autowire('%env(default:app.refined_frame_analysis_fps:REFINED_FRAME_ANALYSIS_FPS)%')]
         private readonly float $refinedFps,
-        private readonly VideoRepository $videoRepository
+        private readonly VideoRepository $videoRepository,
     ) {}
 
     public function buildForm(FormBuilderInterface $builder, array $options): void
@@ -42,7 +44,8 @@ class VideoType extends AbstractType
 
             foreach ($foundFiles as $file) {
                 if ($file !== '.' && $file !== '..' && !is_dir($importDir . '/' . $file)) {
-                    $alreadyExists = $this->videoRepository->createQueryBuilder('v')
+                    $alreadyExists = $this->videoRepository
+                        ->createQueryBuilder('v')
                         ->join('v.sourceFile', 'f')
                         ->where('f.relativePath LIKE :filename')
                         ->setParameter('filename', '%' . $file)
@@ -113,12 +116,11 @@ class VideoType extends AbstractType
                 'label' => 'Kameramodell',
                 'mapped' => false,
                 'attr' => ['class' => 'form-select'],
-                'query_builder' => function (EntityRepository $er) {
-                    return $er->createQueryBuilder('t')
-                        ->join('t.category', 'c')
-                        ->where('t.name IN (:tags)')
-                        ->setParameter('tags', ['Smartphone', 'Camera', 'Actioncam', 'Drohne']);
-                },
+                'query_builder' => static fn(EntityRepository $er) => $er
+                    ->createQueryBuilder('t')
+                    ->join('t.category', 'c')
+                    ->where('t.name IN (:tags)')
+                    ->setParameter('tags', ['Smartphone', 'Camera', 'Actioncam', 'Drohne']),
             ])
             ->add('formatTags', EntityType::class, [
                 'class' => Tag::class,
@@ -128,12 +130,11 @@ class VideoType extends AbstractType
                 'label' => 'Format',
                 'mapped' => false,
                 'attr' => ['class' => 'form-select'],
-                'query_builder' => function (EntityRepository $er) {
-                    return $er->createQueryBuilder('t')
-                        ->join('t.category', 'c')
-                        ->where('t.name IN (:tags)')
-                        ->setParameter('tags', ['Hochkant', 'Querformat']);
-                },
+                'query_builder' => static fn(EntityRepository $er) => $er
+                    ->createQueryBuilder('t')
+                    ->join('t.category', 'c')
+                    ->where('t.name IN (:tags)')
+                    ->setParameter('tags', ['Hochkant', 'Querformat']),
             ]);
     }
 

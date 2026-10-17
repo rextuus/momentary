@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service\File;
 
 use League\Flysystem\Config;
@@ -10,10 +12,8 @@ readonly class FlysystemPublicUrlGenerator implements PublicUrlGenerator
 {
     public function __construct(
         #[Autowire('%env(FACE_UPLOAD_DIR)%')]
-        private string $publicPath
-    )
-    {
-    }
+        private string $publicPath,
+    ) {}
 
     public function publicUrl(string $path, Config $config): string
     {

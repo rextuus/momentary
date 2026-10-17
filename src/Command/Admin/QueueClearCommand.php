@@ -1,24 +1,22 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Command\Admin;
 
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-#[AsCommand(
-    name: 'app:queue:clear',
-    description: 'Leert RabbitMQ Queues über die Management API',
-)]
+#[AsCommand(name: 'app:queue:clear', description: 'Leert RabbitMQ Queues über die Management API')]
 class QueueClearCommand extends Command
 {
     public function __construct(
-        private HttpClientInterface $httpClient
+        private HttpClientInterface $httpClient,
     ) {
         parent::__construct();
     }
@@ -64,7 +62,10 @@ class QueueClearCommand extends Command
         }
 
         if ($input->getOption('all')) {
-            if (!$io->confirm("Sind Sie sicher, dass Sie ALLE Queues (" . implode(', ', $queues) . ") leeren möchten?", true)) {
+            if (!$io->confirm(
+                'Sind Sie sicher, dass Sie ALLE Queues (' . implode(', ', $queues) . ') leeren möchten?',
+                true,
+            )) {
                 $io->warning('Abgebrochen.');
                 return Command::FAILURE;
             }
@@ -77,7 +78,10 @@ class QueueClearCommand extends Command
 
         $choice = $io->choice('Welche Queue möchten Sie leeren?', $queues, $queues[0]);
 
-        if (!$io->confirm("Sind Sie sicher, dass Sie die Queue \"$choice\" leeren möchten? Das kann nicht rückgängig gemacht werden.", true)) {
+        if (!$io->confirm(
+            "Sind Sie sicher, dass Sie die Queue \"$choice\" leeren möchten? Das kann nicht rückgängig gemacht werden.",
+            true,
+        )) {
             $io->warning('Abgebrochen.');
             return Command::FAILURE;
         }

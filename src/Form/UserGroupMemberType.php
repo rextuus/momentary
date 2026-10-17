@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Form;
 
 use App\Entity\User;
@@ -13,13 +15,12 @@ class UserGroupMemberType extends AbstractType
 {
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
-        $builder
-            ->add('user', EntityType::class, [
-                'class' => User::class,
-                'choice_label' => 'email',
-                'label' => 'Benutzer',
-                'attr' => ['class' => 'form-control']
-            ]);
+        $builder->add('user', EntityType::class, [
+            'class' => User::class,
+            'choice_label' => 'email',
+            'label' => 'Benutzer',
+            'attr' => ['class' => 'form-control'],
+        ]);
     }
 
     public function configureOptions(OptionsResolver $resolver): void

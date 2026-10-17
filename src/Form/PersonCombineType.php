@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Form;
 
 use App\Entity\Person;
@@ -14,19 +16,18 @@ class PersonCombineType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
-//            ->add('source', EntityType::class, [
-//                'class' => Person::class,
-//                'disabled' => true,
-//                'autocomplete' => true,
-//                'data' => $options['source'],
-//            ])
+            //            ->add('source', EntityType::class, [
+            //                'class' => Person::class,
+            //                'disabled' => true,
+            //                'autocomplete' => true,
+            //                'data' => $options['source'],
+            //            ])
             ->add('target', EntityType::class, [
                 'class' => Person::class,
                 'placeholder' => 'Merge with?',
                 'autocomplete' => true,
                 'label' => false,
-            ])
-        ;
+            ]);
     }
 
     public function configureOptions(OptionsResolver $resolver): void

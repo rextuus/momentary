@@ -1,8 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service\Aws;
 
-use App\Entity\VideoFace;
 use App\Repository\VideoFaceRepository;
 use Aws\Rekognition\RekognitionClient;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -17,15 +18,11 @@ class AmazonRekognitionService
     private string $qualityFilter;
     private VideoFaceRepository $videoFaceRepository;
 
-    public function __construct(
-        #[Autowire(env: 'AWS_ACCESS_KEY')] string $awsKey,
-        #[Autowire(env: 'AWS_SECRET_KEY')] string $awsSecret,
-        #[Autowire(env: 'AWS_REGION')] string $region,
-        VideoFaceRepository $videoFaceRepository,
-        #[Autowire(env: 'AWS_FACE_MATCH_THRESHOLD')] float $faceMatchThreshold = 97.0,
-        #[Autowire(env: 'AWS_MAX_FACES')] int $maxFaces = 15,
-        #[Autowire(env: 'AWS_QUALITY_FILTER')] string $qualityFilter = 'AUTO'
-    ) {
+    public function __construct(#[Autowire(env: 'AWS_ACCESS_KEY')] string $awsKey, #[\SensitiveParameter]
+        #[Autowire(
+            env: 'AWS_SECRET_KEY',
+        )] string $awsSecret, #[Autowire(env: 'AWS_REGION')] string $region, VideoFaceRepository $videoFaceRepository, #[Autowire(env: 'AWS_FACE_MATCH_THRESHOLD')] float $faceMatchThreshold = 97.0, #[Autowire(env: 'AWS_MAX_FACES')] int $maxFaces = 15, #[Autowire(env: 'AWS_QUALITY_FILTER')] string $qualityFilter = 'AUTO')
+    {
         $this->videoFaceRepository = $videoFaceRepository;
         $this->faceMatchThreshold = $faceMatchThreshold;
         $this->maxFaces = $maxFaces;
@@ -34,7 +31,7 @@ class AmazonRekognitionService
             'region' => $region,
             'version' => 'latest',
             'credentials' => [
-                'key'    => $awsKey,
+                'key' => $awsKey,
                 'secret' => $awsSecret,
             ],
         ]);
@@ -66,7 +63,7 @@ class AmazonRekognitionService
         ]);
 
         $availableMatches = $searchResponse['FaceMatches'] ?? [];
-        $faceIds = array_map(fn($m) => $m['Face']['FaceId'], $availableMatches);
+        $faceIds = array_map(static fn($m) => $m['Face']['FaceId'], $availableMatches);
         $knownFaces = $this->videoFaceRepository->findBy(['faceLabel' => $faceIds]);
         $knownFacesByFaceId = [];
         foreach ($knownFaces as $face) {
@@ -78,7 +75,7 @@ class AmazonRekognitionService
         foreach ($detectResponse['FaceDetails'] as $detail) {
             $matchedFaceId = null;
             $similarity = null;
-            
+
             $detectedGender = $detail['Gender']['Value'] ?? 'Unknown';
 
             // Match anhand der BoundingBox finden
@@ -102,7 +99,8 @@ class AmazonRekognitionService
                         'MaxFaces' => $this->maxFaces,
                     ]);
                     $indexedInThisImage = true;
-                    // Da wir das ganze Bild indiziert haben, könnten wir die neuen Gesichter jetzt eigentlich mappen, 
+
+                    // Da wir das ganze Bild indiziert haben, könnten wir die neuen Gesichter jetzt eigentlich mappen,
                     // aber das ist komplex. Für den Moment ist das Indizieren ausreichend, damit sie in der Collection sind.
                     // Beim nächsten Frame sollte sie dann gefunden werden.
                 }
@@ -118,7 +116,7 @@ class AmazonRekognitionService
                 'gender' => $detail['Gender']['Value'] ?? 'Unknown',
                 'emotion' => $detail['Emotions'][0]['Type'] ?? 'CALM',
                 'confidence' => $detail['Confidence'],
-                'boundingBox' => $detail['BoundingBox']
+                'boundingBox' => $detail['BoundingBox'],
             ];
         }
 
@@ -133,19 +131,28 @@ class AmazonRekognitionService
     /**
      * Findet das beste FaceMatch-Objekt für ein gegebenes FaceDetail basierend auf der BoundingBox.
      */
-    private function findBestMatch(array $detail, array $matches, string $detectedGender, array $knownFacesByFaceId): ?array
-    {
+    private function findBestMatch(
+        array $detail,
+        array $matches,
+        string $detectedGender,
+        array $knownFacesByFaceId,
+    ): ?array {
         $bestMatch = null;
         $bestMatchKey = null;
         $minDistance = 0.2; // 20% Toleranz
 
         foreach ($matches as $key => $match) {
             $faceId = $match['Face']['FaceId'];
-            
+
             // Geschlechtscheck
             if (isset($knownFacesByFaceId[$faceId])) {
                 $knownGender = $knownFacesByFaceId[$faceId]->getGender();
-                if ($knownGender && $detectedGender !== 'Unknown' && $knownGender !== 'Unknown' && $knownGender !== $detectedGender) {
+                if (
+                    $knownGender
+                    && $detectedGender !== 'Unknown'
+                    && $knownGender !== 'Unknown'
+                    && $knownGender !== $detectedGender
+                ) {
                     continue; // Geschlecht passt nicht
                 }
             }
@@ -155,10 +162,10 @@ class AmazonRekognitionService
 
             // Distanzberechnung zwischen den BoundingBoxes
             $distance = sqrt(
-                pow($box1['Left'] - $box2['Left'], 2) +
-                pow($box1['Top'] - $box2['Top'], 2) +
-                pow($box1['Width'] - $box2['Width'], 2) +
-                pow($box1['Height'] - $box2['Height'], 2)
+                pow($box1['Left'] - $box2['Left'], 2)
+                + pow($box1['Top'] - $box2['Top'], 2)
+                + pow($box1['Width'] - $box2['Width'], 2)
+                + pow($box1['Height'] - $box2['Height'], 2),
             );
 
             if ($distance < $minDistance) {
@@ -182,6 +189,7 @@ class AmazonRekognitionService
 
     public function resetCollection(): void
     {
+        // @mago-expect lint:no-empty-catch-clause
         try {
             $this->client->deleteCollection(['CollectionId' => $this->collectionId]);
         } catch (\Aws\Rekognition\Exception\RekognitionException $e) {

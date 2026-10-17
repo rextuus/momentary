@@ -38,7 +38,7 @@ class AnalyzeLastSceneFrameStepMessageHandler extends AbstractAnalyzeFrameStepMe
         // Special-Case: There is already no frame to analyze left
         $successMsg = sprintf(
             'All frames for video %d analyzed already successfully. Nothing to do here.',
-            $video->getId()
+            $video->getId(),
         );
 
         if ($message->getCurrentFrame() !== null) {
@@ -46,16 +46,11 @@ class AnalyzeLastSceneFrameStepMessageHandler extends AbstractAnalyzeFrameStepMe
 
             $this->analyzeFrame($message);
 
-            $successMsg = sprintf(
-                'Last frame #? for video "%d" analyzed successfully.',
-                $video->getTitle()
-            );
+            $successMsg = sprintf('Last frame #? for video "%d" analyzed successfully.', $video->getTitle());
         }
 
         $this->finishCurrentStep($successMsg);
     }
 
-    public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
-    {
-    }
+    public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void {}
 }

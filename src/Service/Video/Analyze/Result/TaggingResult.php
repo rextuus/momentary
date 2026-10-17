@@ -13,9 +13,8 @@ readonly class TaggingResult
         private bool $success,
         private bool $hasScenes,
         private array $sceneIds = [],
-        private ?string $message = null
-    ) {
-    }
+        private ?string $message = null,
+    ) {}
 
     public function isSuccess(): bool
     {

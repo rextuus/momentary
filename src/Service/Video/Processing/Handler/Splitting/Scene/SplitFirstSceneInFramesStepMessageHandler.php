@@ -7,13 +7,13 @@ namespace App\Service\Video\Processing\Handler\Splitting\Scene;
 use App\Repository\VideoRepository;
 use App\Repository\VideoSceneRepository;
 use App\Service\Storage\StoragePathProvider;
+use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Handler\Splitting\AbstractSplitInFramesStepMessageHandler;
 use App\Service\Video\Processing\Message\Splitting\Scene\SplitFirstSceneInFramesStepMessage;
 use App\Service\Video\Processing\Message\Splitting\Scene\SplitSceneInFramesStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
-use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
@@ -31,7 +31,7 @@ class SplitFirstSceneInFramesStepMessageHandler extends AbstractSplitInFramesSte
         BetterVideoAnalyzer $videoAnalyzer,
         StoragePathProvider $pathProvider,
         EntityManagerInterface $entityManager,
-        private readonly VideoSceneRepository $sceneRepository
+        private readonly VideoSceneRepository $sceneRepository,
     ) {
         parent::__construct(
             $videoRepository,
@@ -40,7 +40,7 @@ class SplitFirstSceneInFramesStepMessageHandler extends AbstractSplitInFramesSte
             $processingService,
             $videoAnalyzer,
             $pathProvider,
-            $entityManager
+            $entityManager,
         );
     }
 
@@ -55,7 +55,7 @@ class SplitFirstSceneInFramesStepMessageHandler extends AbstractSplitInFramesSte
         if ($message->getCurrentSceneId() === null) {
             $successMsg = sprintf(
                 'No scenes for refinement found for video with id %s. Next two steps will be skipped.',
-                $video->getId()
+                $video->getId(),
             );
             $this->finishCurrentStep($successMsg);
 
@@ -72,7 +72,7 @@ class SplitFirstSceneInFramesStepMessageHandler extends AbstractSplitInFramesSte
             'Split scene with id "%s" into %d frames in path "%s"',
             $scene->getId(),
             $frameSplitResult->getFrameCount(),
-            $frameSplitResult->getFrameDirPath()
+            $frameSplitResult->getFrameDirPath(),
         );
 
         // add the first frames to global array
@@ -80,8 +80,8 @@ class SplitFirstSceneInFramesStepMessageHandler extends AbstractSplitInFramesSte
 
         // check if there are more scenes needing refining
         $remainingScenes = $message->getRemainingSceneIds();
-        $nextScene = array_shift($remainingScenes);
-        $this->currentSceneId = $nextScene ? $nextScene->getId() : null;
+        $nextScene = array_shift($remainingScenes); // Scene-ID oder null
+        $this->currentSceneId = $nextScene;
         $this->remainingSceneIds = $remainingScenes;
 
         $successMsg = sprintf(
@@ -90,7 +90,7 @@ class SplitFirstSceneInFramesStepMessageHandler extends AbstractSplitInFramesSte
             $scene->getId(),
             $video->getTitle(),
             count($this->remainingSceneIds) + 1,
-            count($this->framePathCollection)
+            count($this->framePathCollection),
         );
         if ($this->currentSceneId === null) {
             $successMsg = sprintf(

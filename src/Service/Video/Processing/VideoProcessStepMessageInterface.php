@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service\Video\Processing;
 
 use App\Enum\VideoStatus;
@@ -14,6 +16,7 @@ interface VideoProcessStepMessageInterface
      * @throws StepMessageTransitionException
      */
     public function getTransitionToStatusNextStepIsBelonging(): VideoWorkflowProcessTransition;
+
     public function nextStepNeedsTransition(): bool;
 
     public function getInitialTransition(): ?VideoWorkflowProcessTransition;

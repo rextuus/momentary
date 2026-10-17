@@ -9,7 +9,7 @@ readonly class ChapterGenerationResult
     public function __construct(
         private bool $success,
         private int $chapterCount = 0,
-        private ?string $errorMessage = null
+        private ?string $errorMessage = null,
     ) {}
 
     public function isSuccess(): bool

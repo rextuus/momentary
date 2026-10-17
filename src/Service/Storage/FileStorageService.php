@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service\Storage;
 
 use App\Entity\File;
@@ -10,7 +12,7 @@ class FileStorageService
     private readonly Filesystem $filesystem;
 
     public function __construct(
-        private readonly StoragePathProvider $pathProvider
+        private readonly StoragePathProvider $pathProvider,
     ) {
         $this->filesystem = new Filesystem();
     }
@@ -24,7 +26,7 @@ class FileStorageService
         $directory = dirname($absolutePath);
 
         if (!$this->filesystem->exists($directory)) {
-            $this->filesystem->mkdir($directory, 0775);
+            $this->filesystem->mkdir($directory, 0o775);
         }
     }
 
@@ -53,7 +55,7 @@ class FileStorageService
 
         $targetDir = dirname($absoluteTo);
         if (!$this->filesystem->exists($targetDir)) {
-            $this->filesystem->mkdir($targetDir, 0775);
+            $this->filesystem->mkdir($targetDir, 0o775);
         }
 
         $this->filesystem->rename($absoluteFrom, $absoluteTo, true);
@@ -69,7 +71,7 @@ class FileStorageService
 
         $targetDir = dirname($absoluteTo);
         if (!$this->filesystem->exists($targetDir)) {
-            $this->filesystem->mkdir($targetDir, 0775);
+            $this->filesystem->mkdir($targetDir, 0o775);
         }
 
         $this->filesystem->copy($absoluteFrom, $absoluteTo, true);
@@ -105,7 +107,7 @@ class FileStorageService
         $absoluteDir = $this->pathProvider->getAbsoluteFilePath($relativeDirectory);
 
         if (!$this->filesystem->exists($absoluteDir)) {
-            $this->filesystem->mkdir($absoluteDir, 0775);
+            $this->filesystem->mkdir($absoluteDir, 0o775);
         }
     }
 

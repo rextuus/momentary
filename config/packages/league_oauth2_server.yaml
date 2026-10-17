@@ -5,6 +5,7 @@ league_oauth2_server:
         encryption_key: '%env(resolve:OAUTH_ENCRYPTION_KEY)%'
         enable_password_grant: true
         enable_refresh_token_grant: true
+        enable_implicit_grant: false
         access_token_ttl: PT1H
         refresh_token_ttl: P1M
     resource_server:

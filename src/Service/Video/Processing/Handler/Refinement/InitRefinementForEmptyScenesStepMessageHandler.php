@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Service\Video\Processing\Handler\Refinement;
 
 use App\Repository\VideoRepository;
+use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Handler\Abstract\AbstractVideoMessageHandler;
 use App\Service\Video\Processing\Message\Refinement\InitRefinementForEmptyScenesStepMessage;
 use App\Service\Video\Processing\Message\Splitting\Scene\SplitFirstSceneInFramesStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
-use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -28,7 +28,7 @@ class InitRefinementForEmptyScenesStepMessageHandler extends AbstractVideoMessag
         VideoProcessMessageDispatcher $dispatcher,
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
-        private readonly BetterVideoAnalyzer $videoAnalyzer
+        private readonly BetterVideoAnalyzer $videoAnalyzer,
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
     }
@@ -43,22 +43,17 @@ class InitRefinementForEmptyScenesStepMessageHandler extends AbstractVideoMessag
         $result = $this->videoAnalyzer->refineSceneAnalysis($video);
 
         $this->sceneIds = $result->getSceneIds();
-        $firstScene = array_shift($this->sceneIds);
-        if ($firstScene !== null) {
-            $this->firstSceneId = $firstScene->getId();
-        }else {
-            $this->firstSceneId = null;
-        }
+        $this->firstSceneId = array_shift($this->sceneIds);
 
         $successMsg = sprintf(
             'Refinement für video "%s" initiiert. Es gibt keine Szenen die erneut analysiert werden müssen',
-            $video->getTitle()
+            $video->getTitle(),
         );
-        if ($result->getSceneCount() > 0){
+        if ($result->getSceneCount() > 0) {
             $successMsg = sprintf(
                 'Refinement für video "%s" initiiert. Es müssen %d Szenen erneut analysiert werden.',
                 $video->getTitle(),
-                $result->getSceneCount()
+                $result->getSceneCount(),
             );
         }
 

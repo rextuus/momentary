@@ -6,7 +6,4 @@ namespace App\Service\Video\Analyze;
 
 use Exception;
 
-class FrameExtractionException extends Exception
-{
-
-}
+class FrameExtractionException extends Exception {}

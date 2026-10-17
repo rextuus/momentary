@@ -12,7 +12,7 @@ Hallo! Du bist ab jetzt mein Senior-Entwickler-Kollege für das Projekt **"Momen
 Die Plattform dient der Analyse von (Familien-)Videoarchiven. Kernfunktionen sind die Identifikation von Personen (AWS Rekognition), Szenen-Segmentierung, inhaltsbasierte Metadaten-Extraktion (via AI/LLM-Analyse), sowie die Integration/Bereitstellung dieser Daten für Mediensysteme (z.B. Jellyfin).
 
 **Technischer Stack (Schlüsselkomponenten):**
-- **Framework:** PHP 8.5 / Symfony 8.0
+- **Framework:** PHP 8.5 / Symfony 8.1
 - **API:** API Platform (für die Backend-Schnittstelle)
 - **Asynchrone Verarbeitung:** Symfony Messenger (AMQP-Integration)
 - **Workflow-Management:** Symfony Workflow (für komplexe Status-Maschinen der Video-Analyse)

@@ -7,6 +7,7 @@
         <h1>{{ chapter.title }}</h1>
         <p class="text-muted">{{ chapter.startSeconds|number_format(0) }}s - {{ chapter.endSeconds|number_format(0) }}s</p>
         
+        {% if is_granted('VIDEO_EDIT', chapter.video) %}
         <div class="mb-3 d-flex gap-2">
             <form action="{{ path('chapter_update_scenes_public', {id: chapter.id}) }}" method="post" onsubmit="return confirm('Möchtest du wirklich alle Szenen dieses Kapitels auf öffentlich setzen?');">
                 <input type="hidden" name="_token" value="{{ csrf_token('update-chapter-scenes-public' ~ chapter.id) }}">
@@ -23,6 +24,7 @@
                 </button>
             </form>
         </div>
+        {% endif %}
 
         <div class="scenes-list">
             {% for scene in scenes %}

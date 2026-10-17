@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Twig\Components;
 
 use App\Enum\PersonStatus;
@@ -19,10 +21,10 @@ final class PersonListingComponent
      */
     private const LABELS = [
         'IDENTIFIED' => 'Identifiziert',
-        'NEW'        => 'Neu',
-        'WASTED'     => 'Ausgeblendet',
-        'UNKNOWN'    => 'Unbekannt',
-        'MERGED'     => 'Gemergt',
+        'NEW' => 'Neu',
+        'WASTED' => 'Ausgeblendet',
+        'UNKNOWN' => 'Unbekannt',
+        'MERGED' => 'Gemergt',
     ];
 
     #[LiveProp(writable: true)]
@@ -32,9 +34,8 @@ final class PersonListingComponent
     public string $search = '';
 
     public function __construct(
-        private readonly PersonRepository $personRepository
-    ) {
-    }
+        private readonly PersonRepository $personRepository,
+    ) {}
 
     public function mount(?array $statuses = null, ?string $search = null): void
     {
@@ -53,13 +54,10 @@ final class PersonListingComponent
      */
     public function getStatusOptions(): array
     {
-        return array_map(
-            static fn (PersonStatus $status): array => [
-                'value' => $status->value,
-                'label' => self::LABELS[strtoupper($status->name)] ?? ucfirst(strtolower($status->name)),
-            ],
-            PersonStatus::cases()
-        );
+        return array_map(static fn(PersonStatus $status): array => [
+            'value' => $status->value,
+            'label' => self::LABELS[strtoupper($status->name)] ?? ucfirst(strtolower($status->name)),
+        ], PersonStatus::cases());
     }
 
     public function getPersons(): array
@@ -82,20 +80,23 @@ final class PersonListingComponent
             return [];
         }
 
-        $qb = $this->personRepository->createQueryBuilder('p')
+        $qb = $this->personRepository
+            ->createQueryBuilder('p')
             ->andWhere('p.status IN (:statuses)')
             ->setParameter('statuses', $values);
 
         if ($this->search !== '') {
-            $qb->andWhere('(p.name LIKE :search OR p.fullName LIKE :search OR p.description LIKE :search)')
-                ->setParameter('search', '%' . $this->search . '%');
+            $qb->andWhere(
+                '(p.name LIKE :search OR p.fullName LIKE :search OR p.description LIKE :search)',
+            )->setParameter('search', '%' . $this->search . '%');
         }
 
-        $qb->leftJoin('p.videoFaces', 'vf')
+        $qb
+            ->leftJoin('p.videoFaces', 'vf')
             ->addSelect('COUNT(vf.id) AS HIDDEN faceCount')
             ->groupBy('p.id')
-            ->orderBy('faceCount', 'DESC')
-            ->addOrderBy('p.name', 'ASC');
+            ->orderBy('faceCount', \SortDirection::Descending)
+            ->addOrderBy('p.name', \SortDirection::Ascending);
 
         return $qb->getQuery()->getResult();
     }

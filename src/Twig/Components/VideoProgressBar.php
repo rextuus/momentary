@@ -6,8 +6,8 @@ namespace App\Twig\Components;
 
 use App\Entity\Video;
 use App\Enum\VideoStatus;
-use App\Repository\VideoRepository;
 use App\Repository\VideoProcessingStepRepository;
+use App\Repository\VideoRepository;
 use Symfony\UX\LiveComponent\Attribute\AsLiveComponent;
 use Symfony\UX\LiveComponent\Attribute\LiveProp;
 use Symfony\UX\LiveComponent\DefaultActionTrait;
@@ -22,7 +22,7 @@ class VideoProgressBar
 
     public function __construct(
         private VideoRepository $videoRepository,
-        private VideoProcessingStepRepository $stepRepository
+        private VideoProcessingStepRepository $stepRepository,
     ) {}
 
     public function getVideo(): Video
@@ -46,7 +46,11 @@ class VideoProgressBar
             return 100;
         }
 
-        if (in_array($status, [VideoStatus::ANALYZING_FACES_INITIAL, VideoStatus::ANALYZING_FACES_REFINEMENT])) {
+        if (in_array(
+            $status,
+            [VideoStatus::ANALYZING_FACES_INITIAL, VideoStatus::ANALYZING_FACES_REFINEMENT],
+            strict: true,
+        )) {
             if ($video->getTotalFrames() <= 0) {
                 return 0;
             }
@@ -106,6 +110,6 @@ class VideoProgressBar
     public function isProcessing(): bool
     {
         $status = $this->getVideo()->getStatus();
-        return !in_array($status, [VideoStatus::COMPLETED, VideoStatus::ERROR, VideoStatus::PENDING]);
+        return !in_array($status, [VideoStatus::COMPLETED, VideoStatus::ERROR, VideoStatus::PENDING], strict: true);
     }
 }

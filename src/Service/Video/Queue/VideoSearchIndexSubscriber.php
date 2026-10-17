@@ -20,8 +20,7 @@ final class VideoSearchIndexSubscriber implements EventSubscriberInterface
         private readonly VideoRepository $videoRepository,
         private readonly VideoSearchIndex $searchIndex,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     public static function getSubscribedEvents(): array
     {

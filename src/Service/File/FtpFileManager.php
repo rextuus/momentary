@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service\File;
 
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -12,9 +14,8 @@ class FtpFileManager
 
     public function __construct(
         #[Autowire(param: 'app.ftp_source_dirs')]
-        private array $sourceDirs
-    ) {
-    }
+        private array $sourceDirs,
+    ) {}
 
     public function getSourceDirs(): array
     {
@@ -23,7 +24,7 @@ class FtpFileManager
 
     public function listFiles(string $sourceDir): array
     {
-        if (!in_array($sourceDir, $this->sourceDirs)) {
+        if (!in_array($sourceDir, $this->sourceDirs, strict: true)) {
             throw new \InvalidArgumentException('Invalid source directory');
         }
 
@@ -64,7 +65,7 @@ class FtpFileManager
 
         $fs = new Filesystem();
         if (!$fs->exists($sourcePath)) {
-             throw new \RuntimeException('File not found');
+            throw new \RuntimeException('File not found');
         }
 
         if (!$fs->exists(self::TARGET_DIR)) {
@@ -85,19 +86,19 @@ class FtpFileManager
         // 1. Check if the file is in app_uploads
         $appUploadsDir = '/var/www/html/var/uploads/app_uploads';
         if (!str_starts_with($oldPath, $appUploadsDir)) {
-             throw new \InvalidArgumentException('Renaming is only allowed for app_uploads.');
+            throw new \InvalidArgumentException('Renaming is only allowed for app_uploads.');
         }
 
         // 2. Perform rename
         $fs = new Filesystem();
         if (!$fs->exists($oldPath)) {
-             throw new \RuntimeException('File not found');
+            throw new \RuntimeException('File not found');
         }
 
         $dir = dirname($oldPath);
         $oldExtension = pathinfo($oldPath, PATHINFO_EXTENSION);
         $newExtension = pathinfo($newName, PATHINFO_EXTENSION);
-        
+
         $finalNewName = $newName;
         if (empty($newExtension) && !empty($oldExtension)) {
             $finalNewName = $newName . '.' . $oldExtension;

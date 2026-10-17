@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service\Storage;
 
 use App\Entity\File;
@@ -15,17 +17,16 @@ class FileManager
 {
     public function __construct(
         private readonly StoragePathProvider $pathProvider,
-        private readonly FileRepository $fileRepository
-    ) {
-    }
+        private readonly FileRepository $fileRepository,
+    ) {}
 
     public function createVideoSourceFile(Video $video, string $filename, MimeType $mimeType = MimeType::MP4): File
     {
         return $this->createFileEntity(
             purpose: FilePurpose::VIDEO_SOURCE,
             filename: $filename,
-            directoryIdentifier: $video->getDirectoryHash() ?? (string)$video->getId(),
-            mimeType: $mimeType->value
+            directoryIdentifier: $video->getDirectoryHash() ?? (string) $video->getId(),
+            mimeType: $mimeType->value,
         );
     }
 
@@ -34,8 +35,8 @@ class FileManager
         return $this->createFileEntity(
             purpose: FilePurpose::VIDEO_CONVERTED,
             filename: $filename,
-            directoryIdentifier: $video->getDirectoryHash() ?? (string)$video->getId(),
-            mimeType: $mimeType->value
+            directoryIdentifier: $video->getDirectoryHash() ?? (string) $video->getId(),
+            mimeType: $mimeType->value,
         );
     }
 
@@ -44,18 +45,21 @@ class FileManager
         return $this->createFileEntity(
             purpose: FilePurpose::THUMBNAIL_VIDEO,
             filename: $filename,
-            directoryIdentifier: $video->getDirectoryHash() ?? (string)$video->getId(),
-            mimeType: $mimeType->value
+            directoryIdentifier: $video->getDirectoryHash() ?? (string) $video->getId(),
+            mimeType: $mimeType->value,
         );
     }
 
-    public function createSceneThumbnailFile(VideoScene $scene, string $filename, MimeType $mimeType = MimeType::JPEG): File
-    {
+    public function createSceneThumbnailFile(
+        VideoScene $scene,
+        string $filename,
+        MimeType $mimeType = MimeType::JPEG,
+    ): File {
         return $this->createFileEntity(
             purpose: FilePurpose::THUMBNAIL_SCENE,
             filename: $filename,
-            directoryIdentifier: (string)$scene->getId(),
-            mimeType: $mimeType->value
+            directoryIdentifier: (string) $scene->getId(),
+            mimeType: $mimeType->value,
         );
     }
 
@@ -64,8 +68,8 @@ class FileManager
         return $this->createFileEntity(
             purpose: FilePurpose::IMAGE_PROFILE,
             filename: $filename,
-            directoryIdentifier: (string)$person->getId(),
-            mimeType: $mimeType->value
+            directoryIdentifier: (string) $person->getId(),
+            mimeType: $mimeType->value,
         );
     }
 
@@ -74,8 +78,8 @@ class FileManager
         return $this->createFileEntity(
             purpose: FilePurpose::IMAGE_FACE,
             filename: $filename,
-            directoryIdentifier: (string)$face->getId(),
-            mimeType: $mimeType->value
+            directoryIdentifier: (string) $face->getId(),
+            mimeType: $mimeType->value,
         );
     }
 
@@ -88,7 +92,7 @@ class FileManager
             purpose: FilePurpose::THUMBNAIL_VIDEO,
             filename: $thumbnailName,
             directoryIdentifier: null,
-            mimeType: $mimeType->value
+            mimeType: $mimeType->value,
         );
     }
 
@@ -102,7 +106,7 @@ class FileManager
         $absolutePath = $this->pathProvider->getAbsolutePath($file);
 
         if (file_exists($absolutePath)) {
-            @unlink($absolutePath);
+            unlink($absolutePath);
         }
 
         $this->fileRepository->remove($file, $flush);
@@ -124,12 +128,21 @@ class FileManager
         return file_exists($this->pathProvider->getAbsolutePath($file));
     }
 
-    private function createFileEntity(FilePurpose $purpose, string $filename, ?string $directoryIdentifier, string $mimeType): File
-    {
+    private function createFileEntity(
+        FilePurpose $purpose,
+        string $filename,
+        ?string $directoryIdentifier,
+        string $mimeType,
+    ): File {
         $relativePath = $this->pathProvider->getRelativePath($purpose, $filename, $directoryIdentifier);
-        
+
         if (empty($relativePath)) {
-            throw new \RuntimeException(sprintf("File creation failed: empty relative path! Purpose: %s, Filename: %s, DirId: %s", $purpose->value, $filename, $directoryIdentifier ?? 'null'));
+            throw new \RuntimeException(sprintf(
+                'File creation failed: empty relative path! Purpose: %s, Filename: %s, DirId: %s',
+                $purpose->value,
+                $filename,
+                $directoryIdentifier ?? 'null',
+            ));
         }
 
         $file = new File();

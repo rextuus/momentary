@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Twig\Components;
 
 use App\Entity\Person;
@@ -71,7 +73,7 @@ class PersonResolverComponent extends AbstractController
 
     public function __construct(
         private PersonRepository $personRepository,
-        private EntityManagerInterface $entityManager
+        private EntityManagerInterface $entityManager,
     ) {}
 
     protected function instantiateForm(): FormInterface
@@ -79,8 +81,12 @@ class PersonResolverComponent extends AbstractController
         return $this->createForm(PersonResolverType::class);
     }
 
-    public function mount(?int $currentPersonId = null, bool $fromQuickResolve = false, bool $fromTinder = false, ?string $mergeIds = null): void
-    {
+    public function mount(
+        ?int $currentPersonId = null,
+        bool $fromQuickResolve = false,
+        bool $fromTinder = false,
+        ?string $mergeIds = null,
+    ): void {
         $this->fromQuickResolve = $fromQuickResolve;
         $this->fromTinder = $fromTinder;
         if ($mergeIds) {
@@ -117,13 +123,13 @@ class PersonResolverComponent extends AbstractController
             $statuses[] = PersonStatus::WASTED->value;
         }
 
-        $qb = $this->personRepository->createQueryBuilder('p')
+        $qb = $this->personRepository
+            ->createQueryBuilder('p')
             ->where('p.status IN (:statuses)')
             ->setParameter('statuses', $statuses);
 
         if (!empty($this->skippedIds)) {
-            $qb->andWhere('p.id NOT IN (:skipped)')
-                ->setParameter('skipped', array_values($this->skippedIds));
+            $qb->andWhere('p.id NOT IN (:skipped)')->setParameter('skipped', array_values($this->skippedIds));
         }
 
         return $qb;
@@ -131,7 +137,8 @@ class PersonResolverComponent extends AbstractController
 
     private function loadNextBestPerson(): void
     {
-        $qb = $this->createCandidateQueryBuilder()
+        $qb = $this
+            ->createCandidateQueryBuilder()
             ->select('p.id')
             ->leftJoin('p.videoFaces', 'f')
             ->addSelect('COUNT(DISTINCT f.videoScene) AS HIDDEN scene_count')
@@ -141,10 +148,11 @@ class PersonResolverComponent extends AbstractController
             $qb->andWhere('p.id != :cid')->setParameter('cid', $this->currentPersonId);
         }
 
-        $qb->groupBy('p.id')
-            ->orderBy('scene_count', 'DESC')
-            ->addOrderBy('face_count', 'DESC')
-            ->addOrderBy('p.id', 'ASC')
+        $qb
+            ->groupBy('p.id')
+            ->orderBy('scene_count', \SortDirection::Descending)
+            ->addOrderBy('face_count', \SortDirection::Descending)
+            ->addOrderBy('p.id', \SortDirection::Ascending)
             ->setMaxResults(1);
 
         $result = $qb->getQuery()->getOneOrNullResult();
@@ -163,14 +171,20 @@ class PersonResolverComponent extends AbstractController
     public function getActiveFace()
     {
         $person = $this->getUnidentifiedPerson();
-        if (!$person) return null;
+        if (!$person) {
+            return null;
+        }
 
         $faces = $person->getVideoFaces();
-        if ($faces->isEmpty()) return null;
+        if ($faces->isEmpty()) {
+            return null;
+        }
 
         if ($this->activeFaceId) {
             foreach ($faces as $face) {
-                if ($face->getId() === $this->activeFaceId) return $face;
+                if ($face->getId() === $this->activeFaceId) {
+                    return $face;
+                }
             }
         }
 
@@ -192,10 +206,7 @@ class PersonResolverComponent extends AbstractController
             return $none;
         }
 
-        $ids = array_values(array_map(
-            static fn ($face) => $face->getId(),
-            $person->getVideoFaces()->toArray()
-        ));
+        $ids = array_values(array_map(static fn($face) => $face->getId(), $person->getVideoFaces()->toArray()));
         $count = count($ids);
         if ($count < 2) {
             return $none;
@@ -222,7 +233,9 @@ class PersonResolverComponent extends AbstractController
     public function markAsUnknown()
     {
         $currentPerson = $this->getUnidentifiedPerson();
-        if (!$currentPerson) return;
+        if (!$currentPerson) {
+            return;
+        }
 
         // Dauerhaft aus dem Loop entfernen
         $currentPerson->setStatus(PersonStatus::UNKNOWN);
@@ -247,7 +260,9 @@ class PersonResolverComponent extends AbstractController
     public function processIdentification()
     {
         $currentPerson = $this->getUnidentifiedPerson();
-        if (!$currentPerson) return;
+        if (!$currentPerson) {
+            return;
+        }
 
         $this->submitForm();
         $targetPerson = $this->getForm()->get('targetPerson')->getData();
@@ -268,8 +283,7 @@ class PersonResolverComponent extends AbstractController
                     }
                 }
             }
-        }
-        elseif (!empty(trim($this->newName))) {
+        } elseif (!empty(trim($this->newName))) {
             // NEU: Name eingegeben
             $trimmedName = trim($this->newName);
             $existingPerson = $this->personRepository->findOneBy(['name' => $trimmedName]);
@@ -326,7 +340,7 @@ class PersonResolverComponent extends AbstractController
             $this->bumpShowCount();
 
             return $this->redirectToRoute(
-                $this->fromQuickResolve ? 'app_identity_quick_resolve' : 'app_identity_tinder_resolve'
+                $this->fromQuickResolve ? 'app_identity_quick_resolve' : 'app_identity_tinder_resolve',
             );
         }
 
@@ -393,17 +407,22 @@ class PersonResolverComponent extends AbstractController
     public function getQuickSuggestions(): array
     {
         $currentPerson = $this->getUnidentifiedPerson();
-        if (!$currentPerson) return [];
+        if (!$currentPerson) {
+            return [];
+        }
 
         $activeFace = $this->getActiveFace();
-        if (!$activeFace) return [];
+        if (!$activeFace) {
+            return [];
+        }
 
         $videoId = $activeFace->getVideo()?->getId();
         $targetGender = $activeFace->getGender();
         $targetAge = $activeFace->getAge();
 
         // Wir holen alle identifizierten Personen
-        $allIdentified = $this->personRepository->createQueryBuilder('p')
+        $allIdentified = $this->personRepository
+            ->createQueryBuilder('p')
             ->select('p, COUNT(DISTINCT f_video.id) as video_count, COUNT(DISTINCT f_global.id) as global_count')
             ->leftJoin('p.videoFaces', 'f_video', 'WITH', 'f_video.video = :videoId')
             ->leftJoin('p.videoFaces', 'f_global')
@@ -415,7 +434,7 @@ class PersonResolverComponent extends AbstractController
             ->getResult();
 
         // Manuelle Sortierung nach den komplexen Kriterien
-        usort($allIdentified, function($a_data, $b_data) use ($targetGender, $targetAge) {
+        usort($allIdentified, static function ($a_data, $b_data) use ($targetGender, $targetAge) {
             $a = $a_data[0];
             $b = $b_data[0];
 
@@ -430,8 +449,8 @@ class PersonResolverComponent extends AbstractController
             }
 
             // 3. Geschlecht
-            $aGenderMatch = ($targetGender && $a->getProbablyGender() === $targetGender) ? 1 : 0;
-            $bGenderMatch = ($targetGender && $b->getProbablyGender() === $targetGender) ? 1 : 0;
+            $aGenderMatch = $targetGender && $a->getProbablyGender() === $targetGender ? 1 : 0;
+            $bGenderMatch = $targetGender && $b->getProbablyGender() === $targetGender ? 1 : 0;
             if ($aGenderMatch !== $bGenderMatch) {
                 return $bGenderMatch <=> $aGenderMatch;
             }
@@ -452,7 +471,7 @@ class PersonResolverComponent extends AbstractController
         });
 
         // Nur die Personen-Objekte zurückgeben
-        $suggestions = array_map(fn($item) => $item[0], $allIdentified);
+        $suggestions = array_map(static fn($item) => $item[0], $allIdentified);
 
         return array_slice($suggestions, 0, 20);
     }
@@ -461,10 +480,14 @@ class PersonResolverComponent extends AbstractController
     public function selectSuggestedPerson(#[LiveArg] int $id)
     {
         $targetPerson = $this->personRepository->find($id);
-        if (!$targetPerson) return;
+        if (!$targetPerson) {
+            return;
+        }
 
         $currentPerson = $this->getUnidentifiedPerson();
-        if (!$currentPerson) return;
+        if (!$currentPerson) {
+            return;
+        }
 
         // Dieselbe Logik wie beim Formular-Submit
         $personsToMerge = array_merge([$currentPerson], $this->getMergePersons());
@@ -512,10 +535,7 @@ class PersonResolverComponent extends AbstractController
      */
     public function getRemainingCount(): int
     {
-        return (int) $this->createCandidateQueryBuilder()
-            ->select('COUNT(p.id)')
-            ->getQuery()
-            ->getSingleScalarResult();
+        return (int) $this->createCandidateQueryBuilder()->select('COUNT(p.id)')->getQuery()->getSingleScalarResult();
     }
 
     public function getSkippedCount(): int

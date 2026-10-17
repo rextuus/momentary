@@ -7,13 +7,13 @@ namespace App\Service\Video\Processing\Handler\Splitting\Scene;
 use App\Repository\VideoRepository;
 use App\Repository\VideoSceneRepository;
 use App\Service\Storage\StoragePathProvider;
+use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Handler\Splitting\AbstractSplitInFramesStepMessageHandler;
 use App\Service\Video\Processing\Message\Splitting\Scene\SplitLastSceneInFramesStepMessage;
 use App\Service\Video\Processing\Message\Splitting\Scene\SplitSceneInFramesStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
-use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
@@ -31,7 +31,7 @@ class SplitSceneInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
         BetterVideoAnalyzer $videoAnalyzer,
         StoragePathProvider $pathProvider,
         EntityManagerInterface $entityManager,
-        private readonly VideoSceneRepository $sceneRepository
+        private readonly VideoSceneRepository $sceneRepository,
     ) {
         parent::__construct(
             $videoRepository,
@@ -40,7 +40,7 @@ class SplitSceneInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
             $processingService,
             $videoAnalyzer,
             $pathProvider,
-            $entityManager
+            $entityManager,
         );
     }
 
@@ -53,7 +53,7 @@ class SplitSceneInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
         if ($message->getCurrentSceneId() === null) {
             $successMsg = sprintf(
                 'No more scenes for refinement found for video with id %s. Next step will be skipped.',
-                $video->getId()
+                $video->getId(),
             );
             $this->finishCurrentStep($successMsg);
 
@@ -74,8 +74,8 @@ class SplitSceneInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
 
         // check if there are more scenes needing refining
         $remainingScenes = $message->getRemainingSceneIds();
-        $nextScene = array_shift($remainingScenes);
-        $this->currentSceneId = $nextScene ? $nextScene->getId() : null;
+        $nextScene = array_shift($remainingScenes); // Scene-ID oder null
+        $this->currentSceneId = $nextScene;
         $this->remainingSceneIds = $remainingScenes;
 
         if ($this->remainingSceneIds === []) {
@@ -84,7 +84,7 @@ class SplitSceneInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
                 $frameSplitResult->getFrameCount(),
                 $scene->getId(),
                 $video->getTitle(),
-                count($this->framePathCollection)
+                count($this->framePathCollection),
             );
 
             $this->finishCurrentStep($successMsg);
@@ -98,12 +98,12 @@ class SplitSceneInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
             $scene->getId(),
             $video->getTitle(),
             count($this->remainingSceneIds) + 1,
-            count($this->framePathCollection)
+            count($this->framePathCollection),
         );
-//
-//        dump('Weiter mit SCENS IN Frmes');
-//        dump($message->getMessageNrInVideoStack());
-//        dump($message->getComingFromStepMessageClass());
+
+        //        dump('Weiter mit SCENS IN Frmes');
+        //        dump($message->getMessageNrInVideoStack());
+        //        dump($message->getComingFromStepMessageClass());
         $this->dispatchNextMessageOfCurrentStep($logMessage);
     }
 

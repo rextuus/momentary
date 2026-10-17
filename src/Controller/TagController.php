@@ -1,17 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller;
 
 use App\Service\Tag\TagInitializer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 #[Route('/tagging')]
+#[IsGranted('ROLE_ADMIN')]
 final class TagController extends AbstractController
 {
-
     #[Route('/tagging', name: 'app_tag_admin')]
     public function index(): Response
     {
@@ -34,13 +37,13 @@ final class TagController extends AbstractController
 
         // 1. Call /analyze
         $analyzeResponse = $httpClient->request('POST', 'http://localhost:5000/analyze', [
-            'body' => ['image' => fopen($imagePath, 'r')]
+            'body' => ['image' => fopen($imagePath, 'r')],
         ]);
         $analyzeData = $analyzeResponse->toArray();
 
         // 2. Call /identify
         $identifyResponse = $httpClient->request('POST', 'http://localhost:5000/analyze', [
-            'body' => ['image' => fopen($imagePath, 'r')]
+            'body' => ['image' => fopen($imagePath, 'r')],
         ]);
         $identifyData = $identifyResponse->toArray();
 
@@ -59,13 +62,13 @@ final class TagController extends AbstractController
                 'emotion' => $face['dominant_emotion'],
                 'gender' => $face['dominant_gender'],
                 'name' => $match['identity'] ?? null,
-                'confidence' => $match['distance'] ?? null
+                'confidence' => $match['distance'] ?? null,
             ];
         }
 
         return $this->render('face_test/index.html.twig', [
             'imageUrl' => $imageUrl,
-            'faces' => $faces
+            'faces' => $faces,
         ]);
     }
 }

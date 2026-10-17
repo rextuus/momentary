@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Service\Person\Data;
 
-use App\Entity\Person;
-
 class PersonNameData
 {
     private ?string $name = null;
