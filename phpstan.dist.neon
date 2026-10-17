@@ -1,0 +1,32 @@
+# PHPStan: statische Typanalyse.
+#   composer phpstan            prüfen
+#   composer phpstan:baseline   Baseline neu erzeugen (nur nach bewusstem Abbau von Altlasten!)
+#
+# Level 8 gilt für neuen und geänderten Code. Bestehende Funde stehen in phpstan-baseline.neon
+# und sollen nach und nach abgebaut werden; behobene Einträge meldet PHPStan automatisch.
+includes:
+    - phpstan-baseline.neon
+
+parameters:
+    level: 8
+    paths:
+        - src
+        - tests
+    excludePaths:
+        - tests/tools
+    tmpDir: var/cache/phpstan
+    reportUnmatchedIgnoredErrors: true
+
+    symfony:
+        containerXmlPath: var/cache/test/App_KernelTestDebugContainer.xml
+        consoleApplicationLoader: tests/console-application.php
+    doctrine:
+        objectManagerLoader: tests/object-manager.php
+        # Maker-Konvention: "private ?string $name = null" auch bei NOT-NULL-Spalten
+        allowNullablePropertyForRequiredField: true
+
+    ignoreErrors:
+        # Konstanten dienen dort bewusst als Feature-Schalter
+        -
+            identifier: if.alwaysTrue
+            path: src/Service/Storage/VideoOriginalCleanupService.php
