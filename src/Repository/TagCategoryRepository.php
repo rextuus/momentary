@@ -10,11 +10,6 @@ use Doctrine\Persistence\ManagerRegistry;
 
 /**
  * @extends ServiceEntityRepository<TagCategory>
- *
- * @method TagCategory|null find($id, $lockMode = null, $lockVersion = null)
- * @method TagCategory|null findOneBy(array $criteria, array $orderBy = null)
- * @method TagCategory[]    findAll()
- * @method TagCategory[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  */
 class TagCategoryRepository extends ServiceEntityRepository
 {

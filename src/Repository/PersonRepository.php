@@ -34,7 +34,7 @@ class PersonRepository extends ServiceEntityRepository
     //    }
 
     /**
-     * @return Person[]
+     * @return list<Person>
      */
     public function findActiveKnown(): array
     {

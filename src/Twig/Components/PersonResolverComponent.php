@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Twig\Components;
 
 use App\Entity\Person;
+use App\Entity\VideoFace;
 use App\Enum\PersonStatus;
 use App\Form\PersonResolverType;
 use App\Repository\PersonRepository;
@@ -12,6 +13,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormInterface;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\UX\LiveComponent\Attribute\AsLiveComponent;
 use Symfony\UX\LiveComponent\Attribute\LiveAction;
 use Symfony\UX\LiveComponent\Attribute\LiveArg;
@@ -60,6 +62,7 @@ class PersonResolverComponent extends AbstractController
     #[LiveProp]
     public bool $fromTinder = false;
 
+    /** @var list<int> */
     #[LiveProp]
     public array $mergeIds = [];
 
@@ -76,6 +79,9 @@ class PersonResolverComponent extends AbstractController
         private EntityManagerInterface $entityManager,
     ) {}
 
+    /**
+     * @return FormInterface<array<string, mixed>|null>
+     */
     protected function instantiateForm(): FormInterface
     {
         return $this->createForm(PersonResolverType::class);
@@ -168,7 +174,7 @@ class PersonResolverComponent extends AbstractController
         $this->newCharacteristics = null;
     }
 
-    public function getActiveFace()
+    public function getActiveFace(): ?VideoFace
     {
         $person = $this->getUnidentifiedPerson();
         if (!$person) {
@@ -230,11 +236,11 @@ class PersonResolverComponent extends AbstractController
     }
 
     #[LiveAction]
-    public function markAsUnknown()
+    public function markAsUnknown(): ?RedirectResponse
     {
         $currentPerson = $this->getUnidentifiedPerson();
         if (!$currentPerson) {
-            return;
+            return null;
         }
 
         // Dauerhaft aus dem Loop entfernen
@@ -254,14 +260,16 @@ class PersonResolverComponent extends AbstractController
 
         $this->resetForm();
         $this->loadNextBestPerson();
+
+        return null;
     }
 
     #[LiveAction]
-    public function processIdentification()
+    public function processIdentification(): ?RedirectResponse
     {
         $currentPerson = $this->getUnidentifiedPerson();
         if (!$currentPerson) {
-            return;
+            return null;
         }
 
         $this->submitForm();
@@ -290,7 +298,7 @@ class PersonResolverComponent extends AbstractController
 
             if ($existingPerson) {
                 $this->addFlash('error', sprintf('Die Person "%s" existiert bereits.', $trimmedName));
-                return;
+                return null;
             }
 
             $currentPerson->setName($trimmedName);
@@ -313,7 +321,7 @@ class PersonResolverComponent extends AbstractController
             }
         } else {
             // Nichts ausgewählt oder eingegeben
-            return;
+            return null;
         }
 
         $this->entityManager->flush();
@@ -330,10 +338,12 @@ class PersonResolverComponent extends AbstractController
 
         $this->resetForm();
         $this->loadNextBestPerson();
+
+        return null;
     }
 
     #[LiveAction]
-    public function skip()
+    public function skip(): ?RedirectResponse
     {
         // Aus Quick/Tinder kommend: showCount erhöhen, sonst taucht dieselbe Person sofort wieder auf
         if ($this->fromQuickResolve || $this->fromTinder) {
@@ -350,6 +360,8 @@ class PersonResolverComponent extends AbstractController
 
         $this->resetForm();
         $this->loadNextBestPerson();
+
+        return null;
     }
 
     /**
@@ -365,7 +377,7 @@ class PersonResolverComponent extends AbstractController
     }
 
     #[LiveAction]
-    public function markForReassignment()
+    public function markForReassignment(): ?RedirectResponse
     {
         $person = $this->getUnidentifiedPerson();
         if (!$person) {
@@ -403,6 +415,8 @@ class PersonResolverComponent extends AbstractController
 
     /**
      * Holt Quick-Vorschläge basierend auf Video-Häufigkeit, globaler Häufigkeit, Geschlecht und Alter
+     *
+     * @return list<Person>
      */
     public function getQuickSuggestions(): array
     {
@@ -477,16 +491,16 @@ class PersonResolverComponent extends AbstractController
     }
 
     #[LiveAction]
-    public function selectSuggestedPerson(#[LiveArg] int $id)
+    public function selectSuggestedPerson(#[LiveArg] int $id): ?RedirectResponse
     {
         $targetPerson = $this->personRepository->find($id);
         if (!$targetPerson) {
-            return;
+            return null;
         }
 
         $currentPerson = $this->getUnidentifiedPerson();
         if (!$currentPerson) {
-            return;
+            return null;
         }
 
         // Dieselbe Logik wie beim Formular-Submit
@@ -519,8 +533,13 @@ class PersonResolverComponent extends AbstractController
 
         $this->resetForm();
         $this->loadNextBestPerson();
+
+        return null;
     }
 
+    /**
+     * @return list<Person>
+     */
     private function getMergePersons(): array
     {
         if (empty($this->mergeIds)) {

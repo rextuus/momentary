@@ -22,6 +22,7 @@ use Doctrine\ORM\EntityManagerInterface;
 abstract class AbstractExtractSceneThumbnailStepMessageHandler extends AbstractVideoMessageHandler
 {
     protected ?int $nextSceneId = null;
+    /** @var list<int> */
     protected array $remainingSceneIds = [];
 
     public function __construct(

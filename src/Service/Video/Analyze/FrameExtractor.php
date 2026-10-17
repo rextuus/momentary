@@ -28,6 +28,10 @@ class FrameExtractor
         $this->pythonBinaryPath = file_exists($pythonBinary) ? $pythonBinary : 'python3';
     }
 
+    /**
+     * @param float|list<float>|null $startTime ein Startpunkt oder mehrere Segmente
+     * @param float|list<float>|null $duration  Dauer passend zu $startTime
+     */
     public function extractFrames(
         int $videoId,
         string $videoPath,

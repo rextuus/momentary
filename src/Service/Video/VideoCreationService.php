@@ -95,7 +95,7 @@ class VideoCreationService
             // 5. File-Entity über deinen FileManager erzeugen und Pfad zuweisen
             $file = $this->fileManager->createVideoSourceFile($video, $newFilename);
             $file->setRelativePath($targetRelativeDir . '/' . $newFilename);
-            $file->setFileSize(file_exists($absoluteTargetPath) ? filesize($absoluteTargetPath) : 0);
+            $file->setFileSize(file_exists($absoluteTargetPath) ? (filesize($absoluteTargetPath) ?: 0) : 0);
 
             $this->entityManager->persist($file);
             $this->entityManager->flush();

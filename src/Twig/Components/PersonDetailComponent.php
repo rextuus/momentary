@@ -36,6 +36,9 @@ class PersonDetailComponent extends AbstractController
         private EntityManagerInterface $entityManager,
     ) {}
 
+    /**
+     * @return FormInterface<PersonCombineData|null>
+     */
     protected function instantiateForm(): FormInterface
     {
         return $this->createForm(PersonCombineType::class, $this->initialFormData, ['source' => $this->person]);

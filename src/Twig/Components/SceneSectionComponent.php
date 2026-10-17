@@ -7,6 +7,8 @@ namespace App\Twig\Components;
 use App\Entity\Tag;
 use App\Entity\TagCategory;
 use App\Entity\UserGroup;
+use App\Entity\Video;
+use App\Entity\VideoFace;
 use App\Entity\VideoScene;
 use App\Service\Video\Analyze\SceneThumbnailExtractor;
 use Doctrine\ORM\EntityManagerInterface;
@@ -40,11 +42,17 @@ class SceneSectionComponent extends AbstractController
         private SceneThumbnailExtractor $thumbnailExtractor,
     ) {}
 
+    /**
+     * @return list<TagCategory>
+     */
     public function getCategories(): array
     {
         return $this->entityManager->getRepository(TagCategory::class)->findAll();
     }
 
+    /**
+     * @return list<UserGroup>
+     */
     public function getGroups(): array
     {
         return $this->entityManager->getRepository(UserGroup::class)->findAll();
@@ -99,16 +107,22 @@ class SceneSectionComponent extends AbstractController
         $this->entityManager->flush();
     }
 
+    /**
+     * @return list<\App\Entity\VideoChapter>
+     */
     public function getChapters(): array
     {
         return $this->entityManager
             ->getRepository(\App\Entity\VideoChapter::class)
-            ->findBy(['video' => $this->scene->getVideo()]);
+            ->findBy(['video' => $this->video()]);
     }
 
+    /**
+     * @return list<array{path: string, timestamp: float}>
+     */
     public function getFramesForScene(): array
     {
-        $video = $this->scene->getVideo();
+        $video = $this->video();
         $dir = $video->getCurrentFrameDirectory();
 
         if (!$dir || !is_dir($dir)) {
@@ -162,13 +176,19 @@ class SceneSectionComponent extends AbstractController
         }
 
         // Kapitel erweitern, um diese Szene einzuschließen
-        $chapter->setStartSeconds(min($chapter->getStartSeconds(), $this->scene->getStartSeconds()));
-        $chapter->setEndSeconds(max($chapter->getEndSeconds(), $this->scene->getEndSeconds()));
+        $chapter->setStartSeconds(min(
+            $chapter->getStartSeconds() ?? $this->scene->getStartSeconds(),
+            $this->scene->getStartSeconds(),
+        ));
+        $chapter->setEndSeconds(max(
+            $chapter->getEndSeconds() ?? $this->scene->getEndSeconds(),
+            $this->scene->getEndSeconds(),
+        ));
 
         $this->entityManager->flush();
         $this->assignToChapterId = null;
 
-        return $this->redirectToRoute('video_timeline', ['id' => $this->scene->getVideo()->getId()]);
+        return $this->redirectToRoute('video_timeline', ['id' => $this->video()->getId()]);
     }
 
     #[LiveAction]
@@ -178,7 +198,7 @@ class SceneSectionComponent extends AbstractController
             return null;
         }
 
-        $video = $this->scene->getVideo();
+        $video = $this->video();
         $scenes = $video->getScenes();
 
         $maxEndTime = $this->scene->getEndSeconds();
@@ -220,7 +240,7 @@ class SceneSectionComponent extends AbstractController
     #[LiveAction]
     public function mergeWithNext(): Response
     {
-        $video = $this->scene->getVideo();
+        $video = $this->video();
         $nextScene = $this->findSceneByNumber($this->scene->getSceneNumber() + 1);
 
         if ($nextScene) {
@@ -238,7 +258,7 @@ class SceneSectionComponent extends AbstractController
             return null;
         }
 
-        $video = $this->scene->getVideo();
+        $video = $this->video();
         $scenesToDelete = [];
         $maxEndSeconds = $this->scene->getEndSeconds();
 
@@ -280,7 +300,7 @@ class SceneSectionComponent extends AbstractController
 
     private function getTargetSceneForBackwardsMerge(): ?VideoScene
     {
-        $video = $this->scene->getVideo();
+        $video = $this->video();
         $scenes = $video->getScenes()->toArray();
 
         // Sortieren nach Szenennummer absteigend, startend vor der aktuellen Szene
@@ -301,7 +321,7 @@ class SceneSectionComponent extends AbstractController
 
     private function findSceneByNumber(int $number): ?VideoScene
     {
-        foreach ($this->scene->getVideo()->getScenes() as $s) {
+        foreach ($this->video()->getScenes() as $s) {
             if ($s->getSceneNumber() === $number) {
                 return $s;
             }
@@ -325,7 +345,7 @@ class SceneSectionComponent extends AbstractController
 
     private function renumberScenes(): void
     {
-        $video = $this->scene->getVideo();
+        $video = $this->video();
         $this->entityManager->refresh($video);
 
         $scenes = $video->getScenes()->toArray();
@@ -338,9 +358,25 @@ class SceneSectionComponent extends AbstractController
         $this->entityManager->flush();
     }
 
+    /**
+     * @return iterable<VideoFace>
+     */
     public function getFaces(): iterable
     {
         return $this->scene->getVideoFaces();
+    }
+
+    /**
+     * Szenen gehören laut Mapping immer zu einem Video (JoinColumn nullable: false).
+     */
+    private function video(): Video
+    {
+        return (
+            $this->scene->getVideo() ?? throw new \LogicException(sprintf(
+                'Scene %d has no video.',
+                (int) $this->scene->getId(),
+            ))
+        );
     }
 
     public function getDuration(): float

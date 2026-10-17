@@ -11,6 +11,9 @@ use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\Vote;
 use Symfony\Component\Security\Core\Authorization\Voter\Voter;
 
+/**
+ * @extends Voter<string, Video>
+ */
 class VideoAccessVoter extends Voter
 {
     public const VIEW = 'VIDEO_VIEW';

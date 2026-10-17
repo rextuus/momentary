@@ -15,6 +15,11 @@ class AppVersionCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $version = file_get_contents(__DIR__ . '/../../VERSION');
+        if ($version === false) {
+            $output->writeln('<error>VERSION file could not be read.</error>');
+
+            return Command::FAILURE;
+        }
         $output->writeln('Version: ' . trim($version));
         return Command::SUCCESS;
     }

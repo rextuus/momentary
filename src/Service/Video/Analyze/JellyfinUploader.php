@@ -44,11 +44,11 @@ class JellyfinUploader
 
             $filename = basename($sourcePath);
             if (preg_match('/\.mp4$/i', $filename)) {
-                $filename = preg_replace('/\.[^.]+\.mp4$/i', '.mp4', $filename);
+                $filename = preg_replace('/\.[^.]+\.mp4$/i', '.mp4', $filename) ?? $filename;
             }
 
             $resultPath = $this->jellyfinUploadService->uploadVideo($sourcePath, $filename);
-            if (!$resultPath) {
+            if ($resultPath === false) {
                 return new JellyfinExportResult(false, null, null, 'Failed to upload video to Jellyfin server.');
             }
 
@@ -69,7 +69,7 @@ class JellyfinUploader
     /**
      * Jellyfin scannt neue Dateien asynchron: sofort probieren, dann in Abständen erneut.
      */
-    private function waitForItemId(string $resultPath)
+    private function waitForItemId(string $resultPath): ?string
     {
         for ($i = 0; $i < self::ITEM_LOOKUP_ATTEMPTS; $i++) {
             $itemId = $this->jellyfinUploadService->findItemIdByPath($resultPath);

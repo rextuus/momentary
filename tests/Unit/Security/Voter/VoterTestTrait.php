@@ -15,6 +15,9 @@ trait VoterTestTrait
 {
     private static int $nextId = 1;
 
+    /**
+     * @param list<string> $roles
+     */
     private static function user(array $roles = []): User
     {
         $user = new User()

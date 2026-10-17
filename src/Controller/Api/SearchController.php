@@ -6,6 +6,7 @@ namespace App\Controller\Api;
 
 use App\Entity\User;
 use App\Entity\Video;
+use App\Entity\VideoScene;
 use App\Repository\VideoRepository;
 use App\Repository\VideoSceneRepository;
 use App\Service\ImgproxyService;
@@ -71,10 +72,14 @@ final class SearchController extends AbstractController
         $scenesByVideo = [];
         $sceneByStart = [];
         foreach ($videos as $video) {
-            $videoMap[$video->getId()] = $video;
-            $scenesByVideo[$video->getId()] = $this->videoSceneRepository->findBy(['video' => $video]);
-            foreach ($scenesByVideo[$video->getId()] as $scene) {
-                $sceneByStart[$video->getId()][(int) $scene->getStartSeconds()] = $scene;
+            $videoId = $video->getId();
+            if ($videoId === null) {
+                continue;
+            }
+            $videoMap[$videoId] = $video;
+            $scenesByVideo[$videoId] = $this->videoSceneRepository->findBy(['video' => $video]);
+            foreach ($scenesByVideo[$videoId] as $scene) {
+                $sceneByStart[$videoId][(int) $scene->getStartSeconds()] = $scene;
             }
         }
 
@@ -132,6 +137,12 @@ final class SearchController extends AbstractController
 
     /**
      * Filtert Szenen-Einträge auf die angefragten Namen und erzeugt (ggf. unscharfe) Thumbnail-URLs.
+     *
+     * @param array<mixed>               $items          Szenen-Einträge aus dem Index-Dokument
+     * @param list<string>               $requestedNames
+     * @param array<int, VideoScene>     $sceneByStart   Szenen des Videos nach Startsekunde
+     *
+     * @return list<array<string, mixed>>
      */
     private function prepareSceneItems(array $items, array $requestedNames, int $blur, array $sceneByStart): array
     {
@@ -195,7 +206,9 @@ final class SearchController extends AbstractController
     }
 
     /**
-     * @return string[]
+     * @param array<mixed> $values
+     *
+     * @return list<string>
      */
     private function stringList(array $values): array
     {

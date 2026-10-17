@@ -35,7 +35,7 @@ class GeminiService
             ->withGenerationConfig($generationConfig)
             ->generateContent([
                 $prompt,
-                new Blob(mimeType: MimeType::IMAGE_JPEG, data: base64_encode(file_get_contents($imageUrl))),
+                new Blob(mimeType: MimeType::IMAGE_JPEG, data: base64_encode($this->readImage($imageUrl))),
             ]);
 
         foreach ($response->parts() as $part) {
@@ -54,6 +54,9 @@ class GeminiService
         );
     }
 
+    /**
+     * @return array<string, mixed> Tags und Titel aus der Gemini-Antwort
+     */
     public function analyzeImage(string $imagePath): array
     {
         $prompt = 'Analysiere dieses Bild und gib mir eine Liste von Tags zurück, die beschreiben, was auf dem Bild passiert. 
@@ -73,7 +76,7 @@ class GeminiService
             ->generativeModel(model: 'gemini-3.1-flash-lite')
             ->generateContent([
                 $prompt,
-                new Blob(mimeType: MimeType::IMAGE_JPEG, data: base64_encode(file_get_contents($imagePath))),
+                new Blob(mimeType: MimeType::IMAGE_JPEG, data: base64_encode($this->readImage($imagePath))),
             ]);
 
         $text = $response->text();
@@ -87,6 +90,11 @@ class GeminiService
         return $decoded ?? [];
     }
 
+    /**
+     * @param list<array<string, mixed>> $scenesData
+     *
+     * @return list<array<string, mixed>>
+     */
     public function suggestChapters(array $scenesData): array
     {
         // Shortcut: Wenn nur eine Szene vorhanden ist, direkt ein Kapitel zurückgeben.
@@ -132,6 +140,10 @@ class GeminiService
         return json_decode(trim($text), true) ?? [];
     }
 
+    /**
+     * @param list<string>                $tags
+     * @param list<array<string, mixed>>  $sceneSummaries
+     */
     public function suggestVideoName(array $tags, array $sceneSummaries, string $filename, ?string $createdAt): string
     {
         $promptParts = ['Schlage einen prägnanten Titel für dieses Video vor.'];
@@ -159,5 +171,15 @@ class GeminiService
             ]);
 
         return trim($response->text());
+    }
+
+    private function readImage(string $path): string
+    {
+        $content = file_get_contents($path);
+        if ($content === false) {
+            throw new RuntimeException(sprintf('Image "%s" could not be read.', $path));
+        }
+
+        return $content;
     }
 }

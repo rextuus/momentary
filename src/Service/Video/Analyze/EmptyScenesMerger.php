@@ -133,11 +133,11 @@ class EmptyScenesMerger
 
             if (array_key_exists($currentPersonSceneIndex, $scenesWithPerson)) {
                 $nextSceneWithPerson = $scenesWithPerson[$currentPersonSceneIndex];
-                $nextSceneId = $nextSceneWithPerson->getId();
+                $nextSceneKey = spl_object_id($nextSceneWithPerson);
 
-                if (!array_key_exists($nextSceneId, $extendedNextScenes)) {
+                if (!array_key_exists($nextSceneKey, $extendedNextScenes)) {
                     $nextSceneWithPerson->setStartSeconds($scene->getStartSeconds());
-                    $extendedNextScenes[$nextSceneId] = true;
+                    $extendedNextScenes[$nextSceneKey] = true;
                 }
 
                 $this->removeScene($video, $scene);

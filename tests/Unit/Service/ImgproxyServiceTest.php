@@ -119,6 +119,9 @@ final class ImgproxyServiceTest extends TestCase
         );
         $encoded = preg_replace('/\.[a-z0-9]+$/i', '', implode('', $segments));
 
-        return base64_decode(strtr((string) $encoded, '-_', '+/'), strict: true);
+        $decoded = base64_decode(strtr((string) $encoded, '-_', '+/'), strict: true);
+        self::assertIsString($decoded);
+
+        return $decoded;
     }
 }

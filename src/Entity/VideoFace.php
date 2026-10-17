@@ -55,10 +55,12 @@ class VideoFace
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?File $faceImage = null;
 
+    /** @var array<string, int|float>|null Bounding Box aus Rekognition (Left/Top/Width/Height, relativ) */
     #[ORM\Column(type: 'json', nullable: true)]
     #[Groups(['video:detail', 'videoface:detail'])]
     private ?array $boundingBox = null;
 
+    /** @var list<float>|null */
     #[ORM\Column(nullable: true)]
     private ?array $embedding = null;
 
@@ -176,11 +178,17 @@ class VideoFace
         return $this->faceImage?->getRelativePath();
     }
 
+    /**
+     * @return array<string, int|float>|null
+     */
     public function getBoundingBox(): ?array
     {
         return $this->boundingBox;
     }
 
+    /**
+     * @param array<string, int|float>|null $boundingBox
+     */
     public function setBoundingBox(?array $boundingBox): static
     {
         $this->boundingBox = $boundingBox;
@@ -267,11 +275,17 @@ class VideoFace
         return $this;
     }
 
+    /**
+     * @return list<float>|null
+     */
     public function getEmbedding(): ?array
     {
         return $this->embedding;
     }
 
+    /**
+     * @param list<float>|null $embedding
+     */
     public function setEmbedding(?array $embedding): self
     {
         $this->embedding = $embedding;
@@ -289,6 +303,9 @@ class VideoFace
         return $this;
     }
 
+    /**
+     * @return Collection<int, VideoFace>
+     */
     public function getMatchFor(): Collection
     {
         return $this->matchFor;

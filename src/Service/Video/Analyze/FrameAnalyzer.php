@@ -6,6 +6,7 @@ namespace App\Service\Video\Analyze;
 
 use App\Entity\File;
 use App\Entity\Person;
+use App\Entity\Video;
 use App\Entity\VideoFace;
 use App\Entity\VideoScene;
 use App\Enum\FilePurpose;
@@ -65,6 +66,9 @@ class FrameAnalyzer
         }
 
         $imageContent = file_get_contents($framePath);
+        if ($imageContent === false) {
+            throw new \RuntimeException("Frame file could not be read: {$framePath}");
+        }
         $uuid = Uuid::uuid4()->toString();
 
         $storagePath = $this->pathProvider->createFacePath((string) $videoId, $uuid . '.jpg');
@@ -81,7 +85,6 @@ class FrameAnalyzer
             $this->entityManager->persist($file);
         }
 
-        $allFacesData = array_values($allFacesData);
         foreach ($allFacesData as $faceData) {
             $this->saveFaceData($video, $faceData, $timestamp, $file, $currentScene);
         }
@@ -91,8 +94,16 @@ class FrameAnalyzer
         return true;
     }
 
-    private function saveFaceData($video, $faceData, $timestamp, $file, $currentScene): void
-    {
+    /**
+     * @param array<string, mixed> $faceData ein Gesicht aus der Rekognition-Antwort
+     */
+    private function saveFaceData(
+        Video $video,
+        array $faceData,
+        int $timestamp,
+        File $file,
+        ?VideoScene $currentScene,
+    ): void {
         $this->entityManager->wrapInTransaction(function () use ($video, $faceData, $timestamp, $file, $currentScene) {
             $person = null;
             $matchedFace = null;

@@ -20,6 +20,7 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 #[StepOrder(stepNumber: 10)]
 class InitRefinementForEmptyScenesStepMessageHandler extends AbstractVideoMessageHandler
 {
+    /** @var list<int> */
     private array $sceneIds = [];
     private ?int $firstSceneId = null;
 

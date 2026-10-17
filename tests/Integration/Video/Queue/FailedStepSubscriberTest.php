@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Video\Queue;
 
+use App\Entity\Video;
 use App\Enum\VideoStatus;
 use App\Service\Video\Processing\Message\ConvertStepMessage;
 use App\Service\Video\Processing\Message\SceneDetectionStepMessage;
@@ -39,7 +40,7 @@ final class FailedStepSubscriberTest extends KernelTestCase
         $video = VideoFactory::createOne(['status' => VideoStatus::SCENE_DETECTION]);
 
         $this->dispatchWorkerFailure(
-            new SceneDetectionStepMessage($video->getId(), 1, ConvertStepMessage::class),
+            new SceneDetectionStepMessage(self::idOf($video), 1, ConvertStepMessage::class),
             new \RuntimeException('Scene detection failed: Could not open video file'),
             willRetry: false,
         );
@@ -59,7 +60,7 @@ final class FailedStepSubscriberTest extends KernelTestCase
         $video = VideoFactory::createOne(['status' => VideoStatus::SCENE_DETECTION]);
 
         $this->dispatchWorkerFailure(
-            new SceneDetectionStepMessage($video->getId(), 1, ConvertStepMessage::class),
+            new SceneDetectionStepMessage(self::idOf($video), 1, ConvertStepMessage::class),
             new \RuntimeException('temporär'),
             willRetry: true,
         );
@@ -93,5 +94,13 @@ final class FailedStepSubscriberTest extends KernelTestCase
         } finally {
             ob_end_clean();
         }
+    }
+
+    private static function idOf(Video $video): int
+    {
+        $id = $video->getId();
+        self::assertNotNull($id);
+
+        return $id;
     }
 }

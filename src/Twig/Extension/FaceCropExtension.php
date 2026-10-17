@@ -36,7 +36,10 @@ class FaceCropExtension extends AbstractExtension
      * zoomFactor 0.05 = Sehr weit weg (Porträt)
      * zoomFactor 0.5  = Fokus auf Gesicht
      */
-    public function getFaceZoomStyle(string $imagePath, $boundingBox, float $zoomFactor = 0.1): string
+    /**
+     * @param array<string, int|float>|null $boundingBox
+     */
+    public function getFaceZoomStyle(string $imagePath, ?array $boundingBox, float $zoomFactor = 0.1): string
     {
         if (!$boundingBox) {
             return sprintf(

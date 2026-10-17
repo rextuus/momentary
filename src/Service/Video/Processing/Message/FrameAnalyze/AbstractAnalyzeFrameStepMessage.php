@@ -17,7 +17,7 @@ abstract class AbstractAnalyzeFrameStepMessage extends AbstractVideoProcessStepM
     private ?VideoFrame $currentFrame = null;
 
     /**
-     * @var array<VideoFrame>
+     * @var list<VideoFrame>
      */
     private array $remainingFrames = [];
 
@@ -47,13 +47,16 @@ abstract class AbstractAnalyzeFrameStepMessage extends AbstractVideoProcessStepM
     }
 
     /**
-     * @return array<VideoFrame>
+     * @return list<VideoFrame>
      */
     public function getRemainingFrames(): array
     {
         return $this->remainingFrames;
     }
 
+    /**
+     * @param list<VideoFrame> $remainingFrames
+     */
     public function setRemainingFrames(array $remainingFrames): self
     {
         $this->remainingFrames = $remainingFrames;

@@ -8,21 +8,32 @@ use App\Dto\VideoFrame;
 
 readonly class FrameSplittingResult
 {
-    /** @var array<VideoFrame> */
+    /** @var list<VideoFrame> */
     private array $frameList;
 
+    /**
+     * @param array<mixed> $rawFrameList Ausgabe von extract_frames.py: Liste aus {path, timestamp}
+     *
+     * @throws \UnexpectedValueException bei unerwartetem Format
+     */
     public function __construct(
         array $rawFrameList,
         private string $frameDirPath,
     ) {
-        $this->frameList = array_map(
-            static fn(array $frame) => new VideoFrame($frame['path'], (int) $frame['timestamp']),
-            $rawFrameList,
-        );
+        $frames = [];
+        foreach ($rawFrameList as $frame) {
+            if (!\is_array($frame) || !\is_string($frame['path'] ?? null) || !is_numeric($frame['timestamp'] ?? null)) {
+                throw new \UnexpectedValueException(
+                    'Unexpected frame entry from extract_frames.py: ' . json_encode($frame),
+                );
+            }
+            $frames[] = new VideoFrame($frame['path'], (int) $frame['timestamp']);
+        }
+        $this->frameList = $frames;
     }
 
     /**
-     * @return array<VideoFrame>
+     * @return list<VideoFrame>
      */
     public function getFrameList(): array
     {

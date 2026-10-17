@@ -64,6 +64,14 @@ class SplitLastSceneInFramesStepMessageHandler extends AbstractSplitInFramesStep
 
         // split the current scene
         $scene = $this->sceneRepository->find($message->getCurrentSceneId());
+        if ($scene === null) {
+            $this->stopProcessing(sprintf(
+                'Scene %d for refinement no longer exists.',
+                (int) $message->getCurrentSceneId(),
+            ));
+
+            return;
+        }
         $frameSplitResult = $this->splitSceneIntoFrames($scene, $video, $localVideoPath);
 
         // store collection form message in handler

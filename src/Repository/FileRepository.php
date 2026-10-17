@@ -56,6 +56,8 @@ class FileRepository extends ServiceEntityRepository
     }
 
     /**
+     * @param list<FilePurpose> $purposes
+     *
      * @return File[]
      */
     public function findByVideoAndPurposes(Video $video, array $purposes): array

@@ -20,9 +20,10 @@ use Doctrine\ORM\EntityManagerInterface;
 
 abstract class AbstractSplitInFramesStepMessageHandler extends AbstractVideoMessageHandler
 {
-    /** @var array<VideoFrame> */
+    /** @var list<VideoFrame> */
     protected array $framePathCollection = [];
     protected ?int $currentSceneId = null;
+    /** @var list<int> */
     protected array $remainingSceneIds = [];
 
     public function __construct(
@@ -103,7 +104,7 @@ abstract class AbstractSplitInFramesStepMessageHandler extends AbstractVideoMess
         $endTime = $scene->getEndSeconds();
 
         return $this->videoAnalyzer->extractFrames(
-            $video->getId(),
+            $this->getCurrentMessage()->getVideoId(),
             $localVideoPath,
             $video->getAnalysisFps(),
             $startTime,

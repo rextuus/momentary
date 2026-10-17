@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Service\Video\Processing\Handler\Tagging;
 
-use App\Entity\VideoScene;
 use App\Repository\VideoRepository;
 use App\Repository\VideoSceneRepository;
 use App\Service\Video\Analyze\TaggingService;
@@ -45,8 +44,7 @@ class TagFirstSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
         $video = $this->getVideo();
         $this->startCurrentStep();
 
-        $scenes = $video->getScenes()->toArray();
-        $sceneIds = array_map(static fn(VideoScene $scene) => $scene->getId(), $scenes);
+        $sceneIds = $video->getSceneIds();
 
         if (count($sceneIds) === 0) {
             $this->stopProcessing(sprintf('No scenes found for video %d to tag.', $video->getId()));
@@ -59,7 +57,7 @@ class TagFirstSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
             $firstSceneId = array_shift($sceneIds);
             $result = $this->processSceneTagging($firstSceneId);
             if (!$result->isSuccess()) {
-                $this->stopProcessing($result->getMessage());
+                $this->stopProcessing($result->getMessage() ?? 'Tagging failed');
                 return;
             }
 
@@ -73,7 +71,7 @@ class TagFirstSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
         $this->currentSceneId = array_shift($sceneIds);
         $result = $this->processSceneTagging($this->currentSceneId);
         if (!$result->isSuccess()) {
-            $this->stopProcessing($result->getMessage());
+            $this->stopProcessing($result->getMessage() ?? 'Tagging failed');
             return;
         }
 

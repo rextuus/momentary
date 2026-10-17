@@ -14,6 +14,9 @@ readonly class VideoSceneService
         private EntityManagerInterface $entityManager,
     ) {}
 
+    /**
+     * @param list<array<string, mixed>> $scenes Szenen wie von PySceneDetect geliefert
+     */
     public function storeScenes(Video $video, array $scenes): void
     {
         $this->entityManager->persist($video); // Stelle sicher, dass das Video persistiert ist

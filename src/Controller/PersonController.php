@@ -52,7 +52,7 @@ final class PersonController extends AbstractController
         EntityManagerInterface $entityManager,
         Request $request,
     ): Response {
-        if (!$this->isCsrfTokenValid('person_cleanup', $request->request->get('_token'))) {
+        if (!$this->isCsrfTokenValid('person_cleanup', $request->request->getString('_token'))) {
             $this->addFlash('danger', 'Ungültiges CSRF-Token.');
             return $this->redirectToRoute('app_dashboard');
         }

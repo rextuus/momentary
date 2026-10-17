@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Twig\Components;
 
+use App\Entity\Person;
 use App\Entity\VideoFace;
 use App\Form\VideoFaceSwitchType;
 use App\Service\ImgproxyService;
@@ -37,6 +38,9 @@ final class VideoFaceComponent extends AbstractController
         private readonly EntityManagerInterface $entityManager,
     ) {}
 
+    /**
+     * @return FormInterface<VideoFaceSwitchData|null>
+     */
     protected function instantiateForm(): FormInterface
     {
         return $this->createForm(VideoFaceSwitchType::class, $this->initialFormData);
@@ -50,11 +54,14 @@ final class VideoFaceComponent extends AbstractController
         /** @var VideoFaceSwitchData $videoFaceSwitchData */
         $videoFaceSwitchData = $this->getForm()->getData();
 
-        $currentPerson = $this->videoFace->getPerson();
+        $currentPerson = $this->person();
         $currentPerson->removeVideoFace($this->videoFace);
         $currentPerson->removeDetectionFace($this->videoFace);
 
         $newPerson = $videoFaceSwitchData->getTarget();
+        if ($newPerson === null) {
+            return $this->redirectToRoute('person_detail', ['id' => $currentPerson->getId()]);
+        }
         $this->videoFace->setPerson($newPerson);
         $newPerson->addVideoFace($this->videoFace);
 
@@ -69,7 +76,7 @@ final class VideoFaceComponent extends AbstractController
     #[LiveAction]
     public function switchDetectionFace(): RedirectResponse
     {
-        $person = $this->videoFace->getPerson();
+        $person = $this->person();
         $person->addDetectionFace($this->videoFace);
         $this->videoFace->setDetection($person);
 
@@ -83,17 +90,13 @@ final class VideoFaceComponent extends AbstractController
     #[LiveAction]
     public function remove(): RedirectResponse
     {
-        $person = $this->videoFace->getPerson();
+        $person = $this->person();
         $person->removeVideoFace($this->videoFace);
         $person->removeDetectionFace($this->videoFace);
-        $this->videoFace->setPerson(null);
+        $this->videoFace->getVideo()?->removeVideoFace($this->videoFace);
 
-        $video = $this->videoFace->getVideo();
-        $video->removeVideoFace($this->videoFace);
-
-        $this->entityManager->persist($video);
-        $this->entityManager->persist($person);
-        $this->entityManager->persist($this->videoFace);
+        // Explizit löschen: über orphanRemoval am Video ginge es nur, wenn das Gesicht ein Video hat
+        $this->entityManager->remove($this->videoFace);
         $this->entityManager->flush();
 
         return $this->redirectToRoute('person_detail', ['id' => $person->getId()]);
@@ -101,30 +104,28 @@ final class VideoFaceComponent extends AbstractController
 
     public function getVideoUrl(): ?string
     {
-        if (!$this->videoFace->getFaceImagePath()) {
+        $path = $this->videoFace->getFaceImagePath();
+        if ($path === null) {
             return null;
         }
 
         $width = $this->small ? 80 : 250;
         $height = $this->small ? 80 : 250;
 
-        return $this->imgproxyService->generateUrl($this->videoFace->getFaceImagePath(), $width, $height);
+        return $this->imgproxyService->generateUrl($path, $width, $height);
     }
 
     public function getMatchImageUrl(): ?string
     {
-        if (!$this->videoFace->getMatchedBy()) {
+        $path = $this->videoFace->getMatchedBy()?->getFaceImagePath();
+        if ($path === null) {
             return null;
         }
 
         $width = $this->small ? 80 : 250;
         $height = $this->small ? 80 : 250;
 
-        return $this->imgproxyService->generateUrl(
-            $this->videoFace->getMatchedBy()->getFaceImagePath(),
-            $width,
-            $height,
-        );
+        return $this->imgproxyService->generateUrl($path, $width, $height);
     }
 
     public function getImageDimensions(): string
@@ -138,5 +139,18 @@ final class VideoFaceComponent extends AbstractController
         }
 
         return sprintf('style="max-width: %dpx; max-height: %dpx;"', $width, $height);
+    }
+
+    /**
+     * Gesichter gehören laut Mapping immer zu einer Person (JoinColumn nullable: false).
+     */
+    private function person(): Person
+    {
+        return (
+            $this->videoFace->getPerson() ?? throw new \LogicException(sprintf(
+                'Face %d has no person.',
+                (int) $this->videoFace->getId(),
+            ))
+        );
     }
 }

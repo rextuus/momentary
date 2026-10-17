@@ -22,6 +22,9 @@ class TaggingService
     {
         try {
             $video = $scene->getVideo();
+            if ($video === null) {
+                return new TaggingResult(false, false, [], sprintf('Scene %d has no video.', (int) $scene->getId()));
+            }
             $start = (float) $scene->getStartSeconds();
             $end = (float) $scene->getEndSeconds();
             $duration = $end - $start;

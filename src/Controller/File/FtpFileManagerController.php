@@ -27,7 +27,7 @@ final class FtpFileManagerController extends AbstractController
     #[Route('/admin/files/ftp/list', name: 'admin_files_ftp_list', methods: ['GET'])]
     public function listFiles(Request $request): Response
     {
-        $dir = $request->query->get('dir');
+        $dir = $request->query->getString('dir');
 
         try {
             $files = $this->ftpFileManager->listFiles($dir);
@@ -45,8 +45,8 @@ final class FtpFileManagerController extends AbstractController
     #[Route('/admin/files/ftp/move', name: 'admin_files_ftp_move', methods: ['POST'])]
     public function moveFile(Request $request): Response
     {
-        $path = $request->request->get('path');
-        $dir = $request->request->get('dir');
+        $path = $request->request->getString('path');
+        $dir = $request->request->getString('dir');
 
         try {
             $this->ftpFileManager->moveFile($path);
@@ -61,9 +61,9 @@ final class FtpFileManagerController extends AbstractController
     #[Route('/admin/files/ftp/rename', name: 'admin_files_ftp_rename', methods: ['POST'])]
     public function renameFile(Request $request): Response
     {
-        $path = $request->request->get('path');
-        $newName = $request->request->get('new_name');
-        $dir = $request->request->get('dir');
+        $path = $request->request->getString('path');
+        $newName = $request->request->getString('new_name');
+        $dir = $request->request->getString('dir');
 
         try {
             $this->ftpFileManager->renameFile($path, $newName);

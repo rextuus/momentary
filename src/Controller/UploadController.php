@@ -104,7 +104,10 @@ final class UploadController extends AbstractController
         $batchName = trim((string) $request->request->get('batch_name', ''));
 
         // Duplikatsprüfung per Hash (streamt die Datei, statt sie komplett in den RAM zu laden)
-        $hash = hash_file('sha256', $videoFile->getRealPath());
+        $hash = hash_file('sha256', $videoFile->getPathname());
+        if ($hash === false) {
+            return $this->error('Die hochgeladene Datei konnte nicht gelesen werden.', 500);
+        }
         $existingVideo = $this->videoRepository->findOneBy(['fileHash' => $hash]);
         if ($existingVideo) {
             $this->applyBatchTag($existingVideo, $batchName);

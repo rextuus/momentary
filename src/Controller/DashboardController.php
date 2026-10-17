@@ -94,7 +94,7 @@ final class DashboardController extends AbstractController
         $counts = [];
         foreach ($rows as $row) {
             $status = $row['status'];
-            $key = $status instanceof \BackedEnum ? $status->value : (string) $status;
+            $key = $status instanceof \BackedEnum ? (string) $status->value : (string) $status;
             $counts[$key] = (int) $row['cnt'];
         }
 

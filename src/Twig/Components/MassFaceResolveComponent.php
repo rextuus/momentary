@@ -75,10 +75,10 @@ class MassFaceResolveComponent
     #[LiveAction]
     public function selectAll(): void
     {
-        $this->selectedForRemoval = array_map(
+        $this->selectedForRemoval = array_values(array_filter(array_map(
             static fn(VideoFace $face) => $face->getId(),
             $this->getUnverifiedFaces(),
-        );
+        )));
     }
 
     #[LiveAction]

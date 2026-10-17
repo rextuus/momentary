@@ -32,6 +32,8 @@ readonly class VideoProcessMessageDispatcher
 
     public function dispatchInitialProcessMessage(Video $video): bool
     {
-        return $this->dispatch(new ConvertStepMessage($video->getId(), 0, 'initial'));
+        $videoId = $video->getId() ?? throw new \LogicException('Only persisted videos can be processed.');
+
+        return $this->dispatch(new ConvertStepMessage($videoId, 0, 'initial'));
     }
 }

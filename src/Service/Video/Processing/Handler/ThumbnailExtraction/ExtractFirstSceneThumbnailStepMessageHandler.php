@@ -53,7 +53,7 @@ class ExtractFirstSceneThumbnailStepMessageHandler extends AbstractExtractSceneT
 
         $this->startCurrentStep();
 
-        $sceneIds = array_values(array_map(static fn($s) => $s->getId(), $video->getScenes()->toArray()));
+        $sceneIds = $video->getSceneIds();
 
         // should in fact never occur cause last step already marked chain as failed/stopped
         if ($sceneIds === []) {

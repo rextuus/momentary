@@ -27,6 +27,9 @@ final class ImageController extends AbstractController
         return new StreamedResponse(
             static function () use ($path, $filesystem) {
                 $outputStream = fopen('php://output', 'wb');
+                if ($outputStream === false) {
+                    throw new \RuntimeException('Could not open output stream.');
+                }
                 $fileStream = $filesystem->readStream($path);
                 stream_copy_to_stream($fileStream, $outputStream);
             },

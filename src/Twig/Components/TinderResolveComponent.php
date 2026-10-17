@@ -30,6 +30,7 @@ class TinderResolveComponent
     #[LiveProp]
     public ?int $activeFaceId = null;
 
+    /** @var list<string> PersonStatus-Werte */
     #[LiveProp(writable: true, onUpdated: 'onStatusesUpdated')]
     public array $statuses = [];
 
@@ -43,6 +44,9 @@ class TinderResolveComponent
         $this->statuses = [PersonStatus::NEW->value, PersonStatus::WASTED->value];
     }
 
+    /**
+     * @param list<string>|null $statuses
+     */
     public function mount(?array $statuses = []): void
     {
         if (!empty($statuses)) {
@@ -105,7 +109,7 @@ class TinderResolveComponent
             return $none;
         }
 
-        $ids = array_map(static fn(VideoFace $f) => $f->getId(), $faces);
+        $ids = array_values(array_map(static fn(VideoFace $f) => $f->getId(), $faces));
         $index = array_search($active->getId(), $ids, true);
         if ($index === false) {
             $index = 0;
@@ -239,7 +243,7 @@ class TinderResolveComponent
     {
         $values = [];
         foreach ($this->statuses as $status) {
-            $enum = PersonStatus::tryFrom((string) $status);
+            $enum = PersonStatus::tryFrom($status);
             if ($enum !== null) {
                 $values[] = $enum->value;
             }

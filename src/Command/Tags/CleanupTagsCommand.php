@@ -45,7 +45,7 @@ class CleanupTagsCommand extends Command
         $byName = [];
 
         foreach ($categories as $category) {
-            $name = strtolower($category->getName());
+            $name = strtolower($category->getName() ?? '');
             if (!isset($byName[$name])) {
                 $byName[$name] = [];
             }
@@ -73,7 +73,7 @@ class CleanupTagsCommand extends Command
         $byNameAndCategory = [];
 
         foreach ($tags as $tag) {
-            $name = strtolower($tag->getName());
+            $name = strtolower($tag->getName() ?? '');
             $catId = $tag->getCategory()?->getId() ?? 'no_cat';
             $key = $name . '_' . $catId;
 
@@ -91,6 +91,9 @@ class CleanupTagsCommand extends Command
                 foreach ($tagList as $tag) {
                     foreach ($tag->getSceneTags()->toArray() as $sceneTag) {
                         $scene = $sceneTag->getVideoScene();
+                        if ($scene === null) {
+                            continue;
+                        }
                         $scene->addSceneTag($keptTag, $sceneTag->isAiGenerated(), $sceneTag->getConfidence());
                         $scene->removeTag($tag);
                     }
@@ -108,7 +111,7 @@ class CleanupTagsCommand extends Command
             $seenTags = [];
             $duplicates = [];
             foreach ($tags as $tag) {
-                $id = $tag->getId();
+                $id = spl_object_id($tag);
                 if (isset($seenTags[$id])) {
                     $duplicates[] = $tag;
                 } else {

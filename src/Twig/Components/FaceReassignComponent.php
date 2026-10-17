@@ -41,6 +41,9 @@ class FaceReassignComponent extends AbstractController
         private EntityManagerInterface $entityManager,
     ) {}
 
+    /**
+     * @return list<VideoFace>
+     */
     public function getFaces(): array
     {
         return $this->videoFaceRepository
@@ -157,6 +160,9 @@ class FaceReassignComponent extends AbstractController
         }
     }
 
+    /**
+     * @return list<Person>
+     */
     public function getSuggestions(): array
     {
         $qb = $this->personRepository

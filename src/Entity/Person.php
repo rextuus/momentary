@@ -247,7 +247,7 @@ class Person
         $videoFaces = $this->getVideoFaces();
         $count = 0;
         while ($gender === null && $count < $videoFaces->count()) {
-            $gender = $this->determineGenderFromDbField($videoFaces->get($count)->getGender());
+            $gender = $this->determineGenderFromDbField($videoFaces->get($count)?->getGender() ?? '');
             $count++;
         }
 
@@ -279,7 +279,7 @@ class Person
 
         foreach ($parsed as $gender => $value) {
             if ($value > $maxValue) {
-                $maxGender = $gender;
+                $maxGender = (string) $gender;
                 $maxValue = $value;
             }
         }

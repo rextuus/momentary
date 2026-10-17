@@ -23,7 +23,7 @@ final class JellyfinController extends AbstractController
     #[IsGranted('VIDEO_EDIT', subject: 'video')]
     public function export(Video $video, Request $request, VideoProcessMessageDispatcher $dispatcher): Response
     {
-        if (!$this->isCsrfTokenValid('jellyfin-export' . $video->getId(), $request->request->get('_token'))) {
+        if (!$this->isCsrfTokenValid('jellyfin-export' . $video->getId(), $request->request->getString('_token'))) {
             $this->addFlash('danger', 'Ungültiges CSRF-Token.');
 
             return $this->redirectToRoute('app_video_show', ['id' => $video->getId()]);
@@ -35,7 +35,9 @@ final class JellyfinController extends AbstractController
             return $this->redirectToRoute('app_video_show', ['id' => $video->getId()]);
         }
 
-        if ($dispatcher->dispatch(new UploadToJellyfinStepMessage($video->getId(), 0, self::class))) {
+        if ($dispatcher->dispatch(
+            new UploadToJellyfinStepMessage($video->getId() ?? throw $this->createNotFoundException(), 0, self::class),
+        )) {
             $this->addFlash('success', 'Der Export nach Jellyfin wurde gestartet.');
         } else {
             $this->addFlash('danger', 'Der Export nach Jellyfin konnte nicht gestartet werden.');

@@ -36,45 +36,19 @@ class AnalyzeFirstSceneFrameStepMessageHandler extends AbstractAnalyzeFrameStepM
         $video = $this->getVideo();
         $this->startCurrentStep();
 
-        // Special-Case: There is no frame=> Finish this step => next handler will immediately go on
-        if ($this->frame === null) {
-            $this->finishCurrentStep('Video has no frames');
+        $analyzed = $this->analyzeCurrentAndPrepareNext($message);
+        if ($analyzed === null) {
+            $this->finishCurrentStep(sprintf('Video "%s" has no frames to analyze.', $video->getTitle()));
 
             return;
         }
 
-        // Special-Case: This is the only Frame => Finish this step => next handler will immediately go on
-        if (count($message->getRemainingFrames()) === 1) {
-            $framePaths = $message->getRemainingFrames();
-            $this->analyzeFrame($message);
-
-            $this->frame = array_shift($framePaths);
-            $this->remainingFrames = $framePaths;
-
-            $successMsg = sprintf('Video %d contains only one frame. Analyzed this successfully', $video->getId());
-
-            $this->finishCurrentStep($successMsg);
-
-            return;
-        }
-
-        $this->frame = $message->getCurrentFrame();
-
-        // analyze the first frame
-        $this->analyzeFrame($message);
-        $successMsg = sprintf(
-            'Frame #1 of Video "%s" at timestamp "%d" analyzed. %d left',
+        $this->finishCurrentStep(sprintf(
+            'First frame of video "%s" at timestamp %d analyzed. %d left.',
             $video->getTitle(),
-            $this->frame['timestamp'],
-            count($message->getRemainingFrames()),
-        );
-
-        // prepare the next
-        $remainingFrames = $message->getRemainingFrames();
-        $this->frame = array_shift($remainingFrames);
-        $this->remainingFrames = $remainingFrames;
-
-        $this->finishCurrentStep($successMsg);
+            $analyzed->getTimestamp(),
+            $this->countFramesLeft(),
+        ));
     }
 
     public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void

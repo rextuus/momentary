@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Twig\Components;
 
+use App\Entity\Person;
 use App\Enum\PersonStatus;
 use App\Repository\PersonRepository;
 use Symfony\UX\LiveComponent\Attribute\AsLiveComponent;
@@ -27,6 +28,7 @@ final class PersonListingComponent
         'MERGED' => 'Gemergt',
     ];
 
+    /** @var list<string|PersonStatus> PersonStatus-Werte */
     #[LiveProp(writable: true)]
     public array $statuses = [];
 
@@ -37,6 +39,9 @@ final class PersonListingComponent
         private readonly PersonRepository $personRepository,
     ) {}
 
+    /**
+     * @param array<string|PersonStatus>|null $statuses
+     */
     public function mount(?array $statuses = null, ?string $search = null): void
     {
         if ($statuses !== null) {
@@ -60,6 +65,9 @@ final class PersonListingComponent
         ], PersonStatus::cases());
     }
 
+    /**
+     * @return list<Person>
+     */
     public function getPersons(): array
     {
         $values = [];

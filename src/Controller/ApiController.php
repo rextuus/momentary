@@ -36,7 +36,7 @@ final class ApiController extends AbstractController
 
         foreach ($persons as $person) {
             $personId = $person->getId();
-            if (!isset($known[$personId])) {
+            if ($personId !== null && !isset($known[$personId])) {
                 $embeddings = array_map(
                     static fn(VideoFace $face) => $face->getEmbedding(),
                     $person->getDetectionFaces()->toArray(),
@@ -70,7 +70,7 @@ final class ApiController extends AbstractController
         }
 
         $person = $person[0];
-        $index = (int) explode('_', $person->getName())[1];
+        $index = (int) (explode('_', $person->getName() ?? '')[1] ?? 0);
 
         return $this->json(['current' => $index]);
     }

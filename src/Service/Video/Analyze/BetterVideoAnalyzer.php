@@ -45,6 +45,9 @@ readonly class BetterVideoAnalyzer
         return $this->mp4Converter->convertToMp4($sourcePath, $targetPath);
     }
 
+    /**
+     * @return list<array<string, mixed>> Szenen wie von PySceneDetect geliefert
+     */
     public function detectScenes(
         string $videoPath,
         int $videoId,
@@ -59,6 +62,10 @@ readonly class BetterVideoAnalyzer
         return $this->sceneThumbnailExtractor->extractThumbnail($video, $timeInSeconds, $customFilename);
     }
 
+    /**
+     * @param float|list<float>|null $startTime
+     * @param float|list<float>|null $duration
+     */
     public function extractFrames(
         int $videoId,
         string $videoPath,
@@ -78,8 +85,9 @@ readonly class BetterVideoAnalyzer
         foreach ($video->getScenes() as $scene) {
             $duration = $scene->getEndSeconds() - $scene->getStartSeconds();
 
-            if ($scene->getVideoFaces()->isEmpty() && $duration >= $minSceneLength) {
-                $scenesToRefine[] = $scene->getId();
+            $sceneId = $scene->getId();
+            if ($sceneId !== null && $scene->getVideoFaces()->isEmpty() && $duration >= $minSceneLength) {
+                $scenesToRefine[] = $sceneId;
             }
         }
 

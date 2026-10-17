@@ -16,7 +16,7 @@ use App\Service\WorkflowMachine;
 abstract class AbstractAnalyzeFrameStepMessageHandler extends AbstractVideoMessageHandler
 {
     protected ?VideoFrame $frame = null;
-    /** @var array<VideoFrame> */
+    /** @var list<VideoFrame> */
     protected array $remainingFrames = [];
 
     public function __construct(
@@ -29,12 +29,35 @@ abstract class AbstractAnalyzeFrameStepMessageHandler extends AbstractVideoMessa
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
     }
 
-    protected function analyzeFrame(AbstractAnalyzeFrameStepMessage $message): void
+    /**
+     * Analysiert den aktuellen Frame der Message und legt den nächsten Frame samt Rest für die Folge-Message ab.
+     *
+     * Der Zustand wird bei jeder Message vollständig neu gesetzt: Handler leben im Worker über viele
+     * Messages hinweg, ein Rest aus der vorherigen Message würde sonst falsche Frames weiterreichen.
+     *
+     * @return VideoFrame|null der analysierte Frame, null wenn die Message keinen mehr enthielt
+     */
+    protected function analyzeCurrentAndPrepareNext(AbstractAnalyzeFrameStepMessage $message): ?VideoFrame
     {
-        $this->videoAnalyzer->analyzeFrame(
-            $message->getVideoId(),
-            $this->frame->getPath(),
-            $this->frame->getTimestamp(),
-        );
+        $current = $message->getCurrentFrame();
+        $remaining = $message->getRemainingFrames();
+        $this->frame = array_shift($remaining);
+        $this->remainingFrames = $remaining;
+
+        if ($current !== null) {
+            $path = $current->getPath();
+            $this->videoAnalyzer->analyzeFrame(
+                $message->getVideoId(),
+                str_starts_with($path, '/') ? $path : $this->videoAnalyzer->getAbsolutePath($path),
+                $current->getTimestamp(),
+            );
+        }
+
+        return $current;
+    }
+
+    protected function countFramesLeft(): int
+    {
+        return \count($this->remainingFrames) + ($this->frame === null ? 0 : 1);
     }
 }

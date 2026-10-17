@@ -17,7 +17,7 @@ abstract class AbstractVideoProcessStepMessage implements VideoProcessStepMessag
     protected ?int $currentSceneId = null;
 
     /**
-     * @var class-string
+     * Klasse des vorherigen Schritts oder ein Marker wie "initial", wenn die Kette von außen gestartet wurde.
      */
     protected string $comingFromStepMessageClass;
 

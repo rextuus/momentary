@@ -9,7 +9,6 @@ use App\Entity\Video;
 use App\Entity\VideoScene;
 use App\Enum\FilePurpose;
 use App\Enum\VideoStatus;
-use App\Repository\VideoRepository;
 use App\Service\Aws\AmazonRekognitionService;
 use App\Service\Gemini\GeminiService;
 use App\Service\Storage\StoragePathProvider;
@@ -41,7 +40,6 @@ final class RealVideoProcessingPipelineTest extends VideoPipelineTestCase
 
     private AmazonRekognitionService&Stub $rekognitionService;
     private GeminiService&Stub $geminiService;
-    private VideoRepository $videoRepository;
     private EntityManagerInterface $entityManager;
     private StoragePathProvider $pathProvider;
 
@@ -65,7 +63,7 @@ final class RealVideoProcessingPipelineTest extends VideoPipelineTestCase
                 $file = new File();
                 $file->setRelativePath(sprintf(
                     'images/videos/%d/thumbnails/scene_%d.jpg',
-                    $scene->getVideo()->getId(),
+                    $scene->getVideo()?->getId(),
                     $scene->getId(),
                 ));
                 $file->setMimeType('image/jpeg');
@@ -79,8 +77,6 @@ final class RealVideoProcessingPipelineTest extends VideoPipelineTestCase
         $container->set(Client::class, $meilisearch);
         $container->set(SceneThumbnailExtractor::class, $thumbnailExtractor);
         $container->set('default.storage', $this->createStub(FilesystemOperator::class));
-
-        $this->videoRepository = $container->get(VideoRepository::class);
         $this->entityManager = $container->get(EntityManagerInterface::class);
         $this->pathProvider = $container->get(StoragePathProvider::class);
     }
@@ -90,7 +86,7 @@ final class RealVideoProcessingPipelineTest extends VideoPipelineTestCase
         $this->stubExternalServices(faces: []);
         $video = $this->createVideoFromSample('people-detection.mp4');
 
-        $this->dispatch(new ConvertStepMessage($video->getId(), 0, 'INITIAL'));
+        $this->dispatch(new ConvertStepMessage(self::idOf($video), 0, 'INITIAL'));
 
         $video = $this->reload($video);
         self::assertSame(VideoStatus::COMPLETED, $video->getStatus(), (string) $video->getErrorMessage());
@@ -104,7 +100,7 @@ final class RealVideoProcessingPipelineTest extends VideoPipelineTestCase
         $this->stubExternalServices(faces: $this->loadFixture('face-demographics-walking_rekognition_response.json'));
         $video = $this->createVideoFromSample('face-demographics-walking.mp4');
 
-        $this->dispatch(new ConvertStepMessage($video->getId(), 0, 'INITIAL'));
+        $this->dispatch(new ConvertStepMessage(self::idOf($video), 0, 'INITIAL'));
 
         $video = $this->reload($video);
         self::assertSame(VideoStatus::COMPLETED, $video->getStatus(), (string) $video->getErrorMessage());
@@ -122,13 +118,10 @@ final class RealVideoProcessingPipelineTest extends VideoPipelineTestCase
     public function testSceneDetectionFailsLoudlyForCorruptVideo(): void
     {
         $video = $this->createVideoFromSample('people-detection.mp4');
-        file_put_contents(
-            $this->pathProvider->getAbsoluteFilePath($video->getSourceFile()->getRelativePath()),
-            'kein Video',
-        );
+        file_put_contents($this->pathProvider->getAbsoluteFilePath('videos/test/people-detection.mp4'), 'kein Video');
 
         try {
-            $this->dispatch(new SceneDetectionStepMessage($video->getId(), 1, ConvertStepMessage::class));
+            $this->dispatch(new SceneDetectionStepMessage(self::idOf($video), 1, ConvertStepMessage::class));
             self::fail('Die Szenenerkennung hätte fehlschlagen müssen.');
         } catch (HandlerFailedException $e) {
             self::assertStringContainsString('Could not open video file', $e->getMessage());
@@ -173,13 +166,6 @@ final class RealVideoProcessingPipelineTest extends VideoPipelineTestCase
         $this->entityManager->flush();
 
         return $video;
-    }
-
-    private function reload(Video $video): Video
-    {
-        $this->entityManager->clear();
-
-        return $this->videoRepository->find($video->getId());
     }
 
     /**

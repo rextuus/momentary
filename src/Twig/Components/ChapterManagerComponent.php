@@ -112,7 +112,7 @@ class ChapterManagerComponent
         }
 
         $this->editingChapterId = $id;
-        $this->editingTitle = $chapter->getTitle();
+        $this->editingTitle = $chapter->getTitle() ?? '';
 
         // Szenen anhand der Zeiten finden
         $startScene = $this->entityManager

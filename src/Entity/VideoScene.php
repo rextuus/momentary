@@ -176,11 +176,17 @@ class VideoScene
         return $this;
     }
 
+    /**
+     * @return Collection<int, VideoFace>
+     */
     public function getVideoFaces(): Collection
     {
         return $this->videoFaces;
     }
 
+    /**
+     * @param Collection<int, VideoFace> $videoFaces
+     */
     public function setVideoFaces(Collection $videoFaces): self
     {
         $this->videoFaces = $videoFaces;

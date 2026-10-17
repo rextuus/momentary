@@ -13,6 +13,7 @@ abstract class AbstractExtractSceneThumbnailStepMessage extends AbstractVideoPro
 {
     use VideoMessageTrait;
 
+    /** @var list<int> */
     private array $remainingSceneIds = [];
     private int $processedScenes = 0;
     private int $totalScenes = 0;
@@ -42,11 +43,17 @@ abstract class AbstractExtractSceneThumbnailStepMessage extends AbstractVideoPro
         return $this;
     }
 
+    /**
+     * @return list<int>
+     */
     public function getRemainingSceneIds(): array
     {
         return $this->remainingSceneIds;
     }
 
+    /**
+     * @param list<int> $remainingSceneIds
+     */
     public function setRemainingSceneIds(array $remainingSceneIds): self
     {
         $this->remainingSceneIds = $remainingSceneIds;

@@ -9,7 +9,6 @@ use App\Entity\Video;
 use App\Entity\VideoScene;
 use App\Enum\FilePurpose;
 use App\Enum\VideoStatus;
-use App\Repository\VideoRepository;
 use App\Service\Aws\AmazonRekognitionService;
 use App\Service\Gemini\GeminiService;
 use App\Service\Storage\StoragePathProvider;
@@ -49,9 +48,11 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
     private GeminiService&Stub $geminiServiceMock;
     private ChapterGenerator&Stub $chapterGenerator;
     private JellyfinUploader&Stub $jellyfinUploader;
-    private VideoRepository $videoRepository;
     private EntityManagerInterface $entityManager;
     private StoragePathProvider $pathProvider;
+
+    /** @var list<string> */
+    private array $analyzedFrames = [];
 
     protected function setUp(): void
     {
@@ -84,8 +85,6 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         static::getContainer()->set(GeminiService::class, $this->geminiServiceMock);
         static::getContainer()->set(ChapterGenerator::class, $this->chapterGenerator);
         static::getContainer()->set(JellyfinUploader::class, $this->jellyfinUploader);
-
-        $this->videoRepository = static::getContainer()->get(VideoRepository::class);
         $this->entityManager = static::getContainer()->get(EntityManagerInterface::class);
         $this->pathProvider = static::getContainer()->get(StoragePathProvider::class);
     }
@@ -95,12 +94,10 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         $video = $this->arrangeSuccessfulPipeline();
 
         // 5. Trigger Pipeline
-        $this->dispatch(new ConvertStepMessage($video->getId(), 0, 'INITIAL'));
+        $this->dispatch(new ConvertStepMessage(self::idOf($video), 0, 'INITIAL'));
 
         // 6. Assertions
-        $this->entityManager->flush();
-        $this->entityManager->clear();
-        $updatedVideo = $this->videoRepository->find($video->getId());
+        $updatedVideo = $this->reload($video);
 
         self::assertEquals(VideoStatus::COMPLETED, $updatedVideo->getStatus());
         self::assertNull($updatedVideo->getErrorMessage());
@@ -118,27 +115,34 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         foreach ($updatedVideo->getProcessingSteps() as $step) {
             self::assertNull($step->getErrorMessage(), sprintf(
                 'Schritt %s sollte ohne Fehler laufen',
-                $step->getStep()->value,
+                $step->getStep()?->value,
             ));
         }
+    }
+
+    public function testEveryFrameIncludingRefinementIsAnalyzedExactlyOnce(): void
+    {
+        $video = $this->arrangeSuccessfulPipeline();
+
+        $this->dispatch(new ConvertStepMessage(self::idOf($video), 0, 'INITIAL'));
+
+        // Erst die Frames des ganzen Videos, danach die Refinement-Frames der vier (noch) gesichtslosen Szenen
+        $expected = array_map(static fn(int $n): string => sprintf('frame_%04d.jpg', $n), range(1, 12));
+        self::assertSame($expected, $this->analyzedFrames);
     }
 
     public function testFailedTaggingStopsPipelineWithError(): void
     {
         $video = $this->arrangeSuccessfulPipeline(new TaggingResult(false, false, [], 'Gemini API Error'));
 
-        $this->dispatch(new ConvertStepMessage($video->getId(), 0, 'INITIAL'));
+        $this->dispatch(new ConvertStepMessage(self::idOf($video), 0, 'INITIAL'));
 
-        $this->entityManager->clear();
-        $updatedVideo = $this->videoRepository->find($video->getId());
+        $updatedVideo = $this->reload($video);
 
         self::assertEquals(VideoStatus::ERROR, $updatedVideo->getStatus());
-        $failedSteps = $updatedVideo
-            ->getProcessingSteps()
-            ->filter(static fn($step) => $step->getErrorMessage() !== null);
-        self::assertCount(1, $failedSteps);
-        self::assertSame(VideoStatus::TAGGING_SCENES, $failedSteps->first()->getStep());
-        self::assertStringContainsString('Gemini API Error', $failedSteps->first()->getErrorMessage());
+        $failedStep = self::singleFailedStep($updatedVideo);
+        self::assertSame(VideoStatus::TAGGING_SCENES, $failedStep->getStep());
+        self::assertStringContainsString('Gemini API Error', (string) $failedStep->getErrorMessage());
     }
 
     private function arrangeSuccessfulPipeline(?TaggingResult $taggingResult = null): Video
@@ -186,7 +190,13 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         }
 
         // Mocks konfigurieren
-        $this->frameAnalyzer->method('analyzeFrame')->willReturn(true);
+        $this->frameAnalyzer
+            ->method('analyzeFrame')
+            ->willReturnCallback(function (int $videoId, string $framePath): bool {
+                $this->analyzedFrames[] = basename($framePath);
+
+                return true;
+            });
         $this->mp4Converter
             ->method('convertToMp4')
             ->willReturnCallback(function (string $sourcePath, string $targetPath) use ($filesystem) {
@@ -267,7 +277,7 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
                 $file = new File();
                 $file->setRelativePath(sprintf(
                     'videos/%d/thumbnails/scene_%d.jpg',
-                    $scene->getVideo()->getId(),
+                    $scene->getVideo()?->getId(),
                     $scene->getId(),
                 ));
                 $file->setMimeType('image/jpeg');
@@ -350,12 +360,10 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         $this->mp4Converter->method('convertToMp4')->willReturn(false);
 
         // 3. Trigger Pipeline
-        $this->dispatch(new ConvertStepMessage($video->getId(), 0, 'INITIAL'));
+        $this->dispatch(new ConvertStepMessage(self::idOf($video), 0, 'INITIAL'));
 
         // 4. Assertions
-        $this->entityManager->flush();
-        $this->entityManager->clear();
-        $updatedVideo = $this->videoRepository->find($video->getId());
+        $updatedVideo = $this->reload($video);
         self::assertEquals(VideoStatus::ERROR, $updatedVideo->getStatus());
         self::assertCount(
             0,
@@ -363,10 +371,6 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
             'Nach fehlgeschlagener Konvertierung darf es keine Szenen geben',
         );
 
-        $failedSteps = $updatedVideo
-            ->getProcessingSteps()
-            ->filter(static fn($step) => $step->getErrorMessage() !== null);
-        self::assertCount(1, $failedSteps);
-        self::assertSame(VideoStatus::CONVERTING, $failedSteps->first()->getStep());
+        self::assertSame(VideoStatus::CONVERTING, self::singleFailedStep($updatedVideo)->getStep());
     }
 }

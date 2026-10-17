@@ -61,7 +61,7 @@ class TagSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
 
             $result = $this->processSceneTagging($message->getCurrentSceneId());
             if (!$result->isSuccess()) {
-                $this->stopProcessing($result->getMessage());
+                $this->stopProcessing($result->getMessage() ?? 'Tagging failed');
                 return;
             }
 
@@ -74,7 +74,7 @@ class TagSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
         $this->currentSceneId = $message->getCurrentSceneId();
         $result = $this->processSceneTagging($this->currentSceneId);
         if (!$result->isSuccess()) {
-            $this->stopProcessing($result->getMessage());
+            $this->stopProcessing($result->getMessage() ?? 'Tagging failed');
             return;
         }
         $oldSceneId = $this->currentSceneId;

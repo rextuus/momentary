@@ -23,12 +23,15 @@ class QuickResolveComponent
     private const BATCH_SIZE = 10;
     private const MAX_SHOWS = 10;
 
+    /** @var list<int> */
     #[LiveProp]
     public array $currentPersonIds = [];
 
+    /** @var list<string> IDs als Strings, so liefert sie das Formular */
     #[LiveProp(writable: true)]
     public array $selectedPersonIds = [];
 
+    /** @var list<string> PersonStatus-Werte */
     #[LiveProp(writable: true, onUpdated: 'onStatusesUpdated')]
     public array $statuses = [];
 
@@ -39,6 +42,9 @@ class QuickResolveComponent
         $this->statuses = [PersonStatus::NEW->value, PersonStatus::WASTED->value];
     }
 
+    /**
+     * @param list<string> $statuses
+     */
     public function mount(array $statuses = []): void
     {
         if (!empty($statuses)) {
@@ -55,6 +61,9 @@ class QuickResolveComponent
         $this->loadBatch();
     }
 
+    /**
+     * @return list<Person>
+     */
     public function getPersons(): array
     {
         if (empty($this->currentPersonIds)) {
@@ -72,8 +81,11 @@ class QuickResolveComponent
             ->getResult();
 
         // Reihenfolge des Batches beibehalten
-        $order = array_flip(array_values($this->currentPersonIds));
-        usort($persons, static fn(Person $a, Person $b) => ($order[$a->getId()] ?? 0) <=> ($order[$b->getId()] ?? 0));
+        $order = array_flip($this->currentPersonIds);
+        usort(
+            $persons,
+            static fn(Person $a, Person $b) => ($order[$a->getId() ?? 0] ?? 0) <=> ($order[$b->getId() ?? 0] ?? 0),
+        );
 
         return $persons;
     }
@@ -195,7 +207,7 @@ class QuickResolveComponent
 
     /**
      * @param int[] $exclude
-     * @return int[]
+     * @return list<int>
      */
     private function fetchCandidateIds(int $limit, array $exclude = []): array
     {
@@ -219,7 +231,7 @@ class QuickResolveComponent
             $qb->andWhere('p.id NOT IN (:exclude)')->setParameter('exclude', array_values($exclude));
         }
 
-        return array_map(static fn(array $row) => (int) $row['id'], $qb->getQuery()->getArrayResult());
+        return array_values(array_map(static fn(array $row) => (int) $row['id'], $qb->getQuery()->getArrayResult()));
     }
 
     /**
@@ -245,7 +257,7 @@ class QuickResolveComponent
     {
         $values = [];
         foreach ($this->statuses as $status) {
-            $enum = PersonStatus::tryFrom((string) $status);
+            $enum = PersonStatus::tryFrom($status);
             if ($enum !== null) {
                 $values[] = $enum->value;
             }

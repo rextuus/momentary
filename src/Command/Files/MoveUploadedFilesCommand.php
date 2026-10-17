@@ -19,6 +19,7 @@ class MoveUploadedFilesCommand extends Command
     private const TARGET_DIR = '/var/www/html/public/uploads/import';
 
     public function __construct(
+        /** @var list<string> */
         #[Autowire(param: 'app.ftp_source_dirs')]
         private array $sourceDirs,
     ) {

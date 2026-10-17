@@ -20,7 +20,10 @@ class VideoNamingService
 
         $tags = [];
         foreach ($video->getTags() as $tag) {
-            $tags[] = $tag->getName();
+            $name = $tag->getName();
+            if ($name !== null) {
+                $tags[] = $name;
+            }
         }
 
         $sceneSummaries = [];

@@ -24,6 +24,8 @@ class ImageExtension extends AbstractExtension
 
     public function displayImage(VideoFace $videoFace): string
     {
-        return $this->imgproxyService->generateUrl($videoFace->getFaceImagePath());
+        $path = $videoFace->getFaceImagePath();
+
+        return $path === null ? '' : $this->imgproxyService->generateUrl($path);
     }
 }

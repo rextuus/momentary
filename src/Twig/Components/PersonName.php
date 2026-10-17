@@ -33,6 +33,9 @@ final class PersonName extends AbstractController
         private readonly EntityManagerInterface $entityManager,
     ) {}
 
+    /**
+     * @return FormInterface<PersonNameData|null>
+     */
     protected function instantiateForm(): FormInterface
     {
         return $this->createForm(PersonNameType::class, $this->initialFormData, [
@@ -48,7 +51,11 @@ final class PersonName extends AbstractController
         /** @var PersonNameData $nameData */
         $nameData = $this->getForm()->getData();
 
-        $this->person->setName($nameData->getName());
+        $name = $nameData->getName();
+        if ($name === null || $name === '') {
+            return $this->redirectToRoute('person_detail', ['id' => $this->person->getId()]);
+        }
+        $this->person->setName($name);
         $this->person->setIdentified(true);
         $this->person->setDescription(sprintf(
             'Was identified as %s at %s',

@@ -38,9 +38,9 @@ class JellyfinUploadService
      *
      * @param string $sourcePath Path to the local video file.
      * @param string $filename The desired filename in the Jellyfin directory.
-     * @return string|bool The final path on success, false on failure.
+     * @return string|false The final path on success, false on failure.
      */
-    public function uploadVideo(string $sourcePath, string $filename): string|bool
+    public function uploadVideo(string $sourcePath, string $filename): string|false
     {
         $this->logger->info("Starting Jellyfin upload process for: $filename");
 

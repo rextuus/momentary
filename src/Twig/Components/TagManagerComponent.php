@@ -120,7 +120,7 @@ class TagManagerComponent
         $category = $this->categoryRepository->find($id);
         if ($category) {
             $this->editingCategoryId = $id;
-            $this->editingCategoryName = $category->getName();
+            $this->editingCategoryName = $category->getName() ?? '';
         }
     }
 
@@ -145,7 +145,7 @@ class TagManagerComponent
         $tag = $this->tagRepository->find($id);
         if ($tag) {
             $this->editingTagId = $id;
-            $this->editingTagName = $tag->getName();
+            $this->editingTagName = $tag->getName() ?? '';
         }
     }
 

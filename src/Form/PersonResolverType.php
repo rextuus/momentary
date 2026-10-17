@@ -8,6 +8,9 @@ use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
+/**
+ * @extends AbstractType<array<string, mixed>>
+ */
 class PersonResolverType extends AbstractType
 {
     public function buildForm(FormBuilderInterface $builder, array $options): void

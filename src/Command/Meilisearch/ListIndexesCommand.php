@@ -54,7 +54,10 @@ class ListIndexesCommand extends Command
             $io->text(sprintf('Created at: %s', $index->getCreatedAt()?->format('Y-m-d H:i:s') ?? 'N/A'));
             $io->text(sprintf('Updated at: %s', $index->getUpdatedAt()?->format('Y-m-d H:i:s') ?? 'N/A'));
             $io->text(sprintf('Documents: %d', $index->stats()['numberOfDocuments'] ?? 0));
-            $io->text('Filterable: ' . implode(', ', $index->getFilterableAttributes()));
+            $filterable = array_map(static fn(mixed $attribute): string => \is_string($attribute)
+                ? $attribute
+                : (string) json_encode($attribute), $index->getFilterableAttributes());
+            $io->text('Filterable: ' . implode(', ', $filterable));
 
             if ($showDocuments) {
                 $io->text('Documents (first 5):');

@@ -19,6 +19,9 @@ use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
+/**
+ * @extends AbstractType<Video>
+ */
 class VideoType extends AbstractType
 {
     public function __construct(
@@ -60,8 +63,16 @@ class VideoType extends AbstractType
                     if (in_array($ext, $allowedExtensions, true)) {
                         $path = $importDir . DIRECTORY_SEPARATOR . $file;
                         $size = filesize($path);
+                        if ($size === false) {
+                            continue;
+                        }
                         $mtime = filemtime($path);
-                        $label = sprintf('%s (%s, %s)', $file, $this->formatBytes($size), date('Y-m-d H:i', $mtime));
+                        $label = sprintf(
+                            '%s (%s, %s)',
+                            $file,
+                            $this->formatBytes($size),
+                            $mtime === false ? '?' : date('Y-m-d H:i', $mtime),
+                        );
                         $files[$label] = $file;
                     }
                 }
@@ -143,7 +154,7 @@ class VideoType extends AbstractType
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];
         $bytes = max($bytes, 0);
         $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
-        $pow = min($pow, count($units) - 1);
+        $pow = (int) min($pow, count($units) - 1);
         $bytes /= pow(1024, $pow);
 
         return round($bytes, $precision) . ' ' . $units[$pow];

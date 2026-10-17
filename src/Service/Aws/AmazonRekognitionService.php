@@ -39,10 +39,15 @@ class AmazonRekognitionService
 
     /**
      * Analysiert ein Bild, sucht nach Übereinstimmungen und indiziert unbekannte Gesichter.
+     *
+     * @return list<array<string, mixed>> ein Eintrag pro erkanntem Gesicht
      */
     public function processAllFacesInImage(string $imagePath): array
     {
         $imageContent = file_get_contents($imagePath);
+        if ($imageContent === false) {
+            throw new \RuntimeException(sprintf('Image "%s" could not be read.', $imagePath));
+        }
 
         // 1. Gesichter erkennen (Attribute + BoundingBoxes)
         $detectResponse = $this->client->detectFaces([
@@ -67,7 +72,10 @@ class AmazonRekognitionService
         $knownFaces = $this->videoFaceRepository->findBy(['faceLabel' => $faceIds]);
         $knownFacesByFaceId = [];
         foreach ($knownFaces as $face) {
-            $knownFacesByFaceId[$face->getFaceLabel()] = $face;
+            $label = $face->getFaceLabel();
+            if ($label !== null) {
+                $knownFacesByFaceId[$label] = $face;
+            }
         }
 
         $results = [];
@@ -123,6 +131,9 @@ class AmazonRekognitionService
         return $results;
     }
 
+    /**
+     * @param array{Low: int|float, High: int|float} $ageRange
+     */
     private function calculateAverageAge(array $ageRange): int
     {
         return (int) (($ageRange['Low'] + $ageRange['High']) / 2);
@@ -130,6 +141,12 @@ class AmazonRekognitionService
 
     /**
      * Findet das beste FaceMatch-Objekt für ein gegebenes FaceDetail basierend auf der BoundingBox.
+     *
+     * @param array<string, mixed>          $detail             FaceDetail aus detectFaces
+     * @param array<int, array<string, mixed>> $matches         FaceMatches aus searchFacesByImage
+     * @param array<string, \App\Entity\VideoFace> $knownFacesByFaceId
+     *
+     * @return array{match: array<string, mixed>, key: int}|null
      */
     private function findBestMatch(
         array $detail,
@@ -174,7 +191,7 @@ class AmazonRekognitionService
                 $bestMatchKey = $key;
             }
         }
-        return $bestMatch ? ['match' => $bestMatch, 'key' => $bestMatchKey] : null;
+        return $bestMatch !== null && $bestMatchKey !== null ? ['match' => $bestMatch, 'key' => $bestMatchKey] : null;
     }
 
     public function getClient(): RekognitionClient
@@ -199,6 +216,9 @@ class AmazonRekognitionService
         $this->client->createCollection(['CollectionId' => $this->collectionId]);
     }
 
+    /**
+     * @return list<array<string, mixed>>
+     */
     public function listFaces(): array
     {
         $faces = [];

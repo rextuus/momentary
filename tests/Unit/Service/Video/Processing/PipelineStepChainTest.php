@@ -67,11 +67,12 @@ final class PipelineStepChainTest extends TestCase
             $class =
                 'App\\Service\\Video\\Processing\\Message\\'
                 . str_replace(['/', '.php'], ['\\', ''], $file->getRelativePathname());
+            if (!is_subclass_of($class, VideoProcessStepMessageInterface::class)) {
+                continue;
+            }
             $reflection = new \ReflectionClass($class);
 
-            if (
-                !$reflection->isAbstract() && $reflection->implementsInterface(VideoProcessStepMessageInterface::class)
-            ) {
+            if (!$reflection->isAbstract()) {
                 self::assertNotEmpty(
                     $reflection->getAttributes(StepOrder::class),
                     sprintf('%s hat kein #[StepOrder]', $class),

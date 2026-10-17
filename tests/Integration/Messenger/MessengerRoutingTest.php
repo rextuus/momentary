@@ -33,10 +33,11 @@ final class MessengerRoutingTest extends KernelTestCase
                 'App\\Service\\Video\\Processing\\Message\\'
                 . str_replace(['/', '.php'], ['\\', ''], $file->getRelativePathname());
 
+            if (!is_subclass_of($class, VideoProcessStepMessageInterface::class)) {
+                continue;
+            }
             $reflection = new \ReflectionClass($class);
-            if (
-                $reflection->isAbstract() || !$reflection->implementsInterface(VideoProcessStepMessageInterface::class)
-            ) {
+            if ($reflection->isAbstract()) {
                 continue;
             }
 

@@ -55,7 +55,7 @@ class ImgproxyService
                 $segments,
                 static fn(string $segment): bool => !str_contains($segment, ':'),
             );
-            $encodedUrl = preg_replace('/\.[a-z0-9]+$/i', '', implode('', $encodedSegments));
+            $encodedUrl = preg_replace('/\.[a-z0-9]+$/i', '', implode('', $encodedSegments)) ?? '';
             $decodedSourceUrl = $this->base64UrlDecode($encodedUrl);
 
             return $this->generateUrl($decodedSourceUrl, $width, $height, $resizingType, $blur);

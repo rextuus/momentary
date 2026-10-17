@@ -35,12 +35,11 @@ class VideoSearchIndex
             $index = $this->client->getIndex(self::INDEX_NAME);
         }
 
+        // Meilisearch kann Filter-Attribute auch als Objekte (granulare Einstellungen) liefern
         $current = $index->getFilterableAttributes();
-        if (array_diff(self::FILTERABLE, $current) !== []) {
-            $task = $index->updateFilterableAttributes(array_values(array_unique(array_merge(
-                $current,
-                self::FILTERABLE,
-            ))));
+        $missing = array_diff(self::FILTERABLE, array_filter($current, 'is_string'));
+        if ($missing !== []) {
+            $task = $index->updateFilterableAttributes([...$current, ...array_values($missing)]);
             $this->client->waitForTask($task['taskUid']);
         }
 

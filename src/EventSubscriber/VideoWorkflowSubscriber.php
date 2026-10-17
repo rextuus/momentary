@@ -16,6 +16,9 @@ final class VideoWorkflowSubscriber
         private readonly ImportQueueManager $importQueueManager,
     ) {}
 
+    /**
+     * @param Event<object> $event
+     */
     #[AsEventListener(event: 'workflow.video_processing.completed')]
     public function onWorkflowCompleted(Event $event): void
     {

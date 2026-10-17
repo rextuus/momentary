@@ -37,62 +37,26 @@ class AnalyzeSceneFrameStepMessageHandler extends AbstractAnalyzeFrameStepMessag
         $video = $this->getVideo();
         $this->startCurrentStep();
 
-        // Special-Case: There was only one frame which was already analyzed in the firstFrameMessage
-        if ($message->getCurrentFrame() === null) {
-            $successMsg = sprintf(
-                'Video %d contains only one frame. This is already analyzed. Go to final frame analyze step. Next message will be immediately set to finished',
-                $video->getId(),
-            );
-            $this->finishCurrentStep($successMsg);
-
-            return;
-        }
-
-        // Special-Case: This is already last frame
-        if ($message->getRemainingFrames() === []) {
-            $successMsg = sprintf(
-                'All frames for video %d analyzed already successfully. Next message will be immediately set to finished',
-                $video->getId(),
-            );
-
-            $this->analyzeFrame($message);
-
-            $this->finishCurrentStep($successMsg);
-
-            return;
-        }
-
-        // go on with next ones otherwise
-        $this->frame = $message->getCurrentFrame();
-
-        $this->analyzeFrame($message);
-        $oldFrame = $this->frame;
-
-        $remainingFrames = $message->getRemainingFrames();
-        $this->frame = array_shift($remainingFrames);
-        $this->remainingFrames = $remainingFrames;
-
-        if ($this->remainingFrames === []) {
-            $successMsg = sprintf(
-                'Frame #? of Video "%s" at timestamp "%d" analyzed. Only 1 left. Dispatch final message',
-                $video->getTitle(),
-                $oldFrame['timestamp'],
-            );
-            $remainingFrames = $message->getRemainingFrames();
-            $this->frame = array_shift($remainingFrames);
-            $this->remainingFrames = $remainingFrames;
-
-            $this->finishCurrentStep($successMsg);
+        $analyzed = $this->analyzeCurrentAndPrepareNext($message);
+        if ($analyzed === null) {
+            $this->finishCurrentStep(sprintf('No frames left for video "%s".', $video->getTitle()));
 
             return;
         }
 
         $successMsg = sprintf(
-            'Frame #? of Video "%s" at timestamp "%d" analyzed. %d left',
+            'Frame of video "%s" at timestamp %d analyzed. %d left.',
             $video->getTitle(),
-            $oldFrame['timestamp'],
-            count($this->remainingFrames),
+            $analyzed->getTimestamp(),
+            $this->countFramesLeft(),
         );
+
+        // Höchstens noch ein Frame übrig: den übernimmt der abschließende Schritt
+        if ($this->remainingFrames === []) {
+            $this->finishCurrentStep($successMsg);
+
+            return;
+        }
 
         $this->dispatchNextMessageOfCurrentStep($successMsg);
     }

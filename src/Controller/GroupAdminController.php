@@ -86,7 +86,7 @@ final class GroupAdminController extends AbstractController
     public function removeMember(int $id, int $memberId, Request $request): Response
     {
         $member = $this->entityManager->getRepository(\App\Entity\UserGroupMember::class)->find($memberId);
-        if ($member && $member->getUserGroup()->getId() === $id) {
+        if ($member && $member->getUserGroup()?->getId() === $id) {
             $this->entityManager->remove($member);
             $this->entityManager->flush();
         }

@@ -6,12 +6,15 @@ namespace App\Service\Video\Analyze\Result;
 
 readonly class RefinementAnalyzeResult
 {
+    /**
+     * @param list<int> $sceneIds
+     */
     private function __construct(
         private array $sceneIds,
     ) {}
 
     /**
-     * @param array<int> $sceneIds
+     * @param list<int> $sceneIds
      */
     public static function create(array $sceneIds): RefinementAnalyzeResult
     {
@@ -19,7 +22,7 @@ readonly class RefinementAnalyzeResult
     }
 
     /**
-     * @return array<int>
+     * @return list<int>
      */
     public function getSceneIds(): array
     {

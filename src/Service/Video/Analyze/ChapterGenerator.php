@@ -77,6 +77,9 @@ class ChapterGenerator
         $this->entityManager->flush();
     }
 
+    /**
+     * @param array<string, mixed> $data Kapitel aus der Gemini-Antwort
+     */
     private function createChapter(Video $video, array $data): void
     {
         $chapter = new VideoChapter();

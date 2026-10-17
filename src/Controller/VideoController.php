@@ -108,7 +108,7 @@ final class VideoController extends AbstractController
         FileManager $fileManager,
         FileStorageService $fileStorageService,
     ): Response {
-        if ($this->isCsrfTokenValid('delete' . $video->getId(), $request->request->get('_token'))) {
+        if ($this->isCsrfTokenValid('delete' . $video->getId(), $request->request->getString('_token'))) {
             $videoId = $video->getId();
 
             // 1. Hauptdateien über den FileManager löschen
@@ -143,7 +143,7 @@ final class VideoController extends AbstractController
     #[IsGranted('VIDEO_EDIT', subject: 'video')]
     public function updateScenesPublic(Request $request, Video $video): Response
     {
-        if ($this->isCsrfTokenValid('update-scenes-public' . $video->getId(), $request->request->get('_token'))) {
+        if ($this->isCsrfTokenValid('update-scenes-public' . $video->getId(), $request->request->getString('_token'))) {
             $isPublic = $request->request->getBoolean('isPublic');
             foreach ($video->getScenes() as $scene) {
                 $scene->setIsPublic($isPublic);
@@ -162,11 +162,11 @@ final class VideoController extends AbstractController
         if (
             $this->isCsrfTokenValid(
                 'update-chapter-scenes-public' . $chapter->getId(),
-                $request->request->get('_token'),
+                $request->request->getString('_token'),
             )
         ) {
             $isPublic = $request->request->getBoolean('isPublic');
-            $video = $chapter->getVideo();
+            $video = $chapter->getVideo() ?? throw $this->createNotFoundException();
 
             foreach ($video->getScenes() as $scene) {
                 if (
@@ -260,7 +260,7 @@ final class VideoController extends AbstractController
     #[Route('/chapter/{id}', name: 'app_chapter_show', methods: ['GET'])]
     public function chapterShow(VideoChapter $chapter): Response
     {
-        $video = $chapter->getVideo();
+        $video = $chapter->getVideo() ?? throw $this->createNotFoundException();
         $this->entityManager->refresh($video);
         $this->denyAccessUnlessGranted('VIDEO_VIEW', $video);
 

@@ -28,7 +28,7 @@ class VideoProgressBar
     public function getVideo(): Video
     {
         // Refresh the video entity to get the latest progress
-        return $this->videoRepository->find($this->video->getId());
+        return $this->videoRepository->find($this->video->getId()) ?? $this->video;
     }
 
     public function getEstimatedDuration(): ?int

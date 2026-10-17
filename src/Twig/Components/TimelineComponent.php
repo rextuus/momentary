@@ -60,6 +60,9 @@ class TimelineComponent
         $this->page++;
     }
 
+    /**
+     * @return list<array<string, mixed>> Kapitel mit ihren Szenen bzw. Szenen ohne Kapitel
+     */
     public function getItems(): array
     {
         if ($this->video->getChapters()->count() > 0) {
@@ -71,11 +74,14 @@ class TimelineComponent
                 $persons = [];
                 foreach ($scenes as $scene) {
                     foreach ($scene->getTags() as $tag) {
-                        $tags[$tag->getId()] = $tag;
+                        $tagId = $tag->getId();
+                        if ($tagId !== null) {
+                            $tags[$tagId] = $tag;
+                        }
                     }
                     foreach ($scene->getVideoFaces() as $face) {
-                        if ($face->getPerson()) {
-                            $personId = $face->getPerson()->getId();
+                        $personId = $face->getPerson()?->getId();
+                        if ($personId !== null) {
                             if (!isset($persons[$personId])) {
                                 $persons[$personId] = [
                                     'person' => $face->getPerson(),
@@ -123,6 +129,9 @@ class TimelineComponent
         return $result;
     }
 
+    /**
+     * @return array<int, VideoScene>
+     */
     private function getScenesForChapter(VideoChapter $chapter): array
     {
         return $this->video

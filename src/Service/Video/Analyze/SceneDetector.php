@@ -29,6 +29,9 @@ class SceneDetector
         }
     }
 
+    /**
+     * @return list<array<string, mixed>> Szenen wie von PySceneDetect geliefert
+     */
     public function detectScenes(
         string $videoPath,
         int $videoId,
@@ -36,6 +39,9 @@ class SceneDetector
         string $detector = 'content',
     ): array {
         $video = $this->entityManager->find(Video::class, $videoId);
+        if ($video === null) {
+            throw new \RuntimeException(sprintf('Video %d not found for scene detection.', $videoId));
+        }
 
         // FIX: Alte Szenen löschen, bevor wir neue erkennen
         $this->clearOldScenes($video);

@@ -24,6 +24,8 @@ readonly class WorkflowMachine
     }
 
     /**
+     * @param array<string, mixed> $context
+     *
      * @throws Exception
      */
     public function apply(Video $video, string $transition, array $context = []): void

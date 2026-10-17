@@ -13,15 +13,22 @@ class FtpFileManager
     private const TARGET_DIR = '/var/www/html/public/uploads/import';
 
     public function __construct(
+        /** @var list<string> */
         #[Autowire(param: 'app.ftp_source_dirs')]
         private array $sourceDirs,
     ) {}
 
+    /**
+     * @return list<string>
+     */
     public function getSourceDirs(): array
     {
         return $this->sourceDirs;
     }
 
+    /**
+     * @return list<array{filename: string, path: string|false, size: int|false}>
+     */
     public function listFiles(string $sourceDir): array
     {
         if (!in_array($sourceDir, $this->sourceDirs, strict: true)) {

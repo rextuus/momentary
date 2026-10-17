@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Command\Database;
 
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -60,7 +61,7 @@ class DatabaseResetCommand extends Command
         }
 
         $io->note('Führe doctrine:schema:update --force aus...');
-        $command = $this->getApplication()->find('doctrine:schema:update');
+        $command = $this->application()->find('doctrine:schema:update');
         $result = $command->run(new ArrayInput(['--force' => true]), $output);
 
         if ($result !== Command::SUCCESS) {
@@ -71,5 +72,12 @@ class DatabaseResetCommand extends Command
         $io->success('Datenbank erfolgreich geleert und Schema aktualisiert.');
 
         return Command::SUCCESS;
+    }
+
+    private function application(): Application
+    {
+        return $this->getApplication() ?? throw new \LogicException(
+            'Command is not registered in a console application.',
+        );
     }
 }

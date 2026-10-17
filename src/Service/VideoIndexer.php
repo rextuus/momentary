@@ -8,6 +8,9 @@ use App\Entity\Video;
 
 class VideoIndexer
 {
+    /**
+     * @return array<string, mixed> Dokument für den Meilisearch-Index
+     */
     public function transform(Video $video): array
     {
         $personsGroups = [];
@@ -47,7 +50,10 @@ class VideoIndexer
         foreach ($video->getScenes() as $scene) {
             foreach ($scene->getTags() as $tag) {
                 $name = $tag->getName();
-                $categoryName = $tag->getCategory() ? $tag->getCategory()->getName() : 'Uncategorized';
+                if ($name === null) {
+                    continue;
+                }
+                $categoryName = $tag->getCategory()?->getName() ?? 'Uncategorized';
 
                 $tagsGroups[$name][] = [
                     'start' => (int) $scene->getStartSeconds(),
@@ -73,7 +79,7 @@ class VideoIndexer
             foreach ($this->mergeIntervals($intervals) as $interval) {
                 $tagsWithScenes[] = [
                     'name' => $name,
-                    'category' => $interval['category'],
+                    'category' => $interval['category'] ?? 'Uncategorized',
                     'start' => $interval['start'],
                     'end' => $interval['end'],
                     'title' => $interval['title'],
@@ -95,6 +101,11 @@ class VideoIndexer
         ];
     }
 
+    /**
+     * @param list<array{start: int, end: int, title: string, thumbnailUrl: string|null, category?: string}> $intervals
+     *
+     * @return list<array{start: int, end: int, title: string, thumbnailUrl: string|null, category?: string}>
+     */
     private function mergeIntervals(array $intervals): array
     {
         if (empty($intervals)) {
@@ -110,7 +121,7 @@ class VideoIndexer
             if ($intervals[$i]['start'] <= $current['end']) {
                 // Überlappend oder direkt anschließend: zusammenführen
                 $current['end'] = max($current['end'], $intervals[$i]['end']);
-                if (isset($intervals[$i]['title']) && $current['title'] !== $intervals[$i]['title']) {
+                if ($current['title'] !== $intervals[$i]['title']) {
                     $titles = explode(', ', $current['title']);
                     if (!in_array($intervals[$i]['title'], $titles, true)) {
                         $current['title'] = $current['title'] . ', ' . $intervals[$i]['title'];

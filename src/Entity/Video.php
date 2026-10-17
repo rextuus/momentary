@@ -437,6 +437,24 @@ class Video
         return $this->scenes;
     }
 
+    /**
+     * IDs der bereits persistierten Szenen, in Szenen-Reihenfolge.
+     *
+     * @return list<int>
+     */
+    public function getSceneIds(): array
+    {
+        $ids = [];
+        foreach ($this->scenes as $scene) {
+            $id = $scene->getId();
+            if ($id !== null) {
+                $ids[] = $id;
+            }
+        }
+
+        return $ids;
+    }
+
     public function addScene(VideoScene $scene): static
     {
         if (!$this->scenes->contains($scene)) {

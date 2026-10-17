@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command\System;
 
+use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -25,25 +26,32 @@ class FullResetCommand extends Command
 
         // Run queue clear
         $io->note('Führe Queue-Clear aus...');
-        $queueCommand = $this->getApplication()->find('app:queue:clear');
+        $queueCommand = $this->application()->find('app:queue:clear');
         $queueCommand->run(new ArrayInput(['--all' => true]), $output);
 
         // Run database reset
         $io->note('Führe Datenbank-Reset aus...');
-        $dbCommand = $this->getApplication()->find('app:database:reset');
+        $dbCommand = $this->application()->find('app:database:reset');
         $dbCommand->run(new ArrayInput([]), $output);
 
         // Run storage reset
         $io->note('Führe Storage-Reset aus...');
-        $storageCommand = $this->getApplication()->find('app:storage:reset');
+        $storageCommand = $this->application()->find('app:storage:reset');
         $storageCommand->run(new ArrayInput([]), $output);
 
         // Run meilisearch clear
         $io->note('Führe Meilisearch-Clear aus...');
-        //        $meiliCommand = $this->getApplication()->find('app:meilisearch:clear');
+        //        $meiliCommand = $this->application()->find('app:meilisearch:clear');
         //        $meiliCommand->run(new ArrayInput([]), $output);
 
         $io->success('System wurde erfolgreich zurückgesetzt.');
         return Command::SUCCESS;
+    }
+
+    private function application(): Application
+    {
+        return $this->getApplication() ?? throw new \LogicException(
+            'Command is not registered in a console application.',
+        );
     }
 }
