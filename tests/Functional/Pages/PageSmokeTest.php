@@ -48,6 +48,7 @@ final class PageSmokeTest extends WebTestCase
         yield 'Gesichtserkennung' => ['/admin/settings/face-recognition'];
         yield 'Transkription' => ['/admin/settings/transcription'];
         yield 'Kamera-Uhren' => ['/admin/camera-clocks'];
+        yield 'API-Zugänge' => ['/admin/settings/api-clients'];
         yield 'Suche' => ['/search?q=Strand&tags[]=Pool'];
         yield 'Zeitachse' => ['/timeline'];
         yield 'Karte' => ['/map?type=photo'];
@@ -57,6 +58,7 @@ final class PageSmokeTest extends WebTestCase
         yield 'Fotos gesucht' => ['/photo/?q=Strand&page=1'];
         yield 'Foto-Detail' => ['/photo/{photo}'];
         yield 'Upload' => ['/upload'];
+        yield 'Freigaben' => ['/share'];
         yield 'Import-Ordner' => ['/admin/import'];
         yield 'Ereignisse' => ['/event/'];
         yield 'Ereignisse mit Lücke' => ['/event/?gap=12'];

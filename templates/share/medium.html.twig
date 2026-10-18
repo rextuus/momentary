@@ -1,0 +1,15 @@
+{% extends 'share/base.html.twig' %}
+{% block title %}{{ medium.title }}{% endblock %}
+{% block body %}
+    {% if link.event %}
+        <div class="d-flex justify-content-between align-items-center mb-3 small">
+            <a href="{{ path('app_share_show', {token: link.token}) }}" class="text-decoration-none"><i class="fas fa-arrow-left me-1"></i>{{ link.event.title }}</a>
+            <span class="d-flex gap-2">
+                {% if previous %}<a href="{{ path('app_share_medium', {token: link.token, id: previous.id}) }}" class="btn btn-sm btn-light border" title="Vorheriges"><i class="fas fa-chevron-left"></i></a>{% endif %}
+                <span class="text-muted align-self-center">{{ position }} / {{ total }}</span>
+                {% if next %}<a href="{{ path('app_share_medium', {token: link.token, id: next.id}) }}" class="btn btn-sm btn-light border" title="Nächstes"><i class="fas fa-chevron-right"></i></a>{% endif %}
+            </span>
+        </div>
+    {% endif %}
+    {{ include('share/_medium.html.twig') }}
+{% endblock %}

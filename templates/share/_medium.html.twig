@@ -1,0 +1,23 @@
+{# Ein Video oder Foto groß, ohne Personen, Tags oder Transkript #}
+<div class="share-stage mb-3">
+    {% if medium.type == 'video' %}
+        {% if playable %}
+            <video controls playsinline preload="metadata"{% if medium.previewFile %} poster="{{ imgproxy_url(medium.previewFile, 1280, 720, 'fit') }}"{% endif %}>
+                <source src="{{ path('app_share_video', {token: link.token, id: medium.id}) }}" type="video/mp4">
+            </video>
+        {% else %}
+            <div class="text-white-50 text-center py-5 my-5"><i class="fas fa-film fa-2x mb-2"></i><div>Das Video ist gerade nicht abspielbar.</div></div>
+        {% endif %}
+    {% elseif medium.displayFile %}
+        <img src="{{ imgproxy_url(medium.displayFile, 2000, 2000, 'fit') }}" alt="{{ medium.title }}">
+    {% endif %}
+</div>
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+    <div>
+        <h1 class="h5 fw-bold mb-1">{{ medium.title }}</h1>
+        {% if medium.date %}<div class="small text-muted"><i class="far fa-calendar me-1"></i>{{ medium.date|date('d.m.Y, H:i') }} Uhr{% if medium.placeName %} · <i class="fas fa-location-dot me-1"></i>{{ medium.placeName }}{% endif %}</div>{% endif %}
+    </div>
+    {% if link.allowDownload %}
+        <a href="{{ path('app_share_download', {token: link.token, id: medium.id}) }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-download me-1"></i>Original herunterladen</a>
+    {% endif %}
+</div>

@@ -13,7 +13,7 @@ use App\Service\Video\Processing\Message\Abstract\AbstractVideoProcessStepMessag
  * Letzter Pipeline-Schritt: Ton transkribieren. Wird über die Queue "transcription" vom transcription-worker
  * verarbeitet, damit die stundenlange CPU-Arbeit die Pipeline anderer Videos nicht aufhält.
  */
-#[StepOrder(stepNumber: 25)]
+#[StepOrder(stepNumber: 26)]
 class TranscribeStepMessage extends AbstractVideoProcessStepMessage
 {
     protected const string MESSAGE_LOGGING_IDENT = 'TRANSCRIPTION';

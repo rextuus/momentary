@@ -202,6 +202,10 @@
         <div class="col-lg-4">
             {{ component('MediumEventsComponent', {medium: video, class: 'card border-0 shadow-sm mb-4'}) }}
 
+            {% if is_granted('MEDIUM_EDIT', video) %}
+                {{ component('SharePanelComponent', {target: video, back: path('app_video_show', {id: video.id}), class: 'card border-0 shadow-sm mb-4'}) }}
+            {% endif %}
+
             {% if video.hasLocation %}
                 <div class="card border-0 shadow-sm mb-4 overflow-hidden">
                     {{ include('map/_embed.html.twig', {url: path('app_map_points', {medium: video.id}), height: '220px'}) }}

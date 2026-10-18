@@ -1,0 +1,65 @@
+<div {{ attributes.defaults({class: 'card border-0 shadow-sm', id: 'share'}) }}>
+    <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+        <span class="fw-semibold"><i class="fas fa-share-nodes text-primary me-2"></i>Teilen</span>
+        <a href="{{ path('app_share_index') }}" class="small">Alle Freigaben</a>
+    </div>
+    {% set links = this.links %}
+    {% if links is not empty %}
+        <ul class="list-group list-group-flush small">
+            {% for link in links %}
+                {% set url = url('app_share_show', {token: link.token}) %}
+                <li class="list-group-item {{ link.active ? '' : 'text-muted' }}">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge rounded-pill {{ link.active ? 'text-bg-success' : 'text-bg-light border' }}">{{ link.statusLabel }}</span>
+                        <span class="flex-grow-1 text-truncate">{{ link.label ?? 'Link' }}{% if link.hasPassword %} <i class="fas fa-lock ms-1" title="mit Passwort"></i>{% endif %}{% if link.allowDownload %} <i class="fas fa-download ms-1" title="Herunterladen erlaubt"></i>{% endif %}</span>
+                        {% if link.active %}
+                            <button type="button" class="btn btn-sm btn-light border py-0" title="Link kopieren"
+                                    onclick="navigator.clipboard.writeText('{{ url|e('js') }}').then(() => { this.innerHTML = '<i class=&quot;fas fa-check&quot;></i>'; })"><i class="fas fa-copy"></i></button>
+                            <form method="post" action="{{ path('app_share_revoke', {id: link.id}) }}" onsubmit="return confirm('Link zurückziehen? Wer ihn hat, kann dann nichts mehr sehen.')">
+                                <input type="hidden" name="_token" value="{{ csrf_token('share-revoke') }}">
+                                <input type="hidden" name="back" value="{{ back }}#share">
+                                <button class="btn btn-sm btn-outline-danger py-0" title="Zurückziehen"><i class="fas fa-ban"></i></button>
+                            </form>
+                        {% endif %}
+                    </div>
+                    <div class="text-muted mt-1">
+                        {% if link.active %}{{ link.expiresAt ? 'gültig bis ' ~ link.expiresAt|date('d.m.Y H:i') : 'unbegrenzt gültig' }} · {% endif %}{{ link.viewCount }}× geöffnet{% if link.lastViewedAt %}, zuletzt {{ link.lastViewedAt|date('d.m.Y H:i') }}{% endif %}
+                    </div>
+                    {% if link.active %}<input type="text" class="form-control form-control-sm mt-1 font-monospace" value="{{ url }}" readonly onclick="this.select()" aria-label="Link">{% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+    <div class="card-body">
+        <details {{ links is empty ? 'open' }}>
+            <summary class="small text-primary" style="cursor: pointer;">Neuen Link erstellen</summary>
+            <form method="post" action="{{ path('app_share_new') }}" class="small mt-2">
+                <input type="hidden" name="_token" value="{{ csrf_token('share-new') }}">
+                <input type="hidden" name="target" value="{{ this.targetType }}">
+                <input type="hidden" name="target_id" value="{{ target.id }}">
+                <input type="hidden" name="back" value="{{ back }}">
+                <div class="row g-2 mb-2">
+                    <div class="col-6">
+                        <label class="form-label mb-1" for="share-expiry-{{ target.id }}">Gültig</label>
+                        <select name="expiry" id="share-expiry-{{ target.id }}" class="form-select form-select-sm">
+                            {% for value, label in this.expiryOptions %}<option value="{{ value }}" {{ value == this.defaultExpiry ? 'selected' }}>{{ label }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label mb-1" for="share-password-{{ target.id }}">Passwort (optional)</label>
+                        <input type="text" name="password" id="share-password-{{ target.id }}" class="form-control form-control-sm" autocomplete="off">
+                    </div>
+                </div>
+                <input type="text" name="label" class="form-control form-control-sm mb-2" maxlength="120" placeholder="Notiz, z. B. „für Oma“ (sieht nur du)" aria-label="Notiz">
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="allow_download" value="1" id="share-download-{{ target.id }}">
+                    <label class="form-check-label" for="share-download-{{ target.id }}">Originale herunterladen erlauben</label>
+                </div>
+                <div class="form-text mb-2">
+                    Wer den Link hat, sieht ohne Anmeldung {{ this.targetType == 'event' ? 'alle Videos und Fotos dieses Ereignisses, die du sehen darfst' : 'dieses ' ~ (target.type == 'photo' ? 'Foto' : 'Video') }}, aber keine Personen, Tags oder Transkripte.
+                </div>
+                <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-link me-1"></i>Link erstellen</button>
+            </form>
+        </details>
+    </div>
+</div>

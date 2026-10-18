@@ -75,8 +75,11 @@ framework:
             App\Service\Video\Processing\Message\MergeScenesStepMessage: async_video_processing
             App\Service\Video\Processing\Message\GenerateChapterStepMessage: async_video_processing
             App\Service\Video\Processing\Message\UploadToJellyfinStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\EncodeWebStepMessage: async_video_processing
             App\Service\Video\Processing\Message\VideoNamingStepMessage: async_video_processing
             App\Message\TranscribeVideoMessage: transcription
             App\Service\Video\Processing\Message\TranscribeStepMessage: transcription
             App\Message\AnalyzePhotoMessage: photos
             App\Message\ImportMediaFileMessage: async
+            # Web-Fassungen nachholen: niedrigste Priorität wie die Fotos, damit neue Videos vorgehen
+            App\Message\EncodeWebVersionMessage: photos

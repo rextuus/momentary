@@ -37,6 +37,7 @@ final class QueueController extends AbstractController
             VideoStatus::CHAPTER_GENERATION,
             VideoStatus::NAMING,
             VideoStatus::EXPORTING_JELLYFIN,
+            VideoStatus::ENCODING_WEB,
             VideoStatus::TRANSCRIBING,
         ];
 

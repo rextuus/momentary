@@ -153,6 +153,10 @@
             {{ component('MediumEventsComponent', {medium: photo}) }}
 
             {% if canEdit %}
+                {{ component('SharePanelComponent', {target: photo, back: path('app_photo_show', {id: photo.id}), class: 'card border-0 shadow-sm mb-3'}) }}
+            {% endif %}
+
+            {% if canEdit %}
                 <div class="d-grid gap-2">
                     <form method="post" action="{{ path('app_photo_visibility', {id: photo.id}) }}">
                         <input type="hidden" name="_token" value="{{ csrf_token('visibility' ~ photo.id) }}">

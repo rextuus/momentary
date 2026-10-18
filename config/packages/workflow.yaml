@@ -26,6 +26,7 @@ framework:
                 - !php/const App\Enum\VideoStatus::CHAPTER_GENERATION
                 - !php/const App\Enum\VideoStatus::NAMING
                 - !php/const App\Enum\VideoStatus::EXPORTING_JELLYFIN
+                - !php/const App\Enum\VideoStatus::ENCODING_WEB
                 - !php/const App\Enum\VideoStatus::TRANSCRIBING
                 - !php/const App\Enum\VideoStatus::COMPLETED
                 - !php/const App\Enum\VideoStatus::ERROR
@@ -86,8 +87,12 @@ framework:
                     from: [!php/const App\Enum\VideoStatus::NAMING]
                     to:   !php/const App\Enum\VideoStatus::EXPORTING_JELLYFIN
 
-                start_transcription:
+                start_web_encoding:
                     from: [!php/const App\Enum\VideoStatus::EXPORTING_JELLYFIN]
+                    to:   !php/const App\Enum\VideoStatus::ENCODING_WEB
+
+                start_transcription:
+                    from: [!php/const App\Enum\VideoStatus::ENCODING_WEB]
                     to:   !php/const App\Enum\VideoStatus::TRANSCRIBING
 
                 complete:
@@ -111,6 +116,7 @@ framework:
                         - !php/const App\Enum\VideoStatus::CHAPTER_GENERATION
                         - !php/const App\Enum\VideoStatus::NAMING
                         - !php/const App\Enum\VideoStatus::EXPORTING_JELLYFIN
+                        - !php/const App\Enum\VideoStatus::ENCODING_WEB
                         - !php/const App\Enum\VideoStatus::TRANSCRIBING
                     to: !php/const App\Enum\VideoStatus::ERROR
 
@@ -130,6 +136,7 @@ framework:
                         - !php/const App\Enum\VideoStatus::CHAPTER_GENERATION
                         - !php/const App\Enum\VideoStatus::NAMING
                         - !php/const App\Enum\VideoStatus::EXPORTING_JELLYFIN
+                        - !php/const App\Enum\VideoStatus::ENCODING_WEB
                         - !php/const App\Enum\VideoStatus::TRANSCRIBING
                         - !php/const App\Enum\VideoStatus::ERROR
                     to: !php/const App\Enum\VideoStatus::PENDING

@@ -28,6 +28,33 @@ class MediumAccessVoter extends Voter
         private Security $security,
     ) {}
 
+    /**
+     * Darf diese Person das Medium sehen? Dieselbe Regel wie beim Abstimmen, aber für eine beliebige Person (z. B. den
+     * Ersteller eines Share-Links), nicht nur für den angemeldeten Benutzer.
+     */
+    public static function canView(?User $user, Medium $medium): bool
+    {
+        if ($user === null) {
+            return $medium->isPublic();
+        }
+        if (
+            \in_array('ROLE_ADMIN', $user->getRoles(), true)
+            || $medium->getOwner()?->getId() === $user->getId()
+            || $medium->isPublic()
+        ) {
+            return true;
+        }
+        foreach ($medium->getAllowedGroups() as $group) {
+            foreach ($group->getMembers() as $member) {
+                if ($member->getUser()?->getId() === $user->getId()) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     protected function supports(string $attribute, mixed $subject): bool
     {
         return \in_array($attribute, [self::VIEW, self::EDIT, self::VIDEO_VIEW, self::VIDEO_EDIT], true)

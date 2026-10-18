@@ -29,8 +29,8 @@ final class VideoProgressCalculatorTest extends TestCase
         self::assertTrue($progress->current->counted);
         self::assertSame(25, $progress->current->percent());
         self::assertSame('1 von 4 Frames', $progress->current->detail);
-        // 1 Frame in 30 s -> 3 Frames noch ca. 90 s, plus 10 ausstehende Schritte à 10 s
-        self::assertSame(90 + 100, $progress->remainingSeconds);
+        // 1 Frame in 30 s -> 3 Frames noch ca. 90 s, plus 11 ausstehende Schritte à 10 s
+        self::assertSame(90 + 110, $progress->remainingSeconds);
     }
 
     public function testTranscriptionProgressComesFromProcessedAudio(): void
@@ -72,12 +72,12 @@ final class VideoProgressCalculatorTest extends TestCase
 
     public function testOverallPercentWeightsStepsByExpectedDuration(): void
     {
-        // 15 Schritte à 10 s; die ersten 7 fertig, der 8. läuft gerade an -> 7/15
+        // 16 Schritte à 10 s; die ersten 7 fertig, der 8. läuft gerade an -> 7/16
         $video = $this->videoIn(VideoStatus::ANALYZING_FACES_REFINEMENT, startedSecondsAgo: 0);
 
         $progress = $this->calculator()->calculate($video);
 
-        self::assertSame(46, $progress->percent);
+        self::assertSame(43, $progress->percent);
         self::assertSame(StepProgress::DONE, $progress->steps[0]->state);
         self::assertSame(StepProgress::ACTIVE, $progress->steps[7]->state);
         self::assertSame(StepProgress::PENDING, $progress->steps[8]->state);

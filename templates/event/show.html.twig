@@ -64,6 +64,10 @@
         </details>
     {% endif %}
 
+    {% if canEdit %}
+        {{ component('SharePanelComponent', {target: event, back: path('app_event_show', {id: event.id}), class: 'card border-0 shadow-sm mb-4'}) }}
+    {% endif %}
+
     {% if media|filter(m => m.hasLocation)|length > 0 %}
         <div class="card border-0 shadow-sm mb-4 overflow-hidden">
             {{ include('map/_embed.html.twig', {url: path('app_map_points', {event: event.id}), height: '280px'}) }}

@@ -39,10 +39,11 @@ class StoragePathProvider
     public function getRelativePath(FilePurpose $purpose, string $filename, ?string $directoryIdentifier = null): string
     {
         return match ($purpose) {
-            FilePurpose::VIDEO_SOURCE, FilePurpose::VIDEO_CONVERTED, FilePurpose::VIDEO_FRAME => $this->createVideoPath(
-                $directoryIdentifier ?? '0',
-                $filename,
-            ),
+            FilePurpose::VIDEO_SOURCE,
+            FilePurpose::VIDEO_CONVERTED,
+            FilePurpose::VIDEO_WEB,
+            FilePurpose::VIDEO_FRAME,
+                => $this->createVideoPath($directoryIdentifier ?? '0', $filename),
             FilePurpose::THUMBNAIL_SCENE, FilePurpose::THUMBNAIL_VIDEO => $this->createThumbnailPath(
                 $filename,
                 $directoryIdentifier,

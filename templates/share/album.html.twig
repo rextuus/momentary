@@ -1,0 +1,27 @@
+{% extends 'share/base.html.twig' %}
+{% block title %}{{ event.title }}{% endblock %}
+{% block body %}
+    <div class="mb-4">
+        <h1 class="fw-bold mb-1">{{ event.title }}</h1>
+        <div class="text-muted">
+            {% if event.startDate %}<i class="far fa-calendar me-1"></i>{{ event.startDate|date('d.m.Y') }}{% if event.endDate and event.endDate != event.startDate %} – {{ event.endDate|date('d.m.Y') }}{% endif %} · {% endif %}
+            {{ media|filter(m => m.type == 'video')|length }} Videos · {{ media|filter(m => m.type == 'photo')|length }} Fotos
+        </div>
+        {% if event.description %}<p class="mt-2 mb-0">{{ event.description }}</p>{% endif %}
+    </div>
+
+    <div class="share-grid">
+        {% for medium in media %}
+            <a href="{{ path('app_share_medium', {token: link.token, id: medium.id}) }}" class="share-tile" title="{{ medium.title }}">
+                {% if medium.previewFile %}
+                    <img src="{{ imgproxy_url(medium.previewFile, 360, 360) }}" alt="{{ medium.title }}" loading="lazy">
+                {% endif %}
+                {% if medium.type == 'video' %}
+                    <span class="share-badge"><i class="fas fa-play"></i>{% if medium.duration %} {{ (medium.duration / 60)|round(0, 'floor') }}:{{ '%02d'|format(medium.duration % 60) }}{% endif %}</span>
+                {% endif %}
+            </a>
+        {% else %}
+            <p class="text-muted">Hier ist (noch) nichts zu sehen.</p>
+        {% endfor %}
+    </div>
+{% endblock %}

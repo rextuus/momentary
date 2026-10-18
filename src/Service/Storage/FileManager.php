@@ -40,6 +40,16 @@ class FileManager
         );
     }
 
+    public function createWebVideoFile(Video $video, string $filename = 'web.mp4'): File
+    {
+        return $this->createFileEntity(
+            purpose: FilePurpose::VIDEO_WEB,
+            filename: $filename,
+            directoryIdentifier: $video->getDirectoryHash() ?? (string) $video->getId(),
+            mimeType: MimeType::MP4->value,
+        );
+    }
+
     public function createVideoThumbnailFile(Video $video, string $filename, MimeType $mimeType = MimeType::JPEG): File
     {
         return $this->createFileEntity(

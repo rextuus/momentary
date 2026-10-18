@@ -1,0 +1,143 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}API-Zugänge{% endblock %}
+
+{% macro copy(value, label) %}
+    <div class="input-group input-group-sm">
+        <input type="text" class="form-control font-monospace" value="{{ value }}" readonly aria-label="{{ label }}" onclick="this.select()">
+        <button type="button" class="btn btn-outline-secondary" title="Kopieren" data-copy="{{ value }}"><i class="fas fa-copy"></i></button>
+    </div>
+{% endmacro %}
+
+{% block body %}
+    {% import _self as ui %}
+    {% set existing = clients|map(c => c.identifier) %}
+    <style>
+        .settings-page .card { border-radius: 14px; }
+        .settings-page .card-header { background: transparent; border-bottom: 1px solid var(--bs-border-color-translucent); padding: 1rem 1.25rem; }
+        .env-block { white-space: pre; font-size: 0.85rem; background: var(--bs-tertiary-bg); border-radius: 8px; padding: 0.75rem 1rem; margin: 0; overflow-x: auto; }
+    </style>
+
+    <div class="container settings-page pb-5">
+        <div class="mb-4">
+            <div class="text-uppercase small fw-semibold text-muted mb-1">Verwalten</div>
+            <h1 class="h3 mb-1">API-Zugänge</h1>
+            <p class="text-muted mb-0">
+                OAuth2-Clients für <strong>momentary-hub</strong> und die Android-App. Angemeldet wird mit einem normalen Benutzerkonto
+                (Password Grant), der Client weist nur die Anwendung aus. Beschreibung der API: <code>documentation/clients/API.md</code>.
+            </p>
+        </div>
+
+        {% if created %}
+            <div class="card border-0 shadow-sm mb-4 border-start border-success border-4">
+                <div class="card-body">
+                    <h2 class="h6 fw-bold text-success"><i class="fas fa-key me-2"></i>Secret für „{{ created.identifier }}“ – jetzt kopieren</h2>
+                    <p class="small text-muted">Es wird nur als Hash gespeichert und lässt sich später <strong>nicht</strong> wieder anzeigen. Geht es verloren, einfach ein neues erzeugen.</p>
+                    {{ ui.copy(created.secret, 'Client-Secret') }}
+                    <div class="small fw-semibold mt-3 mb-1">Für die <code>.env.local</code> von momentary-hub:</div>
+                    {% set env = "MOMENTARY_API_URL=http://app:80\nMOMENTARY_OAUTH2_TOKEN_URL=http://app:80/token\nMOMENTARY_OAUTH2_CLIENT_ID=" ~ created.identifier ~ "\nMOMENTARY_OAUTH2_CLIENT_SECRET=" ~ created.secret %}
+                    <div class="position-relative">
+                        <pre class="env-block">{{ env }}</pre>
+                        <button type="button" class="btn btn-sm btn-light border position-absolute top-0 end-0 m-2" title="Kopieren" data-copy="{{ env }}"><i class="fas fa-copy"></i></button>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header fw-semibold"><i class="fas fa-plug me-2 text-primary"></i>Clients</div>
+            {% if clients is empty %}
+                <div class="card-body text-muted small">Noch kein Client. Ohne Client kann sich der Hub nicht anmelden.</div>
+            {% else %}
+                <ul class="list-group list-group-flush">
+                    {% for client in clients %}
+                        <li class="list-group-item py-3">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                                <div>
+                                    <span class="fw-semibold">{{ client.name }}</span>
+                                    <span class="badge rounded-pill {{ client.active ? 'text-bg-success' : 'text-bg-light border' }} ms-1">{{ client.active ? 'aktiv' : 'deaktiviert' }}</span>
+                                    <span class="small text-muted ms-1">{{ client.grants|map(g => g ~ '')|join(', ') }}</span>
+                                </div>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <details>
+                                        <summary class="btn btn-sm btn-outline-primary">Neues Secret</summary>
+                                        <form method="post" action="{{ path('app_admin_api_clients_update', {identifier: client.identifier}) }}" class="card card-body bg-body-tertiary border-0 mt-2 small" style="min-width: 18rem;">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('api-clients') }}">
+                                            <input type="text" name="secret" class="form-control form-control-sm mb-2" placeholder="leer = zufällig erzeugen" autocomplete="off" aria-label="Eigenes Secret">
+                                            <div class="form-text mb-2">Das bisherige Secret gilt danach nicht mehr; der Hub braucht das neue.</div>
+                                            <button class="btn btn-sm btn-primary" name="action" value="secret">Erzeugen</button>
+                                        </form>
+                                    </details>
+                                    <form method="post" action="{{ path('app_admin_api_clients_update', {identifier: client.identifier}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('api-clients') }}">
+                                        <button class="btn btn-sm btn-outline-secondary" name="action" value="{{ client.active ? 'deactivate' : 'activate' }}">{{ client.active ? 'Deaktivieren' : 'Aktivieren' }}</button>
+                                    </form>
+                                    <form method="post" action="{{ path('app_admin_api_clients_update', {identifier: client.identifier}) }}" onsubmit="return confirm('Client „{{ client.name|e('js') }}“ löschen? Anwendungen damit können sich nicht mehr anmelden.')">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('api-clients') }}">
+                                        <button class="btn btn-sm btn-outline-danger" name="action" value="delete" title="Löschen"><i class="fas fa-trash-alt"></i></button>
+                                    </form>
+                                </div>
+                            </div>
+                            <div class="row g-2 small">
+                                <div class="col-md-6">
+                                    <label class="text-muted mb-1">Client-ID (<code>MOMENTARY_OAUTH2_CLIENT_ID</code>)</label>
+                                    {{ ui.copy(client.identifier, 'Client-ID') }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="text-muted mb-1">Secret (<code>MOMENTARY_OAUTH2_CLIENT_SECRET</code>)</label>
+                                    <div class="form-control form-control-sm text-muted bg-body-tertiary">nur beim Anlegen bzw. Neu-Erzeugen sichtbar</div>
+                                </div>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header fw-semibold"><i class="fas fa-plus me-2 text-primary"></i>Client anlegen</div>
+                    <div class="card-body">
+                        <form method="post" action="{{ path('app_admin_api_clients_create') }}" class="small">
+                            <input type="hidden" name="_token" value="{{ csrf_token('api-clients') }}">
+                            <label class="form-label mb-1" for="client-name">Name</label>
+                            <input type="text" id="client-name" name="name" class="form-control form-control-sm mb-2" required value="{{ 'momentary-hub' in existing ? '' : 'Momentary Hub' }}">
+                            <label class="form-label mb-1" for="client-identifier">Client-ID</label>
+                            <input type="text" id="client-identifier" name="identifier" class="form-control form-control-sm mb-2 font-monospace" required pattern="[A-Za-z0-9._\-]{3,64}" value="{{ 'momentary-hub' in existing ? '' : 'momentary-hub' }}">
+                            <label class="form-label mb-1" for="client-secret">Secret (optional)</label>
+                            <input type="text" id="client-secret" name="secret" class="form-control form-control-sm mb-1" autocomplete="off" placeholder="leer = zufällig erzeugen">
+                            <div class="form-text mb-3">Steht im Hub schon ein Secret in der <code>.env</code>, hier eintragen; mindestens 16 Zeichen. Erlaubt werden {{ grants|join(' und ') }}.</div>
+                            <button class="btn btn-sm btn-primary" type="submit">Anlegen</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header fw-semibold"><i class="fas fa-link me-2 text-primary"></i>Adressen</div>
+                    <div class="card-body small">
+                        <label class="text-muted mb-1">Token-URL vom Hub-Container aus (gleiches Docker-Netz)</label>
+                        <div class="mb-2">{{ ui.copy('http://app:80/token', 'Token-URL intern') }}</div>
+                        <label class="text-muted mb-1">API-URL vom Hub-Container aus</label>
+                        <div class="mb-2">{{ ui.copy('http://app:80', 'API-URL intern') }}</div>
+                        <label class="text-muted mb-1">Öffentliche Adresse (für Stream-URLs, <code>APP_PUBLIC_URL</code>)</label>
+                        <div class="mb-1">{{ ui.copy(publicBase, 'Öffentliche Adresse') }}</div>
+                        {% if not publicUrlSet %}
+                            <div class="text-warning-emphasis"><i class="fas fa-triangle-exclamation me-1"></i><code>APP_PUBLIC_URL</code> ist nicht gesetzt; angezeigt wird die Adresse dieses Aufrufs. Für den Hub in der <code>.env.local</code> des Backends eintragen.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.querySelectorAll('[data-copy]').forEach((button) => button.addEventListener('click', () => {
+            navigator.clipboard.writeText(button.dataset.copy).then(() => {
+                const icon = button.querySelector('i');
+                if (icon) { icon.className = 'fas fa-check'; setTimeout(() => { icon.className = 'fas fa-copy'; }, 1500); }
+            });
+        }));
+    </script>
+{% endblock %}

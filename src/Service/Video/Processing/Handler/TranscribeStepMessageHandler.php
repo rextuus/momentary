@@ -22,7 +22,7 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * fertig; der Fehler steht im Transkript und lässt sich dort neu anstoßen.
  */
 #[AsMessageHandler]
-#[StepOrder(stepNumber: 25)]
+#[StepOrder(stepNumber: 26)]
 class TranscribeStepMessageHandler extends AbstractVideoMessageHandler
 {
     public function __construct(

@@ -21,6 +21,7 @@ enum VideoStatus: string
     case TAGGING_SCENES = 'tagging_scenes';
     case CHAPTER_GENERATION = 'chapter_generation';
     case EXPORTING_JELLYFIN = 'exporting_jellyfin';
+    case ENCODING_WEB = 'encoding_web';
     case TRANSCRIBING = 'transcribing';
     case NAMING = 'naming';
     case COMPLETED = 'completed';
@@ -62,6 +63,7 @@ enum VideoStatus: string
             self::CHAPTER_GENERATION,
             self::NAMING,
             self::EXPORTING_JELLYFIN,
+            self::ENCODING_WEB,
             self::TRANSCRIBING,
         ];
     }
@@ -85,6 +87,7 @@ enum VideoStatus: string
             self::CHAPTER_GENERATION => 'Kapitel erzeugen',
             self::NAMING => 'Titel vorschlagen',
             self::EXPORTING_JELLYFIN => 'Jellyfin-Export',
+            self::ENCODING_WEB => 'Web-Fassung erstellen',
             self::TRANSCRIBING => 'Ton transkribieren',
             self::COMPLETED => 'Fertig',
             self::ERROR => 'Fehler',
@@ -108,6 +111,7 @@ enum VideoStatus: string
             self::CHAPTER_GENERATION => 'bookmark',
             self::NAMING => 'heading',
             self::EXPORTING_JELLYFIN => 'share-square',
+            self::ENCODING_WEB => 'compress',
             self::TRANSCRIBING => 'closed-captioning',
             self::COMPLETED => 'check',
             self::ERROR => 'exclamation-triangle',

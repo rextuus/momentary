@@ -33,6 +33,8 @@ class StepDurationEstimator
         'chapter_generation' => 0.05,
         'naming' => 0.03,
         'exporting_jellyfin' => 0.15,
+        // 4K auf 1080p mit libx264 auf der CPU des ThinkCentre, mit Intel-Grafik deutlich schneller
+        'encoding_web' => 1.5,
         // Whisper large-v3-turbo auf schwacher CPU etwa Echtzeit
         'transcribing' => 1.0,
     ];

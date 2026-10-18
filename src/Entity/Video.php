@@ -49,6 +49,14 @@ class Video extends Medium
     #[Groups(['video:detail'])]
     private ?File $convertedFile = null;
 
+    /**
+     * Web-Fassung (höchstens 1080p, etwa 4 Mbit/s) zum Streamen über das Internet; null, wenn das Original schon klein
+     * genug ist oder sie noch fehlt (siehe WebVersionEncoder).
+     */
+    #[ORM\ManyToOne(targetEntity: File::class, cascade: ['persist', 'remove'])]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?File $webFile = null;
+
     #[ORM\ManyToOne(targetEntity: File::class, cascade: ['persist', 'remove'])]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     #[Groups(['video:detail'])]
@@ -201,6 +209,18 @@ class Video extends Medium
     public function getConvertedFile(): ?File
     {
         return $this->convertedFile;
+    }
+
+    public function getWebFile(): ?File
+    {
+        return $this->webFile;
+    }
+
+    public function setWebFile(?File $webFile): self
+    {
+        $this->webFile = $webFile;
+
+        return $this;
     }
 
     public function setConvertedFile(?File $convertedFile): self
