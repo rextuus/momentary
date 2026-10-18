@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\Person;
-use App\Enum\PersonStatus;
 use App\Repository\PersonRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -31,18 +30,10 @@ final class PersonController extends AbstractController
     }
 
     #[Route('/', name: 'person_index')]
-    public function index(Request $request): Response
+    public function index(): Response
     {
-        $statuses = $request->query->all('statuses');
-        if (empty($statuses)) {
-            $statuses = [PersonStatus::IDENTIFIED->value];
-        }
-        $search = (string) $request->query->get('search', '');
-
-        return $this->render('person/index.html.twig', [
-            'statuses' => $statuses,
-            'search' => $search,
-        ]);
+        // Filter, Suche und Sortierung stehen als Query-Parameter in der URL und werden von der Live Component gelesen
+        return $this->render('person/index.html.twig');
     }
 
     #[Route('/cleanup', name: 'person_cleanup', methods: ['POST'])]

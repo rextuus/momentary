@@ -22,6 +22,8 @@ class FrameExtractor
         private readonly string $projectDir,
         #[Autowire('%env(default:app.frame_analysis_fps:FRAME_ANALYSIS_FPS)%')]
         private readonly float $defaultFps = 0.2,
+        #[Autowire('%env(default:app.refined_frame_analysis_fps:REFINED_FRAME_ANALYSIS_FPS)%')]
+        private readonly float $defaultRefinedFps = 1.0,
         #[Autowire('%env(PYTHON_BINARY)%')]
         string $pythonBinary = '/usr/bin/python3',
     ) {
@@ -30,7 +32,8 @@ class FrameExtractor
 
     /**
      * @param float|list<float>|null $startTime ein Startpunkt oder mehrere Segmente
-     * @param float|list<float>|null $duration  Dauer passend zu $startTime
+     * @param float|list<float>|null $duration     Dauer passend zu $startTime
+     * @param string|null            $subDirectory eigener Unterordner, z. B. pro Szene; nur dieser wird vorher geleert
      */
     public function extractFrames(
         int $videoId,
@@ -39,13 +42,19 @@ class FrameExtractor
         array|float|null $startTime = null,
         array|float|null $duration = null,
         bool $isRefinement = false,
+        ?string $subDirectory = null,
     ): FrameSplittingResult {
         $video = $this->videoRepository->find($videoId);
-        $fps ??= $video?->getAnalysisFps() ?? $this->defaultFps;
+        $fps ??= $isRefinement
+            ? $video?->getRefinedAnalysisFps() ?? $this->defaultRefinedFps
+            : $video?->getAnalysisFps() ?? $this->defaultFps;
 
         // Verzeichnis über VideoFileService ermitteln
         $absoluteDir = $this->videoFileService->getAbsolutePath('frames/' . $videoId);
         $frameDirPath = $absoluteDir . '/' . ($isRefinement ? 'refinement' : 'analysis');
+        if ($subDirectory !== null) {
+            $frameDirPath .= '/' . $subDirectory;
+        }
 
         // Frische Ausgabe: alte Frames dieses Durchlaufs entfernen, Ordner neu anlegen
         $fs = new Filesystem();

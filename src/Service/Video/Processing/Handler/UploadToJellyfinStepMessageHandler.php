@@ -16,7 +16,7 @@ use App\Service\WorkflowMachine;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
-#[StepOrder(stepNumber: 23)]
+#[StepOrder(stepNumber: 24)]
 class UploadToJellyfinStepMessageHandler extends AbstractVideoMessageHandler
 {
     public function __construct(

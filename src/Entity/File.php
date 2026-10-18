@@ -25,7 +25,8 @@ class File
     #[ORM\Column(length: 50)]
     private string $mimeType;
 
-    #[ORM\Column(type: 'integer')]
+    // bigint: konvertierte 4K-Videos sind schnell größer als 2 GB
+    #[ORM\Column(type: 'bigint')]
     private int $fileSize = 0;
 
     #[ORM\Column]

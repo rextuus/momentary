@@ -10,7 +10,7 @@ use App\Service\Video\Processing\Enum\VideoWorkflowProcessTransition;
 use App\Service\Video\Processing\Message\Abstract\AbstractVideoProcessStepMessage;
 use App\Service\Video\Processing\Message\GenerateChapterStepMessage;
 
-#[StepOrder(stepNumber: 20)]
+#[StepOrder(stepNumber: 21)]
 class TagLastSceneStepMessage extends AbstractVideoProcessStepMessage
 {
     protected const string MESSAGE_LOGGING_IDENT = 'TAG LAST SCENE';

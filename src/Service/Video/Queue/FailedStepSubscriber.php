@@ -9,6 +9,7 @@ use App\Service\Video\Processing\Enum\VideoWorkflowProcessTransition;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
+use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Messenger\Event\WorkerMessageFailedEvent;
@@ -24,6 +25,7 @@ final class FailedStepSubscriber implements EventSubscriberInterface
         private readonly WorkflowMachine $workflowMachine,
         private readonly VideoProcessingService $processingService,
         private readonly LoggerInterface $logger,
+        private readonly ManagerRegistry $managerRegistry,
     ) {}
 
     public static function getSubscribedEvents(): array
@@ -36,6 +38,13 @@ final class FailedStepSubscriber implements EventSubscriberInterface
     {
         if ($event->willRetry()) {
             return;
+        }
+
+        // Ein Datenbankfehler im Handler schließt den EntityManager. Ohne Reset könnte das Video nicht mehr
+        // auf "error" gesetzt werden und bliebe dauerhaft in einem Verarbeitungsstatus hängen (blockiert einen Queue-Slot).
+        $entityManager = $this->managerRegistry->getManagerForClass(\App\Entity\Video::class);
+        if ($entityManager instanceof \Doctrine\ORM\EntityManagerInterface && !$entityManager->isOpen()) {
+            $this->managerRegistry->resetManager();
         }
 
         $message = $event->getEnvelope()->getMessage();

@@ -4,30 +4,34 @@ declare(strict_types=1);
 
 namespace App\Service\Aws;
 
-use App\Repository\VideoFaceRepository;
+use App\Service\Face\FaceRecognitionSettingsProvider;
 use Aws\Rekognition\RekognitionClient;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
+/**
+ * Gesichtserkennung über AWS Rekognition.
+ *
+ * Ablauf pro Frame: Alle Gesichter werden mit indexFaces in die Collection aufgenommen und danach
+ * einzeln per searchFaces abgeglichen. searchFacesByImage eignet sich dafür nicht, weil es nur mit
+ * dem größten Gesicht im Bild sucht.
+ */
 class AmazonRekognitionService
 {
     private RekognitionClient $client;
     private string $collectionId = 'family-archive-collection';
 
-    private float $faceMatchThreshold;
-    private int $maxFaces;
-    private string $qualityFilter;
-    private VideoFaceRepository $videoFaceRepository;
-
-    public function __construct(#[Autowire(env: 'AWS_ACCESS_KEY')] string $awsKey, #[\SensitiveParameter]
-        #[Autowire(
-            env: 'AWS_SECRET_KEY',
-        )] string $awsSecret, #[Autowire(env: 'AWS_REGION')] string $region, VideoFaceRepository $videoFaceRepository, #[Autowire(env: 'AWS_FACE_MATCH_THRESHOLD')] float $faceMatchThreshold = 97.0, #[Autowire(env: 'AWS_MAX_FACES')] int $maxFaces = 15, #[Autowire(env: 'AWS_QUALITY_FILTER')] string $qualityFilter = 'AUTO')
-    {
-        $this->videoFaceRepository = $videoFaceRepository;
-        $this->faceMatchThreshold = $faceMatchThreshold;
-        $this->maxFaces = $maxFaces;
-        $this->qualityFilter = $qualityFilter;
-        $this->client = new RekognitionClient([
+    public function __construct(
+        #[Autowire(env: 'AWS_ACCESS_KEY')]
+        string $awsKey,
+        #[\SensitiveParameter]
+        #[Autowire(env: 'AWS_SECRET_KEY')]
+        string $awsSecret,
+        #[Autowire(env: 'AWS_REGION')]
+        string $region,
+        private readonly FaceRecognitionSettingsProvider $settingsProvider,
+        ?RekognitionClient $client = null,
+    ) {
+        $this->client = $client ?? new RekognitionClient([
             'region' => $region,
             'version' => 'latest',
             'credentials' => [
@@ -38,9 +42,9 @@ class AmazonRekognitionService
     }
 
     /**
-     * Analysiert ein Bild, sucht nach Übereinstimmungen und indiziert unbekannte Gesichter.
+     * Indiziert alle ausreichend großen Gesichter eines Bildes und sucht für jedes ähnliche, bereits bekannte Gesichter.
      *
-     * @return list<array<string, mixed>> ein Eintrag pro erkanntem Gesicht
+     * @return list<DetectedFace>
      */
     public function processAllFacesInImage(string $imagePath): array
     {
@@ -49,149 +53,99 @@ class AmazonRekognitionService
             throw new \RuntimeException(sprintf('Image "%s" could not be read.', $imagePath));
         }
 
-        // 1. Gesichter erkennen (Attribute + BoundingBoxes)
-        $detectResponse = $this->client->detectFaces([
-            'Image' => ['Bytes' => $imageContent],
-            'Attributes' => ['ALL'],
-        ]);
-
-        if (empty($detectResponse['FaceDetails'])) {
-            return [];
-        }
-
-        // 2. Gesichter suchen (Matches)
-        $searchResponse = $this->client->searchFacesByImage([
+        $settings = $this->settingsProvider->get();
+        $indexResponse = $this->client->indexFaces([
             'CollectionId' => $this->collectionId,
             'Image' => ['Bytes' => $imageContent],
-            'FaceMatchThreshold' => $this->faceMatchThreshold,
-            'MaxFaces' => $this->maxFaces,
+            'DetectionAttributes' => ['ALL'],
+            'MaxFaces' => $settings->getMaxFacesPerFrame(),
+            'QualityFilter' => $settings->getQualityFilter(),
         ]);
 
-        $availableMatches = $searchResponse['FaceMatches'] ?? [];
-        $faceIds = array_map(static fn($m) => $m['Face']['FaceId'], $availableMatches);
-        $knownFaces = $this->videoFaceRepository->findBy(['faceLabel' => $faceIds]);
-        $knownFacesByFaceId = [];
-        foreach ($knownFaces as $face) {
-            $label = $face->getFaceLabel();
-            if ($label !== null) {
-                $knownFacesByFaceId[$label] = $face;
-            }
-        }
+        $faces = [];
+        $tooSmall = [];
+        foreach ($indexResponse['FaceRecords'] ?? [] as $record) {
+            $faceId = (string) $record['Face']['FaceId'];
+            $box = array_map(floatval(...), $record['Face']['BoundingBox'] ?? []);
 
-        $results = [];
-        $indexedInThisImage = false;
-        foreach ($detectResponse['FaceDetails'] as $detail) {
-            $matchedFaceId = null;
-            $similarity = null;
-
-            $detectedGender = $detail['Gender']['Value'] ?? 'Unknown';
-
-            // Match anhand der BoundingBox finden
-            $bestMatchResult = $this->findBestMatch($detail, $availableMatches, $detectedGender, $knownFacesByFaceId);
-            if ($bestMatchResult) {
-                $bestMatch = $bestMatchResult['match'];
-                $matchedFaceId = $bestMatch['Face']['FaceId'];
-                $similarity = $bestMatch['Similarity'];
-                // Entferne diesen Match aus den verfügbaren Matches, damit er nicht erneut gematcht wird
-                unset($availableMatches[$bestMatchResult['key']]);
+            // Winzige Gesichter (Gäste im Hintergrund) taugen nicht zum Abgleich und würden später
+            // als Kandidaten nur Fehltreffer erzeugen -> gar nicht erst in der Collection behalten
+            if (($box['Width'] ?? 0.0) < $settings->getMinFaceWidth()) {
+                $tooSmall[] = $faceId;
+                continue;
             }
 
-            // Wenn kein Match, Gesicht indizieren
-            $faceId = null;
-            if (!$matchedFaceId) {
-                // Nur indizieren, wenn die Confidence sehr hoch ist
-                if ($detail['Confidence'] > 99.0 && !$indexedInThisImage) {
-                    $indexResponse = $this->client->indexFaces([
-                        'CollectionId' => $this->collectionId,
-                        'Image' => ['Bytes' => $imageContent],
-                        'MaxFaces' => $this->maxFaces,
-                    ]);
-                    $indexedInThisImage = true;
-
-                    // Da wir das ganze Bild indiziert haben, könnten wir die neuen Gesichter jetzt eigentlich mappen,
-                    // aber das ist komplex. Für den Moment ist das Indizieren ausreichend, damit sie in der Collection sind.
-                    // Beim nächsten Frame sollte sie dann gefunden werden.
-                }
-            } else {
-                $faceId = $matchedFaceId;
-            }
-
-            $results[] = [
-                'faceId' => $faceId,
-                'matchedFaceId' => $matchedFaceId,
-                'similarity' => $similarity,
-                'age' => $this->calculateAverageAge($detail['AgeRange']),
-                'gender' => $detail['Gender']['Value'] ?? 'Unknown',
-                'emotion' => $detail['Emotions'][0]['Type'] ?? 'CALM',
-                'confidence' => $detail['Confidence'],
-                'boundingBox' => $detail['BoundingBox'],
-            ];
-        }
-
-        return $results;
-    }
-
-    /**
-     * @param array{Low: int|float, High: int|float} $ageRange
-     */
-    private function calculateAverageAge(array $ageRange): int
-    {
-        return (int) (($ageRange['Low'] + $ageRange['High']) / 2);
-    }
-
-    /**
-     * Findet das beste FaceMatch-Objekt für ein gegebenes FaceDetail basierend auf der BoundingBox.
-     *
-     * @param array<string, mixed>          $detail             FaceDetail aus detectFaces
-     * @param array<int, array<string, mixed>> $matches         FaceMatches aus searchFacesByImage
-     * @param array<string, \App\Entity\VideoFace> $knownFacesByFaceId
-     *
-     * @return array{match: array<string, mixed>, key: int}|null
-     */
-    private function findBestMatch(
-        array $detail,
-        array $matches,
-        string $detectedGender,
-        array $knownFacesByFaceId,
-    ): ?array {
-        $bestMatch = null;
-        $bestMatchKey = null;
-        $minDistance = 0.2; // 20% Toleranz
-
-        foreach ($matches as $key => $match) {
-            $faceId = $match['Face']['FaceId'];
-
-            // Geschlechtscheck
-            if (isset($knownFacesByFaceId[$faceId])) {
-                $knownGender = $knownFacesByFaceId[$faceId]->getGender();
-                if (
-                    $knownGender
-                    && $detectedGender !== 'Unknown'
-                    && $knownGender !== 'Unknown'
-                    && $knownGender !== $detectedGender
-                ) {
-                    continue; // Geschlecht passt nicht
-                }
-            }
-
-            $box1 = $detail['BoundingBox'];
-            $box2 = $match['Face']['BoundingBox'];
-
-            // Distanzberechnung zwischen den BoundingBoxes
-            $distance = sqrt(
-                pow($box1['Left'] - $box2['Left'], 2)
-                + pow($box1['Top'] - $box2['Top'], 2)
-                + pow($box1['Width'] - $box2['Width'], 2)
-                + pow($box1['Height'] - $box2['Height'], 2),
+            $detail = $record['FaceDetail'] ?? [];
+            $faces[] = new DetectedFace(
+                faceId: $faceId,
+                boundingBox: $box,
+                confidence: (float) ($record['Face']['Confidence'] ?? 0.0),
+                age: $this->averageAge($detail['AgeRange'] ?? null),
+                gender: (string) ($detail['Gender']['Value'] ?? 'Unknown'),
+                emotion: $this->strongestEmotion($detail['Emotions'] ?? []),
+                candidates: $this->searchCandidates(
+                    $faceId,
+                    $settings->getCandidateThreshold(),
+                    $settings->getMaxCandidates(),
+                ),
             );
+        }
 
-            if ($distance < $minDistance) {
-                $minDistance = $distance;
-                $bestMatch = $match;
-                $bestMatchKey = $key;
+        if ($tooSmall !== []) {
+            $this->client->deleteFaces(['CollectionId' => $this->collectionId, 'FaceIds' => $tooSmall]);
+        }
+
+        return $faces;
+    }
+
+    /**
+     * @return array<string, float> Rekognition-FaceId => Ähnlichkeit, absteigend sortiert
+     */
+    private function searchCandidates(string $faceId, float $threshold, int $maxCandidates): array
+    {
+        $response = $this->client->searchFaces([
+            'CollectionId' => $this->collectionId,
+            'FaceId' => $faceId,
+            'FaceMatchThreshold' => $threshold,
+            'MaxFaces' => $maxCandidates,
+        ]);
+
+        $candidates = [];
+        foreach ($response['FaceMatches'] ?? [] as $match) {
+            $candidates[(string) $match['Face']['FaceId']] = (float) $match['Similarity'];
+        }
+        arsort($candidates);
+
+        return $candidates;
+    }
+
+    /**
+     * @param array{Low?: int|float, High?: int|float}|null $ageRange
+     */
+    private function averageAge(?array $ageRange): int
+    {
+        if ($ageRange === null) {
+            return 0;
+        }
+
+        return (int) round((($ageRange['Low'] ?? 0) + ($ageRange['High'] ?? 0)) / 2);
+    }
+
+    /**
+     * @param list<array{Type?: string, Confidence?: float}> $emotions
+     */
+    private function strongestEmotion(array $emotions): string
+    {
+        $best = 'CALM';
+        $bestConfidence = -1.0;
+        foreach ($emotions as $emotion) {
+            if (($emotion['Confidence'] ?? 0.0) > $bestConfidence) {
+                $best = $emotion['Type'] ?? $best;
+                $bestConfidence = $emotion['Confidence'] ?? 0.0;
             }
         }
-        return $bestMatch !== null && $bestMatchKey !== null ? ['match' => $bestMatch, 'key' => $bestMatchKey] : null;
+
+        return $best;
     }
 
     public function getClient(): RekognitionClient
@@ -202,6 +156,34 @@ class AmazonRekognitionService
     public function getCollectionId(): string
     {
         return $this->collectionId;
+    }
+
+    /**
+     * Anzahl der Gesichter in der Collection; null, wenn sie (noch) nicht existiert.
+     */
+    public function countIndexedFaces(): ?int
+    {
+        try {
+            return (int) $this->client->describeCollection(['CollectionId' => $this->collectionId])['FaceCount'];
+        } catch (\Aws\Rekognition\Exception\RekognitionException $e) {
+            if ($e->getAwsErrorCode() === 'ResourceNotFoundException') {
+                return null;
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Gesichter aus der Collection entfernen, damit sie bei künftigen Suchen nicht mehr als Treffer auftauchen.
+     *
+     * @param list<string> $faceIds
+     */
+    public function deleteFaces(array $faceIds): void
+    {
+        // AWS nimmt höchstens 4096 IDs pro Aufruf
+        foreach (array_chunk(array_values(array_unique($faceIds)), 4096) as $chunk) {
+            $this->client->deleteFaces(['CollectionId' => $this->collectionId, 'FaceIds' => $chunk]);
+        }
     }
 
     public function resetCollection(): void

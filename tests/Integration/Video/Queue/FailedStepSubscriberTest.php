@@ -10,6 +10,8 @@ use App\Service\Video\Processing\Message\ConvertStepMessage;
 use App\Service\Video\Processing\Message\SceneDetectionStepMessage;
 use App\Service\Video\Queue\FailedStepSubscriber;
 use App\Tests\Factory\VideoFactory;
+use Doctrine\DBAL\Connection;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Messenger\Envelope;
@@ -53,6 +55,29 @@ final class FailedStepSubscriberTest extends KernelTestCase
             ->findFirst(static fn($key, $step): bool => $step->getStep() === VideoStatus::SCENE_DETECTION);
         self::assertNotNull($failedStep);
         self::assertStringContainsString('Could not open video file', (string) $failedStep->getErrorMessage());
+    }
+
+    /**
+     * Ein Datenbankfehler im Handler schließt den EntityManager; das Video muss trotzdem auf "error" gehen,
+     * sonst blockiert es dauerhaft einen Queue-Platz.
+     */
+    public function testVideoIsMarkedAsErrorEvenAfterTheEntityManagerWasClosed(): void
+    {
+        $video = VideoFactory::createOne(['status' => VideoStatus::CONVERTING]);
+        $videoId = self::idOf($video);
+        self::getContainer()->get(EntityManagerInterface::class)->close();
+
+        $this->dispatchWorkerFailure(
+            new ConvertStepMessage($videoId, 0, 'initial'),
+            new \RuntimeException('Out of range value for column file_size'),
+            willRetry: false,
+        );
+
+        // Direkt aus der Datenbank lesen: ein geschlossener EntityManager hätte den Status nur im Speicher geändert
+        $status = self::getContainer()
+            ->get(Connection::class)
+            ->fetchOne('SELECT status FROM video WHERE id = ?', [$videoId]);
+        self::assertSame(VideoStatus::ERROR->value, $status);
     }
 
     public function testFailureThatWillBeRetriedLeavesVideoUntouched(): void

@@ -20,6 +20,7 @@ framework:
                 - !php/const App\Enum\VideoStatus::REFINING_EXTRACTION
                 - !php/const App\Enum\VideoStatus::REFINING_SPLITTING
                 - !php/const App\Enum\VideoStatus::ANALYZING_FACES_REFINEMENT
+                - !php/const App\Enum\VideoStatus::CONSOLIDATING_FACES
                 - !php/const App\Enum\VideoStatus::MERGING_SCENES
                 - !php/const App\Enum\VideoStatus::TAGGING_SCENES
                 - !php/const App\Enum\VideoStatus::CHAPTER_GENERATION
@@ -60,8 +61,12 @@ framework:
                     from: [!php/const App\Enum\VideoStatus::REFINING_SPLITTING]
                     to:   !php/const App\Enum\VideoStatus::ANALYZING_FACES_REFINEMENT
 
-                start_merging:
+                start_face_consolidation:
                     from: [!php/const App\Enum\VideoStatus::ANALYZING_FACES_REFINEMENT]
+                    to:   !php/const App\Enum\VideoStatus::CONSOLIDATING_FACES
+
+                start_merging:
+                    from: [!php/const App\Enum\VideoStatus::CONSOLIDATING_FACES]
                     to:   !php/const App\Enum\VideoStatus::MERGING_SCENES
 
                 start_tagging:
@@ -95,6 +100,7 @@ framework:
                         - !php/const App\Enum\VideoStatus::REFINING_EXTRACTION
                         - !php/const App\Enum\VideoStatus::REFINING_SPLITTING
                         - !php/const App\Enum\VideoStatus::ANALYZING_FACES_REFINEMENT
+                        - !php/const App\Enum\VideoStatus::CONSOLIDATING_FACES
                         - !php/const App\Enum\VideoStatus::MERGING_SCENES
                         - !php/const App\Enum\VideoStatus::TAGGING_SCENES
                         - !php/const App\Enum\VideoStatus::CHAPTER_GENERATION
@@ -112,6 +118,7 @@ framework:
                         - !php/const App\Enum\VideoStatus::REFINING_EXTRACTION
                         - !php/const App\Enum\VideoStatus::REFINING_SPLITTING
                         - !php/const App\Enum\VideoStatus::ANALYZING_FACES_REFINEMENT
+                        - !php/const App\Enum\VideoStatus::CONSOLIDATING_FACES
                         - !php/const App\Enum\VideoStatus::MERGING_SCENES
                         - !php/const App\Enum\VideoStatus::TAGGING_SCENES
                         - !php/const App\Enum\VideoStatus::CHAPTER_GENERATION

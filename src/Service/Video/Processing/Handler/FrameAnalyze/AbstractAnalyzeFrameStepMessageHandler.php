@@ -29,6 +29,12 @@ abstract class AbstractAnalyzeFrameStepMessageHandler extends AbstractVideoMessa
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
     }
 
+    protected function resetState(): void
+    {
+        $this->frame = null;
+        $this->remainingFrames = [];
+    }
+
     /**
      * Analysiert den aktuellen Frame der Message und legt den nächsten Frame samt Rest für die Folge-Message ab.
      *
@@ -51,6 +57,7 @@ abstract class AbstractAnalyzeFrameStepMessageHandler extends AbstractVideoMessa
                 str_starts_with($path, '/') ? $path : $this->videoAnalyzer->getAbsolutePath($path),
                 $current->getTimestamp(),
             );
+            $this->recordItemDone($this->countFramesLeft());
         }
 
         return $current;

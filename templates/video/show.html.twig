@@ -83,7 +83,7 @@
                             </div>
                         </div>
                         <span class="badge rounded-pill bg-primary bg-opacity-10 text-primary border border-primary px-3 py-2">
-                            {{ video.status.value|upper }}
+                            {{ video.status.label }}
                         </span>
                     </div>
 
@@ -147,16 +147,20 @@
                         </div>
                     {% endif %}
 
-                    {% if video.errorMessage %}
+                    {% if video.errorMessage or video.status.value == 'error' %}
                         <div class="alert alert-danger border-0 shadow-sm d-flex align-items-start p-4">
                             <i class="fas fa-exclamation-triangle mt-1 me-3 fa-lg"></i>
                             <div>
                                 <h5 class="alert-heading fw-bold mb-1">Analyse fehlgeschlagen</h5>
-                                <p class="mb-0 font-monospace small">{{ video.errorMessage }}</p>
+                                <p class="mb-0 font-monospace small">{{ video.errorMessage ?? 'Details stehen beim fehlgeschlagenen Schritt in der Pipeline-Übersicht.' }}</p>
                                 <hr>
                                 {% if is_granted('VIDEO_EDIT', video) %}
                                 <div class="d-flex gap-2 mt-3">
-                                    <a href="{{ path('app_video_trigger', {id: video.id, step: 'reset'}) }}" class="btn btn-sm btn-outline-danger">Analyse zurücksetzen</a>
+                                    <form action="{{ path('video_reprocess', {id: video.id}) }}" method="post" class=""
+                                      onsubmit="return confirm('Analyse neu starten? Szenen und erkannte Gesichter dieses Videos werden dabei neu erzeugt.')">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('reprocess' ~ video.id) }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-rotate-right me-1"></i>Analyse neu starten</button>
+                                </form>
                                 </div>
                                 {% endif %}
                             </div>
@@ -240,12 +244,22 @@
                             <p class="small text-muted">Export verfügbar, sobald die Analyse abgeschlossen ist.</p>
                         {% endif %}
                         <hr>
-                        <a href="{{ path('app_video_trigger', {id: video.id, step: 'reset'}) }}"
-                           class="btn btn-sm btn-light border text-danger d-flex justify-content-between align-items-center mb-2"
-                           onclick="return confirm('Möchtest du wirklich alle erkannten Szenen und Personen für dieses Video löschen?')">
-                            <span><i class="fas fa-undo me-2"></i> Analyse zurücksetzen</span>
-                            <i class="fas fa-chevron-right small opacity-50"></i>
-                        </a>
+                        {% if video.status.processing %}
+                            <button type="button" class="btn btn-sm btn-light border text-muted d-flex justify-content-between align-items-center w-100 mb-2" disabled
+                                    title="Erst möglich, wenn die laufende Verarbeitung beendet ist">
+                                <span><i class="fas fa-undo me-2"></i> Analyse neu starten</span>
+                                <i class="fas fa-hourglass-half small opacity-50"></i>
+                            </button>
+                        {% else %}
+                            <form action="{{ path('video_reprocess', {id: video.id}) }}" method="post" class="mb-2"
+                                      onsubmit="return confirm('Analyse neu starten? Szenen und erkannte Gesichter dieses Videos werden dabei neu erzeugt.')">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('reprocess' ~ video.id) }}">
+                                    <button type="submit" class="btn btn-sm btn-light border text-danger d-flex justify-content-between align-items-center w-100">
+                                        <span><i class="fas fa-undo me-2"></i> Analyse neu starten</span>
+                                        <i class="fas fa-chevron-right small opacity-50"></i>
+                                    </button>
+                                </form>
+                        {% endif %}
                         <a href="{{ path('app_video_trigger', {id: video.id, step: 'delete'}) }}"
                            class="btn btn-sm btn-outline-danger d-flex justify-content-between align-items-center"
                            onclick="return confirm('Möchtest du wirklich die lokale Videodatei und alle temporären Frames löschen? Die Analyseergebnisse bleiben erhalten.')">

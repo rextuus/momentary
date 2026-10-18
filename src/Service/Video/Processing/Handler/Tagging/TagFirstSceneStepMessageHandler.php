@@ -17,7 +17,7 @@ use App\Service\WorkflowMachine;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
-#[StepOrder(stepNumber: 18)]
+#[StepOrder(stepNumber: 19)]
 class TagFirstSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
 {
     public function __construct(
@@ -60,6 +60,7 @@ class TagFirstSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
                 $this->stopProcessing($result->getMessage() ?? 'Tagging failed');
                 return;
             }
+            $this->recordItemDone(0);
 
             $successMsg = sprintf('Video %d contains only one scene. Tagged successfully.', $video->getId());
             $this->finishCurrentStep($successMsg);
@@ -74,6 +75,7 @@ class TagFirstSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
             $this->stopProcessing($result->getMessage() ?? 'Tagging failed');
             return;
         }
+        $this->recordItemDone(\count($sceneIds));
 
         $successMsg = sprintf(
             'First scene (ID %d) of Video "%s" tagged. %d left.',

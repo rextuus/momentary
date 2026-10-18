@@ -91,6 +91,7 @@ class SplitFirstSceneInFramesStepMessageHandler extends AbstractSplitInFramesSte
         $nextScene = array_shift($remainingScenes); // Scene-ID oder null
         $this->currentSceneId = $nextScene;
         $this->remainingSceneIds = $remainingScenes;
+        $this->recordSceneSplit();
 
         $successMsg = sprintf(
             'First Scene split. Added %d frames for analysis for scene %d of video "%s" to global frame array. There are still %d scenes we need to split. Collected already: %d frames',

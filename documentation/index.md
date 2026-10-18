@@ -13,6 +13,7 @@ Welcome to the Momentary documentation. This project is designed to help you man
 7.  [Alternativen zu Jellyfin](alternatives.md)
 8.  [Tests](testing.md)
 9.  [Code-Qualität](code-quality.md)
+10. [Gesichtserkennung](face_recognition.md)
 
 ## Key Features
 

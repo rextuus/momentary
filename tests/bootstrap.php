@@ -22,3 +22,16 @@ if (!is_file($oauthKeyDir . '/private.key')) {
     file_put_contents($oauthKeyDir . '/public.key', $details['key']);
     chmod($oauthKeyDir . '/private.key', 0o600);
 }
+
+// Sicherheitsnetz (Reihenfolge wie Symfony: $_ENV vor $_SERVER): Tests setzen DB und Storage zurück. Zeigt eines davon auf echte Daten (etwa weil eine
+// Docker-Variable die Testwerte überschreibt), wird sofort abgebrochen, bevor etwas gelöscht wird.
+$storageRoot = (string) ($_ENV['STORAGE_ROOT'] ?? $_SERVER['STORAGE_ROOT'] ?? '');
+$databaseUrl = (string) ($_ENV['DATABASE_URL'] ?? $_SERVER['DATABASE_URL'] ?? '');
+if (!str_starts_with($storageRoot, 'var/')) {
+    fwrite(\STDERR, sprintf("Abbruch: STORAGE_ROOT=\"%s\" ist kein Test-Storage unter var/.\n", $storageRoot));
+    exit(1);
+}
+if (!str_starts_with($databaseUrl, 'sqlite:')) {
+    fwrite(\STDERR, "Abbruch: Tests laufen nur gegen SQLite, DATABASE_URL zeigt auf eine andere Datenbank.\n");
+    exit(1);
+}

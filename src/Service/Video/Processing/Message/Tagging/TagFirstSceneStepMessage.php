@@ -8,7 +8,7 @@ use App\Enum\VideoStatus;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Message\Abstract\AbstractVideoProcessStepMessage;
 
-#[StepOrder(stepNumber: 18)]
+#[StepOrder(stepNumber: 19)]
 class TagFirstSceneStepMessage extends AbstractVideoProcessStepMessage
 {
     protected const string MESSAGE_LOGGING_IDENT = 'TAG FIRST SCENE';

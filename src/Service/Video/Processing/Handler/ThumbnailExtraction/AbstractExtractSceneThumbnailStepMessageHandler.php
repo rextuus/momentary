@@ -38,6 +38,12 @@ abstract class AbstractExtractSceneThumbnailStepMessageHandler extends AbstractV
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
     }
 
+    protected function resetState(): void
+    {
+        $this->nextSceneId = null;
+        $this->remainingSceneIds = [];
+    }
+
     protected function generateThumbnail(AbstractExtractSceneThumbnailStepMessage $message): ?string
     {
         $scene = $this->videoSceneRepository->find($message->getCurrentSceneId());

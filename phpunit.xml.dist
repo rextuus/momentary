@@ -19,8 +19,15 @@
     <server name="APP_ENV" value="test" force="true"/>
     <env name="APP_ENV" value="test" force="true"/>
     <env name="APP_DEBUG" value="1" force="true"/>
+    <!-- Tests nie gegen die echte DB: im Docker-Container ist DATABASE_URL als echte Env-Variable gesetzt -->
+    <env name="DATABASE_URL" value="sqlite:///%kernel.project_dir%/var/data.test.sqlite" force="true"/>
+    <env name="MESSENGER_TRANSPORT_DSN" value="sync://" force="true"/>
+    <env name="IMGPROXY_HOST" value="http://imgproxy.test" force="true"/>
+    <env name="IMGPROXY_PUBLIC_HOST" value="http://imgproxy.test" force="true"/>
     <server name="SHELL_VERBOSITY" value="-1"/>
-    <server name="STORAGE_ROOT" value="var/storage"/>
+    <!-- Tests räumen ihre Dateien weg: nie im echten Storage (im Container ist STORAGE_ROOT=storage gesetzt) -->
+    <server name="STORAGE_ROOT" value="var/storage" force="true"/>
+    <env name="STORAGE_ROOT" value="var/storage" force="true"/>
   </php>
 
   <testsuites>

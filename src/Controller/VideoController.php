@@ -10,10 +10,12 @@ use App\Entity\VideoProcessingStep;
 use App\Entity\VideoScene;
 use App\Form\VideoType;
 use App\Repository\VideoRepository;
+use App\Service\Face\OrphanedPersonCleaner;
 use App\Service\Storage\FileManager;
 use App\Service\Storage\FileStorageService;
 use App\Service\Tag\TagInitializer;
 use App\Service\Video\VideoCreationService;
+use App\Service\Video\VideoReprocessor;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -107,9 +109,11 @@ final class VideoController extends AbstractController
         Video $video,
         FileManager $fileManager,
         FileStorageService $fileStorageService,
+        OrphanedPersonCleaner $orphanedPersonCleaner,
     ): Response {
         if ($this->isCsrfTokenValid('delete' . $video->getId(), $request->request->getString('_token'))) {
             $videoId = $video->getId();
+            $affectedPersons = $orphanedPersonCleaner->personIdsOfVideo((int) $videoId);
 
             // 1. Hauptdateien über den FileManager löschen
             if ($video->getSourceFile()) {
@@ -132,6 +136,9 @@ final class VideoController extends AbstractController
 
             // 4. EntityManager-Cache komplett leeren, damit keine veralteten Identity-Map-Einträge bleiben
             $this->entityManager->clear();
+
+            // 5. Automatisch angelegte Personen, die nur in diesem Video vorkamen
+            $orphanedPersonCleaner->removeOrphans($affectedPersons);
 
             $this->addFlash('success', 'Video und alle zugehörigen Daten wurden erfolgreich gelöscht.');
         }
@@ -208,6 +215,37 @@ final class VideoController extends AbstractController
     #[IsGranted('VIDEO_EDIT', subject: 'video')]
     public function trigger(Video $video): Response
     {
+        return $this->redirectToRoute('app_video_show', ['id' => $video->getId()]);
+    }
+
+    /**
+     * Analyse komplett neu starten (wie bin/console app:video:reprocess).
+     */
+    #[Route('/{id}/reprocess', name: 'video_reprocess', methods: ['POST'])]
+    #[IsGranted('VIDEO_EDIT', subject: 'video')]
+    public function reprocess(Video $video, Request $request, VideoReprocessor $reprocessor): Response
+    {
+        if (!$this->isCsrfTokenValid('reprocess' . $video->getId(), $request->request->getString('_token'))) {
+            $this->addFlash('danger', 'Ungültiges CSRF-Token.');
+
+            return $this->redirectToRoute('app_video_show', ['id' => $video->getId()]);
+        }
+
+        $reason = $reprocessor->whyNot($video);
+        if ($reason !== null) {
+            $this->addFlash('warning', $reason);
+
+            return $this->redirectToRoute('app_video_show', ['id' => $video->getId()]);
+        }
+
+        $result = $reprocessor->reprocess([$video]);
+        $this->addFlash(
+            'success',
+            $result['started'] > 0
+                ? 'Die Analyse wurde neu gestartet.'
+                : 'Das Video wurde für eine neue Analyse eingereiht und startet, sobald ein Platz in der Warteschlange frei ist.',
+        );
+
         return $this->redirectToRoute('app_video_show', ['id' => $video->getId()]);
     }
 

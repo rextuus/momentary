@@ -24,3 +24,20 @@ body {
 .appearance-card:hover img {
   transform: scale(1.05);
 }
+// Personenliste
+.person-tile {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  img {
+    transition: transform 0.25s ease;
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.12) !important;
+
+    img {
+      transform: scale(1.04);
+    }
+  }
+}

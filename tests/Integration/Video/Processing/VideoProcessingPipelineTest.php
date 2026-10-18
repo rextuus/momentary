@@ -10,6 +10,7 @@ use App\Entity\VideoScene;
 use App\Enum\FilePurpose;
 use App\Enum\VideoStatus;
 use App\Service\Aws\AmazonRekognitionService;
+use App\Service\Aws\DetectedFace;
 use App\Service\Gemini\GeminiService;
 use App\Service\Storage\StoragePathProvider;
 use App\Service\Video\Analyze\ChapterGenerator;
@@ -54,12 +55,18 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
     /** @var list<string> */
     private array $analyzedFrames = [];
 
+    /** @var list<array{refinement: bool, subDirectory: ?string, fps: ?float}> */
+    private array $extractCalls = [];
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->rekognitionServiceMock = $this->createStub(AmazonRekognitionService::class);
         $this->meiliSearchClientMock = $this->createStub(Client::class);
         $this->mp4Converter = $this->createStub(Mp4Converter::class);
+        $this->mp4Converter
+            ->method('probe')
+            ->willReturn(['video' => ['codec' => 'h264', 'pixFmt' => 'yuv420p'], 'audio' => [], 'duration' => 60.0]);
         $this->pathResolver = $this->createStub(PathResolver::class);
         $this->sceneDetector = $this->createStub(SceneDetector::class);
         $this->sceneThumbnailExtractor = $this->createStub(SceneThumbnailExtractor::class);
@@ -110,6 +117,10 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
                 ->getValues(),
         );
         self::assertNotNull($updatedVideo->getConvertedFile(), 'Konvertierte Datei sollte hinterlegt sein');
+        self::assertEqualsWithDelta(60.0, $updatedVideo->getDuration(), 0.01, 'Videolänge für Zeitschätzungen');
+        $tagged = $updatedVideo->getProgressFor(VideoStatus::TAGGING_SCENES);
+        self::assertNotNull($tagged, 'Tagging zählt seinen Fortschritt');
+        self::assertSame($tagged['total'], $tagged['done']);
 
         self::assertNotEmpty($updatedVideo->getProcessingSteps());
         foreach ($updatedVideo->getProcessingSteps() as $step) {
@@ -129,6 +140,28 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         // Erst die Frames des ganzen Videos, danach die Refinement-Frames der vier (noch) gesichtslosen Szenen
         $expected = array_map(static fn(int $n): string => sprintf('frame_%04d.jpg', $n), range(1, 12));
         self::assertSame($expected, $this->analyzedFrames);
+    }
+
+    /**
+     * Refinement-Frames dürfen weder im Ordner der Erstanalyse landen noch sich gegenseitig überschreiben:
+     * jede Szene bekommt einen eigenen Refinement-Ordner und die Refinement-Bildrate des Videos.
+     */
+    public function testRefinementSplitsEachSceneIntoItsOwnFolder(): void
+    {
+        $video = $this->arrangeSuccessfulPipeline();
+
+        $this->dispatch(new ConvertStepMessage(self::idOf($video), 0, 'INITIAL'));
+
+        self::assertFalse($this->extractCalls[0]['refinement'], 'Erstanalyse des ganzen Videos');
+        $refinement = \array_slice($this->extractCalls, 1);
+        self::assertCount(4, $refinement);
+        foreach ($refinement as $call) {
+            self::assertTrue($call['refinement']);
+            self::assertNull($call['fps'], 'Bildrate kommt aus den Refinement-Einstellungen des Videos');
+        }
+        $folders = array_column($refinement, 'subDirectory');
+        self::assertCount(4, array_unique($folders), 'ein eigener Ordner pro Szene');
+        self::assertStringStartsWith('scene_', (string) $folders[0]);
     }
 
     public function testFailedTaggingStopsPipelineWithError(): void
@@ -217,15 +250,15 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         $this->rekognitionServiceMock
             ->method('processAllFacesInImage')
             ->willReturn([
-                [
-                    'BoundingBox' => ['Width' => 0.2, 'Height' => 0.2, 'Left' => 0.4, 'Top' => 0.3],
-                    'Confidence' => 99.8,
-                    'faceId' => 'face1',
-                    'age' => 20,
-                    'gender' => 'Male',
-                    'emotion' => 'Happy',
-                    'similarity' => 90.0,
-                ],
+                new DetectedFace(
+                    'face1',
+                    ['Width' => 0.2, 'Height' => 0.2, 'Left' => 0.4, 'Top' => 0.3],
+                    99.8,
+                    20,
+                    'Male',
+                    'Happy',
+                    [],
+                ),
             ]);
 
         // 3.1 Mock GeminiService
@@ -285,7 +318,7 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
                 return $file;
             });
 
-        $this->frameExtractor->method('extractFrames')->willReturnOnConsecutiveCalls(
+        $results = [
             new FrameSplittingResult([
                 ['path' => '/tmp/frames/analysis/frame_0001.jpg', 'timestamp' => 3.0],
                 ['path' => '/tmp/frames/analysis/frame_0002.jpg', 'timestamp' => 5.0],
@@ -328,7 +361,22 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
                 ['path' => '/tmp/frames/refinement/frame_0013.jpg', 'timestamp' => 15.0],
                 ['path' => '/tmp/frames/refinement/frame_0014.jpg', 'timestamp' => 17.0],
             ], '/tmp/frames/refinement'),
-        );
+        ];
+        $this->frameExtractor
+            ->method('extractFrames')
+            ->willReturnCallback(function (
+                int $videoId,
+                string $path,
+                ?float $fps = null,
+                mixed $start = null,
+                mixed $duration = null,
+                bool $isRefinement = false,
+                ?string $subDirectory = null,
+            ) use (&$results): FrameSplittingResult {
+                $this->extractCalls[] = ['refinement' => $isRefinement, 'subDirectory' => $subDirectory, 'fps' => $fps];
+
+                return array_shift($results) ?? new FrameSplittingResult([], '/tmp/frames/empty');
+            });
 
         $emptyScenesMerger = $this->createMock(EmptyScenesMerger::class);
         $emptyScenesMerger

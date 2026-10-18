@@ -13,7 +13,7 @@
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb small">
                 <li class="breadcrumb-item"><a href="{{ path('person_index') }}">Personen</a></li>
-                <li class="breadcrumb-item active text-muted">{{ person.name }}</li>
+                <li class="breadcrumb-item active text-muted">{{ person.displayName }}</li>
             </ol>
         </nav>
 
@@ -21,11 +21,11 @@
             <div class="col-md-3">
                 <div class="card shadow-sm border-0 mb-4 overflow-hidden">
                     {# HEADER: Profilbild mit Zoom-Fokus #}
-                    <div class="bg-dark border-bottom" style="height: 220px; position: relative; overflow: hidden;">
+                    <div class="bg-dark border-bottom ratio ratio-1x1">
                         {% set displayFace = person.profileFace ?: person.videoFaces|first %}
 
-                        {% if displayFace %}
-                            <div style="{{ face_zoom_style(imgproxy_url(displayFace.faceImage), displayFace.boundingBox, 0.1) }}"></div>
+                        {% if displayFace and displayFace.faceImage %}
+                            <img src="{{ face_crop_url(displayFace.faceImage.relativePath, displayFace.boundingBox, 400) }}" alt="{{ person.displayName }}" class="object-fit-cover">
                         {% else %}
                             <div class="d-flex align-items-center justify-content-center h-100 bg-secondary text-white">
                                 <i class="fas fa-user fa-3x"></i>
@@ -108,6 +108,23 @@
                                 Alle Sichtungen werden übertragen und diese Person gelöscht.
                             </div>
                         </div>
+
+                        {% if is_granted('ROLE_ADMIN') %}
+                            <div class="p-3 border border-danger-subtle rounded mt-3 text-start">
+                                <label class="form-label small fw-bold text-danger mb-1">Person löschen</label>
+                                <div class="form-text mt-0 mb-2" style="font-size: 0.7rem;">
+                                    Für Fehlerkennungen wie Spiegelungen, Fotos oder Plakate: löscht die Person und alle
+                                    {{ person.videoFaces|length }} Sichtung(en) endgültig.
+                                </div>
+                                <button type="button"
+                                        class="btn btn-outline-danger btn-sm w-100"
+                                        data-action="live#action"
+                                        data-live-action-param="deletePerson"
+                                        onclick="if (!confirm('„{{ person.name|e('js') }}“ und alle {{ person.videoFaces|length }} Sichtung(en) endgültig löschen?')) { event.stopImmediatePropagation(); return false; }">
+                                    <i class="fas fa-trash-alt me-1"></i> Person löschen
+                                </button>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
 

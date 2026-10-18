@@ -1,7 +1,2 @@
 parameters:
-	ignoreErrors:
-		-
-			message: '#^Property App\\Service\\Aws\\AmazonRekognitionService\:\:\$qualityFilter is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: src/Service/Aws/AmazonRekognitionService.php
+	ignoreErrors: []

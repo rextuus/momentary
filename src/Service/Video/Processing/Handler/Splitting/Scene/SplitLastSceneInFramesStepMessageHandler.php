@@ -78,6 +78,7 @@ class SplitLastSceneInFramesStepMessageHandler extends AbstractSplitInFramesStep
         $this->framePathCollection = $message->getFramePathCollection();
         // append the frames to list
         $this->addFramesToAnalyzingStep($frameSplitResult, $scene->getStartSeconds());
+        $this->recordItemDone(0);
 
         $successMsg = sprintf(
             'Added %d frames for analysis for scene %d of video "%d" to global frame array. There are no more scenes to split. Go to refinement analyzing.  Collected already: %d frames',

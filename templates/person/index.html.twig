@@ -3,11 +3,18 @@
 
 {% block body %}
     <div class="container">
-        <h1 class="fw-bold mb-4">Personen</h1>
+        <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-4">
+            <div>
+                <h1 class="fw-bold mb-1">Personen</h1>
+                <p class="text-muted mb-0">Alle in den Videos erkannten Gesichter, gruppiert nach Person.</p>
+            </div>
+            {% if is_granted('ROLE_ADMIN') %}
+                <a href="{{ path('app_identity_quick_resolve') }}" class="btn btn-outline-primary rounded-pill">
+                    <i class="fas fa-user-check me-1"></i> Neue Personen zuordnen
+                </a>
+            {% endif %}
+        </div>
 
-        {{ component('PersonListingComponent', {
-            statuses: statuses,
-            search: search
-        }) }}
+        {{ component('PersonListingComponent') }}
     </div>
 {% endblock %}

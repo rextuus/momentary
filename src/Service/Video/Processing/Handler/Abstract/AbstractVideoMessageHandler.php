@@ -42,7 +42,14 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
         // WICHTIG: Handler-Services leben im Worker über viele Messages hinweg.
         // Ohne Reset würde das Video der vorherigen Message (ggf. gelöscht) weiterverwendet.
         $this->video = null;
+        $this->resetState();
     }
+
+    /**
+     * Setzt den Zustand der vorherigen Message zurück. Handler mit eigenen Feldern (Szenen-/Frame-Listen) müssen
+     * diese hier leeren, sonst landen bei frühem Return Daten eines anderen Videos in der nächsten Message.
+     */
+    protected function resetState(): void {}
 
     protected function getVideo(): Video
     {
@@ -168,6 +175,18 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
             $this->getCurrentMessage()->getVideoStatusForCurrentProcessStepEntity(),
             $errorMsg,
         );
+    }
+
+    /**
+     * Fortschritt melden: ein Element (Frame, Szene) des laufenden Schritts erledigt, $remaining stehen noch aus.
+     */
+    protected function recordItemDone(int $remaining): void
+    {
+        $this->getVideo()->recordProgressItem(
+            $this->getCurrentMessage()->getVideoStatusForCurrentProcessStepEntity(),
+            $remaining,
+        );
+        $this->videoRepository->getEntityManagerPublic()->flush();
     }
 
     protected function startCurrentStep(): void

@@ -9,7 +9,7 @@ use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Enum\VideoWorkflowProcessTransition;
 use App\Service\Video\Processing\Message\Abstract\AbstractVideoProcessStepMessage;
 
-#[StepOrder(stepNumber: 22)]
+#[StepOrder(stepNumber: 23)]
 class VideoNamingStepMessage extends AbstractVideoProcessStepMessage
 {
     protected const string MESSAGE_LOGGING_IDENT = 'NAMING';

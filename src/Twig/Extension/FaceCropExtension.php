@@ -19,6 +19,7 @@ class FaceCropExtension extends AbstractExtension
         return [
             new TwigFunction('face_zoom_style', [$this, 'getFaceZoomStyle']),
             new TwigFunction('imgproxy_url', [$this, 'getImgproxyUrl']),
+            new TwigFunction('face_crop_url', [$this, 'getFaceCropUrl']),
         ];
     }
 
@@ -29,6 +30,20 @@ class FaceCropExtension extends AbstractExtension
         string $resizingType = 'fill',
     ): string {
         return $this->imgproxyService->generateUrl($path, $width, $height, $resizingType);
+    }
+
+    /**
+     * Quadratischer Ausschnitt um das Gesicht, ideal für Personen-Kacheln.
+     *
+     * @param array<string, int|float>|null $boundingBox
+     */
+    public function getFaceCropUrl(string $path, ?array $boundingBox, int $size = 300, float $padding = 1.8): string
+    {
+        if ($boundingBox === null) {
+            return $this->imgproxyService->generateUrl($path, $size, $size);
+        }
+
+        return $this->imgproxyService->generateFaceCropUrl($path, $boundingBox, $size, $padding);
     }
 
     /**

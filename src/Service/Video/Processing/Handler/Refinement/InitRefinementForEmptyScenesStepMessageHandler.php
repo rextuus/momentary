@@ -34,6 +34,12 @@ class InitRefinementForEmptyScenesStepMessageHandler extends AbstractVideoMessag
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
     }
 
+    protected function resetState(): void
+    {
+        $this->sceneIds = [];
+        $this->firstSceneId = null;
+    }
+
     public function __invoke(InitRefinementForEmptyScenesStepMessage $message): void
     {
         $this->setCurrentMessage($message);

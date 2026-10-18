@@ -40,6 +40,16 @@ readonly class BetterVideoAnalyzer
         $this->frameAnalyzer->analyzeFrame($videoId, $framePath, (int) $timestamp);
     }
 
+    /**
+     * Laufzeit in Sekunden laut ffprobe, null wenn nicht ermittelbar.
+     */
+    public function probeDuration(string $path): ?float
+    {
+        $duration = $this->mp4Converter->probe($path)['duration'];
+
+        return $duration > 0 ? $duration : null;
+    }
+
     public function convertToMp4(string $sourcePath, string $targetPath): bool
     {
         return $this->mp4Converter->convertToMp4($sourcePath, $targetPath);
@@ -73,8 +83,17 @@ readonly class BetterVideoAnalyzer
         array|float|null $startTime = null,
         array|float|null $duration = null,
         bool $isRefinement = false,
+        ?string $subDirectory = null,
     ): FrameSplittingResult {
-        return $this->frameExtractor->extractFrames($videoId, $videoPath, $fps, $startTime, $duration, $isRefinement);
+        return $this->frameExtractor->extractFrames(
+            $videoId,
+            $videoPath,
+            $fps,
+            $startTime,
+            $duration,
+            $isRefinement,
+            $subDirectory,
+        );
     }
 
     public function refineSceneAnalysis(Video $video): RefinementAnalyzeResult

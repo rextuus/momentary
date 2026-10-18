@@ -60,6 +60,13 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
             return;
         }
 
+        // Laufzeit merken: Grundlage für Fortschritts- und Restzeitschätzung aller weiteren Schritte
+        $duration = $this->videoAnalyzer->probeDuration($sourceAbsolutePath);
+        if ($duration !== null) {
+            $video->setDuration($duration);
+            $this->entityManager->flush();
+        }
+
         // Wenn es bereits eine MP4-Datei ist, überspringen wir die Konvertierung
         if (str_ends_with(strtolower($sourceAbsolutePath), '.mp4')) {
             $this->finishCurrentStep(sprintf('Video "%s" is already MP4.', $video->getTitle()));

@@ -10,8 +10,12 @@ use App\Entity\Video;
 use App\Entity\VideoFace;
 use App\Entity\VideoScene;
 use App\Enum\FilePurpose;
+use App\Enum\PersonStatus;
 use App\Repository\VideoRepository;
 use App\Service\Aws\AmazonRekognitionService;
+use App\Service\Aws\DetectedFace;
+use App\Service\Face\FaceMatcher;
+use App\Service\Face\FaceRecognitionSettingsProvider;
 use App\Service\ImageFileService;
 use App\Service\Storage\StoragePathProvider;
 use Doctrine\ORM\EntityManagerInterface;
@@ -25,6 +29,8 @@ class FrameAnalyzer
         private readonly AmazonRekognitionService $rekognitionService,
         private readonly ImageFileService $imageFileService,
         private readonly StoragePathProvider $pathProvider,
+        private readonly FaceMatcher $faceMatcher,
+        private readonly FaceRecognitionSettingsProvider $settingsProvider,
     ) {}
 
     public function analyzeFrame(int $videoId, string $framePath, int $timestamp): bool
@@ -38,8 +44,9 @@ class FrameAnalyzer
             return false;
         }
 
+        // Frames aus einem älteren Durchlauf (anderer Ordner) ignorieren; erlaubt sind Analyse- und Refinement-Frames
         $frameDirPath = $video->getCurrentFrameDirectory();
-        if ($frameDirPath && !str_starts_with($framePath, $frameDirPath)) {
+        if ($frameDirPath && !str_starts_with($framePath, \dirname($frameDirPath) . '/')) {
             return false;
         }
 
@@ -56,7 +63,7 @@ class FrameAnalyzer
             ->getOneOrNullResult();
 
         $allFacesData = $this->rekognitionService->processAllFacesInImage($framePath);
-        if (empty($allFacesData)) {
+        if ($allFacesData === []) {
             return false;
         }
         // Während des Rekognition-Requests kann die Datei verschwinden; ohne clearstatcache lieferte PHP das alte Ergebnis
@@ -85,8 +92,13 @@ class FrameAnalyzer
             $this->entityManager->persist($file);
         }
 
-        foreach ($allFacesData as $faceData) {
-            $this->saveFaceData($video, $faceData, $timestamp, $file, $currentScene);
+        // Personen, die in diesem Frame schon vergeben sind: zwei Gesichter im selben Bild sind nie dieselbe Person
+        $personIdsInFrame = [];
+        foreach ($allFacesData as $detectedFace) {
+            $person = $this->saveFace($video, $detectedFace, $timestamp, $file, $currentScene, $personIdsInFrame);
+            if ($person->getId() !== null) {
+                $personIdsInFrame[] = $person->getId();
+            }
         }
 
         $this->entityManager->flush();
@@ -95,63 +107,65 @@ class FrameAnalyzer
     }
 
     /**
-     * @param array<string, mixed> $faceData ein Gesicht aus der Rekognition-Antwort
+     * @param list<int> $personIdsInFrame
      */
-    private function saveFaceData(
+    private function saveFace(
         Video $video,
-        array $faceData,
+        DetectedFace $detectedFace,
         int $timestamp,
         File $file,
         ?VideoScene $currentScene,
-    ): void {
-        $this->entityManager->wrapInTransaction(function () use ($video, $faceData, $timestamp, $file, $currentScene) {
-            $person = null;
-            $matchedFace = null;
+        array $personIdsInFrame,
+    ): Person {
+        $settings = $this->settingsProvider->get();
+        $ranked = $this->faceMatcher->rankPersons($detectedFace, $personIdsInFrame);
+        $best = $ranked[0] ?? null;
 
-            if (!empty($faceData['matchedFaceId'])) {
-                $matchedFace = $this->entityManager
-                    ->getRepository(VideoFace::class)
-                    ->findOneBy(['faceLabel' => $faceData['matchedFaceId']]);
-                $person = $matchedFace?->getPerson();
+        $person = $best !== null && $best->similarity >= $settings->getMatchThreshold() ? $best->person : null;
+        if ($person === null) {
+            $person = new Person();
+            $person->setName('unknown_' . substr($detectedFace->faceId, 0, 8));
+            $person->setIdentified(false);
+            $this->entityManager->persist($person);
+            // ID sofort vergeben, damit weitere Gesichter dieses Frames die Person ausschließen können
+            $this->entityManager->flush();
+        }
+
+        $videoFace = new VideoFace();
+        $videoFace->setVideo($video);
+        $videoFace->setPerson($person);
+        $videoFace->setTimestamp($timestamp);
+        $videoFace->setFaceImage($file);
+        $videoFace->setFaceLabel($detectedFace->faceId);
+        $videoFace->setMatchCandidates($detectedFace->candidates);
+        $videoFace->setAge($detectedFace->age);
+        $videoFace->setGender($detectedFace->gender);
+        $videoFace->setEmotion($detectedFace->emotion);
+        $videoFace->setBoundingBox($detectedFace->boundingBox);
+
+        if ($currentScene) {
+            $videoFace->setVideoScene($currentScene);
+            $currentScene->addVideoFace($videoFace);
+        }
+
+        if ($best !== null) {
+            $videoFace->setMatchedBy($best->face);
+            $videoFace->setMatchSimilarity($best->similarity);
+        }
+
+        // Vorschlag: beste bereits identifizierte Person, auch wenn sie nicht automatisch zugeordnet wurde
+        foreach ($ranked as $match) {
+            if ($match->similarity < $settings->getSuggestionThreshold()) {
+                break;
             }
-
-            if ($person === null) {
-                $person = new Person();
-                $faceId = $faceData['faceId'] ?? 'unknown';
-                $person->setName('unknown_' . substr((string) $faceId, 0, 8));
-                $person->setIdentified(false);
-                $this->entityManager->persist($person);
+            if ($match->person->getStatus() === PersonStatus::IDENTIFIED) {
+                $videoFace->setDetection($match->person);
+                break;
             }
+        }
 
-            $videoFace = new VideoFace();
-            $videoFace->setVideo($video);
-            $videoFace->setPerson($person);
-            $videoFace->setTimestamp($timestamp);
-            $videoFace->setFaceImage($file);
-            $videoFace->setFaceLabel($faceData['faceId']);
-            $videoFace->setAge((int) $faceData['age']);
-            $videoFace->setGender((string) $faceData['gender']);
-            $videoFace->setEmotion((string) $faceData['emotion']);
-            $videoFace->setBoundingBox($faceData['boundingBox']);
+        $this->entityManager->persist($videoFace);
 
-            if ($currentScene) {
-                $videoFace->setVideoScene($currentScene);
-                $currentScene->addVideoFace($videoFace);
-            }
-            if ($matchedFace) {
-                $videoFace->setMatchedBy($matchedFace);
-                $videoFace->setMatchSimilarity((float) $faceData['similarity']);
-
-                if (
-                    $faceData['similarity'] >= 80.0
-                    && $matchedFace->getPerson()
-                    && $matchedFace->getPerson()->isIdentified()
-                ) {
-                    $videoFace->setDetection($matchedFace->getPerson());
-                }
-            }
-
-            $this->entityManager->persist($videoFace);
-        });
+        return $person;
     }
 }

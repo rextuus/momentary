@@ -17,7 +17,7 @@ use App\Service\WorkflowMachine;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
-#[StepOrder(stepNumber: 19)]
+#[StepOrder(stepNumber: 20)]
 class TagSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
 {
     public function __construct(
@@ -64,6 +64,7 @@ class TagSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
                 $this->stopProcessing($result->getMessage() ?? 'Tagging failed');
                 return;
             }
+            $this->recordItemDone(0);
 
             $this->finishCurrentStep($successMsg);
 
@@ -77,6 +78,7 @@ class TagSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
             $this->stopProcessing($result->getMessage() ?? 'Tagging failed');
             return;
         }
+        $this->recordItemDone(\count($message->getRemainingSceneIds()));
         $oldSceneId = $this->currentSceneId;
 
         $remainingSceneIds = $message->getRemainingSceneIds();

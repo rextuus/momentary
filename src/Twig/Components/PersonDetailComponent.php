@@ -8,6 +8,7 @@ use App\Entity\Person;
 use App\Form\PersonCombineType;
 use App\Repository\VideoFaceRepository;
 use App\Service\Person\Data\PersonCombineData;
+use App\Service\Person\PersonDeleter;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormInterface;
@@ -34,6 +35,7 @@ class PersonDetailComponent extends AbstractController
     public function __construct(
         private VideoFaceRepository $videoFaceRepository,
         private EntityManagerInterface $entityManager,
+        private PersonDeleter $personDeleter,
     ) {}
 
     /**
@@ -85,6 +87,22 @@ class PersonDetailComponent extends AbstractController
         $this->entityManager->flush();
 
         $this->addFlash('success', sprintf('Merged into %s', $targetPerson->getName()));
+        return $this->redirectToRoute('person_index');
+    }
+
+    /**
+     * Person mit allen Sichtungen endgültig löschen (z. B. Spiegelungen oder Gesichter auf Plakaten).
+     */
+    #[LiveAction]
+    public function deletePerson(): RedirectResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        $name = $this->person->getName();
+        $faces = $this->personDeleter->delete($this->person);
+
+        $this->addFlash('success', sprintf('„%s“ wurde mit %d Sichtung(en) gelöscht.', $name, $faces));
+
         return $this->redirectToRoute('person_index');
     }
 

@@ -140,6 +140,18 @@ class Video
     #[Groups(['video:list', 'video:detail'])]
     private int $totalFrames = 0;
 
+    /** Schritt, auf den sich der Fortschrittszähler bezieht (VideoStatus-Wert) */
+    #[ORM\Column(length: 32, nullable: true)]
+    private ?string $progressStep = null;
+
+    /** Erledigte Elemente (Frames, Szenen) im aktuellen Schritt */
+    #[ORM\Column(options: ['default' => 0])]
+    private int $progressDone = 0;
+
+    /** Bekannte Gesamtzahl der Elemente im aktuellen Schritt */
+    #[ORM\Column(options: ['default' => 0])]
+    private int $progressTotal = 0;
+
     #[ORM\Column(options: ['default' => 0])]
     #[Groups(['video:list', 'video:detail'])]
     private int $processedFrames = 0;
@@ -646,5 +658,44 @@ class Video
     public function getSourceFilename(): ?string
     {
         return $this->sourceFile ? basename($this->sourceFile->getRelativePath()) : null;
+    }
+
+    /**
+     * Ein Element (Frame, Szene) des Schritts ist erledigt, $remaining stehen noch aus.
+     * Wechselt der Schritt, beginnt die Zählung von vorn.
+     */
+    public function recordProgressItem(VideoStatus $step, int $remaining): static
+    {
+        if ($this->progressStep !== $step->value) {
+            $this->progressStep = $step->value;
+            $this->progressDone = 0;
+            $this->progressTotal = 0;
+        }
+
+        $this->progressDone++;
+        $this->progressTotal = max($this->progressTotal, $this->progressDone + $remaining);
+
+        return $this;
+    }
+
+    public function resetProgress(): static
+    {
+        $this->progressStep = null;
+        $this->progressDone = 0;
+        $this->progressTotal = 0;
+
+        return $this;
+    }
+
+    /**
+     * @return array{done: int, total: int}|null Fortschritt, sofern er sich auf diesen Schritt bezieht
+     */
+    public function getProgressFor(VideoStatus $step): ?array
+    {
+        if ($this->progressStep !== $step->value || $this->progressTotal <= 0) {
+            return null;
+        }
+
+        return ['done' => min($this->progressDone, $this->progressTotal), 'total' => $this->progressTotal];
     }
 }

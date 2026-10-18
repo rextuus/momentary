@@ -181,6 +181,24 @@ class Person
         return $this->name;
     }
 
+    /**
+     * Automatisch vergebener Platzhaltername (unknown_…, split_…), noch nicht von Hand benannt.
+     */
+    public function hasPlaceholderName(): bool
+    {
+        return (
+            $this->name === null
+            || $this->name === ''
+            || str_starts_with($this->name, 'unknown_')
+            || str_starts_with($this->name, 'split_')
+        );
+    }
+
+    public function getDisplayName(): string
+    {
+        return $this->hasPlaceholderName() ? sprintf('Person #%d', (int) $this->id) : (string) $this->name;
+    }
+
     public function setName(string $name): static
     {
         $this->name = $name;

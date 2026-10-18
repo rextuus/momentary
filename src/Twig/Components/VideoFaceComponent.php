@@ -7,6 +7,7 @@ namespace App\Twig\Components;
 use App\Entity\Person;
 use App\Entity\VideoFace;
 use App\Form\VideoFaceSwitchType;
+use App\Service\Face\OrphanedPersonCleaner;
 use App\Service\ImgproxyService;
 use App\Service\Video\VideoFaceSwitchData;
 use Doctrine\ORM\EntityManagerInterface;
@@ -36,6 +37,7 @@ final class VideoFaceComponent extends AbstractController
     public function __construct(
         private readonly ImgproxyService $imgproxyService,
         private readonly EntityManagerInterface $entityManager,
+        private readonly OrphanedPersonCleaner $orphanedPersonCleaner,
     ) {}
 
     /**
@@ -98,6 +100,11 @@ final class VideoFaceComponent extends AbstractController
         // Explizit löschen: über orphanRemoval am Video ginge es nur, wenn das Gesicht ein Video hat
         $this->entityManager->remove($this->videoFace);
         $this->entityManager->flush();
+
+        // War es das letzte Gesicht einer automatisch angelegten Person, bleibt keine leere Person zurück
+        if ($this->orphanedPersonCleaner->removeOrphans([(int) $person->getId()]) > 0) {
+            return $this->redirectToRoute('person_index');
+        }
 
         return $this->redirectToRoute('person_detail', ['id' => $person->getId()]);
     }

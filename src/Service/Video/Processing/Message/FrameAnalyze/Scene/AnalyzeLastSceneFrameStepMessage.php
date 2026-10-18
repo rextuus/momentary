@@ -7,8 +7,8 @@ namespace App\Service\Video\Processing\Message\FrameAnalyze\Scene;
 use App\Enum\VideoStatus;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Enum\VideoWorkflowProcessTransition;
+use App\Service\Video\Processing\Message\ConsolidateFacesStepMessage;
 use App\Service\Video\Processing\Message\FrameAnalyze\AbstractAnalyzeFrameStepMessage;
-use App\Service\Video\Processing\Message\MergeScenesStepMessage;
 
 #[StepOrder(stepNumber: 16)]
 class AnalyzeLastSceneFrameStepMessage extends AbstractAnalyzeFrameStepMessage
@@ -29,12 +29,12 @@ class AnalyzeLastSceneFrameStepMessage extends AbstractAnalyzeFrameStepMessage
 
     public function getTransitionToStatusNextStepIsBelonging(): VideoWorkflowProcessTransition
     {
-        return VideoWorkflowProcessTransition::START_MERGING;
+        return VideoWorkflowProcessTransition::START_FACE_CONSOLIDATION;
     }
 
     public function getNextStepMessageClass(): ?string
     {
-        return MergeScenesStepMessage::class;
+        return ConsolidateFacesStepMessage::class;
     }
 
     public function getVideoStatusForCurrentProcessStepEntity(): VideoStatus

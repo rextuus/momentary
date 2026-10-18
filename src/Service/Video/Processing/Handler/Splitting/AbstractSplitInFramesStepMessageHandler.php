@@ -38,6 +38,13 @@ abstract class AbstractSplitInFramesStepMessageHandler extends AbstractVideoMess
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
     }
 
+    protected function resetState(): void
+    {
+        $this->framePathCollection = [];
+        $this->currentSceneId = null;
+        $this->remainingSceneIds = [];
+    }
+
     protected function prepareFirstFramesForAnalyzing(FrameSplittingResult $frameSplitResult, float $startTime): void
     {
         $preparedFrames = [];
@@ -95,6 +102,14 @@ abstract class AbstractSplitInFramesStepMessageHandler extends AbstractVideoMess
         return $localVideoPath;
     }
 
+    /**
+     * Nach dem Teilen einer Szene: noch ausstehend sind die nächste Szene (falls vorhanden) und der Rest.
+     */
+    protected function recordSceneSplit(): void
+    {
+        $this->recordItemDone(($this->currentSceneId !== null ? 1 : 0) + \count($this->remainingSceneIds));
+    }
+
     protected function splitSceneIntoFrames(
         VideoScene $scene,
         Video $video,
@@ -103,12 +118,16 @@ abstract class AbstractSplitInFramesStepMessageHandler extends AbstractVideoMess
         $startTime = $scene->getStartSeconds();
         $endTime = $scene->getEndSeconds();
 
+        // Refinement: höhere Bildrate (null = Refinement-Rate des Videos) und eigener Ordner pro Szene,
+        // damit die Frames bereits geteilter Szenen erhalten bleiben, bis sie analysiert sind
         return $this->videoAnalyzer->extractFrames(
             $this->getCurrentMessage()->getVideoId(),
             $localVideoPath,
-            $video->getAnalysisFps(),
+            null,
             $startTime,
             $endTime - $startTime,
+            isRefinement: true,
+            subDirectory: 'scene_' . $scene->getId(),
         );
     }
 }

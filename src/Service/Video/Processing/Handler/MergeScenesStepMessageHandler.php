@@ -16,7 +16,7 @@ use App\Service\WorkflowMachine;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
-#[StepOrder(stepNumber: 17)]
+#[StepOrder(stepNumber: 18)]
 class MergeScenesStepMessageHandler extends AbstractVideoMessageHandler
 {
     public function __construct(

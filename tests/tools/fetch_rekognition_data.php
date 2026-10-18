@@ -37,7 +37,14 @@ foreach ($files as $name => $videoPath) {
 
     echo "Analyzing frame $framePath...\n";
     try {
-        $result = $rekognitionService->processAllFacesInImage($framePath);
+        $result = array_map(static fn($face) => [
+            'faceId' => $face->faceId,
+            'age' => $face->age,
+            'gender' => $face->gender,
+            'emotion' => $face->emotion,
+            'boundingBox' => $face->boundingBox,
+            'candidates' => $face->candidates,
+        ], $rekognitionService->processAllFacesInImage($framePath));
         $jsonPath = $outputDir . '/' . $name . '_rekognition_response.json';
         file_put_contents($jsonPath, json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
         echo "Saved response to $jsonPath\n";

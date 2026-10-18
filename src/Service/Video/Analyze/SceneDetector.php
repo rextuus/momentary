@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Video\Analyze;
 
 use App\Entity\Video;
+use App\Service\Face\OrphanedPersonCleaner;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Process\Process;
@@ -15,6 +16,7 @@ class SceneDetector
 
     public function __construct(
         private EntityManagerInterface $entityManager,
+        private OrphanedPersonCleaner $orphanedPersonCleaner,
         #[Autowire('%kernel.project_dir%')]
         private string $projectDir,
         #[Autowire('%env(PYTHON_BINARY)%')]
@@ -120,6 +122,7 @@ class SceneDetector
     public function clearOldScenes(Video $video): void
     {
         $connection = $this->entityManager->getConnection();
+        $affectedPersons = $this->orphanedPersonCleaner->personIdsOfVideo((int) $video->getId());
 
         // 1. Alle Faces löschen, die an Szenen dieses Videos hängen
         $connection->executeStatement('DELETE FROM video_face WHERE video_id = ?', [$video->getId()]);
@@ -133,5 +136,8 @@ class SceneDetector
         $this->entityManager->flush(); // Explicit flush here
 
         $this->entityManager->refresh($video);
+
+        // Automatisch angelegte Personen, die nur in diesem Video vorkamen, wären jetzt leer
+        $this->orphanedPersonCleaner->removeOrphans($affectedPersons);
     }
 }

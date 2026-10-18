@@ -64,6 +64,15 @@ class VideoFace
     #[ORM\Column(nullable: true)]
     private ?array $embedding = null;
 
+    /**
+     * Ähnliche, bereits indizierte Gesichter laut Rekognition: FaceId => Ähnlichkeit.
+     * Grundlage für die Konsolidierung innerhalb eines Videos, ohne AWS erneut zu fragen.
+     *
+     * @var array<string, float>|null
+     */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $matchCandidates = null;
+
     #[ORM\Column]
     #[Groups(['video:list', 'video:detail', 'videoface:list', 'videoface:detail'])]
     private ?int $age = null;
@@ -272,6 +281,24 @@ class VideoFace
     public function setIsVerified(bool $isVerified): static
     {
         $this->isVerified = $isVerified;
+        return $this;
+    }
+
+    /**
+     * @return array<string, float>
+     */
+    public function getMatchCandidates(): array
+    {
+        return $this->matchCandidates ?? [];
+    }
+
+    /**
+     * @param array<string, float> $matchCandidates
+     */
+    public function setMatchCandidates(array $matchCandidates): static
+    {
+        $this->matchCandidates = $matchCandidates;
+
         return $this;
     }
 

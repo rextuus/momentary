@@ -31,6 +31,12 @@ abstract class AbstractTagSceneStepMessageHandler extends AbstractVideoMessageHa
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
     }
 
+    protected function resetState(): void
+    {
+        $this->currentSceneId = null;
+        $this->remainingSceneIds = [];
+    }
+
     protected function processSceneTagging(?int $sceneId): TaggingResult
     {
         if ($sceneId === null) {

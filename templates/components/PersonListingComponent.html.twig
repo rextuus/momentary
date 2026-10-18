@@ -1,64 +1,114 @@
 <div {{ attributes }}>
-    <div class="card shadow-sm border-0 mb-4">
+    {% set items = this.items %}
+    {% set total = this.total %}
+
+    <div class="card border-0 shadow-sm mb-4">
         <div class="card-body">
-            <form method="get" action="{{ path('person_index') }}" class="row g-3 align-items-center">
-                <div class="col-12 col-md-3">
+            <div class="row g-2 align-items-center mb-3">
+                <div class="col-12 col-md">
                     <div class="input-group">
-                        <span class="input-group-text bg-white border-end-0">
-                            <i class="fas fa-search text-muted"></i>
-                        </span>
+                        <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
                         <input type="search"
-                               name="search"
+                               data-model="debounce(300)|search"
                                value="{{ search }}"
                                class="form-control border-start-0 ps-0"
-                               placeholder="Name suchen...">
+                               placeholder="Name, Beziehung oder Notiz suchen …"
+                               aria-label="Personen suchen">
                     </div>
                 </div>
-                <div class="col-12 col-md-7">
-                    <div class="d-flex flex-wrap gap-3 align-items-center h-100">
-                        <span class="text-muted small me-1"><i class="fas fa-filter me-1"></i> Status:</span>
-                        {% for option in this.statusOptions %}
-                            <div class="form-check form-check-inline mb-0">
-                                <input class="form-check-input"
-                                       type="checkbox"
-                                       name="statuses[]"
-                                       value="{{ option.value }}"
-                                       id="status_{{ option.value }}"
-                                        {{ option.value in statuses ? 'checked' : '' }}>
-                                <label class="form-check-label small" for="status_{{ option.value }}">{{ option.label }}</label>
-                            </div>
-                        {% endfor %}
+                <div class="col-12 col-md-auto">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="fas fa-sort-amount-down text-muted"></i></span>
+                        <select data-model="sort" class="form-select" aria-label="Sortierung">
+                            {% for value, label in this.sortOptions %}
+                                <option value="{{ value }}" {{ sort == value ? 'selected' }}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                 </div>
-                <div class="col-12 col-md-2 d-flex gap-2 justify-content-md-end">
-                    <button type="submit" class="btn btn-primary w-100">
-                        Filtern
+            </div>
+
+            <div class="d-flex flex-wrap gap-2" role="group" aria-label="Status-Filter">
+                {% for option in this.statusOptions %}
+                    {% set color = option.status.color %}
+                    <button type="button"
+                            class="btn btn-sm rounded-pill {{ option.active ? 'btn-' ~ color : 'btn-outline-' ~ color }}"
+                            aria-pressed="{{ option.active ? 'true' : 'false' }}"
+                            data-action="live#action"
+                            data-live-action-param="toggleStatus"
+                            data-live-status-param="{{ option.status.value }}">
+                        {% if option.active %}<i class="fas fa-check me-1"></i>{% endif %}
+                        {{ option.status.label }}
+                        <span class="badge rounded-pill {{ option.active ? 'text-bg-light' : 'text-bg-' ~ color }} ms-1">{{ option.count }}</span>
                     </button>
-                    <a href="{{ path('person_index') }}" class="btn btn-outline-secondary" title="Filter zurücksetzen">
-                        <i class="fas fa-undo"></i>
-                    </a>
-                </div>
-            </form>
+                {% endfor %}
+            </div>
         </div>
     </div>
 
-    <div class="row g-4" data-loading="opacity-50">
-        {% for person in this.persons %}
-            <div class="col-12 col-md-6 col-lg-4 col-xl-3">
-                <div class="hover-card h-100">
-                    {{ component('PersonComponent', {
-                        person: person,
-                        key: 'person-' ~ person.id
-                    }) }}
-                </div>
+    <div class="d-flex justify-content-between align-items-center mb-3 small text-muted">
+        <span>
+            {{ total }} {{ total == 1 ? 'Person' : 'Personen' }}
+            {% if search %} für „{{ search }}“{% endif %}
+        </span>
+        <span data-loading class="d-none"><i class="fas fa-spinner fa-spin me-1"></i> Lädt …</span>
+    </div>
+
+    <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xxl-6 g-3" data-loading="addClass(opacity-50)">
+        {% for item in items %}
+            {% set person = item.person %}
+            {% set face = item.previewFace %}
+            <div class="col">
+                <a href="{{ path('person_detail', { id: person.id }) }}" class="person-tile card h-100 border-0 shadow-sm text-decoration-none text-body overflow-hidden">
+                    <div class="position-relative">
+                    <div class="ratio ratio-1x1 bg-body-secondary">
+                        {% if face and face.faceImage %}
+                            <img src="{{ face_crop_url(face.faceImage.relativePath, face.boundingBox, 300) }}"
+                                 alt="{{ person.displayName }}"
+                                 loading="lazy"
+                                 class="object-fit-cover w-100 h-100">
+                        {% else %}
+                            <div class="d-flex align-items-center justify-content-center text-muted">
+                                <i class="fas fa-user fa-3x opacity-50"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <span class="position-absolute top-0 start-0 m-2 badge rounded-pill text-bg-{{ person.status.color }} shadow-sm">
+                        {{ person.status.label }}
+                    </span>
+                    </div>
+                    <div class="card-body p-2 px-3">
+                        <div class="fw-semibold text-truncate {{ person.hasPlaceholderName ? 'text-muted fst-italic' }}" title="{{ person.displayName }}">
+                            {{ person.displayName }}
+                        </div>
+                        {% if person.relation or person.fullName %}
+                            <div class="small text-muted text-truncate">{{ person.relation ?: person.fullName }}</div>
+                        {% endif %}
+                        <div class="d-flex gap-3 small text-muted mt-1">
+                            <span title="Sichtungen"><i class="fas fa-user-circle me-1"></i>{{ item.faceCount }}</span>
+                            <span title="Videos"><i class="fas fa-video me-1"></i>{{ item.videoCount }}</span>
+                            {% if person.age %}<span title="Alter"><i class="fas fa-birthday-cake me-1"></i>{{ person.age }}</span>{% endif %}
+                        </div>
+                    </div>
+                </a>
             </div>
         {% else %}
-            <div class="col-12 text-center py-5">
-                <div class="text-muted mb-3">
-                    <i class="fas fa-users-slash fa-3x"></i>
+            <div class="col-12 w-100">
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-users-slash fa-3x mb-3 opacity-50"></i>
+                    <p class="mb-0">
+                        {% if statuses is empty %}Kein Status ausgewählt.{% else %}Keine Personen gefunden.{% endif %}
+                    </p>
                 </div>
-                <p class="text-muted">Keine Personen mit diesen Filtern gefunden.</p>
             </div>
         {% endfor %}
     </div>
+
+    {% if items|length < total %}
+        <div class="text-center mt-4">
+            <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-action="live#action" data-live-action-param="loadMore">
+                Weitere laden <span class="text-muted">({{ total - items|length }})</span>
+            </button>
+        </div>
+    {% endif %}
 </div>

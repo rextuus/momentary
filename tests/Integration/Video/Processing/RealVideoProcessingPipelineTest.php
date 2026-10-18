@@ -10,6 +10,7 @@ use App\Entity\VideoScene;
 use App\Enum\FilePurpose;
 use App\Enum\VideoStatus;
 use App\Service\Aws\AmazonRekognitionService;
+use App\Service\Aws\DetectedFace;
 use App\Service\Gemini\GeminiService;
 use App\Service\Storage\StoragePathProvider;
 use App\Service\Video\Analyze\SceneThumbnailExtractor;
@@ -131,7 +132,7 @@ final class RealVideoProcessingPipelineTest extends VideoPipelineTestCase
     }
 
     /**
-     * @param list<array<string, mixed>> $faces
+     * @param list<DetectedFace> $faces
      */
     private function stubExternalServices(array $faces): void
     {
@@ -169,14 +170,30 @@ final class RealVideoProcessingPipelineTest extends VideoPipelineTestCase
     }
 
     /**
-     * @return list<array<string, mixed>>
+     * Aufgezeichnete Rekognition-Antwort als erkannte Gesichter.
+     *
+     * @return list<DetectedFace>
      */
     private function loadFixture(string $filename): array
     {
-        return json_decode(
+        /** @var list<array<string, mixed>> $faces */
+        $faces = json_decode(
             (string) file_get_contents(self::SAMPLES_DIR . '/' . $filename),
             true,
             flags: \JSON_THROW_ON_ERROR,
+        );
+
+        return array_map(
+            static fn(array $face): DetectedFace => new DetectedFace(
+                faceId: (string) $face['faceId'],
+                boundingBox: array_map(floatval(...), (array) $face['boundingBox']),
+                confidence: 99.0,
+                age: (int) $face['age'],
+                gender: (string) $face['gender'],
+                emotion: (string) $face['emotion'],
+                candidates: [],
+            ),
+            $faces,
         );
     }
 

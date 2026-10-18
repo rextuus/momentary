@@ -85,6 +85,7 @@ class SplitSceneInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
         $nextScene = array_shift($remainingScenes); // Scene-ID oder null
         $this->currentSceneId = $nextScene;
         $this->remainingSceneIds = $remainingScenes;
+        $this->recordSceneSplit();
 
         if ($this->remainingSceneIds === []) {
             $successMsg = sprintf(

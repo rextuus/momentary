@@ -16,7 +16,7 @@ use App\Service\WorkflowMachine;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
-#[StepOrder(stepNumber: 20)]
+#[StepOrder(stepNumber: 21)]
 class TagLastSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
 {
     public function __construct(
@@ -48,6 +48,7 @@ class TagLastSceneStepMessageHandler extends AbstractTagSceneStepMessageHandler
         if ($message->getCurrentSceneId() !== null) {
             $this->currentSceneId = $message->getCurrentSceneId();
             $this->processSceneTagging($this->currentSceneId);
+            $this->recordItemDone(0);
 
             $successMsg = sprintf(
                 'Last scene (ID %d) for video "%s" tagged successfully.',

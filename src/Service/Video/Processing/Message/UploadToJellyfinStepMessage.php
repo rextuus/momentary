@@ -9,7 +9,7 @@ use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Enum\VideoWorkflowProcessTransition;
 use App\Service\Video\Processing\Message\Abstract\AbstractVideoProcessStepMessage;
 
-#[StepOrder(stepNumber: 23)]
+#[StepOrder(stepNumber: 24)]
 class UploadToJellyfinStepMessage extends AbstractVideoProcessStepMessage
 {
     protected const string MESSAGE_LOGGING_IDENT = 'UPLOAD TO JELLYFIN';

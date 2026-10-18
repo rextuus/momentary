@@ -1,30 +1,37 @@
-<div {{ attributes }} {% if this.isProcessing %}data-poll="delay(1000)|$render"{% endif %}>
+<div {{ attributes }} {% if this.isProcessing %}data-poll="delay(2000)|$render"{% endif %}>
     {% set video = this.video %}
-    {% set percentage = this.percentage %}
+    {% set progress = this.progress %}
+    {% set current = progress.current %}
 
-    <div class="mb-1 d-flex justify-content-between align-items-center">
-        <small class="text-muted">
-            {{ video.status.value }}
-            {% if video.totalFrames > 0 and video.status.value == 'analyzing_faces' %}
-                ({{ video.processedFrames }}/{{ video.totalFrames }} Frames)
-            {% endif %}
-
-            {% set est = this.estimatedDuration %}
-
-            {% if est %}
-                <span class="ms-1">(~{{ (est / 60)|round(0, 'floor') }}:{{ (est % 60)|format('%02d') }} min)</span>
+    <div class="mb-1 d-flex justify-content-between align-items-baseline gap-2">
+        <small class="text-truncate">
+            {% if current %}
+                <i class="fas fa-{{ current.step.icon }} text-primary me-1"></i>
+                <span class="fw-semibold">{{ current.step.label }}</span>
+                <span class="text-muted">· {{ current.detail }}</span>
+            {% else %}
+                <span class="text-muted">{{ video.status.label }}</span>
             {% endif %}
         </small>
-        <small class="fw-bold">{{ percentage }}%</small>
+        <small class="fw-bold text-nowrap">{{ progress.percent }}%</small>
     </div>
-    
-    <div class="progress" style="height: 10px;">
-        <div class="progress-bar progress-bar-striped {% if this.isProcessing %}progress-bar-animated{% endif %}" 
-             role="progressbar" 
-             style="width: {{ percentage }}%;" 
-             aria-valuenow="{{ percentage }}" 
-             aria-valuemin="0" 
+
+    <div class="progress" style="height: 10px;" title="Schritt {{ current ? current.percent ~ '%' : '–' }}">
+        <div class="progress-bar progress-bar-striped {% if this.isProcessing %}progress-bar-animated{% endif %}"
+             role="progressbar"
+             style="width: {{ progress.percent }}%;"
+             aria-valuenow="{{ progress.percent }}"
+             aria-valuemin="0"
              aria-valuemax="100">
         </div>
     </div>
+
+    {% if current %}
+        <div class="d-flex justify-content-between mt-1">
+            <small class="text-muted">Schritt: {{ current.percent }}%{% if not current.counted %} (geschätzt){% endif %}</small>
+            {% if progress.remainingSeconds is not null %}
+                <small class="text-muted">noch ca. {{ progress.remainingText }}</small>
+            {% endif %}
+        </div>
+    {% endif %}
 </div>

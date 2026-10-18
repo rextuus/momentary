@@ -31,6 +31,7 @@ final class QueueController extends AbstractController
             VideoStatus::REFINING_EXTRACTION,
             VideoStatus::REFINING_SPLITTING,
             VideoStatus::ANALYZING_FACES_REFINEMENT,
+            VideoStatus::CONSOLIDATING_FACES,
             VideoStatus::MERGING_SCENES,
             VideoStatus::TAGGING_SCENES,
             VideoStatus::CHAPTER_GENERATION,

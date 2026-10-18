@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Service\Imgproxy\RelativeCrop;
 use Onliner\ImgProxy\Options\Blur;
 use Onliner\ImgProxy\Options\Height;
 use Onliner\ImgProxy\Options\ResizingType;
@@ -90,6 +91,40 @@ class ImgproxyService
         }
 
         return $generatedUrl;
+    }
+
+    /**
+     * Ausschnitt um ein Gesicht: $padding = wie viel größer als die Bounding-Box (1 = nur das Gesicht).
+     *
+     * @param array<string, int|float> $boundingBox Rekognition-Box mit relativen Werten (Left, Top, Width, Height)
+     */
+    public function generateFaceCropUrl(
+        string $sourcePath,
+        array $boundingBox,
+        int $size = 300,
+        float $padding = 1.8,
+    ): string {
+        $width = (float) ($boundingBox['Width'] ?? 0.0);
+        $height = (float) ($boundingBox['Height'] ?? 0.0);
+        if ($width <= 0.0 || $height <= 0.0) {
+            return $this->generateUrl($sourcePath, $size, $size);
+        }
+
+        $crop = new RelativeCrop(
+            min(0.9999, $width * $padding),
+            min(0.9999, $height * $padding),
+            min(1.0, max(0.0, (float) ($boundingBox['Left'] ?? 0.0) + ($width / 2))),
+            min(1.0, max(0.0, (float) ($boundingBox['Top'] ?? 0.0) + ($height / 2))),
+        );
+        $source = 'local:///' . ltrim($sourcePath, '/');
+
+        return (
+            $this->publicHost
+            . $this->builder->with($crop, new Width($size), new Height($size), new ResizingType('fill'))->url(
+                $source,
+                'jpg',
+            )
+        );
     }
 
     public function getPublicHost(): string

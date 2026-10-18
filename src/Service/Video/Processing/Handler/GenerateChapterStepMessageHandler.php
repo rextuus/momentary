@@ -16,7 +16,7 @@ use App\Service\WorkflowMachine;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
-#[StepOrder(stepNumber: 21)]
+#[StepOrder(stepNumber: 22)]
 class GenerateChapterStepMessageHandler extends AbstractVideoMessageHandler
 {
     public function __construct(

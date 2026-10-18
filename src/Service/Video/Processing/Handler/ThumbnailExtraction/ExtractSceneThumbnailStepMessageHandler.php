@@ -49,6 +49,13 @@ class ExtractSceneThumbnailStepMessageHandler extends AbstractExtractSceneThumbn
         );
     }
 
+    protected function resetState(): void
+    {
+        parent::resetState();
+        $this->currentSceneNumber = 1;
+        $this->totalSceneNumber = 1;
+    }
+
     public function __invoke(ExtractSceneThumbnailStepMessage $message): void
     {
         $this->setCurrentMessage($message);

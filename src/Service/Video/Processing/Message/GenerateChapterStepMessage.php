@@ -9,7 +9,7 @@ use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Enum\VideoWorkflowProcessTransition;
 use App\Service\Video\Processing\Message\Abstract\AbstractVideoProcessStepMessage;
 
-#[StepOrder(stepNumber: 21)]
+#[StepOrder(stepNumber: 22)]
 class GenerateChapterStepMessage extends AbstractVideoProcessStepMessage
 {
     protected const string MESSAGE_LOGGING_IDENT = 'GENERATE CHAPTERS';
