@@ -10,8 +10,8 @@
                 {% endif %}
             </div>
             <div class="card-body">
-                {% if videoFace.video %}
-                    <h5 class="card-title">{{ videoFace.video.title }}</h5>
+                {% if videoFace.medium %}
+                    <h5 class="card-title">{{ videoFace.medium.title }}</h5>
                 {% endif %}
                 <p class="card-text">
                     <strong>Timestamp:</strong> {{ videoFace.timestamp | date('H:i:s') }}<br>
@@ -20,6 +20,8 @@
                 </p>
                 {% if videoFace.video %}
                     <a href="{{ path('video_timeline', {id: videoFace.video.id}) }}" class="btn btn-sm btn-primary">View Video</a>
+                {% elseif videoFace.photo %}
+                    <a href="{{ medium_path(videoFace.photo) }}" class="btn btn-sm btn-primary">Foto ansehen</a>
                 {% endif %}
                 <button class="btn btn-sm btn-primary"
                         data-action="live#action"

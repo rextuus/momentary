@@ -15,6 +15,7 @@ Welcome to the Momentary documentation. This project is designed to help you man
 9.  [Code-Qualität](code-quality.md)
 10. [Gesichtserkennung](face_recognition.md)
 11. [Ton-Transkription](transcription.md)
+12. [Fotos, Medien & Ereignisse](media.md)
 
 ## Key Features
 

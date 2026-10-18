@@ -13,4 +13,7 @@ enum FilePurpose: string
     case THUMBNAIL_VIDEO = 'thumbnail_video';
     case IMAGE_PROFILE = 'image_profile';
     case IMAGE_FACE = 'image_face';
+    case PHOTO_SOURCE = 'photo_source';
+    case PHOTO_DISPLAY = 'photo_display';
+    case PHOTO_THUMBNAIL = 'photo_thumbnail';
 }

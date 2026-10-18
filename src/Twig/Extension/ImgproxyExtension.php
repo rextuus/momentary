@@ -35,9 +35,9 @@ class ImgproxyExtension extends AbstractExtension
 
         $relativePath = ltrim($source->getRelativePath(), '/');
 
-        // Wir prüfen, ob der Pfad mit 'images/' beginnt. Falls nicht, fügen wir 'images/' hinzu,
-        // da alle durch FrameAnalyzer erstellten Face-Bilder nun unter 'images/faces/' liegen.
-        if (!str_starts_with($relativePath, 'images/')) {
+        // Ältere Gesichtsbilder sind ohne 'images/' gespeichert, liegen aber darunter. Fotos und Videos haben
+        // eigene Bereiche im Storage und bleiben unverändert.
+        if (!preg_match('#^(images|photos|videos)/#', $relativePath)) {
             $relativePath = 'images/' . $relativePath;
         }
 

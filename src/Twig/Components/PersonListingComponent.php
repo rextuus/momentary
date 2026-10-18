@@ -157,7 +157,7 @@ final class PersonListingComponent
                 'pf',
                 'pfImage',
                 'COUNT(vf.id) AS faces',
-                'COUNT(DISTINCT IDENTITY(vf.video)) AS videos',
+                'COUNT(DISTINCT IDENTITY(vf.medium)) AS videos',
                 'MAX(vf.id) AS HIDDEN newest',
             )
             ->leftJoin('p.videoFaces', 'vf')

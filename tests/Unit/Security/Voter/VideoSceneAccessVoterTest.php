@@ -6,7 +6,7 @@ namespace App\Tests\Unit\Security\Voter;
 
 use App\Entity\Video;
 use App\Entity\VideoScene;
-use App\Security\Voter\VideoAccessVoter;
+use App\Security\Voter\MediumAccessVoter;
 use App\Security\Voter\VideoSceneAccessVoter;
 use PHPUnit\Framework\TestCase;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -60,7 +60,7 @@ final class VideoSceneAccessVoterTest extends TestCase
     private function vote(?\App\Entity\User $user, VideoScene $scene, bool $isAdmin = false): int
     {
         $security = $this->createStub(Security::class);
-        $videoVoter = new VideoAccessVoter($security);
+        $videoVoter = new MediumAccessVoter($security);
         $token = self::tokenFor($user);
 
         // Security delegiert wie im Framework an den Video-Voter

@@ -64,8 +64,12 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
         $duration = $this->videoAnalyzer->probeDuration($sourceAbsolutePath);
         if ($duration !== null) {
             $video->setDuration($duration);
-            $this->entityManager->flush();
         }
+        // Aufnahmedatum: damit Videos zusammen mit Fotos sortiert und Ereignissen zugeordnet werden können
+        if ($video->getTakenAt() === null) {
+            $video->setTakenAt($this->videoAnalyzer->probeRecordedAt($sourceAbsolutePath));
+        }
+        $this->entityManager->flush();
 
         // Wenn es bereits eine MP4-Datei ist, überspringen wir die Konvertierung
         if (str_ends_with(strtolower($sourceAbsolutePath), '.mp4')) {

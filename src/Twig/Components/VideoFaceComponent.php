@@ -95,7 +95,7 @@ final class VideoFaceComponent extends AbstractController
         $person = $this->person();
         $person->removeVideoFace($this->videoFace);
         $person->removeDetectionFace($this->videoFace);
-        $this->videoFace->getVideo()?->removeVideoFace($this->videoFace);
+        $this->videoFace->getMedium()?->removeFace($this->videoFace);
 
         // Explizit löschen: über orphanRemoval am Video ginge es nur, wenn das Gesicht ein Video hat
         $this->entityManager->remove($this->videoFace);

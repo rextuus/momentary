@@ -19,6 +19,9 @@ RUN python3 -m pip install scenedetect[av] --break-system-packages
 # Lokale Ton-Transkription (Whisper auf der CPU); die Modelle landen beim ersten Lauf in var/whisper-models
 RUN python3 -m pip install faster-whisper --break-system-packages
 
+# Fotos: EXIF lesen, drehen, verkleinern; pillow-heif liest HEIC/HEIF vom iPhone
+RUN python3 -m pip install pillow pillow-heif --break-system-packages
+
 # Install PHP extensions
 RUN pecl install amqp && docker-php-ext-enable amqp
 RUN docker-php-ext-configure intl && docker-php-ext-install intl

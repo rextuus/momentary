@@ -4,20 +4,25 @@ declare(strict_types=1);
 
 namespace App\Security\Voter;
 
+use App\Entity\Medium;
 use App\Entity\User;
-use App\Entity\Video;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\Vote;
 use Symfony\Component\Security\Core\Authorization\Voter\Voter;
 
 /**
- * @extends Voter<string, Video>
+ * Rechte an Videos und Fotos: Admin und Eigentümer dürfen alles, sonst sehen nur öffentliche Medien oder Mitglieder
+ * freigegebener Gruppen etwas. VIDEO_* gibt es aus der Zeit vor dem gemeinsamen Medium-Typ und gilt weiter.
+ *
+ * @extends Voter<string, Medium>
  */
-class VideoAccessVoter extends Voter
+class MediumAccessVoter extends Voter
 {
-    public const VIEW = 'VIDEO_VIEW';
-    public const EDIT = 'VIDEO_EDIT';
+    public const VIEW = 'MEDIUM_VIEW';
+    public const EDIT = 'MEDIUM_EDIT';
+    public const VIDEO_VIEW = 'VIDEO_VIEW';
+    public const VIDEO_EDIT = 'VIDEO_EDIT';
 
     public function __construct(
         private Security $security,
@@ -25,7 +30,8 @@ class VideoAccessVoter extends Voter
 
     protected function supports(string $attribute, mixed $subject): bool
     {
-        return \in_array($attribute, [self::VIEW, self::EDIT], true) && $subject instanceof Video;
+        return \in_array($attribute, [self::VIEW, self::EDIT, self::VIDEO_VIEW, self::VIDEO_EDIT], true)
+        && $subject instanceof Medium;
     }
 
     protected function voteOnAttribute(
@@ -42,7 +48,6 @@ class VideoAccessVoter extends Voter
             return true;
         }
 
-        /** @var Video $video */
         $video = $subject;
 
         // Owner check
@@ -51,7 +56,7 @@ class VideoAccessVoter extends Voter
         }
 
         // Bearbeiten dürfen nur Admin und Eigentümer
-        if ($attribute === self::EDIT) {
+        if ($attribute === self::EDIT || $attribute === self::VIDEO_EDIT) {
             return false;
         }
 

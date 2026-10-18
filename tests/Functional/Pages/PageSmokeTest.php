@@ -7,8 +7,10 @@ namespace App\Tests\Functional\Pages;
 use App\Entity\TranscriptSegment;
 use App\Entity\VideoTranscript;
 use App\Enum\PersonStatus;
+use App\Tests\Factory\EventFactory;
 use App\Tests\Factory\FileFactory;
 use App\Tests\Factory\PersonFactory;
+use App\Tests\Factory\PhotoFactory;
 use App\Tests\Factory\UserFactory;
 use App\Tests\Factory\VideoChapterFactory;
 use App\Tests\Factory\VideoFaceFactory;
@@ -44,6 +46,15 @@ final class PageSmokeTest extends WebTestCase
         yield 'Auftrennen' => ['/admin/reassign-faces'];
         yield 'Gesichtserkennung' => ['/admin/settings/face-recognition'];
         yield 'Transkription' => ['/admin/settings/transcription'];
+        yield 'Fotos' => ['/photo/'];
+        yield 'Fotos gesucht' => ['/photo/?q=Strand&page=1'];
+        yield 'Foto-Detail' => ['/photo/{photo}'];
+        yield 'Fotos hochladen' => ['/photo/upload'];
+        yield 'Ereignisse' => ['/event/'];
+        yield 'Ereignis-Detail' => ['/event/{event}'];
+        yield 'Ereignis anlegen' => ['/event/new'];
+        yield 'Ereignis bearbeiten' => ['/event/{event}/edit'];
+        yield 'Person mit Foto' => ['/person/{anna}/detail'];
     }
 
     #[DataProvider('pages')]
@@ -82,10 +93,30 @@ final class PageSmokeTest extends WebTestCase
         $entityManager->persist($transcript);
         $entityManager->flush();
 
+        // Foto mit erkanntem Gesicht und ein Ereignis mit Video und Foto
+        $photo = PhotoFactory::new()->completed()->create([
+            'title' => 'Am Strand',
+            'takenAt' => new \DateTimeImmutable('2025-03-19 12:00'),
+        ]);
+        VideoFaceFactory::createOne([
+            'medium' => $photo,
+            'person' => $anna,
+            'faceImage' => $photo->getDisplayFile(),
+            'timestamp' => 0,
+            'boundingBox' => ['Left' => 0.4, 'Top' => 0.2, 'Width' => 0.1, 'Height' => 0.15],
+        ]);
+        $event = EventFactory::createOne(['title' => 'Mallorca', 'startDate' => new \DateTimeImmutable('2025-03-19')]);
+        $event->addMedium($video);
+        $event->addMedium($photo);
+        $entityManager->flush();
+
         $client->request('GET', strtr($url, [
             '{video}' => (string) $video->getId(),
             '{chapter}' => (string) $chapter->getId(),
             '{person}' => (string) $unknown->getId(),
+            '{anna}' => (string) $anna->getId(),
+            '{photo}' => (string) $photo->getId(),
+            '{event}' => (string) $event->getId(),
         ]));
 
         self::assertResponseIsSuccessful();

@@ -122,10 +122,10 @@ class SceneDetector
     public function clearOldScenes(Video $video): void
     {
         $connection = $this->entityManager->getConnection();
-        $affectedPersons = $this->orphanedPersonCleaner->personIdsOfVideo((int) $video->getId());
+        $affectedPersons = $this->orphanedPersonCleaner->personIdsOfMedium((int) $video->getId());
 
         // 1. Alle Faces löschen, die an Szenen dieses Videos hängen
-        $connection->executeStatement('DELETE FROM video_face WHERE video_id = ?', [$video->getId()]);
+        $connection->executeStatement('DELETE FROM video_face WHERE medium_id = ?', [$video->getId()]);
 
         // 2. Alle Szenen des Videos löschen
         $connection->executeStatement('DELETE FROM video_scene WHERE video_id = ?', [$video->getId()]);

@@ -63,7 +63,7 @@ class Mp4Converter
     }
 
     /**
-     * @return array{video: ?array{codec: string, pixFmt: string}, audio: list<string>, duration: float}
+     * @return array{video: ?array{codec: string, pixFmt: string}, audio: list<string>, duration: float, createdAt?: ?string}
      */
     public function probe(string $path): array
     {
@@ -72,7 +72,7 @@ class Mp4Converter
             '-v',
             'error',
             '-show_entries',
-            'stream=codec_type,codec_name,pix_fmt:format=duration',
+            'stream=codec_type,codec_name,pix_fmt:format=duration:format_tags=creation_time',
             '-of',
             'json',
             $path,
@@ -98,6 +98,9 @@ class Mp4Converter
             }
         }
         $result['duration'] = (float) ($data['format']['duration'] ?? 0.0);
+        $result['createdAt'] = isset($data['format']['tags']['creation_time'])
+            ? (string) $data['format']['tags']['creation_time']
+            : null;
 
         return $result;
     }
@@ -117,6 +120,9 @@ class Mp4Converter
             '0:v:0',
             '-map',
             '0:a?',
+            // Aufnahmedatum (creation_time) und andere Metadaten des Originals behalten
+            '-map_metadata',
+            '0',
             '-c',
             'copy',
             '-movflags',
@@ -139,6 +145,9 @@ class Mp4Converter
             '0:v:0',
             '-map',
             '0:a?',
+            // Aufnahmedatum (creation_time) und andere Metadaten des Originals behalten
+            '-map_metadata',
+            '0',
             '-c:v',
             'libx264',
             '-preset',

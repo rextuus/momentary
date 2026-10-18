@@ -55,7 +55,7 @@
                              data-bs-target="#imageModal"
                              data-bs-img="{{ imgproxy_url(activeFace.faceImage, 800, 600, 'fit') }}"
                              data-bs-box="{{ activeFace.boundingBoxStyles }}"
-                             data-bs-caption="Sichtung in {{ activeFace.video.title }}">
+                             data-bs-caption="Sichtung in {{ activeFace.medium.title ?? '' }}">
                              {# Wir nutzen hier den face_zoom_style, falls vorhanden, sonst einfach img #}
                              <div class="position-absolute top-0 left-0 w-100 h-100" style="{{ face_zoom_style(imgproxy_url(activeFace.faceImage), activeFace.boundingBox, 0.4) }}"></div>
                              <div class="position-absolute border border-danger border-3" style="{{ activeFace.boundingBoxStyles|raw }}; pointer-events: none;"></div>

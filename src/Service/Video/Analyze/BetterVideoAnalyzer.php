@@ -50,6 +50,40 @@ readonly class BetterVideoAnalyzer
         return $duration > 0 ? $duration : null;
     }
 
+    /**
+     * Aufnahmezeitpunkt (UTC), null wenn unbekannt.
+     *
+     * Ein Zeitstempel im Dateinamen (Action-Cams, Android: "20250319_121537", "VID_20250319_121537") ist die Ortszeit
+     * der Kamera und hat Vorrang: manche Kameras schreiben creation_time mit falscher Zeitzone. Sonst gilt
+     * creation_time aus den Metadaten (z. B. iPhone, dort korrekt in UTC).
+     */
+    public function probeRecordedAt(string $path): ?\DateTimeImmutable
+    {
+        if (
+            preg_match('/(?<!\d)(20\d{2})(\d{2})(\d{2})[_\-T ]?(\d{2})(\d{2})(\d{2})(?!\d)/', basename($path), $m) === 1
+        ) {
+            $local = \DateTimeImmutable::createFromFormat(
+                'Y-m-d H:i:s',
+                sprintf('%s-%s-%s %s:%s:%s', $m[1], $m[2], $m[3], $m[4], $m[5], $m[6]),
+                new \DateTimeZone('Europe/Berlin'),
+            );
+            if ($local !== false && $local->format('YmdHis') === $m[1] . $m[2] . $m[3] . $m[4] . $m[5] . $m[6]) {
+                return $local->setTimezone(new \DateTimeZone('UTC'));
+            }
+        }
+
+        $createdAt = $this->mp4Converter->probe($path)['createdAt'] ?? null;
+        if ($createdAt === null || $createdAt === '' || str_starts_with($createdAt, '1970')) {
+            return null;
+        }
+
+        try {
+            return new \DateTimeImmutable($createdAt)->setTimezone(new \DateTimeZone('UTC'));
+        } catch (\Exception) {
+            return null;
+        }
+    }
+
     public function convertToMp4(string $sourcePath, string $targetPath): bool
     {
         return $this->mp4Converter->convertToMp4($sourcePath, $targetPath);

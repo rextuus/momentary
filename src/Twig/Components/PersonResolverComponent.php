@@ -430,7 +430,7 @@ class PersonResolverComponent extends AbstractController
             return [];
         }
 
-        $videoId = $activeFace->getVideo()?->getId();
+        $videoId = $activeFace->getMedium()?->getId();
         $targetGender = $activeFace->getGender();
         $targetAge = $activeFace->getAge();
 
@@ -438,7 +438,7 @@ class PersonResolverComponent extends AbstractController
         $allIdentified = $this->personRepository
             ->createQueryBuilder('p')
             ->select('p, COUNT(DISTINCT f_video.id) as video_count, COUNT(DISTINCT f_global.id) as global_count')
-            ->leftJoin('p.videoFaces', 'f_video', 'WITH', 'f_video.video = :videoId')
+            ->leftJoin('p.videoFaces', 'f_video', 'WITH', 'f_video.medium = :videoId')
             ->leftJoin('p.videoFaces', 'f_global')
             ->where('p.status = :status')
             ->setParameter('videoId', $videoId)

@@ -26,9 +26,10 @@ class VideoFace
     #[Groups(['video:list', 'video:detail', 'videoface:list', 'videoface:detail'])]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(inversedBy: 'videoFaces')]
-    #[Groups(['videoface:detail'])]
-    private ?Video $video = null;
+    /** Video oder Foto, in dem das Gesicht erkannt wurde */
+    #[ORM\ManyToOne(targetEntity: Medium::class, inversedBy: 'faces')]
+    #[ORM\JoinColumn(name: 'medium_id', nullable: true, onDelete: 'CASCADE')]
+    private ?Medium $medium = null;
 
     #[ORM\ManyToOne(inversedBy: 'videoFaces')]
     #[ORM\JoinColumn(nullable: false)]
@@ -116,15 +117,35 @@ class VideoFace
         return $this->id;
     }
 
+    public function getMedium(): ?Medium
+    {
+        return $this->medium;
+    }
+
+    public function setMedium(?Medium $medium): static
+    {
+        $this->medium = $medium;
+
+        return $this;
+    }
+
+    /**
+     * Das Video, falls das Gesicht aus einem Video stammt (bei Fotos null).
+     */
+    #[Groups(['videoface:detail'])]
     public function getVideo(): ?Video
     {
-        return $this->video;
+        return $this->medium instanceof Video ? $this->medium : null;
     }
 
     public function setVideo(?Video $video): static
     {
-        $this->video = $video;
-        return $this;
+        return $this->setMedium($video);
+    }
+
+    public function getPhoto(): ?Photo
+    {
+        return $this->medium instanceof Photo ? $this->medium : null;
     }
 
     public function getPerson(): ?Person

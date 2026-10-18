@@ -23,16 +23,16 @@ class OrphanedPersonCleaner
     ) {}
 
     /**
-     * Personen, denen Gesichter dieses Videos zugeordnet sind (vor dem Löschen der Gesichter merken).
+     * Personen, denen Gesichter dieses Mediums zugeordnet sind (vor dem Löschen der Gesichter merken).
      *
      * @return list<int>
      */
-    public function personIdsOfVideo(int $videoId): array
+    public function personIdsOfMedium(int $mediumId): array
     {
         $ids = $this->entityManager->getConnection()->fetchFirstColumn(
-            'SELECT person_id FROM video_face WHERE video_id = ? AND person_id IS NOT NULL
-             UNION SELECT detection_id FROM video_face WHERE video_id = ? AND detection_id IS NOT NULL',
-            [$videoId, $videoId],
+            'SELECT person_id FROM video_face WHERE medium_id = ? AND person_id IS NOT NULL
+             UNION SELECT detection_id FROM video_face WHERE medium_id = ? AND detection_id IS NOT NULL',
+            [$mediumId, $mediumId],
         );
 
         return array_map(intval(...), $ids);

@@ -44,7 +44,7 @@ final class VideoPersonExtension implements QueryCollectionExtensionInterface
         $facesAlias = $queryNameGenerator->generateJoinAlias('videoFaces');
         $personAlias = $queryNameGenerator->generateJoinAlias('person');
 
-        $queryBuilder->join(sprintf('%s.videoFaces', $rootAlias), $facesAlias)->join(
+        $queryBuilder->join(sprintf('%s.faces', $rootAlias), $facesAlias)->join(
             sprintf('%s.person', $facesAlias),
             $personAlias,
         );

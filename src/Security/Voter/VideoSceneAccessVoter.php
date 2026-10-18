@@ -64,7 +64,7 @@ class VideoSceneAccessVoter extends Voter
         }
 
         // Check Video-level access (includes public, owner, video-groups)
-        if ($this->security->isGranted(VideoAccessVoter::VIEW, $scene->getVideo())) {
+        if ($this->security->isGranted(MediumAccessVoter::VIDEO_VIEW, $scene->getVideo())) {
             return true;
         }
 

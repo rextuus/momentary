@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Security\Voter;
 
+use App\Entity\Photo;
 use App\Entity\Video;
-use App\Security\Voter\VideoAccessVoter;
+use App\Security\Voter\MediumAccessVoter;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
 
-final class VideoAccessVoterTest extends TestCase
+final class MediumAccessVoterTest extends TestCase
 {
     use VoterTestTrait;
 
@@ -22,7 +23,7 @@ final class VideoAccessVoterTest extends TestCase
     {
         // Attribut, Admin?, Eigentümer?, öffentlich?, Gruppenmitglied?, erwartetes Ergebnis
         yield 'Admin sieht private Videos' => [
-            VideoAccessVoter::VIEW,
+            MediumAccessVoter::VIDEO_VIEW,
             true,
             false,
             false,
@@ -30,7 +31,7 @@ final class VideoAccessVoterTest extends TestCase
             VoterInterface::ACCESS_GRANTED,
         ];
         yield 'Eigentümer sieht eigenes Video' => [
-            VideoAccessVoter::VIEW,
+            MediumAccessVoter::VIDEO_VIEW,
             false,
             true,
             false,
@@ -38,7 +39,7 @@ final class VideoAccessVoterTest extends TestCase
             VoterInterface::ACCESS_GRANTED,
         ];
         yield 'Jeder sieht öffentliche Videos' => [
-            VideoAccessVoter::VIEW,
+            MediumAccessVoter::VIDEO_VIEW,
             false,
             false,
             true,
@@ -46,7 +47,7 @@ final class VideoAccessVoterTest extends TestCase
             VoterInterface::ACCESS_GRANTED,
         ];
         yield 'Gruppenmitglied sieht freigegebenes Video' => [
-            VideoAccessVoter::VIEW,
+            MediumAccessVoter::VIDEO_VIEW,
             false,
             false,
             false,
@@ -54,7 +55,7 @@ final class VideoAccessVoterTest extends TestCase
             VoterInterface::ACCESS_GRANTED,
         ];
         yield 'Fremde sehen private Videos nicht' => [
-            VideoAccessVoter::VIEW,
+            MediumAccessVoter::VIDEO_VIEW,
             false,
             false,
             false,
@@ -63,7 +64,7 @@ final class VideoAccessVoterTest extends TestCase
         ];
 
         yield 'Admin darf bearbeiten' => [
-            VideoAccessVoter::EDIT,
+            MediumAccessVoter::VIDEO_EDIT,
             true,
             false,
             false,
@@ -71,7 +72,7 @@ final class VideoAccessVoterTest extends TestCase
             VoterInterface::ACCESS_GRANTED,
         ];
         yield 'Eigentümer darf bearbeiten' => [
-            VideoAccessVoter::EDIT,
+            MediumAccessVoter::VIDEO_EDIT,
             false,
             true,
             false,
@@ -79,7 +80,7 @@ final class VideoAccessVoterTest extends TestCase
             VoterInterface::ACCESS_GRANTED,
         ];
         yield 'Öffentlich heißt nicht bearbeitbar' => [
-            VideoAccessVoter::EDIT,
+            MediumAccessVoter::VIDEO_EDIT,
             false,
             false,
             true,
@@ -87,7 +88,7 @@ final class VideoAccessVoterTest extends TestCase
             VoterInterface::ACCESS_DENIED,
         ];
         yield 'Gruppenmitglied darf nicht bearbeiten' => [
-            VideoAccessVoter::EDIT,
+            MediumAccessVoter::VIDEO_EDIT,
             false,
             false,
             false,
@@ -124,17 +125,49 @@ final class VideoAccessVoterTest extends TestCase
         self::assertSame(VoterInterface::ACCESS_GRANTED, $voter->vote(
             $token,
             new Video()->setIsPublic(true),
-            [VideoAccessVoter::VIEW],
+            [MediumAccessVoter::VIDEO_VIEW],
         ));
         self::assertSame(VoterInterface::ACCESS_DENIED, $voter->vote(
             $token,
             new Video()->setIsPublic(false),
-            [VideoAccessVoter::VIEW],
+            [MediumAccessVoter::VIDEO_VIEW],
         ));
         self::assertSame(VoterInterface::ACCESS_DENIED, $voter->vote(
             $token,
             new Video()->setIsPublic(true),
-            [VideoAccessVoter::EDIT],
+            [MediumAccessVoter::VIDEO_EDIT],
+        ));
+    }
+
+    public function testPhotosFollowTheSameRules(): void
+    {
+        $owner = self::user();
+        $stranger = self::user();
+        $member = self::user();
+        $photo = new Photo()
+            ->setOwner($owner)
+            ->addAllowedGroup(self::group([$member]));
+        $voter = $this->voter(false);
+
+        self::assertSame(VoterInterface::ACCESS_GRANTED, $voter->vote(
+            self::tokenFor($owner),
+            $photo,
+            [MediumAccessVoter::EDIT],
+        ));
+        self::assertSame(VoterInterface::ACCESS_GRANTED, $voter->vote(
+            self::tokenFor($member),
+            $photo,
+            [MediumAccessVoter::VIEW],
+        ));
+        self::assertSame(VoterInterface::ACCESS_DENIED, $voter->vote(
+            self::tokenFor($member),
+            $photo,
+            [MediumAccessVoter::EDIT],
+        ));
+        self::assertSame(VoterInterface::ACCESS_DENIED, $voter->vote(
+            self::tokenFor($stranger),
+            $photo,
+            [MediumAccessVoter::VIEW],
         ));
     }
 
@@ -143,7 +176,7 @@ final class VideoAccessVoterTest extends TestCase
         self::assertSame(VoterInterface::ACCESS_DENIED, $this->voter(false)->vote(
             self::tokenFor(self::user()),
             new Video(),
-            [VideoAccessVoter::EDIT],
+            [MediumAccessVoter::VIDEO_EDIT],
         ));
     }
 
@@ -156,17 +189,17 @@ final class VideoAccessVoterTest extends TestCase
         self::assertSame(VoterInterface::ACCESS_ABSTAIN, $voter->vote(
             $token,
             new \stdClass(),
-            [VideoAccessVoter::VIEW],
+            [MediumAccessVoter::VIDEO_VIEW],
         ));
     }
 
-    private function voter(bool $isAdmin): VideoAccessVoter
+    private function voter(bool $isAdmin): MediumAccessVoter
     {
         $security = $this->createStub(Security::class);
         $security
             ->method('isGranted')
             ->willReturnCallback(static fn(mixed $attribute): bool => $attribute === 'ROLE_ADMIN' && $isAdmin);
 
-        return new VideoAccessVoter($security);
+        return new MediumAccessVoter($security);
     }
 }

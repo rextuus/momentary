@@ -27,6 +27,17 @@ framework:
                         transcription: ~
                 retry_strategy:
                     max_retries: 0
+            # Fotos: eigene Queue, vom messenger-worker zuletzt abgearbeitet (Videos haben Vorrang)
+            photos:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    exchange:
+                        name: photos
+                    queues:
+                        photos: ~
+                retry_strategy:
+                    max_retries: 2
+                    delay: 5000
             failed: '%env(MESSENGER_TRANSPORT_DSN)%'
             # sync: 'sync://'
 
@@ -67,3 +78,4 @@ framework:
             App\Service\Video\Processing\Message\VideoNamingStepMessage: async_video_processing
             App\Message\TranscribeVideoMessage: transcription
             App\Service\Video\Processing\Message\TranscribeStepMessage: transcription
+            App\Message\AnalyzePhotoMessage: photos

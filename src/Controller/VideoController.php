@@ -114,7 +114,7 @@ final class VideoController extends AbstractController
     ): Response {
         if ($this->isCsrfTokenValid('delete' . $video->getId(), $request->request->getString('_token'))) {
             $videoId = $video->getId();
-            $affectedPersons = $orphanedPersonCleaner->personIdsOfVideo((int) $videoId);
+            $affectedPersons = $orphanedPersonCleaner->personIdsOfMedium((int) $videoId);
 
             // 1. Hauptdateien über den FileManager löschen
             if ($video->getSourceFile()) {

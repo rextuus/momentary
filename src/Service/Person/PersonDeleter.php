@@ -61,7 +61,7 @@ class PersonDeleter
                 $images[(int) $image->getId()] = $image;
             }
             $face->setFaceImage(null);
-            $face->getVideo()?->removeVideoFace($face);
+            $face->getMedium()?->removeFace($face);
             $face->getVideoScene()?->removeVideoFace($face);
             $person->removeVideoFace($face);
             $this->entityManager->remove($face);

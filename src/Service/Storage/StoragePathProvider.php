@@ -49,6 +49,10 @@ class StoragePathProvider
             ),
             FilePurpose::IMAGE_PROFILE => $this->createProfileImagePath($directoryIdentifier ?? '0', $filename),
             FilePurpose::IMAGE_FACE => $this->createFacePath($directoryIdentifier ?? '0', $filename),
+            FilePurpose::PHOTO_SOURCE,
+            FilePurpose::PHOTO_DISPLAY,
+            FilePurpose::PHOTO_THUMBNAIL,
+                => $this->createPhotoPath($directoryIdentifier ?? '0', $filename),
         };
     }
 
@@ -89,6 +93,14 @@ class StoragePathProvider
         }
 
         return sprintf('images/thumbnails/%s', $filename);
+    }
+
+    /**
+     * Original, Anzeige-Fassung und Vorschau eines Fotos liegen gemeinsam in einem Ordner je Foto.
+     */
+    public function createPhotoPath(string $directoryIdentifier, string $filename): string
+    {
+        return sprintf('photos/%s/%s', $directoryIdentifier, $filename);
     }
 
     /**

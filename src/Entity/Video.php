@@ -23,7 +23,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
         'title' => new QueryParameter(filter: new PartialSearchFilter(), property: 'title'),
         'videoFaces.person.name' => new QueryParameter(
             filter: new PartialSearchFilter(),
-            property: 'videoFaces.person.name',
+            property: 'faces.person.name',
         ),
         'scenes.tags.name' => new QueryParameter(
             filter: new PartialSearchFilter(),
@@ -33,17 +33,8 @@ use Symfony\Component\Serializer\Attribute\Groups;
     ]),
     new Get(normalizationContext: ['groups' => ['video:detail']]),
 ])]
-class Video
+class Video extends Medium
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column]
-    #[Groups(['video:list', 'video:detail'])]
-    private ?int $id = null;
-
-    #[ORM\Column(length: 255)]
-    #[Groups(['video:list', 'video:detail'])]
-    private ?string $title = null;
     #[ORM\Column(length: 64, nullable: true)]
     #[Groups(['video:detail'])]
     private ?string $fileHash = null;
@@ -62,22 +53,6 @@ class Video
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     #[Groups(['video:detail'])]
     private ?File $thumbnailFile = null;
-
-    #[ORM\Column]
-    #[Groups(['video:list', 'video:detail'])]
-    private ?\DateTimeImmutable $createdAt = null;
-
-    /**
-     * @var Collection<int, VideoFace>
-     */
-    #[ORM\OneToMany(
-        targetEntity: VideoFace::class,
-        mappedBy: 'video',
-        cascade: ['persist', 'remove'],
-        orphanRemoval: true,
-    )]
-    #[Groups(['video:detail'])]
-    private Collection $videoFaces;
 
     #[ORM\Column(type: 'string', length: 32, enumType: VideoStatus::class)]
     #[Groups(['video:list', 'video:detail'])]
@@ -183,56 +158,22 @@ class Video
     #[Groups(['video:list', 'video:detail'])]
     private ?string $directoryHash = null;
 
-    #[ORM\ManyToOne(targetEntity: User::class)]
-    private ?User $owner = null;
-
-    #[ORM\Column(options: ['default' => false])]
-    #[Groups(['video:list', 'video:detail'])]
-    private bool $isPublic = false;
-
-    /**
-     * @var Collection<int, UserGroup>
-     */
-    #[ORM\ManyToMany(targetEntity: UserGroup::class)]
-    private Collection $allowedGroups;
-
-    /**
-     * @var Collection<int, Tag>
-     */
-    #[ORM\ManyToMany(targetEntity: Tag::class)]
-    #[ORM\JoinTable(name: 'video_tags')]
-    #[Groups(['video:detail'])]
-    private Collection $tags;
-
     public function __construct()
     {
-        $this->videoFaces = new ArrayCollection();
+        parent::__construct();
         $this->scenes = new ArrayCollection();
         $this->chapters = new ArrayCollection();
         $this->processingSteps = new ArrayCollection();
-        $this->allowedGroups = new ArrayCollection();
-        $this->tags = new ArrayCollection();
     }
 
-    public function isPublic(): bool
+    public function getType(): string
     {
-        return $this->isPublic;
+        return 'video';
     }
 
-    public function setIsPublic(bool $isPublic): static
+    public function getPreviewFile(): ?File
     {
-        $this->isPublic = $isPublic;
-        return $this;
-    }
-
-    public function getId(): ?int
-    {
-        return $this->id;
-    }
-
-    public function getTitle(): ?string
-    {
-        return $this->title;
+        return $this->thumbnailFile;
     }
 
     public function getFileHash(): ?string
@@ -243,12 +184,6 @@ class Video
     public function setFileHash(?string $fileHash): static
     {
         $this->fileHash = $fileHash;
-        return $this;
-    }
-
-    public function setTitle(string $title): static
-    {
-        $this->title = $title;
         return $this;
     }
 
@@ -285,42 +220,25 @@ class Video
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
-    {
-        return $this->createdAt;
-    }
-
-    public function setCreatedAt(\DateTimeImmutable $createdAt): static
-    {
-        $this->createdAt = $createdAt;
-        return $this;
-    }
-
     /**
+     * Gesichter des Videos (Name aus der Zeit vor dem gemeinsamen Medium-Typ, auch in der API so benannt).
+     *
      * @return Collection<int, VideoFace>
      */
+    #[Groups(['video:detail'])]
     public function getVideoFaces(): Collection
     {
-        return $this->videoFaces;
+        return $this->faces;
     }
 
     public function addVideoFace(VideoFace $videoFace): static
     {
-        if (!$this->videoFaces->contains($videoFace)) {
-            $this->videoFaces->add($videoFace);
-            $videoFace->setVideo($this);
-        }
-        return $this;
+        return $this->addFace($videoFace);
     }
 
     public function removeVideoFace(VideoFace $videoFace): static
     {
-        if ($this->videoFaces->removeElement($videoFace)) {
-            if ($videoFace->getVideo() === $this) {
-                $videoFace->setVideo(null);
-            }
-        }
-        return $this;
+        return $this->removeFace($videoFace);
     }
 
     public function getStatus(): VideoStatus
@@ -519,61 +437,6 @@ class Video
     public function setDirectoryHash(?string $directoryHash): self
     {
         $this->directoryHash = $directoryHash;
-        return $this;
-    }
-
-    public function getOwner(): ?User
-    {
-        return $this->owner;
-    }
-
-    public function setOwner(?User $owner): static
-    {
-        $this->owner = $owner;
-        return $this;
-    }
-
-    /**
-     * @return Collection<int, UserGroup>
-     */
-    public function getAllowedGroups(): Collection
-    {
-        return $this->allowedGroups;
-    }
-
-    public function addAllowedGroup(UserGroup $group): static
-    {
-        if (!$this->allowedGroups->contains($group)) {
-            $this->allowedGroups->add($group);
-        }
-        return $this;
-    }
-
-    public function removeAllowedGroup(UserGroup $group): static
-    {
-        $this->allowedGroups->removeElement($group);
-        return $this;
-    }
-
-    /**
-     * @return Collection<int, Tag>
-     */
-    public function getTags(): Collection
-    {
-        return $this->tags;
-    }
-
-    public function addTag(Tag $tag): static
-    {
-        if (!$this->tags->contains($tag)) {
-            $this->tags->add($tag);
-        }
-        return $this;
-    }
-
-    public function removeTag(Tag $tag): static
-    {
-        $this->tags->removeElement($tag);
         return $this;
     }
 

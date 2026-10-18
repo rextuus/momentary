@@ -162,6 +162,16 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link {{ route starts with 'app_photo' ? 'active' }}" href="{{ path('app_photo_index') }}">
+                        <i class="fas fa-image me-1"></i> Fotos
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ route starts with 'app_event' ? 'active' }}" href="{{ path('app_event_index') }}">
+                        <i class="fas fa-calendar-days me-1"></i> Ereignisse
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link {{ inPersons ? 'active' }}" href="{{ path('person_index') }}">
                         <i class="fas fa-users me-1"></i> Personen
                     </a>

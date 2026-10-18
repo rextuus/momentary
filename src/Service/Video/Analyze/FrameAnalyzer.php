@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Video\Analyze;
 
 use App\Entity\File;
+use App\Entity\Medium;
 use App\Entity\Person;
 use App\Entity\Video;
 use App\Entity\VideoFace;
@@ -62,10 +63,44 @@ class FrameAnalyzer
             ->getQuery()
             ->getOneOrNullResult();
 
-        $allFacesData = $this->rekognitionService->processAllFacesInImage($framePath);
+        return $this->analyzeImage($video, $framePath, $timestamp, $currentScene);
+    }
+
+    /**
+     * Gesichter in einem Bild erkennen und dem Medium zuordnen (Video-Frame oder Foto).
+     *
+     * @param File|null $image vorhandene Bilddatei wiederverwenden (Fotos); sonst wird das Bild als Gesichtsbild abgelegt
+     */
+    public function analyzeImage(
+        Medium $medium,
+        string $imagePath,
+        int $timestamp = 0,
+        ?VideoScene $scene = null,
+        ?File $image = null,
+    ): bool {
+        $allFacesData = $this->rekognitionService->processAllFacesInImage($imagePath);
         if ($allFacesData === []) {
             return false;
         }
+
+        $file = $image ?? $this->storeFaceImage($medium, $imagePath);
+
+        // Personen, die in diesem Bild schon vergeben sind: zwei Gesichter im selben Bild sind nie dieselbe Person
+        $personIdsInFrame = [];
+        foreach ($allFacesData as $detectedFace) {
+            $person = $this->saveFace($medium, $detectedFace, $timestamp, $file, $scene, $personIdsInFrame);
+            if ($person->getId() !== null) {
+                $personIdsInFrame[] = $person->getId();
+            }
+        }
+
+        $this->entityManager->flush();
+
+        return true;
+    }
+
+    private function storeFaceImage(Medium $medium, string $framePath): File
+    {
         // Während des Rekognition-Requests kann die Datei verschwinden; ohne clearstatcache lieferte PHP das alte Ergebnis
         clearstatcache(true, $framePath);
         if (!file_exists($framePath)) {
@@ -78,7 +113,7 @@ class FrameAnalyzer
         }
         $uuid = Uuid::uuid4()->toString();
 
-        $storagePath = $this->pathProvider->createFacePath((string) $videoId, $uuid . '.jpg');
+        $storagePath = $this->pathProvider->createFacePath((string) $medium->getId(), $uuid . '.jpg');
 
         $this->imageFileService->getFilesystem()->write($storagePath, $imageContent);
 
@@ -92,25 +127,14 @@ class FrameAnalyzer
             $this->entityManager->persist($file);
         }
 
-        // Personen, die in diesem Frame schon vergeben sind: zwei Gesichter im selben Bild sind nie dieselbe Person
-        $personIdsInFrame = [];
-        foreach ($allFacesData as $detectedFace) {
-            $person = $this->saveFace($video, $detectedFace, $timestamp, $file, $currentScene, $personIdsInFrame);
-            if ($person->getId() !== null) {
-                $personIdsInFrame[] = $person->getId();
-            }
-        }
-
-        $this->entityManager->flush();
-
-        return true;
+        return $file;
     }
 
     /**
      * @param list<int> $personIdsInFrame
      */
     private function saveFace(
-        Video $video,
+        Medium $medium,
         DetectedFace $detectedFace,
         int $timestamp,
         File $file,
@@ -132,7 +156,7 @@ class FrameAnalyzer
         }
 
         $videoFace = new VideoFace();
-        $videoFace->setVideo($video);
+        $videoFace->setMedium($medium);
         $videoFace->setPerson($person);
         $videoFace->setTimestamp($timestamp);
         $videoFace->setFaceImage($file);

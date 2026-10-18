@@ -160,7 +160,7 @@
                                  data-bs-target="#imageModal"
                                  data-bs-img="{{ imgproxy_url(face.faceImage, 800, 600, 'fit') }}"
                                  data-bs-box="{{ face.boundingBoxStyles }}"
-                                 data-bs-caption="Sichtung in {{ face.video.title }} ({{ face.timestamp }}s)">
+                                 data-bs-caption="{{ face.video ? 'Sichtung in ' ~ face.medium.title ~ ' (' ~ face.timestamp ~ 's)' : 'Foto: ' ~ (face.medium.title ?? '') }}">
                                 <div class="position-relative d-inline-block w-100">
                                     <img src="{{ imgproxy_url(face.faceImage, 800, 600, 'fit') }}"
                                          class="img-fluid"
@@ -198,10 +198,14 @@
                                 </div>
 
 
-                                {# Zeitstempel-Badge unten links #}
-                                <div class="position-absolute bottom-0 start-0 m-1 px-1 bg-black bg-opacity-50 text-white rounded small" style="font-size: 0.65rem; z-index: 2;">
-                                    {{ face.timestamp }}s
-                                </div>
+                                {# Herkunft unten links: Video mit Zeitstempel oder Foto, verlinkt #}
+                                <a href="{{ medium_path(face.medium, face.video ? face.timestamp : null) }}"
+                                   onclick="event.stopPropagation()"
+                                   class="position-absolute bottom-0 start-0 m-1 px-1 bg-black bg-opacity-50 text-white rounded small text-decoration-none"
+                                   style="font-size: 0.65rem; z-index: 2;"
+                                   title="{{ face.medium.title ?? '' }}">
+                                    <i class="fas {{ medium_icon(face.medium) }} me-1"></i>{{ face.video ? face.timestamp ~ 's' : 'Foto' }}
+                                </a>
                             </div>
                         </div>
                     {% endfor %}
