@@ -47,12 +47,6 @@ class Photo extends Medium
     #[ORM\Column(nullable: true)]
     private ?int $height = null;
 
-    #[ORM\Column(nullable: true)]
-    private ?float $latitude = null;
-
-    #[ORM\Column(nullable: true)]
-    private ?float $longitude = null;
-
     #[ORM\Column(length: 128, nullable: true)]
     private ?string $camera = null;
 
@@ -158,29 +152,6 @@ class Photo extends Medium
         $this->height = $height;
 
         return $this;
-    }
-
-    public function getLatitude(): ?float
-    {
-        return $this->latitude;
-    }
-
-    public function getLongitude(): ?float
-    {
-        return $this->longitude;
-    }
-
-    public function setLocation(?float $latitude, ?float $longitude): static
-    {
-        $this->latitude = $latitude;
-        $this->longitude = $longitude;
-
-        return $this;
-    }
-
-    public function hasLocation(): bool
-    {
-        return $this->latitude !== null && $this->longitude !== null;
     }
 
     public function getCamera(): ?string

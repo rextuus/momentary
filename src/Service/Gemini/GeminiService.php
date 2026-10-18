@@ -206,6 +206,34 @@ class GeminiService
     }
 
     /**
+     * Titel für ein Ereignis (z. B. "Mallorca-Urlaub", "Omas 80. Geburtstag") aus Tags und Medientiteln.
+     *
+     * @param list<string> $tags
+     * @param list<string> $mediaTitles
+     */
+    public function suggestEventTitle(array $tags, array $mediaTitles, string $period): string
+    {
+        $prompt =
+            'Hier sind Informationen zu Fotos und Videos aus einem privaten Familienarchiv, die zeitlich zusammengehören. '
+            . 'Schlage einen kurzen Titel (2–5 Wörter) für dieses Ereignis vor, wie ihn eine Familie für ein Album wählen würde, '
+            . 'z. B. "Sommerurlaub auf Mallorca" oder "Omas Geburtstag". Keine Anführungszeichen, kein Datum im Titel. '
+            . 'Zeitraum: '
+            . $period
+            . '. '
+            . 'Häufige Tags: '
+            . implode(', ', $tags)
+            . '. '
+            . 'Titel einzelner Aufnahmen: '
+            . implode('; ', \array_slice($mediaTitles, 0, 30))
+            . '. '
+            . 'Antworte ausschließlich mit dem Titel.';
+
+        $response = $this->client->generativeModel(model: 'gemini-3.1-flash-lite')->generateContent($prompt);
+
+        return trim($response->text(), " \n\r\t\"'„“");
+    }
+
+    /**
      * @param list<string>                $tags
      * @param list<array<string, mixed>>  $sceneSummaries
      */

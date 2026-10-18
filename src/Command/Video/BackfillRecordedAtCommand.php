@@ -47,8 +47,8 @@ final class BackfillRecordedAtCommand extends Command
                 $missing++;
                 continue;
             }
-            $video->setTakenAt($recordedAt);
-            $io->text(sprintf('Video %d: %s', (int) $video->getId(), $recordedAt->format('d.m.Y H:i')));
+            $video->setRecordedAt($recordedAt->date, $recordedAt->source);
+            $io->text(sprintf('Video %d: %s', (int) $video->getId(), $recordedAt->date->format('d.m.Y H:i')));
             $updated++;
         }
         $this->entityManager->flush();

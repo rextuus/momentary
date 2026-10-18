@@ -11,6 +11,9 @@ use App\Form\EventType;
 use App\Repository\EventRepository;
 use App\Security\Voter\MediumAccessVoter;
 use App\Service\Event\EventMediaCollector;
+use App\Service\Event\EventSuggester;
+use App\Service\Event\EventSuggestion;
+use App\Service\Gemini\GeminiService;
 use App\Twig\Extension\MediaExtension;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -30,11 +33,122 @@ final class EventController extends AbstractController
     ) {}
 
     #[Route('/event/', name: 'app_event_index', methods: ['GET'])]
-    public function index(EventRepository $eventRepository): Response
+    public function index(Request $request, EventRepository $eventRepository, EventSuggester $suggester): Response
     {
+        $gap = self::gapHours($request);
+
         return $this->render('event/index.html.twig', [
             'events' => $eventRepository->findBy([], ['startDate' => 'DESC', 'id' => 'DESC']),
+            'suggestions' => $suggester->suggest($this->currentUser(), $this->isGranted('ROLE_ADMIN'), $gap),
+            'gap' => $gap,
+            'gapOptions' => EventSuggester::GAP_OPTIONS,
         ]);
+    }
+
+    /**
+     * Vorschlag als Ereignis übernehmen: Formular mit Zeitraum und (von Gemini) vorgeschlagenem Titel.
+     */
+    #[Route(
+        '/event/suggestion/{key}',
+        name: 'app_event_suggestion',
+        requirements: ['key' => '[a-f0-9]{64}'],
+        methods: ['GET', 'POST'],
+    )]
+    public function acceptSuggestion(
+        string $key,
+        Request $request,
+        EventSuggester $suggester,
+        GeminiService $gemini,
+    ): Response {
+        $gap = self::gapHours($request);
+        $suggestion = $suggester->find($this->currentUser(), $this->isGranted('ROLE_ADMIN'), $key, $gap);
+        if ($suggestion === null) {
+            $this->addFlash(
+                'warning',
+                'Der Vorschlag ist nicht mehr aktuell, inzwischen haben sich die Medien geändert.',
+            );
+
+            return $this->redirectToRoute('app_event_index', ['gap' => $gap]);
+        }
+
+        $event = new Event()
+            ->setOwner($this->currentUser())
+            ->setStartDate(new \DateTimeImmutable($suggestion->getStart()->format('Y-m-d')))
+            ->setEndDate(new \DateTimeImmutable($suggestion->getEnd()->format('Y-m-d')));
+        $form = $this->createForm(EventType::class, $event);
+        if (!$request->isMethod('POST')) {
+            $form->get('title')->setData($this->suggestTitle($suggestion, $gemini));
+        }
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            foreach ($suggestion->media as $medium) {
+                $event->addMedium($medium);
+            }
+            $this->entityManager->persist($event);
+            $this->entityManager->flush();
+            $this->addFlash('success', sprintf(
+                'Ereignis „%s“ mit %d Medien angelegt.',
+                $event->getTitle(),
+                \count($suggestion->media),
+            ));
+
+            return $this->redirectToRoute('app_event_show', ['id' => $event->getId()]);
+        }
+
+        return $this->render(
+            'event/suggestion.html.twig',
+            [
+                'form' => $form,
+                'suggestion' => $suggestion,
+                'gap' => $gap,
+            ],
+            new Response(status: $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK),
+        );
+    }
+
+    #[Route(
+        '/event/suggestion/{key}/dismiss',
+        name: 'app_event_suggestion_dismiss',
+        requirements: ['key' => '[a-f0-9]{64}'],
+        methods: ['POST'],
+    )]
+    public function dismissSuggestion(string $key, Request $request, EventSuggester $suggester): Response
+    {
+        $user = $this->currentUser();
+        if ($user !== null && $this->isCsrfTokenValid('dismiss-' . $key, $request->request->getString('_token'))) {
+            $suggester->dismiss($user, $key);
+        }
+
+        return $this->redirectToRoute('app_event_index', ['gap' => self::gapHours($request)]);
+    }
+
+    private function suggestTitle(EventSuggestion $suggestion, GeminiService $gemini): string
+    {
+        $period = $suggestion->getStart()->format('d.m.Y') === $suggestion->getEnd()->format('d.m.Y')
+            ? $suggestion->getStart()->format('d.m.Y')
+            : $suggestion->getStart()->format('d.m.Y') . ' – ' . $suggestion->getEnd()->format('d.m.Y');
+
+        try {
+            $title = $gemini->suggestEventTitle(
+                $suggestion->getTopTags(),
+                array_map(static fn(Medium $m): string => (string) $m->getTitle(), $suggestion->media),
+                $suggestion->getPlaces() !== []
+                    ? $period . ', Orte: ' . implode(', ', $suggestion->getPlaces())
+                    : $period,
+            );
+        } catch (\Throwable) {
+            $title = '';
+        }
+
+        return $title !== '' ? mb_substr($title, 0, 120) : 'Ereignis ' . $period;
+    }
+
+    private static function gapHours(Request $request): int
+    {
+        $gap = $request->query->getInt('gap', EventSuggester::DEFAULT_GAP_HOURS);
+
+        return \in_array($gap, EventSuggester::GAP_OPTIONS, true) ? $gap : EventSuggester::DEFAULT_GAP_HOURS;
     }
 
     #[Route('/event/new', name: 'app_event_new', methods: ['GET', 'POST'])]

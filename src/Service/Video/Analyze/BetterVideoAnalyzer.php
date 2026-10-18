@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Video\Analyze;
 
 use App\Entity\File;
+use App\Entity\Medium;
 use App\Entity\Video;
 use App\Service\Video\Analyze\Result\ChapterGenerationResult;
 use App\Service\Video\Analyze\Result\EmptyScenesMergerResult;
@@ -57,7 +58,7 @@ readonly class BetterVideoAnalyzer
      * der Kamera und hat Vorrang: manche Kameras schreiben creation_time mit falscher Zeitzone. Sonst gilt
      * creation_time aus den Metadaten (z. B. iPhone, dort korrekt in UTC).
      */
-    public function probeRecordedAt(string $path): ?\DateTimeImmutable
+    public function probeRecordedAt(string $path): ?RecordedAt
     {
         if (
             preg_match('/(?<!\d)(20\d{2})(\d{2})(\d{2})[_\-T ]?(\d{2})(\d{2})(\d{2})(?!\d)/', basename($path), $m) === 1
@@ -68,7 +69,7 @@ readonly class BetterVideoAnalyzer
                 new \DateTimeZone('Europe/Berlin'),
             );
             if ($local !== false && $local->format('YmdHis') === $m[1] . $m[2] . $m[3] . $m[4] . $m[5] . $m[6]) {
-                return $local->setTimezone(new \DateTimeZone('UTC'));
+                return new RecordedAt($local->setTimezone(new \DateTimeZone('UTC')), Medium::DATE_FILENAME);
             }
         }
 
@@ -78,10 +79,43 @@ readonly class BetterVideoAnalyzer
         }
 
         try {
-            return new \DateTimeImmutable($createdAt)->setTimezone(new \DateTimeZone('UTC'));
+            return new RecordedAt(
+                new \DateTimeImmutable($createdAt)->setTimezone(new \DateTimeZone('UTC')),
+                Medium::DATE_METADATA,
+            );
         } catch (\Exception) {
             return null;
         }
+    }
+
+    /**
+     * Aufnahmeort laut Video-Metadaten.
+     *
+     * @return array{float, float}|null Breite, Länge
+     */
+    public function probeLocation(string $path): ?array
+    {
+        return self::parseIso6709($this->mp4Converter->probe($path)['location'] ?? null);
+    }
+
+    /**
+     * @return array{float, float}|null
+     */
+    public static function parseIso6709(?string $value): ?array
+    {
+        if (
+            $value === null
+            || preg_match('/^([+-]\d{1,2}(?:\.\d+)?)([+-]\d{1,3}(?:\.\d+)?)/', trim($value), $m) !== 1
+        ) {
+            return null;
+        }
+        $lat = (float) $m[1];
+        $lon = (float) $m[2];
+        if (abs($lat) > 90 || abs($lon) > 180 || $lat === 0.0 && $lon === 0.0) {
+            return null;
+        }
+
+        return [$lat, $lon];
     }
 
     public function convertToMp4(string $sourcePath, string $targetPath): bool

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Video\Processing\Handler;
 
 use App\Repository\VideoRepository;
+use App\Service\Geo\PlaceTagger;
 use App\Service\Storage\FileManager;
 use App\Service\Storage\FileStorageService;
 use App\Service\Storage\StoragePathProvider;
@@ -34,6 +35,7 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
         private readonly FileStorageService $fileStorageService,
         private readonly StoragePathProvider $pathProvider,
         private readonly EntityManagerInterface $entityManager,
+        private readonly PlaceTagger $placeTagger,
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
     }
@@ -67,7 +69,17 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
         }
         // Aufnahmedatum: damit Videos zusammen mit Fotos sortiert und Ereignissen zugeordnet werden können
         if ($video->getTakenAt() === null) {
-            $video->setTakenAt($this->videoAnalyzer->probeRecordedAt($sourceAbsolutePath));
+            $recordedAt = $this->videoAnalyzer->probeRecordedAt($sourceAbsolutePath);
+            $video->setRecordedAt($recordedAt?->date, $recordedAt?->source);
+        }
+        if (!$video->hasLocation()) {
+            $location = $this->videoAnalyzer->probeLocation($sourceAbsolutePath);
+            if ($location !== null) {
+                $video->setLocation($location[0], $location[1]);
+            }
+        }
+        if ($video->hasLocation() && $video->getPlaceName() === null) {
+            $this->placeTagger->tag($video);
         }
         $this->entityManager->flush();
 

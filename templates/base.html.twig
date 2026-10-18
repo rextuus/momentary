@@ -140,7 +140,7 @@
     {route: 'app_search_test', icon: 'fa-search', color: 'secondary', title: 'Search Explorer', desc: 'Meilisearch testen'},
 ] %}
 
-<nav class="navbar navbar-expand-xl sticky-top mb-4">
+<nav class="navbar navbar-expand-xxl sticky-top mb-4">
     <div class="container">
         <a class="navbar-brand d-flex align-items-center" href="{{ path('app_dashboard') }}">
             <i class="fas fa-film me-2"></i>
@@ -151,7 +151,7 @@
         </button>
 
         <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav me-auto ms-xl-4 gap-xl-1">
+            <ul class="navbar-nav me-auto ms-xxl-4 gap-xxl-1">
                 <li class="nav-item">
                     <a class="nav-link {{ inVideos ? 'active' }}" href="{{ path('app_video_index') }}">
                         <i class="fas fa-video me-1"></i> Videos
@@ -170,6 +170,11 @@
                 <li class="nav-item">
                     <a class="nav-link {{ route starts with 'app_event' ? 'active' }}" href="{{ path('app_event_index') }}">
                         <i class="fas fa-calendar-days me-1"></i> Ereignisse
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ route starts with 'app_map' ? 'active' }}" href="{{ path('app_map') }}">
+                        <i class="fas fa-map-location-dot me-1"></i> Karte
                     </a>
                 </li>
                 <li class="nav-item">
@@ -225,12 +230,12 @@
                 </li>
             </ul>
 
-            <div class="d-flex align-items-center gap-2 mt-2 mt-xl-0">
+            <div class="d-flex align-items-center gap-2 mt-2 mt-xxl-0">
                 <a href="{{ path('app_search') }}" class="nav-link px-2 {{ route == 'app_search' ? 'active' }}" title="Videos und Fotos durchsuchen" aria-label="Suchen">
-                    <i class="fas fa-search"></i><span class="d-xl-none ms-1">Suchen</span>
+                    <i class="fas fa-search"></i><span class="d-xxl-none ms-1">Suchen</span>
                 </a>
                 <a class="btn btn-primary btn-sm rounded-pill px-3 text-nowrap {{ route == 'app_upload' ? 'active' }}" href="{{ path('app_upload') }}" title="Upload">
-                    <i class="fas fa-cloud-upload-alt"></i><span class="d-xl-none d-xxl-inline ms-1">Upload</span>
+                    <i class="fas fa-cloud-upload-alt"></i><span class="ms-1">Upload</span>
                 </a>
             </div>
         </div>

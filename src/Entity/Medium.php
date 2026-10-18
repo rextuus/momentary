@@ -25,6 +25,12 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ORM\Index(columns: ['taken_at'])]
 abstract class Medium
 {
+    /** Herkunft der Aufnahmezeit */
+    public const string DATE_EXIF = 'exif';
+    public const string DATE_FILENAME = 'filename';
+    public const string DATE_METADATA = 'metadata';
+    public const string DATE_MANUAL = 'manual';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -44,6 +50,21 @@ abstract class Medium
     #[ORM\Column(nullable: true)]
     #[Groups(['photo:list'])]
     protected ?\DateTimeImmutable $takenAt = null;
+
+    /** Woher takenAt stammt (siehe DATE_*); "manual" wird von automatischen Analysen nie überschrieben */
+    #[ORM\Column(length: 16, nullable: true)]
+    protected ?string $dateSource = null;
+
+    /** Aufnahmeort (GPS aus EXIF bzw. Video-Metadaten) */
+    #[ORM\Column(nullable: true)]
+    protected ?float $latitude = null;
+
+    #[ORM\Column(nullable: true)]
+    protected ?float $longitude = null;
+
+    /** Ortsname zum Aufnahmeort (Reverse-Geocoding), z. B. "Cala d'Or, Spanien" */
+    #[ORM\Column(length: 255, nullable: true)]
+    protected ?string $placeName = null;
 
     #[ORM\ManyToOne(targetEntity: User::class)]
     protected ?User $owner = null;
@@ -141,10 +162,82 @@ abstract class Medium
         return $this;
     }
 
+    public function getDateSource(): ?string
+    {
+        return $this->dateSource;
+    }
+
+    /**
+     * Aufnahmezeit mit Herkunft setzen.
+     */
+    public function setRecordedAt(?\DateTimeImmutable $takenAt, ?string $source): static
+    {
+        $this->takenAt = $takenAt;
+        $this->dateSource = $takenAt === null ? null : $source;
+
+        return $this;
+    }
+
+    public function isDateCorrected(): bool
+    {
+        return $this->dateSource === self::DATE_MANUAL;
+    }
+
+    /** Für die Anzeige: woher die Aufnahmezeit stammt */
+    public function getDateSourceLabel(): string
+    {
+        return match ($this->dateSource) {
+            self::DATE_EXIF => 'laut Kamera (EXIF)',
+            self::DATE_FILENAME => 'laut Dateiname',
+            self::DATE_METADATA => 'laut Video-Metadaten',
+            self::DATE_MANUAL => 'von Hand korrigiert',
+            default => $this->takenAt === null ? 'unbekannt, Importzeitpunkt' : 'Herkunft unbekannt',
+        };
+    }
+
     /** Aufnahmedatum, sonst Importdatum: für Sortierung und Ereignisse */
     public function getDate(): ?\DateTimeImmutable
     {
         return $this->takenAt ?? $this->createdAt;
+    }
+
+    public function getLatitude(): ?float
+    {
+        return $this->latitude;
+    }
+
+    public function getLongitude(): ?float
+    {
+        return $this->longitude;
+    }
+
+    public function setLocation(?float $latitude, ?float $longitude): static
+    {
+        if ($latitude !== $this->latitude || $longitude !== $this->longitude) {
+            // Neuer Ort: alter Ortsname passt nicht mehr
+            $this->placeName = null;
+        }
+        $this->latitude = $latitude;
+        $this->longitude = $longitude;
+
+        return $this;
+    }
+
+    public function hasLocation(): bool
+    {
+        return $this->latitude !== null && $this->longitude !== null;
+    }
+
+    public function getPlaceName(): ?string
+    {
+        return $this->placeName;
+    }
+
+    public function setPlaceName(?string $placeName): static
+    {
+        $this->placeName = $placeName;
+
+        return $this;
     }
 
     public function getOwner(): ?User

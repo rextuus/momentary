@@ -54,6 +54,7 @@ class PhotoSearchIndex
                 $photo->getTags()->toArray(),
             )))),
             'camera' => $photo->getCamera(),
+            'place' => $photo->getPlaceName(),
         ];
         if ($photo->hasLocation()) {
             $document['_geo'] = ['lat' => $photo->getLatitude(), 'lng' => $photo->getLongitude()];

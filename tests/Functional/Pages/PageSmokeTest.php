@@ -48,12 +48,15 @@ final class PageSmokeTest extends WebTestCase
         yield 'Transkription' => ['/admin/settings/transcription'];
         yield 'Suche' => ['/search?q=Strand&tags[]=Pool'];
         yield 'Zeitachse' => ['/timeline'];
+        yield 'Karte' => ['/map?type=photo'];
+        yield 'Kartenpunkte' => ['/map/points?event={event}'];
         yield 'Zeitachse gefiltert' => ['/timeline?type=photo&person={anna}&before=1742380000.99'];
         yield 'Fotos' => ['/photo/'];
         yield 'Fotos gesucht' => ['/photo/?q=Strand&page=1'];
         yield 'Foto-Detail' => ['/photo/{photo}'];
         yield 'Fotos hochladen' => ['/photo/upload'];
         yield 'Ereignisse' => ['/event/'];
+        yield 'Ereignisse mit Lücke' => ['/event/?gap=12'];
         yield 'Ereignis-Detail' => ['/event/{event}'];
         yield 'Ereignis anlegen' => ['/event/new'];
         yield 'Ereignis bearbeiten' => ['/event/{event}/edit'];

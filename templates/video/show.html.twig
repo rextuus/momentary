@@ -40,7 +40,10 @@
                     <div class="d-flex justify-content-between align-items-start mb-4">
                         <div>
                             <h1 class="fw-bold h2 mb-1">{{ video.title }}</h1>
-                            <p class="text-muted mb-0">Erstellt am {{ video.createdAt|date('d.m.Y H:i') }}</p>
+                            <div class="text-muted">
+                                {{ component('MediumDateComponent', {medium: video}) }}
+                                <div class="small mt-1">Importiert am {{ video.createdAt|date('d.m.Y H:i') }}</div>
+                            </div>
 
                             {# Access Info Section #}
                             <div class="mt-2">
@@ -198,6 +201,12 @@
 
         <div class="col-lg-4">
             {{ component('MediumEventsComponent', {medium: video, class: 'card border-0 shadow-sm mb-4'}) }}
+
+            {% if video.hasLocation %}
+                <div class="card border-0 shadow-sm mb-4 overflow-hidden">
+                    {{ include('map/_embed.html.twig', {url: path('app_map_points', {medium: video.id}), height: '220px'}) }}
+                </div>
+            {% endif %}
 
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-transparent border-bottom p-4">

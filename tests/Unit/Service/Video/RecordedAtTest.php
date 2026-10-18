@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Service\Video;
 
+use App\Entity\Medium;
 use App\Service\Video\Analyze\BetterVideoAnalyzer;
 use App\Service\Video\Analyze\Mp4Converter;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -41,7 +42,10 @@ final class RecordedAtTest extends TestCase
             ->method('probe')
             ->willReturn(['video' => null, 'audio' => [], 'duration' => 10.0, 'createdAt' => '2025-03-19T04:15:38Z']);
 
-        self::assertSame($expectedUtc, $this->analyzer($converter)->probeRecordedAt($path)?->format('Y-m-d H:i:s'));
+        $recordedAt = $this->analyzer($converter)->probeRecordedAt($path);
+        self::assertNotNull($recordedAt);
+        self::assertSame($expectedUtc, $recordedAt->date->format('Y-m-d H:i:s'));
+        self::assertSame(Medium::DATE_FILENAME, $recordedAt->source);
     }
 
     #[DataProvider('creationTimes')]
@@ -53,7 +57,7 @@ final class RecordedAtTest extends TestCase
             ->willReturn(['video' => null, 'audio' => [], 'duration' => 10.0, 'createdAt' => $creationTime]);
         self::assertSame(
             $expected,
-            $this->analyzer($converter)->probeRecordedAt('IMG_1234.MOV')?->format('Y-m-d H:i:s'),
+            $this->analyzer($converter)->probeRecordedAt('IMG_1234.MOV')?->date->format('Y-m-d H:i:s'),
         );
     }
 

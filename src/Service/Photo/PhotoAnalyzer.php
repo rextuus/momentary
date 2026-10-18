@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Service\Photo;
 
 use App\Entity\File;
+use App\Entity\Medium;
 use App\Entity\Photo;
 use App\Enum\FilePurpose;
 use App\Enum\PhotoStatus;
 use App\Service\Aws\AmazonRekognitionService;
 use App\Service\Face\OrphanedPersonCleaner;
 use App\Service\Gemini\GeminiService;
+use App\Service\Geo\PlaceTagger;
 use App\Service\Storage\StoragePathProvider;
 use App\Service\Video\Analyze\FrameAnalyzer;
 use App\Service\Video\Analyze\TagService;
@@ -33,6 +35,7 @@ class PhotoAnalyzer
         private readonly GeminiService $gemini,
         private readonly TagService $tagService,
         private readonly PhotoSearchIndex $searchIndex,
+        private readonly PlaceTagger $placeTagger,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -63,13 +66,19 @@ class PhotoAnalyzer
             $photo->setDimensions($meta['width'], $meta['height']);
             $photo->setLocation($meta['latitude'], $meta['longitude']);
             $photo->setCamera($meta['camera']);
-            $photo->setTakenAt($photo->getTakenAt() ?? $meta['takenAt']);
+            // Eine vorhandene (z. B. von Hand korrigierte) Aufnahmezeit bleibt
+            if ($photo->getTakenAt() === null) {
+                $photo->setRecordedAt($meta['takenAt'], Medium::DATE_EXIF);
+            }
             $this->entityManager->flush();
 
             $this->removeFaces($photo);
             $this->frameAnalyzer->analyzeImage($photo, $displayPath, 0, null, $display);
 
             $this->tag($photo, $displayPath);
+            if ($photo->getPlaceName() === null) {
+                $this->placeTagger->tag($photo);
+            }
 
             $photo->setStatus(PhotoStatus::COMPLETED);
             $this->entityManager->flush();

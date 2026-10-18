@@ -101,6 +101,13 @@ class VideoIndexer
             }
         }
 
+        // Tags am ganzen Video (z. B. Orte aus GPS) zählen für Suche und Filter mit
+        foreach ($video->getTags() as $tag) {
+            if ($tag->getName() !== null && !\in_array($tag->getName(), $tags, true)) {
+                $tags[] = $tag->getName();
+            }
+        }
+
         return [
             'id' => (string) $video->getId(),
             'jellyfinItemId' => $video->getJellyfinItemId(),
@@ -112,6 +119,7 @@ class VideoIndexer
             'tags' => $tags,
             'createdAt' => $video->getCreatedAt()?->format(\DateTimeInterface::ATOM),
             'transcript' => $transcript,
+            'place' => $video->getPlaceName(),
         ];
     }
 

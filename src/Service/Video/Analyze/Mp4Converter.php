@@ -63,7 +63,7 @@ class Mp4Converter
     }
 
     /**
-     * @return array{video: ?array{codec: string, pixFmt: string}, audio: list<string>, duration: float, createdAt?: ?string}
+     * @return array{video: ?array{codec: string, pixFmt: string}, audio: list<string>, duration: float, createdAt?: ?string, location?: ?string}
      */
     public function probe(string $path): array
     {
@@ -72,7 +72,7 @@ class Mp4Converter
             '-v',
             'error',
             '-show_entries',
-            'stream=codec_type,codec_name,pix_fmt:format=duration:format_tags=creation_time',
+            'stream=codec_type,codec_name,pix_fmt:format=duration:format_tags=creation_time,location,com.apple.quicktime.location.ISO6709',
             '-of',
             'json',
             $path,
@@ -101,6 +101,10 @@ class Mp4Converter
         $result['createdAt'] = isset($data['format']['tags']['creation_time'])
             ? (string) $data['format']['tags']['creation_time']
             : null;
+        // GPS im ISO-6709-Format, z. B. "+39.5700+002.6500+012.000/" (iPhone, viele Android-Geräte)
+        $tags = (array) ($data['format']['tags'] ?? []);
+        $location = $tags['com.apple.quicktime.location.ISO6709'] ?? $tags['location'] ?? null;
+        $result['location'] = \is_string($location) ? $location : null;
 
         return $result;
     }
