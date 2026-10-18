@@ -5,14 +5,18 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Video\Processing;
 
 use App\Entity\File;
+use App\Entity\TranscriptionSettings;
 use App\Entity\Video;
 use App\Entity\VideoScene;
+use App\Entity\VideoTranscript;
 use App\Enum\FilePurpose;
 use App\Enum\VideoStatus;
 use App\Service\Aws\AmazonRekognitionService;
 use App\Service\Aws\DetectedFace;
 use App\Service\Gemini\GeminiService;
 use App\Service\Storage\StoragePathProvider;
+use App\Service\Transcription\TranscriptionSettingsProvider;
+use App\Service\Transcription\VideoTranscriber;
 use App\Service\Video\Analyze\ChapterGenerator;
 use App\Service\Video\Analyze\EmptyScenesMerger;
 use App\Service\Video\Analyze\FrameAnalyzer;
@@ -55,6 +59,9 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
     /** @var list<string> */
     private array $analyzedFrames = [];
 
+    /** @var list<int|null> */
+    private array $transcribedVideos = [];
+
     /** @var list<array{refinement: bool, subDirectory: ?string, fps: ?float}> */
     private array $extractCalls = [];
 
@@ -92,6 +99,20 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         static::getContainer()->set(GeminiService::class, $this->geminiServiceMock);
         static::getContainer()->set(ChapterGenerator::class, $this->chapterGenerator);
         static::getContainer()->set(JellyfinUploader::class, $this->jellyfinUploader);
+
+        $transcriber = $this->createStub(VideoTranscriber::class);
+        $transcriber
+            ->method('transcribe')
+            ->willReturnCallback(function (Video $video): VideoTranscript {
+                $this->transcribedVideos[] = $video->getId();
+                // Eigenes Dummy-Video: das echte Video darf der Stub nicht verändern
+                $transcript = new VideoTranscript(new Video());
+                $transcript->start('large-v3-turbo', 60.0);
+                $transcript->complete('de', []);
+
+                return $transcript;
+            });
+        static::getContainer()->set(VideoTranscriber::class, $transcriber);
         $this->entityManager = static::getContainer()->get(EntityManagerInterface::class);
         $this->pathProvider = static::getContainer()->get(StoragePathProvider::class);
     }
@@ -129,6 +150,35 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
                 $step->getStep()?->value,
             ));
         }
+    }
+
+    public function testTranscriptionIsTheLastStep(): void
+    {
+        $video = $this->arrangeSuccessfulPipeline();
+
+        $this->dispatch(new ConvertStepMessage(self::idOf($video), 0, 'INITIAL'));
+
+        $updatedVideo = $this->reload($video);
+        self::assertSame([$video->getId()], $this->transcribedVideos);
+        self::assertSame(VideoStatus::COMPLETED, $updatedVideo->getStatus());
+        $steps = $updatedVideo->getProcessingSteps()->toArray();
+        usort($steps, static fn($a, $b): int => $a->getId() <=> $b->getId());
+        $last = end($steps);
+        self::assertNotFalse($last);
+        self::assertSame(VideoStatus::TRANSCRIBING, $last->getStep());
+        self::assertNotNull($last->getFinishedAt(), 'Dauer des Schritts wird erfasst');
+    }
+
+    public function testTranscriptionCanBeSwitchedOff(): void
+    {
+        $settings = new TranscriptionSettings()->setTranscribeInPipeline(false);
+        static::getContainer()->get(TranscriptionSettingsProvider::class)->save($settings);
+        $video = $this->arrangeSuccessfulPipeline();
+
+        $this->dispatch(new ConvertStepMessage(self::idOf($video), 0, 'INITIAL'));
+
+        self::assertSame([], $this->transcribedVideos);
+        self::assertSame(VideoStatus::COMPLETED, $this->reload($video)->getStatus());
     }
 
     public function testEveryFrameIncludingRefinementIsAnalyzedExactlyOnce(): void

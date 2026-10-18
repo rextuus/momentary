@@ -80,6 +80,8 @@
                         {% endfor %}
                     </div>
                     
+                    {{ include('video/_spoken.html.twig', {segments: this.spokenSegments, video: scene.video}) }}
+
                     {# GRUPPEN ANZEIGE #}
                     {% if scene.isPublic or scene.allowedGroups|length > 0 %}
                         <div class="mt-2 text-muted" style="font-size: 0.7rem;">

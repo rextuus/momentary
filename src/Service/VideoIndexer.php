@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\Video;
+use App\Enum\TranscriptionStatus;
 
 class VideoIndexer
 {
@@ -88,6 +89,18 @@ class VideoIndexer
             }
         }
 
+        // Gesprochenes mit Zeitstempel: ein Treffer kann direkt an die Stelle im Video springen
+        $transcript = [];
+        if ($video->getTranscript()?->getStatus() === TranscriptionStatus::DONE) {
+            foreach ($video->getTranscript()->getSegments() as $segment) {
+                $transcript[] = [
+                    'start' => (int) floor($segment->getStartSeconds()),
+                    'end' => (int) ceil($segment->getEndSeconds()),
+                    'text' => $segment->getText(),
+                ];
+            }
+        }
+
         return [
             'id' => (string) $video->getId(),
             'jellyfinItemId' => $video->getJellyfinItemId(),
@@ -98,6 +111,7 @@ class VideoIndexer
             'persons' => $persons,
             'tags' => $tags,
             'createdAt' => $video->getCreatedAt()?->format(\DateTimeInterface::ATOM),
+            'transcript' => $transcript,
         ];
     }
 

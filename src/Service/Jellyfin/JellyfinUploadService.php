@@ -139,6 +139,35 @@ class JellyfinUploadService
         }
     }
 
+    /**
+     * Einen einzelnen Eintrag neu einlesen lassen, z. B. damit Jellyfin neue Untertitel-Dateien findet.
+     */
+    public function refreshItem(string $itemId): void
+    {
+        if (!$this->jellyfinApiKey) {
+            return;
+        }
+
+        try {
+            $this->httpClient->request('POST', "{$this->jellyfinHost}/Items/{$itemId}/Refresh", [
+                'headers' => ['X-Emby-Token' => $this->jellyfinApiKey],
+                'query' => [
+                    'MetadataRefreshMode' => 'Default',
+                    'ImageRefreshMode' => 'None',
+                    'ReplaceAllMetadata' => 'false',
+                    'ReplaceAllImages' => 'false',
+                ],
+                'timeout' => 10,
+            ])->getStatusCode();
+        } catch (\Exception $e) {
+            $this->logger->error(sprintf(
+                'Jellyfin-Eintrag %s konnte nicht aktualisiert werden: %s',
+                $itemId,
+                $e->getMessage(),
+            ));
+        }
+    }
+
     public function findItemIdByPath(string $path): ?string
     {
         if (!$this->jellyfinApiKey) {

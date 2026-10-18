@@ -6,6 +6,7 @@ namespace App\Service\Video\Progress;
 
 use App\Entity\Video;
 use App\Entity\VideoProcessingStep;
+use App\Enum\TranscriptionStatus;
 use App\Enum\VideoStatus;
 use Psr\Clock\ClockInterface;
 
@@ -126,6 +127,27 @@ class VideoProgressCalculator
     ): StepProgress {
         $startedAt = $entity?->getStartedAt()?->getTimestamp() ?? $now;
         $elapsed = max(0, $now - $startedAt);
+
+        // Transkription: Fortschritt in Sekunden Ton, die Whisper schon verarbeitet hat
+        $transcript = $video->getTranscript();
+        if (
+            $step === VideoStatus::TRANSCRIBING
+            && $transcript?->getStatus() === TranscriptionStatus::RUNNING
+            && $transcript->getAudioSeconds() > 0
+        ) {
+            return new StepProgress(
+                $step,
+                StepProgress::ACTIVE,
+                min(0.99, $transcript->getProcessedSeconds() / $transcript->getAudioSeconds()),
+                true,
+                sprintf(
+                    '%s von %s Ton',
+                    VideoProgress::formatSeconds((int) $transcript->getProcessedSeconds()),
+                    VideoProgress::formatSeconds((int) $transcript->getAudioSeconds()),
+                ),
+                $elapsed,
+            );
+        }
 
         $counted = $this->countedProgress($video, $step);
         if ($counted !== null && $counted['total'] > 0) {

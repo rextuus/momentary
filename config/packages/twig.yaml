@@ -1,5 +1,8 @@
 twig:
     file_name_pattern: '*.twig'
+    # Gespeichert wird in UTC (PHP-Standard im Container); angezeigt wird deutsche Zeit inkl. Sommerzeit
+    date:
+        timezone: Europe/Berlin
 
 when@test:
     twig:

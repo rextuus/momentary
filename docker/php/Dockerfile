@@ -16,6 +16,9 @@ RUN apt-get update && apt-get install -y \
 # Install scenedetect for video processing
 RUN python3 -m pip install scenedetect[av] --break-system-packages
 
+# Lokale Ton-Transkription (Whisper auf der CPU); die Modelle landen beim ersten Lauf in var/whisper-models
+RUN python3 -m pip install faster-whisper --break-system-packages
+
 # Install PHP extensions
 RUN pecl install amqp && docker-php-ext-enable amqp
 RUN docker-php-ext-configure intl && docker-php-ext-install intl

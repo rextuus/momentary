@@ -7,6 +7,8 @@ namespace App\Twig\Components;
 use App\Entity\Video;
 use App\Entity\VideoChapter;
 use App\Entity\VideoScene;
+use App\Entity\VideoTranscript;
+use App\Enum\TranscriptionStatus;
 use App\Repository\VideoSceneRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\UX\LiveComponent\Attribute\AsLiveComponent;
@@ -108,6 +110,10 @@ class TimelineComponent
                     'data' => $chapter,
                     'tags' => array_values($tags),
                     'persons' => $sortedPersons,
+                    'spoken' => $this->getTranscript()?->segmentsBetween(
+                        (float) $chapter->getStartSeconds(),
+                        (float) $chapter->getEndSeconds(),
+                    ) ?? [],
                 ];
             }
             return $result;
@@ -127,6 +133,16 @@ class TimelineComponent
             ];
         }
         return $result;
+    }
+
+    /**
+     * Fertiges Transkript des Videos, sonst null.
+     */
+    public function getTranscript(): ?VideoTranscript
+    {
+        $transcript = $this->video->getTranscript();
+
+        return $transcript?->getStatus() === TranscriptionStatus::DONE ? $transcript : null;
     }
 
     /**

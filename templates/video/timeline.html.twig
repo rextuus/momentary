@@ -29,6 +29,8 @@
             </div>
         </div>
 
+        {{ component('TranscriptTrackComponent', { video: video }) }}
+
         <div class="modern-timeline">
             {# Kapitel Manager #}
             {{ component('ChapterManagerComponent', { video: video }) }}

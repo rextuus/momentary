@@ -33,6 +33,8 @@ class StepDurationEstimator
         'chapter_generation' => 0.05,
         'naming' => 0.03,
         'exporting_jellyfin' => 0.15,
+        // Whisper large-v3-turbo auf schwacher CPU etwa Echtzeit
+        'transcribing' => 1.0,
     ];
 
     /** Kein Schritt dauert kürzer als das (Worker-Overhead, Netzwerk) */

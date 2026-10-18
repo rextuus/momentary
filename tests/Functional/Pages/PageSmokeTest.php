@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Pages;
 
+use App\Entity\TranscriptSegment;
+use App\Entity\VideoTranscript;
 use App\Enum\PersonStatus;
 use App\Tests\Factory\FileFactory;
 use App\Tests\Factory\PersonFactory;
@@ -12,6 +14,7 @@ use App\Tests\Factory\VideoChapterFactory;
 use App\Tests\Factory\VideoFaceFactory;
 use App\Tests\Factory\VideoFactory;
 use App\Tests\Factory\VideoSceneFactory;
+use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
@@ -40,6 +43,7 @@ final class PageSmokeTest extends WebTestCase
         yield 'Mass Resolve' => ['/admin/mass-face-resolve/{person}'];
         yield 'Auftrennen' => ['/admin/reassign-faces'];
         yield 'Gesichtserkennung' => ['/admin/settings/face-recognition'];
+        yield 'Transkription' => ['/admin/settings/transcription'];
     }
 
     #[DataProvider('pages')]
@@ -67,6 +71,16 @@ final class PageSmokeTest extends WebTestCase
                 'boundingBox' => ['Left' => 0.2, 'Top' => 0.2, 'Width' => 0.1, 'Height' => 0.15],
             ]);
         }
+
+        $transcript = new VideoTranscript($video);
+        $transcript->start('large-v3-turbo', 30.0);
+        $transcript->complete('de', [
+            new TranscriptSegment(1.0, 4.0, 'Alles Gute zum Geburtstag!'),
+            new TranscriptSegment(40.0, 42.0, 'Nach der letzten Szene', -1.2),
+        ]);
+        $entityManager = static::getContainer()->get(EntityManagerInterface::class);
+        $entityManager->persist($transcript);
+        $entityManager->flush();
 
         $client->request('GET', strtr($url, [
             '{video}' => (string) $video->getId(),

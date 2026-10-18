@@ -22,6 +22,8 @@
                 </div>
                 {% endif %}
                 
+                {{ include('video/_spoken.html.twig', {segments: item.spoken, video: this.video}) }}
+
                 {% if item.persons|length > 0 %}
                 <div class="mb-2">
                     <strong>Personen:</strong>

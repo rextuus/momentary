@@ -14,6 +14,7 @@ use App\Service\Face\OrphanedPersonCleaner;
 use App\Service\Storage\FileManager;
 use App\Service\Storage\FileStorageService;
 use App\Service\Tag\TagInitializer;
+use App\Service\Transcription\TranscriptionRequester;
 use App\Service\Video\VideoCreationService;
 use App\Service\Video\VideoReprocessor;
 use Doctrine\ORM\EntityManagerInterface;
@@ -247,6 +248,28 @@ final class VideoController extends AbstractController
         );
 
         return $this->redirectToRoute('app_video_show', ['id' => $video->getId()]);
+    }
+
+    /**
+     * Ton transkribieren (optional, läuft im Hintergrund über den transcription-worker).
+     */
+    #[Route('/{id}/transcribe', name: 'video_transcribe', methods: ['POST'])]
+    #[IsGranted('VIDEO_EDIT', subject: 'video')]
+    public function transcribe(Video $video, Request $request, TranscriptionRequester $requester): Response
+    {
+        if (!$this->isCsrfTokenValid('transcribe' . $video->getId(), $request->request->getString('_token'))) {
+            $this->addFlash('danger', 'Ungültiges CSRF-Token.');
+        } elseif (($reason = $requester->whyNot($video)) !== null) {
+            $this->addFlash('warning', $reason);
+        } else {
+            $requester->request($video);
+            $this->addFlash(
+                'success',
+                'Die Transkription wurde eingeplant. Sie läuft im Hintergrund und kann je nach Länge eine Weile dauern.',
+            );
+        }
+
+        return $this->redirectToRoute('app_video_show', ['id' => $video->getId(), '_fragment' => 'transcript']);
     }
 
     /**

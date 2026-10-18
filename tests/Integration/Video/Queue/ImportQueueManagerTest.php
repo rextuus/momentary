@@ -63,6 +63,18 @@ final class ImportQueueManagerTest extends KernelTestCase
         self::assertSame(VideoStatus::QUEUED, refresh($second)->getStatus());
     }
 
+    public function testVideosInTranscriptionDoNotBlockThePipeline(): void
+    {
+        // Transkription läuft auf dem eigenen Worker: zwei Videos dort, trotzdem starten zwei neue
+        VideoFactory::createMany(2, ['status' => VideoStatus::TRANSCRIBING]);
+        $this->queuedVideo('-2 minutes');
+        $this->queuedVideo('-1 minute');
+
+        $this->dispatcher->expects(self::exactly(2))->method('dispatchInitialProcessMessage')->willReturn(true);
+
+        self::assertSame(2, $this->manager()->processQueue());
+    }
+
     public function testNothingStartsWhenLimitIsReached(): void
     {
         VideoFactory::createMany(2, ['status' => VideoStatus::ANALYZING_FACES_INITIAL]);

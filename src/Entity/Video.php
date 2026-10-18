@@ -116,6 +116,9 @@ class Video
     #[Groups(['video:detail'])]
     private Collection $scenes;
 
+    #[ORM\OneToOne(targetEntity: VideoTranscript::class, mappedBy: 'video', cascade: ['remove'])]
+    private ?VideoTranscript $transcript = null;
+
     /**
      * @var Collection<int, VideoChapter>
      */
@@ -674,6 +677,18 @@ class Video
 
         $this->progressDone++;
         $this->progressTotal = max($this->progressTotal, $this->progressDone + $remaining);
+
+        return $this;
+    }
+
+    public function getTranscript(): ?VideoTranscript
+    {
+        return $this->transcript;
+    }
+
+    public function setTranscript(?VideoTranscript $transcript): static
+    {
+        $this->transcript = $transcript;
 
         return $this;
     }

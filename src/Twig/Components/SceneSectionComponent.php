@@ -6,10 +6,12 @@ namespace App\Twig\Components;
 
 use App\Entity\Tag;
 use App\Entity\TagCategory;
+use App\Entity\TranscriptSegment;
 use App\Entity\UserGroup;
 use App\Entity\Video;
 use App\Entity\VideoFace;
 use App\Entity\VideoScene;
+use App\Enum\TranscriptionStatus;
 use App\Service\Video\Analyze\SceneThumbnailExtractor;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -48,6 +50,24 @@ class SceneSectionComponent extends AbstractController
     public function getCategories(): array
     {
         return $this->entityManager->getRepository(TagCategory::class)->findAll();
+    }
+
+    /**
+     * Was in dieser Szene gesprochen wird (leer, solange es kein fertiges Transkript gibt).
+     *
+     * @return list<TranscriptSegment>
+     */
+    public function getSpokenSegments(): array
+    {
+        $transcript = $this->scene->getVideo()?->getTranscript();
+        if ($transcript?->getStatus() !== TranscriptionStatus::DONE) {
+            return [];
+        }
+
+        return $transcript->segmentsBetween(
+            (float) $this->scene->getStartSeconds(),
+            (float) $this->scene->getEndSeconds(),
+        );
     }
 
     /**

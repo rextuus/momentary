@@ -6,6 +6,7 @@ namespace App\Tests\Unit\Service\Video\Progress;
 
 use App\Entity\Video;
 use App\Entity\VideoProcessingStep;
+use App\Entity\VideoTranscript;
 use App\Enum\VideoStatus;
 use App\Service\Video\Progress\StepDurationEstimator;
 use App\Service\Video\Progress\StepProgress;
@@ -28,8 +29,23 @@ final class VideoProgressCalculatorTest extends TestCase
         self::assertTrue($progress->current->counted);
         self::assertSame(25, $progress->current->percent());
         self::assertSame('1 von 4 Frames', $progress->current->detail);
-        // 1 Frame in 30 s -> 3 Frames noch ca. 90 s, plus 9 ausstehende Schritte à 10 s
-        self::assertSame(90 + 90, $progress->remainingSeconds);
+        // 1 Frame in 30 s -> 3 Frames noch ca. 90 s, plus 10 ausstehende Schritte à 10 s
+        self::assertSame(90 + 100, $progress->remainingSeconds);
+    }
+
+    public function testTranscriptionProgressComesFromProcessedAudio(): void
+    {
+        $video = $this->videoIn(VideoStatus::TRANSCRIBING, startedSecondsAgo: 60);
+        $transcript = new VideoTranscript($video);
+        $transcript->start('large-v3-turbo', 240.0);
+        $transcript->reportProgress(60.0);
+
+        $current = $this->calculator()->calculate($video)->current;
+
+        self::assertNotNull($current);
+        self::assertTrue($current->counted);
+        self::assertSame(25, $current->percent());
+        self::assertSame('1:00 min von 4:00 min Ton', $current->detail);
     }
 
     public function testTimeBasedStepMovesBeforeFirstItemIsDone(): void
@@ -56,12 +72,12 @@ final class VideoProgressCalculatorTest extends TestCase
 
     public function testOverallPercentWeightsStepsByExpectedDuration(): void
     {
-        // 14 Schritte à 10 s; die ersten 7 fertig, der 8. läuft gerade an
+        // 15 Schritte à 10 s; die ersten 7 fertig, der 8. läuft gerade an -> 7/15
         $video = $this->videoIn(VideoStatus::ANALYZING_FACES_REFINEMENT, startedSecondsAgo: 0);
 
         $progress = $this->calculator()->calculate($video);
 
-        self::assertSame(50, $progress->percent);
+        self::assertSame(46, $progress->percent);
         self::assertSame(StepProgress::DONE, $progress->steps[0]->state);
         self::assertSame(StepProgress::ACTIVE, $progress->steps[7]->state);
         self::assertSame(StepProgress::PENDING, $progress->steps[8]->state);

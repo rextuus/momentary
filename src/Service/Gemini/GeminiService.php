@@ -91,6 +91,71 @@ class GeminiService
     }
 
     /**
+     * Tags je Szene aus dem Gesprochenen ableiten (nur Text, keine Bilder).
+     *
+     * @param array<int, string> $sceneTexts Szenen-ID => transkribierter Text
+     *
+     * @return array<int, array<string, list<string>>> Szenen-ID => Kategorie => Tags
+     */
+    public function tagTranscript(array $sceneTexts): array
+    {
+        $lines = [];
+        foreach ($sceneTexts as $sceneId => $text) {
+            $lines[] = sprintf('Szene %d: %s', $sceneId, $text);
+        }
+
+        $prompt =
+            'Hier ist das Transkript eines privaten Familienvideos, aufgeteilt nach Szenen. '
+            . 'Leite für jede Szene Schlagworte ab, nach denen man später suchen würde. Nur was tatsächlich '
+            . 'gesagt wird, nichts erfinden; Füllwörter und Belangloses weglassen. Szenen ohne Aussagekraft weglassen. '
+            . 'Kategorien: "Themen" (worüber gesprochen wird), "Erwähnte Personen" (nur Vornamen/Namen, die fallen), '
+            . '"Orte", "Anlässe" (z. B. Geburtstag, Hochzeit, Urlaub). Höchstens 5 Tags pro Kategorie, jeweils 1–3 Wörter. '
+            . 'Antworte ausschließlich als JSON: {"<Szenen-ID>": {"Themen": [...], "Erwähnte Personen": [...], '
+            . '"Orte": [...], "Anlässe": [...]}}'
+            . "\n\n"
+            . mb_substr(implode("\n", $lines), 0, 30000);
+
+        $response = $this->client->generativeModel(model: 'gemini-3.1-flash-lite')->generateContent($prompt);
+        $text = $response->text();
+        fwrite(STDOUT, '[Gemini] Transkript-Tags: ' . $text . PHP_EOL);
+        return self::parseTranscriptTags($text);
+    }
+
+    /**
+     * Antwort von tagTranscript() auswerten. Gemini schreibt die Schlüssel mal als "177", mal als "Szene 177".
+     *
+     * @return array<int, array<string, list<string>>>
+     */
+    public static function parseTranscriptTags(string $text): array
+    {
+        $decoded = json_decode(trim(str_replace(['```json', '```'], '', $text)), true);
+        if (!\is_array($decoded)) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($decoded as $key => $categories) {
+            if (preg_match('/(\d+)/', (string) $key, $match) !== 1 || !\is_array($categories)) {
+                continue;
+            }
+            foreach ($categories as $category => $tags) {
+                if (!\is_array($tags)) {
+                    continue;
+                }
+                $tags = array_values(array_filter(
+                    array_map(static fn(mixed $tag): string => trim((string) $tag), $tags),
+                    static fn(string $tag): bool => $tag !== '',
+                ));
+                if ($tags !== []) {
+                    $result[(int) $match[1]][(string) $category] = $tags;
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
      * @param list<array<string, mixed>> $scenesData
      *
      * @return list<array<string, mixed>>

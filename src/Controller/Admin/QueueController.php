@@ -37,6 +37,7 @@ final class QueueController extends AbstractController
             VideoStatus::CHAPTER_GENERATION,
             VideoStatus::NAMING,
             VideoStatus::EXPORTING_JELLYFIN,
+            VideoStatus::TRANSCRIBING,
         ];
 
         $videos = $this->videoRepository->findBy(['status' => $statuses], ['createdAt' => 'ASC']);

@@ -20,6 +20,7 @@ enum VideoWorkflowProcessTransition: string
     case START_CHAPTER_GENERATION = 'start_chapter_generation';
     case START_EXPORT = 'start_export';
     case START_NAMING = 'start_naming';
+    case START_TRANSCRIPTION = 'start_transcription';
     case COMPLETE = 'complete';
     case FAIL = 'fail';
     case RESET = 'reset';

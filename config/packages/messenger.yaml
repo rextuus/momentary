@@ -16,6 +16,17 @@ framework:
                     max_retries: 3
                     delay: 1000
                     multiplier: 2
+            # Eigene Queue mit eigenem Worker (transcription-worker): Transkriptionen laufen stundenlang auf der CPU
+            # und dürfen die Video-Pipeline nicht aufhalten. Keine Retries: Fehler stehen im Transkript.
+            transcription:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    exchange:
+                        name: transcription
+                    queues:
+                        transcription: ~
+                retry_strategy:
+                    max_retries: 0
             failed: '%env(MESSENGER_TRANSPORT_DSN)%'
             # sync: 'sync://'
 
@@ -54,3 +65,5 @@ framework:
             App\Service\Video\Processing\Message\GenerateChapterStepMessage: async_video_processing
             App\Service\Video\Processing\Message\UploadToJellyfinStepMessage: async_video_processing
             App\Service\Video\Processing\Message\VideoNamingStepMessage: async_video_processing
+            App\Message\TranscribeVideoMessage: transcription
+            App\Service\Video\Processing\Message\TranscribeStepMessage: transcription

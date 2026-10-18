@@ -26,6 +26,7 @@ framework:
                 - !php/const App\Enum\VideoStatus::CHAPTER_GENERATION
                 - !php/const App\Enum\VideoStatus::NAMING
                 - !php/const App\Enum\VideoStatus::EXPORTING_JELLYFIN
+                - !php/const App\Enum\VideoStatus::TRANSCRIBING
                 - !php/const App\Enum\VideoStatus::COMPLETED
                 - !php/const App\Enum\VideoStatus::ERROR
             transitions:
@@ -85,8 +86,12 @@ framework:
                     from: [!php/const App\Enum\VideoStatus::NAMING]
                     to:   !php/const App\Enum\VideoStatus::EXPORTING_JELLYFIN
 
-                complete:
+                start_transcription:
                     from: [!php/const App\Enum\VideoStatus::EXPORTING_JELLYFIN]
+                    to:   !php/const App\Enum\VideoStatus::TRANSCRIBING
+
+                complete:
+                    from: [!php/const App\Enum\VideoStatus::TRANSCRIBING]
                     to:   !php/const App\Enum\VideoStatus::COMPLETED
 
                 fail:
@@ -106,6 +111,7 @@ framework:
                         - !php/const App\Enum\VideoStatus::CHAPTER_GENERATION
                         - !php/const App\Enum\VideoStatus::NAMING
                         - !php/const App\Enum\VideoStatus::EXPORTING_JELLYFIN
+                        - !php/const App\Enum\VideoStatus::TRANSCRIBING
                     to: !php/const App\Enum\VideoStatus::ERROR
 
                 reset:
@@ -124,5 +130,6 @@ framework:
                         - !php/const App\Enum\VideoStatus::CHAPTER_GENERATION
                         - !php/const App\Enum\VideoStatus::NAMING
                         - !php/const App\Enum\VideoStatus::EXPORTING_JELLYFIN
+                        - !php/const App\Enum\VideoStatus::TRANSCRIBING
                         - !php/const App\Enum\VideoStatus::ERROR
                     to: !php/const App\Enum\VideoStatus::PENDING

@@ -23,12 +23,12 @@ class UploadToJellyfinStepMessage extends AbstractVideoProcessStepMessage
 
     public function getTransitionToStatusNextStepIsBelonging(): VideoWorkflowProcessTransition
     {
-        return VideoWorkflowProcessTransition::COMPLETE;
+        return VideoWorkflowProcessTransition::START_TRANSCRIPTION;
     }
 
     public function getNextStepMessageClass(): ?string
     {
-        return null;
+        return TranscribeStepMessage::class;
     }
 
     public function getVideoStatusForCurrentProcessStepEntity(): VideoStatus

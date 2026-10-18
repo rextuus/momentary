@@ -7,8 +7,9 @@ echo "Starte Deployment..."
 # 1. Pull latest code
 git pull origin main
 
-# 2. Build containers
-docker compose build messenger-worker app
+# 2. Images bauen und Container mit den neuen Images starten (restart allein nutzt das alte Image weiter)
+docker compose build app messenger-worker transcription-worker
+docker compose up -d app messenger-worker transcription-worker
 
 # 3. Cache leeren und aufwärmen
 docker compose exec -T app bin/console cache:clear --env=prod
@@ -20,7 +21,7 @@ docker compose exec -T app bin/console doctrine:migrations:migrate --no-interact
 # 5. RabbitMQ Queue leeren
 docker compose exec -T rabbitmq rabbitmqctl purge_queue messages
 
-# 6. Worker neu starten
-docker compose restart messenger-worker
+# 6. Worker neu starten (laufende Transkriptionen bleiben in ihrer eigenen Queue erhalten)
+docker compose restart messenger-worker transcription-worker
 
 echo "Deployment erfolgreich abgeschlossen."

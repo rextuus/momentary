@@ -73,7 +73,11 @@ class ImportQueueManager
     {
         $processingStates = array_values(array_map(
             static fn(VideoStatus $s): string => $s->value,
-            array_filter(VideoStatus::cases(), static fn(VideoStatus $s): bool => $s->isProcessing()),
+            // Die Transkription läuft auf einem eigenen Worker und belegt keinen Pipeline-Platz
+            array_filter(
+                VideoStatus::cases(),
+                static fn(VideoStatus $s): bool => $s->isProcessing() && $s !== VideoStatus::TRANSCRIBING,
+            ),
         ));
 
         if ($processingStates === []) {

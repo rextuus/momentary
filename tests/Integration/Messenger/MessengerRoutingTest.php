@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Messenger;
 
+use App\Message\TranscribeVideoMessage;
+use App\Service\Video\Processing\Message\TranscribeStepMessage;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -63,7 +65,17 @@ final class MessengerRoutingTest extends KernelTestCase
         $message = new \ReflectionClass($messageClass)->newInstanceWithoutConstructor();
         $transports = array_keys(iterator_to_array($locator->getSenders(new Envelope($message))));
 
-        self::assertSame(['async_video_processing'], $transports);
+        // Die Transkription läuft stundenlang auf der CPU und hat deshalb einen eigenen Worker
+        $expected = $messageClass === TranscribeStepMessage::class ? 'transcription' : 'async_video_processing';
+        self::assertSame([$expected], $transports);
+    }
+
+    public function testManualTranscriptionUsesTheTranscriptionQueue(): void
+    {
+        $locator = self::getContainer()->get('messenger.senders_locator');
+        $transports = array_keys(iterator_to_array($locator->getSenders(new Envelope(new TranscribeVideoMessage(1)))));
+
+        self::assertSame(['transcription'], $transports);
     }
 
     /**
