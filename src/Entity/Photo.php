@@ -6,6 +6,8 @@ namespace App\Entity;
 
 use App\Enum\PhotoStatus;
 use App\Repository\PhotoRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 
@@ -47,8 +49,39 @@ class Photo extends Medium
     #[ORM\Column(nullable: true)]
     private ?int $height = null;
 
-    #[ORM\Column(length: 128, nullable: true)]
-    private ?string $camera = null;
+    /** Bild-Fingerabdruck für Serienfotos (siehe PhotoFingerprint) */
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $fingerprint = null;
+
+    /** Schärfe (Varianz des Laplace-Filters), für die Wahl des besten Fotos einer Serie */
+    #[ORM\Column(nullable: true)]
+    private ?float $sharpness = null;
+
+    /** Serienfoto: das beste Foto der Serie, das stellvertretend gezeigt wird; null beim besten Foto selbst */
+    #[ORM\ManyToOne(targetEntity: self::class, inversedBy: 'burstMembers')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?Photo $burstCover = null;
+
+    /**
+     * @var Collection<int, Photo>
+     */
+    #[ORM\OneToMany(targetEntity: self::class, mappedBy: 'burstCover')]
+    #[ORM\OrderBy(['takenAt' => 'ASC', 'id' => 'ASC'])]
+    private Collection $burstMembers;
+
+    /** Vom Benutzer als bestes Foto seiner Serie gewählt */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $burstPinned = false;
+
+    /** Vom Benutzer aus der Serie gelöst: wird nie wieder einer Serie zugeordnet */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $burstExcluded = false;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->burstMembers = new ArrayCollection();
+    }
 
     public function getType(): string
     {
@@ -154,14 +187,87 @@ class Photo extends Medium
         return $this;
     }
 
-    public function getCamera(): ?string
+    public function getFingerprint(): ?string
     {
-        return $this->camera;
+        return $this->fingerprint;
     }
 
-    public function setCamera(?string $camera): static
+    public function getSharpness(): ?float
     {
-        $this->camera = $camera;
+        return $this->sharpness;
+    }
+
+    public function setImageMetrics(?string $fingerprint, ?float $sharpness): static
+    {
+        $this->fingerprint = $fingerprint;
+        $this->sharpness = $sharpness;
+
+        return $this;
+    }
+
+    public function getBurstCover(): ?Photo
+    {
+        return $this->burstCover;
+    }
+
+    public function setBurstCover(?Photo $burstCover): static
+    {
+        $this->burstCover?->burstMembers->removeElement($this);
+        $this->burstCover = $burstCover;
+        if ($burstCover !== null && !$burstCover->burstMembers->contains($this)) {
+            $burstCover->burstMembers->add($this);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Die übrigen Fotos der Serie, wenn dies das beste ist.
+     *
+     * @return Collection<int, Photo>
+     */
+    public function getBurstMembers(): Collection
+    {
+        return $this->burstMembers;
+    }
+
+    /**
+     * Alle Fotos der Serie (inklusive diesem) nach Aufnahmezeit, oder nur dieses Foto.
+     *
+     * @return list<Photo>
+     */
+    public function getBurst(): array
+    {
+        $cover = $this->burstCover ?? $this;
+        $photos = [$cover, ...$cover->burstMembers->toArray()];
+        usort(
+            $photos,
+            static fn(Photo $a, Photo $b): int => [$a->getDate(), $a->getId()] <=> [$b->getDate(), $b->getId()],
+        );
+
+        return $photos;
+    }
+
+    public function isBurstPinned(): bool
+    {
+        return $this->burstPinned;
+    }
+
+    public function setBurstPinned(bool $burstPinned): static
+    {
+        $this->burstPinned = $burstPinned;
+
+        return $this;
+    }
+
+    public function isBurstExcluded(): bool
+    {
+        return $this->burstExcluded;
+    }
+
+    public function setBurstExcluded(bool $burstExcluded): static
+    {
+        $this->burstExcluded = $burstExcluded;
 
         return $this;
     }

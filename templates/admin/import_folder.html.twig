@@ -1,0 +1,91 @@
+{% extends 'base.html.twig' %}
+{% block title %}Import-Ordner - Momentary{% endblock %}
+
+{% macro size(bytes) %}{% if bytes >= 1073741824 %}{{ (bytes / 1073741824)|number_format(1, ',', '.') }} GB{% elseif bytes >= 1048576 %}{{ (bytes / 1048576)|number_format(0, ',', '.') }} MB{% else %}{{ (bytes / 1024)|number_format(0, ',', '.') }} KB{% endif %}{% endmacro %}
+
+{% block body %}
+{% import _self as ui %}
+<div class="container pb-5">
+    <h1 class="fw-bold mb-1">Import-Ordner</h1>
+    <p class="text-muted mb-4">
+        Für große Mengen und ganze Speicherkarten: Videos und Fotos in den Import-Ordner legen, gern in Unterordnern
+        (der erste Unterordner wird zum Gruppen-Tag, z. B. „Mallorca“). Übernommene Dateien verschwinden aus dem Ordner,
+        schon vorhandene wandern nach <code>_doppelt/</code>.
+    </p>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body small">
+                    <div class="fw-semibold mb-2"><i class="fas fa-folder-open text-primary me-2"></i>So kommen Dateien hinein</div>
+                    <ul class="mb-0 ps-3">
+                        <li>auf dem Server: <code>storage/imports/</code> <span class="text-muted">(im Container {{ root }})</span></li>
+                        <li>per SFTP: Port 2222, Verzeichnis <code>upload/import/</code></li>
+                        <li>wenige Dateien gehen auch über <a href="{{ path('app_upload') }}">Upload</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body small">
+                    <div class="fw-semibold mb-2"><i class="fas fa-eye me-2 {{ watched ? 'text-success' : 'text-muted' }}"></i>Automatisch übernehmen: {{ watched ? 'an' : 'aus' }}</div>
+                    {% if watched %}
+                        Alle 5 Minuten werden neue Dateien übernommen, sobald sie 2 Minuten unverändert sind (also fertig hochgeladen).
+                    {% else %}
+                        Mit <code>IMPORT_FOLDER_WATCH=1</code> in der <code>.env</code> (danach Worker neu starten) übernimmt der Server neue
+                        Dateien alle 5 Minuten selbst. Bis dahin hier auswählen und übernehmen.
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if count == 0 %}
+        <div class="text-center text-muted py-5">
+            <i class="fas fa-folder-open fa-3x mb-3 opacity-50"></i>
+            <p class="mb-0">Der Import-Ordner ist leer.</p>
+        </div>
+    {% else %}
+        <form method="post" action="{{ path('app_admin_import_start') }}" id="import-form">
+            <input type="hidden" name="_token" value="{{ csrf_token('import-folder') }}">
+            {% for batch, files in groups %}
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                        <label class="fw-semibold mb-0">
+                            <input type="checkbox" class="form-check-input me-2 import-group" data-group="{{ loop.index }}" {{ files|filter(f => f.ready and not f.likelyDuplicate)|length > 0 ? 'checked' }}>
+                            <i class="fas {{ batch ? 'fa-folder' : 'fa-inbox' }} text-muted me-1"></i>{{ batch ?: 'Ohne Unterordner' }}
+                        </label>
+                        <span class="small text-muted">
+                            {{ files|filter(f => f.type == 'video')|length }} Videos · {{ files|filter(f => f.type == 'photo')|length }} Fotos{% if batch %} · Gruppen-Tag „{{ batch }}“{% endif %}
+                        </span>
+                    </div>
+                    <ul class="list-group list-group-flush small">
+                        {% for file in files %}
+                            <li class="list-group-item d-flex flex-wrap align-items-center gap-2">
+                                <input type="checkbox" class="form-check-input mt-0" name="files[]" value="{{ file.relativePath }}" data-group="{{ loop.parent.loop.index }}" id="import-{{ loop.parent.loop.index }}-{{ loop.index }}" {{ file.ready and not file.likelyDuplicate ? 'checked' }}>
+                                <label for="import-{{ loop.parent.loop.index }}-{{ loop.index }}" class="flex-grow-1 min-w-0 text-truncate mb-0">
+                                    <i class="fas {{ file.type == 'video' ? 'fa-video' : 'fa-image' }} text-muted me-1"></i>{{ batch ? file.relativePath|slice(batch|length + 1) : file.relativePath }}
+                                </label>
+                                {% if not file.ready %}<span class="badge text-bg-info" title="Vor weniger als 2 Minuten geändert">wird noch hochgeladen?</span>{% endif %}
+                                {% if file.likelyDuplicate %}<span class="badge text-bg-warning" title="Gleiche Größe oder gleiche Aufnahmezeit wie ein vorhandenes Medium. Ältere Videos lassen sich nicht sicher per Inhalt vergleichen, deshalb nicht vorausgewählt.">vermutlich schon vorhanden</span>{% endif %}
+                                <span class="text-muted text-nowrap">{{ ui.size(file.size) }}</span>
+                                <span class="text-muted text-nowrap d-none d-md-inline">{{ file.modifiedAt|date('d.m.Y H:i') }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endfor %}
+            <div class="d-flex flex-wrap align-items-center gap-3">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-file-import me-2"></i>Ausgewählte übernehmen</button>
+                <span class="small text-muted">Die Übernahme läuft im Hintergrund (Worker); du bist Eigentümer der übernommenen Medien.</span>
+            </div>
+        </form>
+        <script>
+            document.querySelectorAll('.import-group').forEach(box => box.addEventListener('change', () => {
+                document.querySelectorAll('input[name="files[]"][data-group="' + box.dataset.group + '"]').forEach(file => file.checked = box.checked);
+            }));
+        </script>
+    {% endif %}
+</div>
+{% endblock %}

@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Entity\Medium;
 use App\Repository\EventRepository;
 use App\Security\Voter\MediumAccessVoter;
+use App\Service\Media\CameraClock;
 use App\Service\Media\RecordingTimeCorrector;
 use App\Twig\Extension\MediaExtension;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -26,6 +27,7 @@ final class MediumController extends AbstractController
         Medium $medium,
         Request $request,
         RecordingTimeCorrector $corrector,
+        CameraClock $cameraClock,
         EventRepository $eventRepository,
         MediaExtension $media,
     ): Response {
@@ -67,11 +69,21 @@ final class MediumController extends AbstractController
             }
         }
 
-        $count = $corrector->correct($medium, $correct, $event);
+        // Gilt für künftige Importe aller Benutzer, deshalb nur für Admins
+        $remember = $request->request->getBoolean('remember') && $this->isGranted('ROLE_ADMIN');
+        $media = $corrector->correct($medium, $correct, $event);
+        if ($remember) {
+            try {
+                $cameraClock->remember($medium, $correct, $media, $event?->getTitle() ?? $medium->getTitle());
+                $this->addFlash('info', 'Abweichung der Kamera-Uhr gemerkt (Verwalten → Kamera-Uhren).');
+            } catch (\DomainException $e) {
+                $this->addFlash('warning', $e->getMessage());
+            }
+        }
         $this->addFlash(
             'success',
             $event !== null
-                ? sprintf('Aufnahmezeit korrigiert: %d Medien von „%s“ verschoben.', $count, $event->getTitle())
+                ? sprintf('Aufnahmezeit korrigiert: %d Medien von „%s“ verschoben.', \count($media), $event->getTitle())
                 : 'Aufnahmezeit korrigiert.',
         );
 

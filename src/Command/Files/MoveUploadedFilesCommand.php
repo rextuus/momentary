@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command\Files;
 
+use App\Service\Storage\StoragePathProvider;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -13,15 +14,17 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Finder\Finder;
 
-#[AsCommand(name: 'app:files:move-uploaded', description: 'Moves files from SFTP upload directories to imports')]
+#[AsCommand(
+    name: 'app:files:move-uploaded',
+    description: 'Verschiebt Dateien aus den SFTP-Upload-Verzeichnissen in den Import-Ordner',
+)]
 class MoveUploadedFilesCommand extends Command
 {
-    private const TARGET_DIR = '/var/www/html/public/uploads/import';
-
     public function __construct(
         /** @var list<string> */
         #[Autowire(param: 'app.ftp_source_dirs')]
         private array $sourceDirs,
+        private readonly StoragePathProvider $pathProvider,
     ) {
         parent::__construct();
     }
@@ -31,8 +34,9 @@ class MoveUploadedFilesCommand extends Command
         $io = new SymfonyStyle($input, $output);
         $fs = new Filesystem();
 
-        if (!$fs->exists(self::TARGET_DIR)) {
-            $fs->mkdir(self::TARGET_DIR);
+        $targetDir = $this->pathProvider->getImportAbsolutePath();
+        if (!$fs->exists($targetDir)) {
+            $fs->mkdir($targetDir);
         }
 
         $count = 0;
@@ -46,7 +50,7 @@ class MoveUploadedFilesCommand extends Command
             $finder->files()->in($sourceDir);
 
             foreach ($finder as $file) {
-                $targetPath = self::TARGET_DIR . DIRECTORY_SEPARATOR . $file->getFilename();
+                $targetPath = $targetDir . DIRECTORY_SEPARATOR . $file->getFilename();
 
                 // Avoid overwriting if file already exists
                 if ($fs->exists($targetPath)) {

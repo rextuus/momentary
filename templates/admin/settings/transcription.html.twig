@@ -1,0 +1,131 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Transkription{% endblock %}
+
+{% block body %}
+    {% set modelHints = {
+        'small': {speed: 'schnell', text: 'Etwa doppelt so schnell wie turbo, verhört sich aber öfter bei Namen und Dialekt.'},
+        'medium': {speed: 'mittel', text: 'Langsamer als turbo und nicht genauer. Nur zum Vergleichen.'},
+        'large-v3-turbo': {speed: 'empfohlen', text: 'Gute Erkennung von Namen und Dialekt. Auf dem ThinkCentre etwa Echtzeit.'},
+        'large-v3': {speed: 'sehr langsam', text: 'Minimal genauer als turbo, aber mehrfach langsamer. Auf schwacher CPU nicht sinnvoll.'},
+    } %}
+
+    <style>
+        .settings-page .card { border-radius: 14px; }
+        .settings-page .card-header { background: transparent; border-bottom: 1px solid var(--bs-border-color-translucent); padding: 1rem 1.25rem; }
+        .section-icon { width: 38px; height: 38px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .setting-row { padding: 0.9rem 0; border-bottom: 1px solid var(--bs-border-color-translucent); }
+        .setting-row:last-child { border-bottom: none; }
+        .model-options label { flex: 1 1 13rem; text-align: left; display: flex; flex-direction: column; gap: 0.15rem; }
+        .model-options small { color: var(--bs-secondary-color); white-space: normal; }
+    </style>
+
+    <div class="container settings-page">
+        <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+            <div>
+                <div class="text-uppercase small fw-semibold text-muted mb-1">Verwalten</div>
+                <h1 class="h3 mb-1">Transkription</h1>
+                <p class="text-muted mb-0">Der Ton wird lokal mit Whisper verschriftlicht. Standardmäßig als letzter Schritt jeder Analyse, sonst per Knopfdruck pro Video.</p>
+            </div>
+            <span class="badge rounded-pill text-bg-light border fw-normal px-3 py-2">
+                {% if settings.updatedAt %}
+                    <i class="fas fa-clock-rotate-left me-1 text-muted"></i>Zuletzt geändert {{ settings.updatedAt|date('d.m.Y, H:i') }}
+                {% else %}
+                    Standardwerte
+                {% endif %}
+            </span>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-8">
+                {{ form_start(form, {attr: {novalidate: 'novalidate'}}) }}
+                <div class="card mb-4">
+                    <div class="card-header d-flex align-items-center gap-3">
+                        <span class="section-icon bg-success-subtle text-success"><i class="fas fa-microphone-lines"></i></span>
+                        <div>
+                            <div class="fw-semibold">Spracherkennung</div>
+                            <div class="small text-muted">Gilt ab der nächsten Transkription</div>
+                        </div>
+                    </div>
+                    <div class="card-body pt-1">
+                        <div class="setting-row">
+                            <div class="form-check form-switch">
+                                {{ form_widget(form.transcribeInPipeline, {attr: {class: 'form-check-input', role: 'switch'}}) }}
+                                {{ form_label(form.transcribeInPipeline, null, {label_attr: {class: 'form-check-label fw-semibold'}}) }}
+                            </div>
+                            {{ form_help(form.transcribeInPipeline) }}
+                        </div>
+                        <div class="setting-row">
+                            <div class="form-label fw-semibold">{{ form.model.vars.label }}</div>
+                            <div class="d-flex flex-wrap gap-2 model-options">
+                                {% for choice in form.model %}
+                                    {% set hint = modelHints[choice.vars.value] %}
+                                    {{ form_widget(choice, {attr: {class: 'btn-check'}}) }}
+                                    <label class="btn btn-outline-secondary text-body py-2" for="{{ choice.vars.id }}">
+                                        <span class="fw-semibold">{{ choice.vars.label }}
+                                            <span class="badge rounded-pill {{ choice.vars.value == 'large-v3-turbo' ? 'text-bg-success' : 'text-bg-light border' }} fw-normal ms-1">{{ hint.speed }}</span>
+                                        </span>
+                                        <small>{{ hint.text }}</small>
+                                    </label>
+                                {% endfor %}
+                            </div>
+                            {{ form_errors(form.model) }}
+                        </div>
+                        <div class="setting-row row g-3">
+                            <div class="col-sm-6">
+                                {{ form_label(form.threads, null, {label_attr: {class: 'form-label fw-semibold'}}) }}
+                                {{ form_widget(form.threads, {attr: {class: 'form-control' ~ (form.threads.vars.valid ? '' : ' is-invalid')}}) }}
+                                {{ form_help(form.threads) }}
+                                {{ form_errors(form.threads) }}
+                            </div>
+                            <div class="col-sm-6">
+                                {{ form_label(form.language, null, {label_attr: {class: 'form-label fw-semibold'}}) }}
+                                {{ form_widget(form.language, {attr: {class: 'form-control' ~ (form.language.vars.valid ? '' : ' is-invalid')}}) }}
+                                {{ form_help(form.language) }}
+                                {{ form_errors(form.language) }}
+                            </div>
+                        </div>
+                        <div class="setting-row">
+                            <div class="form-check form-switch">
+                                {{ form_widget(form.deriveTags, {attr: {class: 'form-check-input', role: 'switch'}}) }}
+                                {{ form_label(form.deriveTags, null, {label_attr: {class: 'form-check-label fw-semibold'}}) }}
+                            </div>
+                            {{ form_help(form.deriveTags) }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="submit" class="btn btn-primary px-4"><i class="fas fa-save me-1"></i> Speichern</button>
+                </div>
+                {{ form_end(form) }}
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card mb-4">
+                    <div class="card-header fw-semibold"><i class="fas fa-chart-simple me-2 text-muted"></i>Stand</div>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between"><span>Fertig transkribiert</span><span class="fw-semibold">{{ transcriptCounts.done }}</span></li>
+                        <li class="list-group-item d-flex justify-content-between"><span>Wartet / läuft</span><span class="fw-semibold">{{ transcriptCounts.queued + transcriptCounts.running }}</span></li>
+                        <li class="list-group-item d-flex justify-content-between"><span>Fehlgeschlagen</span><span class="fw-semibold {{ transcriptCounts.failed > 0 ? 'text-danger' }}">{{ transcriptCounts.failed }}</span></li>
+                    </ul>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header fw-semibold"><i class="fas fa-terminal me-2 text-muted"></i>Auf der Kommandozeile</div>
+                    <div class="card-body small">
+                        <p class="mb-2">Geschwindigkeit auf diesem Server messen (z. B. mit einem Video mit viel Gesprochenem):</p>
+                        <code class="d-block mb-3">bin/console app:transcription:benchmark &lt;Video-ID&gt;</code>
+                        <p class="mb-2">Alle fertig analysierten Videos ohne Transkript einplanen:</p>
+                        <code class="d-block">bin/console app:video:transcribe --missing</code>
+                    </div>
+                </div>
+
+                <form method="post" action="{{ path('app_admin_transcription_settings_reset') }}" onsubmit="return confirm('Alle Einstellungen auf die Standardwerte zurücksetzen?')">
+                    <input type="hidden" name="_token" value="{{ csrf_token('transcription-reset') }}">
+                    <button type="submit" class="btn btn-link text-muted p-0"><i class="fas fa-rotate-left me-1"></i>Standardwerte wiederherstellen</button>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}

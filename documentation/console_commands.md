@@ -13,7 +13,10 @@ Momentary bietet folgende Konsolenbefehle zur Verwaltung der Anwendung, der Vide
 
 ## Videoverarbeitung & Pipeline
 - `app:video:processing-pipeline:show` (`App\Command\ShowVideoProcessingPipelineCommand`): Zeigt die Struktur der aktuellen Videoverarbeitungspipeline.
-- `app:files:move-uploaded` (`App\Command\Files\MoveUploadedFilesCommand`): Verschiebt Dateien aus SFTP-Upload-Verzeichnissen in die Import-Verzeichnisse.
+- `app:files:move-uploaded` (`App\Command\Files\MoveUploadedFilesCommand`): Verschiebt Dateien aus den SFTP-Upload-Verzeichnissen in den Import-Ordner.
+- `app:media:import-folder [--owner=mail] [--list]` (`App\Command\Media\ImportFolderCommand`): Übernimmt Videos und Fotos aus dem Import-Ordner (siehe `documentation/media.md`, „Upload & Import-Ordner“).
+- `app:video:import <Datei>`, `app:photo:import <Datei|Ordner>…`: Einzelne Dateien bzw. Fotos direkt importieren.
+- `app:photo:bursts`: Fehlende Fingerabdrücke berechnen und Serienfotos neu bilden.
 - `app:images:init-profiles` (`App\Command\Images\InitProfileImagesCommand`): Initialisiert Profile-Bilder (cachedImageUrl).
 
 ## Meilisearch (Suche)

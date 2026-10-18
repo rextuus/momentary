@@ -21,7 +21,7 @@ class PhotoRepository extends ServiceEntityRepository
     }
 
     /**
-     * Sichtbare Fotos, neueste Aufnahme zuerst.
+     * Sichtbare Fotos, neueste Aufnahme zuerst. Ohne Suche steht jede Serie nur mit ihrem besten Foto in der Liste.
      *
      * @return Paginator<Photo>
      */
@@ -36,7 +36,10 @@ class PhotoRepository extends ServiceEntityRepository
             ->addOrderBy('p.id', \SortDirection::Descending)
             ->setFirstResult(max(0, $page - 1) * $perPage)
             ->setMaxResults($perPage);
-        if (trim($search) !== '') {
+        if (trim($search) === '') {
+            // Serienfotos: nur das beste Foto, die übrigen klappt die Seite darunter auf
+            $qb->andWhere('p.burstCover IS NULL');
+        } else {
             $qb
                 ->leftJoin('p.tags', 'search_tag')
                 ->andWhere('p.title LIKE :search OR search_tag.name LIKE :search')

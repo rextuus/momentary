@@ -1,0 +1,10 @@
+{% if error %}
+    <div class="text-danger"><i class="fas fa-circle-exclamation me-1"></i>AWS nicht erreichbar: {{ error }}</div>
+{% elseif faceCount is null %}
+    <div class="text-warning"><i class="fas fa-circle-info me-1"></i>Collection <code>{{ collectionId }}</code> existiert noch nicht. Sie wird beim Zurücksetzen angelegt.</div>
+{% else %}
+    <div class="d-flex align-items-baseline gap-2">
+        <span class="fs-4 fw-semibold">{{ faceCount|number_format(0, ',', '.') }}</span>
+        <span class="text-muted">Gesichter in <code>{{ collectionId }}</code></span>
+    </div>
+{% endif %}

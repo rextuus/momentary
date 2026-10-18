@@ -48,7 +48,7 @@ services:
       context: .
       dockerfile: docker/php/Dockerfile
     restart: always
-    command: ["sh", "-c", "mkdir -p var/cache var/log storage && php bin/console cache:clear --env=prod && php bin/console cache:warmup --env=prod && php bin/console messenger:consume async async_video_processing photos --time-limit=3600 --memory-limit=512M"]
+    command: ["sh", "-c", "mkdir -p var/cache var/log storage && php bin/console cache:clear --env=prod && php bin/console cache:warmup --env=prod && php bin/console messenger:consume async async_video_processing photos scheduler_default --time-limit=3600 --memory-limit=512M"]
     environment:
       APP_ENV: ${APP_ENV:-prod}
       APP_SECRET: ${APP_SECRET}
@@ -201,6 +201,8 @@ services:
     volumes:
       - ./${STORAGE_ROOT:-storage}/jellyfin/uploads:/home/uploaduser/upload/jellyfin_uploads
       - ./${STORAGE_ROOT:-storage}/app_uploads:/home/uploaduser/upload/app_uploads
+      # Import-Ordner: Videos und Fotos hier ablegen, Übernahme unter Verwalten → Import-Ordner
+      - ./${STORAGE_ROOT:-storage}/imports:/home/uploaduser/upload/import
     networks:
       - momentary-network
 

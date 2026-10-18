@@ -37,6 +37,16 @@
                         <div class="mb-3">
                             <label class="form-label small fw-bold text-muted mb-1">Rufname / Kurzname</label>
                             <input type="text" data-model="person.name" class="form-control form-control-sm shadow-none" placeholder="z.B. Oma">
+                            {% if this.nameHints is not empty %}
+                                <div class="d-flex flex-wrap align-items-center gap-1 small mt-2">
+                                    <span class="text-muted"><i class="fas fa-closed-captioning me-1"></i>Fällt im Gespräch:</span>
+                                    {% for hint in this.nameHints %}
+                                        <button type="button" class="btn btn-sm btn-light border rounded-pill py-0"
+                                                data-action="live#action" data-live-action-param="applyNameHint" data-live-name-param="{{ hint.name }}"
+                                                title="In {{ hint.scenes }} Szene{{ hint.scenes == 1 ? '' : 'n' }} mit dieser Person – übernehmen">{{ hint.name }} <span class="text-muted">{{ hint.scenes }}</span></button>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
                         </div>
 
                         <div class="mb-3">

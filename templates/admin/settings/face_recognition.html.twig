@@ -1,0 +1,262 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Gesichtserkennung{% endblock %}
+
+{% macro slider(field, opts) %}
+    <div class="setting-row" data-setting-row>
+        <div class="d-flex justify-content-between align-items-center gap-3 mb-1">
+            <label for="{{ field.vars.id }}" class="form-label fw-semibold mb-0 d-flex align-items-center gap-2">
+                {% if opts.color is defined %}<span class="scale-dot" style="--dot: {{ opts.color }}"></span>{% endif %}
+                {{ field.vars.label }}
+            </label>
+            <div class="input-group input-group-sm value-box">
+                {{ form_widget(field, {attr: {class: 'form-control text-end' ~ (field.vars.valid ? '' : ' is-invalid')}}) }}
+                <span class="input-group-text">{{ opts.unit }}</span>
+            </div>
+        </div>
+        <input type="range" class="form-range" tabindex="-1" aria-hidden="true"{% if opts.color is defined %} style="--thumb: {{ opts.color }}"{% endif %}
+               min="{{ field.vars.attr.min }}" max="{{ field.vars.attr.max }}" step="{{ field.vars.attr.step|default(1) }}"
+               value="{{ field.vars.value }}">
+        <div class="form-text mt-0">{{ field.vars.help }}</div>
+        {% for error in field.vars.errors %}<div class="invalid-feedback d-block">{{ error.message }}</div>{% endfor %}
+    </div>
+{% endmacro %}
+
+{% macro number(field, unit) %}
+    <div class="setting-row">
+        <div class="d-flex justify-content-between align-items-center gap-3 mb-1">
+            <label for="{{ field.vars.id }}" class="form-label fw-semibold mb-0">{{ field.vars.label }}</label>
+            <div class="input-group input-group-sm value-box">
+                {{ form_widget(field, {attr: {class: 'form-control text-end' ~ (field.vars.valid ? '' : ' is-invalid')}}) }}
+                {% if unit %}<span class="input-group-text">{{ unit }}</span>{% endif %}
+            </div>
+        </div>
+        <div class="form-text mt-0">{{ field.vars.help }}</div>
+        {% for error in field.vars.errors %}<div class="invalid-feedback d-block">{{ error.message }}</div>{% endfor %}
+    </div>
+{% endmacro %}
+
+{% block body %}
+    {% import _self as ui %}
+    {% set colors = {candidate: '#94a3b8', link: '#f59e0b', suggestion: '#0ea5e9', match: '#10b981'} %}
+    {% set qualityHints = {
+        NONE: 'Alle erkannten Gesichter, auch sehr unscharfe.',
+        LOW: 'Nur grob unbrauchbare raus. Empfohlen für alte Videos.',
+        MEDIUM: 'Ausgewogen.',
+        HIGH: 'Nur klare Gesichter. Bei alten Videos fehlen dann viele.',
+        AUTO: 'AWS entscheidet selbst.',
+    } %}
+
+    <style>
+        .settings-page .card { border-radius: 14px; }
+        .settings-page .card-header { background: transparent; border-bottom: 1px solid #eef2f7; padding: 1rem 1.25rem; }
+        .settings-page .card-body { padding: 0.25rem 1.25rem 1rem; }
+        .section-icon { width: 38px; height: 38px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .setting-row { padding: 0.9rem 0; border-bottom: 1px solid #f1f5f9; }
+        .setting-row:last-child { border-bottom: none; }
+        .value-box { width: 8.5rem; flex-shrink: 0; }
+        .value-box .form-control { font-variant-numeric: tabular-nums; }
+        .scale-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--dot); display: inline-block; }
+        .threshold-scale { position: relative; height: 10px; border-radius: 999px; margin: 1.6rem 0.5rem 0.4rem;
+            background: linear-gradient(90deg, #fee2e2 0%, #fef3c7 45%, #dcfce7 100%); }
+        .threshold-scale .marker { position: absolute; top: 50%; transform: translate(-50%, -50%); transition: left .15s ease; }
+        .threshold-scale .marker .pin { width: 16px; height: 16px; border-radius: 50%; background: var(--dot); border: 3px solid #fff; box-shadow: 0 1px 3px rgba(15,23,42,.3); }
+        .scale-legend { display: flex; justify-content: space-between; font-size: .72rem; color: #94a3b8; margin: .5rem 0.5rem 0; }
+        .settings-page .form-range { --thumb: var(--primary-color); }
+        .settings-page .form-range::-webkit-slider-thumb { background: var(--thumb); }
+        .settings-page .form-range::-moz-range-thumb { background: var(--thumb); }
+        .settings-page .form-range:focus::-webkit-slider-thumb { box-shadow: 0 0 0 .25rem rgba(79,70,229,.2); }
+        .quality-options .btn { flex: 1 1 0; text-align: left; border-radius: 10px !important; }
+        .quality-options .btn-check:checked + .btn { border-color: var(--primary-color); background: rgba(79,70,229,.06); color: inherit; box-shadow: 0 0 0 1px var(--primary-color); }
+        .quality-options small { display: block; font-weight: 400; color: #64748b; line-height: 1.3; }
+        .is-disabled { opacity: .45; }
+        .save-bar { position: sticky; bottom: 0; z-index: 10; background: rgba(248,250,252,.92); backdrop-filter: blur(8px);
+            border-top: 1px solid #e2e8f0; padding: .9rem 0; margin-top: 1rem; }
+        .tip { display: flex; gap: .75rem; padding: .6rem 0; }
+        .tip + .tip { border-top: 1px solid #f1f5f9; }
+        .tip i { margin-top: .2rem; }
+        code.cmd { display: block; background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: .55rem .75rem; font-size: .7rem; white-space: nowrap; overflow-x: auto; }
+        .settings-page .btn-outline-primary { --bs-btn-color: var(--primary-color); --bs-btn-border-color: var(--primary-color); --bs-btn-hover-bg: var(--primary-color); --bs-btn-hover-border-color: var(--primary-color); --bs-btn-active-bg: #4338ca; }
+        .settings-page .form-switch .form-check-input:checked { background-color: var(--primary-color); border-color: var(--primary-color); }
+        .settings-page .form-switch .form-check-input:focus { box-shadow: 0 0 0 .25rem rgba(79,70,229,.2); }
+        .scale-items { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .4rem 1.5rem; }
+        @media (max-width: 575.98px) { .scale-items { grid-template-columns: 1fr; } .value-box { width: 7rem; } .quality-options .btn { flex-basis: calc(50% - .25rem); } }
+    </style>
+
+    <div class="container settings-page" data-controller="face-settings">
+        <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+            <div>
+                <div class="text-uppercase small fw-semibold text-muted mb-1">Verwalten</div>
+                <h1 class="h3 mb-1">Gesichtserkennung</h1>
+                <p class="text-muted mb-0">Änderungen gelten sofort, auch für einen laufenden Worker.</p>
+            </div>
+            {% if settings.updatedAt %}
+                <span class="badge rounded-pill text-bg-light border fw-normal px-3 py-2">
+                    <i class="fas fa-clock-rotate-left me-1 text-muted"></i>Zuletzt geändert {{ settings.updatedAt|date('d.m.Y, H:i') }}
+                </span>
+            {% else %}
+                <span class="badge rounded-pill text-bg-light border fw-normal px-3 py-2">Standardwerte</span>
+            {% endif %}
+        </div>
+
+        {{ form_start(form, {attr: {novalidate: 'novalidate'}}) }}
+        <div class="row g-4">
+            <div class="col-lg-8">
+                {# ── Erkennung ── #}
+                <div class="card mb-4">
+                    <div class="card-header d-flex align-items-center gap-3">
+                        <span class="section-icon bg-primary-subtle text-primary"><i class="fas fa-expand"></i></span>
+                        <div>
+                            <div class="fw-semibold">Welche Gesichter werden erkannt?</div>
+                            <div class="small text-muted">Filter, bevor ein Gesicht gespeichert und abgeglichen wird</div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="setting-row">
+                            <div class="form-label fw-semibold">{{ form.qualityFilter.vars.label }}</div>
+                            <div class="d-flex flex-wrap gap-2 quality-options">
+                                {% for choice in form.qualityFilter %}
+                                    {{ form_widget(choice, {attr: {class: 'btn-check'}}) }}
+                                    <label class="btn btn-outline-secondary text-body py-2" for="{{ choice.vars.id }}">
+                                        <span class="fw-semibold">{{ choice.vars.label }}</span>
+                                        <small>{{ qualityHints[choice.vars.value] }}</small>
+                                    </label>
+                                {% endfor %}
+                            </div>
+                            <div class="form-text">{{ form.qualityFilter.vars.help }}</div>
+                        </div>
+                        {{ ui.slider(form.minFaceWidth, {unit: '%'}) }}
+                        {{ ui.number(form.maxFacesPerFrame, 'max.') }}
+                    </div>
+                </div>
+
+                {# ── Zuordnung ── #}
+                <div class="card mb-4">
+                    <div class="card-header d-flex align-items-center gap-3">
+                        <span class="section-icon bg-success-subtle text-success"><i class="fas fa-people-arrows"></i></span>
+                        <div>
+                            <div class="fw-semibold">Wann sind zwei Gesichter dieselbe Person?</div>
+                            <div class="small text-muted">Ähnlichkeit laut AWS, von unsicher (links) bis sicher (rechts)</div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="threshold-scale" aria-hidden="true">
+                            {% for key, field in {candidate: form.candidateThreshold, link: form.videoLinkThreshold, suggestion: form.suggestionThreshold, match: form.matchThreshold} %}
+                                <div class="marker" data-face-settings-target="marker" data-input="{{ field.vars.id }}" style="--dot: {{ colors[key] }}" title="{{ field.vars.label }}">
+                                    <div class="pin"></div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <div class="scale-legend"><span>50 %</span><span>75 %</span><span>100 %</span></div>
+                        <div class="scale-items mt-3 small">
+                            {% for key, field in {candidate: form.candidateThreshold, link: form.videoLinkThreshold, suggestion: form.suggestionThreshold, match: form.matchThreshold} %}
+                                <span class="d-flex align-items-center gap-2 text-muted">
+                                    <span class="scale-dot" style="--dot: {{ colors[key] }}"></span>{{ field.vars.label }}
+                                    <strong class="text-body ms-auto" data-face-settings-target="markerLabel" data-input="{{ field.vars.id }}">{{ field.vars.value }} %</strong>
+                                </span>
+                            {% endfor %}
+                        </div>
+                        <div class="alert alert-warning small py-2 mt-3 mb-0" hidden
+                             data-face-settings-target="scaleWarning"
+                             data-candidate="{{ form.candidateThreshold.vars.id }}"
+                             data-others="{{ form.videoLinkThreshold.vars.id }},{{ form.suggestionThreshold.vars.id }},{{ form.matchThreshold.vars.id }}">
+                            <i class="fas fa-triangle-exclamation me-1"></i>„Kandidaten ab“ liegt über einer anderen Schwelle. AWS liefert dann die Treffer dafür gar nicht.
+                        </div>
+
+                        {{ ui.slider(form.matchThreshold, {unit: '%', color: colors.match}) }}
+                        {{ ui.slider(form.videoLinkThreshold, {unit: '%', color: colors.link}) }}
+                        {{ ui.slider(form.suggestionThreshold, {unit: '%', color: colors.suggestion}) }}
+                        {{ ui.slider(form.candidateThreshold, {unit: '%', color: colors.candidate}) }}
+                        {{ ui.number(form.maxCandidates, '') }}
+                    </div>
+                </div>
+
+                {# ── Tracking ── #}
+                <div class="card mb-2">
+                    <div class="card-header d-flex align-items-center gap-3">
+                        <span class="section-icon bg-warning-subtle text-warning"><i class="fas fa-route"></i></span>
+                        <div class="flex-grow-1">
+                            <div class="fw-semibold">Tracking innerhalb einer Szene</div>
+                            <div class="small text-muted">Hilft, wenn AWS dieselbe Person wegen schlechter Bildqualität nicht wiedererkennt</div>
+                        </div>
+                        <div class="form-check form-switch fs-5 mb-0">
+                            {{ form_widget(form.trackingEnabled, {attr: {class: 'form-check-input', role: 'switch', 'data-face-settings-target': 'trackingToggle', 'data-action': 'face-settings#toggleTracking', 'aria-label': form.trackingEnabled.vars.label}}) }}
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-text pt-3">{{ form.trackingEnabled.vars.help }}</div>
+                        <div data-face-settings-target="trackingOptions">
+                            {{ ui.slider(form.trackingMinIou, {unit: '%'}) }}
+                            {{ ui.number(form.trackingMaxGapSeconds, 's') }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {# ── Hilfe ── #}
+            <div class="col-lg-4">
+                <div class="position-sticky" style="top: 90px">
+                    <div class="card mb-4">
+                        <div class="card-header fw-semibold"><i class="fas fa-lightbulb text-warning me-2"></i>Was tun bei …</div>
+                        <div class="card-body small">
+                            <div class="tip"><i class="fas fa-clone text-primary"></i><div><strong>gleiche Person mehrfach angelegt</strong><br>„Im Video gruppieren“ senken, Tracking anlassen.</div></div>
+                            <div class="tip"><i class="fas fa-object-group text-danger"></i><div><strong>verschiedene Personen zusammengelegt</strong><br>„Sofort zuordnen“ erhöhen und Mindestgröße anheben.</div></div>
+                            <div class="tip"><i class="fas fa-eye-slash text-secondary"></i><div><strong>viele Gesichter fehlen ganz</strong><br>Qualitätsfilter auf „Niedrig“ oder „Aus“, Mindestgröße senken.</div></div>
+                        </div>
+                    </div>
+                    <div class="card mb-4">
+                        <div class="card-header fw-semibold"><i class="fas fa-rotate text-primary me-2"></i>Bestehende Videos neu gruppieren</div>
+                        <div class="card-body small">
+                            <p class="text-muted mt-3 mb-2">Wendet die aktuellen Einstellungen auf alle bereits analysierten Videos an. Nutzt die gespeicherten Ähnlichkeiten, <strong>ohne AWS-Kosten</strong>. Bestätigte Personen bleiben unverändert.</p>
+                            <button type="submit" form="consolidate-form" class="btn btn-outline-primary btn-sm w-100 mb-3"
+                                    onclick="return confirm('Alle Videos mit den aktuellen Einstellungen neu gruppieren?')">
+                                <i class="fas fa-people-arrows me-1"></i>Alle Videos neu gruppieren
+                            </button>
+                            <div class="text-muted mb-1">Oder für ein einzelnes Video:</div>
+                            <code class="cmd">bin/console app:faces:consolidate &lt;videoId&gt;</code>
+                        </div>
+                    </div>
+                    <div class="card border-danger-subtle">
+                        <div class="card-header fw-semibold"><i class="fab fa-aws text-warning me-2"></i>AWS-Collection</div>
+                        <div class="card-body small">
+                            <div class="mt-3 mb-3" data-controller="remote-content"
+                                 data-remote-content-url-value="{{ path('app_admin_face_recognition_aws_status') }}">
+                                <span class="text-muted"><span class="spinner-border spinner-border-sm me-2"></span>Status wird geladen …</span>
+                            </div>
+                            <p class="text-muted mb-2">
+                                Löscht alle bei AWS gespeicherten Gesichter. Bereits zugeordnete Personen bleiben erhalten,
+                                neue Gesichter werden aber nur noch mit danach analysierten Videos abgeglichen.
+                                Sinnvoll vor einer kompletten Neuanalyse.
+                            </p>
+                            <button type="submit" form="aws-reset-form" class="btn btn-outline-danger btn-sm w-100"
+                                    onclick="return confirm('Wirklich alle Gesichter aus der AWS-Collection löschen? Das lässt sich nicht rückgängig machen.')">
+                                <i class="fas fa-trash-can me-1"></i>Collection zurücksetzen
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="save-bar">
+            <div class="d-flex justify-content-between align-items-center">
+                <button type="submit" class="btn btn-primary px-4"><i class="fas fa-save me-2"></i>Speichern</button>
+                <button type="submit" form="reset-form" class="btn btn-link text-muted text-decoration-none"
+                        onclick="return confirm('Alle Werte auf die Standardwerte zurücksetzen?')">
+                    <i class="fas fa-arrow-rotate-left me-1"></i>Standardwerte
+                </button>
+            </div>
+        </div>
+        {{ form_end(form) }}
+
+        <form id="reset-form" method="post" action="{{ path('app_admin_face_recognition_settings_reset') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('face-recognition-reset') }}">
+        </form>
+        <form id="consolidate-form" method="post" action="{{ path('app_admin_face_recognition_consolidate') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('face-consolidate-all') }}">
+        </form>
+        <form id="aws-reset-form" method="post" action="{{ path('app_admin_face_recognition_aws_reset') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('aws-collection-reset') }}">
+        </form>
+    </div>
+{% endblock %}

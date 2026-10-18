@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Photo;
 
+use App\Entity\CameraClockOffset;
+use App\Entity\Medium;
 use App\Entity\Person;
 use App\Entity\Photo;
 use App\Enum\FilePurpose;
@@ -42,6 +44,8 @@ final class PhotoAnalyzerTest extends KernelTestCase
                     'latitude' => 39.57,
                     'longitude' => 2.65,
                     'camera' => 'Apple iPhone 13',
+                    'fingerprint' => null,
+                    'sharpness' => 120.5,
                 ];
             });
 
@@ -103,6 +107,28 @@ final class PhotoAnalyzerTest extends KernelTestCase
             ['Terrasse', 'Essen'],
             array_map(static fn($t) => $t->getName(), $photo->getTags()->toArray()),
         );
+    }
+
+    public function testRememberedCameraClockOffsetIsApplied(): void
+    {
+        $em = self::getContainer()->get(EntityManagerInterface::class);
+        $em->persist(
+            new CameraClockOffset(
+                ['Apple iPhone 13'],
+                new \DateTimeImmutable('2025-03-18 10:00', new \DateTimeZone('UTC')),
+                new \DateTimeImmutable('2025-03-18 20:00', new \DateTimeZone('UTC')),
+                3600,
+            ),
+        );
+        $em->flush();
+        $photo = $this->photo('IMG_0002');
+
+        $this->analyzer()->analyze($photo);
+
+        $photo = $this->reload($photo);
+        self::assertSame('2025-03-19 13:35', $photo->getTakenAt()?->format('Y-m-d H:i'), 'im Spielraum von 3 Tagen');
+        self::assertSame('2025-03-19 12:35', $photo->getCameraTakenAt()?->format('Y-m-d H:i'));
+        self::assertSame(Medium::DATE_CAMERA_OFFSET, $photo->getDateSource());
     }
 
     public function testManualTitleIsKept(): void

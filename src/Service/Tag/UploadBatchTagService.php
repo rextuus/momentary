@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Service\Tag;
 
+use App\Entity\Medium;
 use App\Entity\Tag;
 use App\Entity\TagCategory;
-use App\Entity\Video;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * Markiert Videos, die gemeinsam hochgeladen wurden (z. B. aus einem Ordner),
+ * Markiert Videos und Fotos, die gemeinsam hochgeladen wurden (z. B. aus einem Ordner),
  * über ein Tag in der Kategorie "Upload-Ordner".
  */
 final class UploadBatchTagService
@@ -22,10 +22,10 @@ final class UploadBatchTagService
         private readonly EntityManagerInterface $entityManager,
     ) {}
 
-    public function tagVideo(Video $video, string $batchName): Tag
+    public function tag(Medium $medium, string $batchName): Tag
     {
         $tag = $this->getOrCreateTag($batchName);
-        $video->addTag($tag);
+        $medium->addTag($tag);
         $this->entityManager->flush();
 
         return $tag;

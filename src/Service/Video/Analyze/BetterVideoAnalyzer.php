@@ -60,17 +60,9 @@ readonly class BetterVideoAnalyzer
      */
     public function probeRecordedAt(string $path): ?RecordedAt
     {
-        if (
-            preg_match('/(?<!\d)(20\d{2})(\d{2})(\d{2})[_\-T ]?(\d{2})(\d{2})(\d{2})(?!\d)/', basename($path), $m) === 1
-        ) {
-            $local = \DateTimeImmutable::createFromFormat(
-                'Y-m-d H:i:s',
-                sprintf('%s-%s-%s %s:%s:%s', $m[1], $m[2], $m[3], $m[4], $m[5], $m[6]),
-                new \DateTimeZone('Europe/Berlin'),
-            );
-            if ($local !== false && $local->format('YmdHis') === $m[1] . $m[2] . $m[3] . $m[4] . $m[5] . $m[6]) {
-                return new RecordedAt($local->setTimezone(new \DateTimeZone('UTC')), Medium::DATE_FILENAME);
-            }
+        $fromName = self::recordedAtFromFilename(basename($path));
+        if ($fromName !== null) {
+            return new RecordedAt($fromName, Medium::DATE_FILENAME);
         }
 
         $createdAt = $this->mp4Converter->probe($path)['createdAt'] ?? null;
@@ -86,6 +78,32 @@ readonly class BetterVideoAnalyzer
         } catch (\Exception) {
             return null;
         }
+    }
+
+    public function probeCamera(string $path): ?string
+    {
+        return $this->mp4Converter->probe($path)['camera'] ?? null;
+    }
+
+    /**
+     * Zeitstempel im Dateinamen ("20250319_121537", "VID_20250319_121537") als Ortszeit (Europe/Berlin), in UTC.
+     */
+    public static function recordedAtFromFilename(string $filename): ?\DateTimeImmutable
+    {
+        if (preg_match('/(?<!\d)(20\d{2})(\d{2})(\d{2})[_\-T ]?(\d{2})(\d{2})(\d{2})(?!\d)/', $filename, $m) !== 1) {
+            return null;
+        }
+        $local = \DateTimeImmutable::createFromFormat(
+            'Y-m-d H:i:s',
+            sprintf('%s-%s-%s %s:%s:%s', $m[1], $m[2], $m[3], $m[4], $m[5], $m[6]),
+            new \DateTimeZone('Europe/Berlin'),
+        );
+        // Ungültige Daten wie 20251345_… nicht stillschweigend umrechnen
+        if ($local === false || $local->format('YmdHis') !== $m[1] . $m[2] . $m[3] . $m[4] . $m[5] . $m[6]) {
+            return null;
+        }
+
+        return $local->setTimezone(new \DateTimeZone('UTC'));
     }
 
     /**

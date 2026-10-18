@@ -18,6 +18,8 @@ final readonly class EventSuggestion
      */
     public function __construct(
         public array $media,
+        /** Fern von zuhause aufgenommen (Reise), ggf. über mehrere Orte */
+        public bool $trip = false,
     ) {}
 
     /**

@@ -1,0 +1,32 @@
+{% extends 'base.html.twig' %}
+{% block title %}{{ event ? event.title ~ ' bearbeiten' : 'Neues Ereignis' }} - Momentary{% endblock %}
+
+{% form_theme form 'bootstrap_5_layout.html.twig' %}
+
+{% block body %}
+<div class="container pb-5" style="max-width: 720px;">
+    <nav aria-label="breadcrumb"><ol class="breadcrumb small">
+        <li class="breadcrumb-item"><a href="{{ path('app_event_index') }}">Ereignisse</a></li>
+        {% if event %}<li class="breadcrumb-item"><a href="{{ path('app_event_show', {id: event.id}) }}">{{ event.title }}</a></li>{% endif %}
+        <li class="breadcrumb-item active">{{ event ? 'Bearbeiten' : 'Neu' }}</li>
+    </ol></nav>
+    <h1 class="fw-bold mb-3">{{ event ? 'Ereignis bearbeiten' : 'Neues Ereignis' }}</h1>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+            {{ form_start(form, {attr: {novalidate: 'novalidate'}}) }}
+                {{ form_row(form.title) }}
+                <div class="row g-3">
+                    <div class="col-sm-6">{{ form_row(form.startDate) }}</div>
+                    <div class="col-sm-6">{{ form_row(form.endDate) }}</div>
+                </div>
+                {{ form_row(form.description) }}
+                {% if form.collectMedia is defined %}
+                    {{ form_row(form.collectMedia, {label_attr: {class: 'checkbox-switch'}, help: 'Nach Aufnahmedatum; nur Medien, die du sehen darfst.'}) }}
+                {% endif %}
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i> Speichern</button>
+            {{ form_end(form) }}
+        </div>
+    </div>
+</div>
+{% endblock %}

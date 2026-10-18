@@ -26,6 +26,32 @@ class PhotoSearchIndex
         $this->ensureIndex()->addDocuments([self::transform($photo)]);
     }
 
+    /**
+     * Index leeren (und anlegen, falls nötig), z. B. vor einem kompletten Neuaufbau.
+     */
+    public function clear(): void
+    {
+        $task = $this->ensureIndex()->deleteAllDocuments();
+        $this->client->waitForTask($task['taskUid']);
+    }
+
+    /**
+     * @param iterable<Photo> $photos
+     */
+    public function indexMany(iterable $photos): int
+    {
+        $documents = [];
+        foreach ($photos as $photo) {
+            $documents[] = self::transform($photo);
+        }
+        if ($documents !== []) {
+            $task = $this->ensureIndex()->addDocuments($documents);
+            $this->client->waitForTask($task['taskUid']);
+        }
+
+        return \count($documents);
+    }
+
     public function remove(int $photoId): void
     {
         $this->client->index(self::INDEX_NAME)->deleteDocument((string) $photoId);

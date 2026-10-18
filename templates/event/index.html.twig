@@ -1,0 +1,85 @@
+{% extends 'base.html.twig' %}
+{% block title %}Ereignisse - Momentary{% endblock %}
+
+{% macro range(event) %}
+    {%- if event.startDate -%}
+        {{ event.startDate|date('d.m.Y') }}{% if event.endDate and event.endDate != event.startDate %} – {{ event.endDate|date('d.m.Y') }}{% endif %}
+    {%- else -%}ohne Datum{%- endif -%}
+{% endmacro %}
+
+{% block body %}
+<div class="container pb-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-4">
+        <div>
+            <h1 class="fw-bold mb-1">Ereignisse</h1>
+            <p class="text-muted mb-0">Videos und Fotos eines Anlasses zusammengefasst, z. B. ein Urlaub oder eine Hochzeit.</p>
+        </div>
+        <a href="{{ path('app_event_new') }}" class="btn btn-primary rounded-pill"><i class="fas fa-plus me-1"></i> Neues Ereignis</a>
+    </div>
+
+    {% if suggestions is not empty %}
+        <section class="mb-5" id="vorschlaege">
+            <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-2">
+                <div>
+                    <h2 class="h5 fw-bold mb-0"><i class="fas fa-wand-magic-sparkles me-2 text-primary"></i>Vorschläge</h2>
+                    <div class="small text-muted">Videos und Fotos ohne Ereignis, die zeitlich zusammengehören.</div>
+                </div>
+                <form method="get" class="d-flex align-items-center gap-2 small">
+                    <label for="gap" class="text-muted text-nowrap">Neues Ereignis nach</label>
+                    <select id="gap" name="gap" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
+                        {% for hours in gapOptions %}
+                            <option value="{{ hours }}" {{ hours == gap ? 'selected' }}>{{ hours < 24 ? hours ~ ' Stunden' : (hours / 24) ~ (hours == 24 ? ' Tag' : ' Tagen') }} ohne Aufnahme</option>
+                        {% endfor %}
+                    </select>
+                </form>
+            </div>
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3">
+                {% for suggestion in suggestions|slice(0, 9) %}
+                    <div class="col">{{ include('event/_suggestion_card.html.twig') }}</div>
+                {% endfor %}
+            </div>
+            {% if suggestions|length > 9 %}
+                <div class="small text-muted mt-2">Und {{ suggestions|length - 9 }} weitere. Übernommene oder verworfene Vorschläge machen Platz.</div>
+            {% endif %}
+        </section>
+        <h2 class="h5 fw-bold mb-3">Deine Ereignisse</h2>
+    {% endif %}
+
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3">
+        {% for event in events %}
+            {% set media = event.sortedMedia %}
+            <div class="col">
+                <a href="{{ path('app_event_show', {id: event.id}) }}" class="card h-100 border-0 shadow-sm text-decoration-none text-body overflow-hidden event-card">
+                    <div class="d-flex" style="height: 140px;">
+                        {% for medium in media|slice(0, 3) %}
+                            {% set preview = medium.previewFile %}
+                            <div class="flex-fill bg-body-secondary" style="{% if preview %}background: url('{{ imgproxy_url(preview, 400, 280) }}') center/cover;{% endif %}"></div>
+                        {% else %}
+                            <div class="flex-fill bg-body-secondary d-flex align-items-center justify-content-center text-muted"><i class="fas fa-calendar-days fa-2x opacity-50"></i></div>
+                        {% endfor %}
+                    </div>
+                    <div class="card-body">
+                        <div class="fw-semibold">{{ event.title }}</div>
+                        <div class="small text-muted">{{ _self.range(event) }}</div>
+                        <div class="small text-muted mt-1">
+                            <i class="fas fa-video me-1"></i>{{ media|filter(m => m.type == 'video')|length }}
+                            <i class="fas fa-image ms-3 me-1"></i>{{ media|filter(m => m.type == 'photo')|length }}
+                        </div>
+                    </div>
+                </a>
+            </div>
+        {% else %}
+            <div class="col-12 w-100 text-center text-muted py-5">
+                <i class="fas fa-calendar-days fa-3x mb-3 opacity-50"></i>
+                <p>Noch keine Ereignisse. Lege eins an und lass die Videos und Fotos aus dem Zeitraum automatisch hinzufügen.</p>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+<style>
+    .suggestion-preview { height: 110px; }
+    .suggestion-card { border: 1px dashed var(--bs-primary-border-subtle) !important; }
+    .event-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+    .event-card:hover { transform: translateY(-2px); box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.12) !important; }
+</style>
+{% endblock %}

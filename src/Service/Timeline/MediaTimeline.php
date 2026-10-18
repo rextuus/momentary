@@ -162,6 +162,11 @@ class MediaTimeline
     {
         $qb = $this->entityManager->createQueryBuilder()->from(Medium::class, 'm');
         MediumRepository::restrictToVisible($qb, 'm', $user, $isAdmin);
+        // Serienfotos: nur das beste Foto, die übrigen klappt die Seite darunter auf
+        $qb->andWhere(sprintf(
+            'NOT EXISTS (SELECT 1 FROM %s burst WHERE burst = m AND burst.burstCover IS NOT NULL)',
+            Photo::class,
+        ));
 
         if ($filter->type === TimelineFilter::VIDEOS) {
             $qb->andWhere(sprintf('m INSTANCE OF %s', Video::class));

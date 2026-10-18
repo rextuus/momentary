@@ -1,0 +1,181 @@
+{% extends 'base.html.twig' %}
+{% block title %}{{ event.title }} - Momentary{% endblock %}
+
+{% block body %}
+<div class="container pb-5">
+    <nav aria-label="breadcrumb"><ol class="breadcrumb small">
+        <li class="breadcrumb-item"><a href="{{ path('app_event_index') }}">Ereignisse</a></li>
+        <li class="breadcrumb-item active">{{ event.title }}</li>
+    </ol></nav>
+
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="alert alert-{{ label }} alert-dismissible fade show">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+        {% endfor %}
+    {% endfor %}
+
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+        <div>
+            <h1 class="fw-bold mb-1">{{ event.title }}</h1>
+            <div class="text-muted">
+                {% if event.startDate %}
+                    <i class="far fa-calendar me-1"></i>{{ event.startDate|date('d.m.Y') }}{% if event.endDate and event.endDate != event.startDate %} – {{ event.endDate|date('d.m.Y') }}{% endif %}
+                {% endif %}
+                · {{ media|filter(m => m.type == 'video')|length }} Videos · {{ media|filter(m => m.type == 'photo')|length }} Fotos
+            </div>
+            {% if event.description %}<p class="mt-2 mb-0">{{ event.description|nl2br }}</p>{% endif %}
+        </div>
+        {% if canEdit %}
+            <div class="d-flex flex-wrap gap-2">
+                {% if event.startDate %}
+                    <form method="post" action="{{ path('app_event_collect', {id: event.id}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('collect' ~ event.id) }}">
+                        <button class="btn btn-sm btn-outline-primary" type="submit" title="Alle Videos und Fotos aus dem Zeitraum hinzufügen">
+                            <i class="fas fa-wand-magic-sparkles me-1"></i>Medien aus dem Zeitraum
+                        </button>
+                    </form>
+                {% endif %}
+                <a href="{{ path('app_event_edit', {id: event.id}) }}" class="btn btn-sm btn-light border"><i class="fas fa-pen me-1"></i>Bearbeiten</a>
+                <form method="post" action="{{ path('app_event_delete', {id: event.id}) }}" onsubmit="return confirm('Ereignis löschen? Die Videos und Fotos bleiben erhalten.')">
+                    <input type="hidden" name="_token" value="{{ csrf_token('delete-event' ~ event.id) }}">
+                    <button class="btn btn-sm btn-outline-danger" type="submit"><i class="fas fa-trash-alt"></i></button>
+                </form>
+            </div>
+        {% endif %}
+    </div>
+
+    {% if canEdit and media is not empty %}
+        {% set first = media|first %}
+        <details class="mb-3">
+            <summary class="small text-primary" style="cursor: pointer;"><i class="fas fa-clock-rotate-left me-1"></i>Aufnahmezeiten korrigieren (z. B. falsch gestellte Kamera-Uhr)</summary>
+            <form method="post" action="{{ path('app_medium_recorded_at', {id: first.id}) }}" class="card card-body bg-body-tertiary border-0 mt-2 small" style="max-width: 36rem;">
+                <input type="hidden" name="_token" value="{{ csrf_token('recorded-at' ~ first.id) }}">
+                <input type="hidden" name="event" value="{{ event.id }}">
+                <input type="hidden" name="back" value="{{ path('app_event_show', {id: event.id}) }}">
+                <label class="form-label" for="event-recorded-at">
+                    Das erste Medium („{{ first.title }}“, bisher {{ first.date|date('d.m.Y H:i') }} Uhr) wurde tatsächlich aufgenommen am:
+                </label>
+                <input type="datetime-local" id="event-recorded-at" name="recorded_at" class="form-control form-control-sm mb-2" required
+                       value="{{ first.date|date('Y-m-d\\TH:i') }}">
+                <div class="form-text mb-2">Alle {{ event.media|length }} Medien werden um denselben Abstand verschoben, der Zeitraum des Ereignisses passt sich an.</div>
+                {{ include('components/_remember_camera_clock.html.twig', {id: 'event-remember-clock', cameras: eventCameras}) }}
+                <div><button type="submit" class="btn btn-sm btn-primary">Alle verschieben</button></div>
+            </form>
+        </details>
+    {% endif %}
+
+    {% if media|filter(m => m.hasLocation)|length > 0 %}
+        <div class="card border-0 shadow-sm mb-4 overflow-hidden">
+            {{ include('map/_embed.html.twig', {url: path('app_map_points', {event: event.id}), height: '280px'}) }}
+        </div>
+    {% endif %}
+
+    {% set persons = event.personSummary %}
+    {% if persons is not empty %}
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body d-flex flex-wrap align-items-center gap-3">
+                <span class="small text-uppercase fw-semibold text-muted">Dabei</span>
+                {% for entry in persons|slice(0, 20) %}
+                    <a href="{{ path('person_detail', {id: entry.person.id}) }}" class="badge rounded-pill text-bg-light border text-decoration-none fw-normal">
+                        {{ entry.person.displayName }} <span class="text-muted">{{ entry.count }}</span>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    {% if unnamed is not empty %}
+        <div id="people" class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <span class="fw-semibold"><i class="fas fa-user-tag me-2 text-primary"></i>Wer ist dabei? <span class="text-muted fw-normal">{{ unnamed|length }} unbenannt</span></span>
+                <a href="{{ path('app_identity_duplicates') }}" class="small">Doppelte Personen prüfen</a>
+            </div>
+            <ul class="list-group list-group-flush">
+                {% for entry in unnamed|slice(0, 12) %}
+                    {% set person = entry.person %}
+                    <li class="list-group-item">
+                        <form method="post" action="{{ path('app_event_name_person', {id: event.id, person: person.id}) }}" class="d-flex flex-wrap align-items-center gap-3">
+                            <input type="hidden" name="_token" value="{{ csrf_token('name-person-' ~ person.id) }}">
+                            <a href="{{ path('person_detail', {id: person.id}) }}" class="flex-shrink-0" title="{{ person.displayName }}">
+                                {% if entry.face.faceImage %}
+                                    <img src="{{ face_crop_url(entry.face.faceImage.relativePath, entry.face.boundingBox, 160) }}" alt="{{ person.displayName }}" class="rounded-circle object-fit-cover" width="64" height="64">
+                                {% endif %}
+                            </a>
+                            <div class="min-w-0" style="width: 11rem;">
+                                <div class="fw-semibold text-truncate">{{ person.displayName }}</div>
+                                <div class="small text-muted">{{ entry.count }}× in diesem Ereignis</div>
+                            </div>
+                            <div class="flex-grow-1 d-flex flex-column gap-1" style="min-width: 14rem;">
+                                <div class="input-group input-group-sm">
+                                    <input type="text" name="name" class="form-control" list="known-names" placeholder="Name" aria-label="Name für {{ person.displayName }}" autocomplete="off">
+                                    <button class="btn btn-primary" type="submit" name="decision" value="name">Benennen</button>
+                                    <button class="btn btn-outline-secondary" type="submit" name="decision" value="unknown" title="Unbekannt (z. B. Fremde im Hintergrund)">Unbekannt</button>
+                                </div>
+                                {% if entry.hints is not empty %}
+                                    <div class="d-flex flex-wrap align-items-center gap-1 small">
+                                        <span class="text-muted"><i class="fas fa-closed-captioning me-1"></i>Fällt im Gespräch:</span>
+                                        {% for hint in entry.hints %}
+                                            <button type="submit" name="hint" value="{{ hint.name }}" class="btn btn-sm btn-light border rounded-pill py-0" title="In {{ hint.scenes }} Szene{{ hint.scenes == 1 ? '' : 'n' }} mit dieser Person">{{ hint.name }} <span class="text-muted">{{ hint.scenes }}</span></button>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </form>
+                    </li>
+                {% endfor %}
+            </ul>
+            {% if unnamed|length > 12 %}
+                <div class="card-footer bg-transparent small text-muted">Weitere {{ unnamed|length - 12 }} nach dem Benennen.</div>
+            {% endif %}
+            <datalist id="known-names">
+                {% for name in knownNames %}<option value="{{ name }}">{% endfor %}
+            </datalist>
+        </div>
+    {% endif %}
+
+    {% set mediaIds = media|map(m => m.id) %}
+    <div id="event-media" class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-2" data-controller="burst">
+        {% for cover in media %}
+            {# Serienfotos: nur das beste Foto, die übrigen (soweit im Ereignis) ausgeblendet dahinter #}
+            {% if cover.type != 'photo' or cover.burstCover is null or cover.burstCover.id not in mediaIds %}
+                {% set burst = cover.type == 'photo' ? cover.burstMembers|filter(p => p.id in mediaIds) : [] %}
+                {% for medium in [cover]|merge(burst) %}
+                    {% set member = not loop.first %}
+                    {% set preview = medium.previewFile %}
+                    <div class="col{{ member ? ' d-none' }}"{% if member %} data-burst-member="{{ cover.id }}"{% endif %}>
+                        <div class="position-relative">
+                            <a href="{{ medium_path(medium) }}" class="d-block rounded overflow-hidden bg-body-secondary{{ member ? ' burst-member-tile' }}" title="{{ medium.title }}">
+                                <div class="ratio ratio-1x1">
+                                    {% if preview %}
+                                        <img src="{{ imgproxy_url(preview, 360, 360) }}" alt="{{ medium.title }}" loading="lazy" class="object-fit-cover">
+                                    {% else %}
+                                        <div class="d-flex align-items-center justify-content-center text-muted"><i class="fas {{ medium_icon(medium) }} fa-2x opacity-50"></i></div>
+                                    {% endif %}
+                                </div>
+                            </a>
+                            <span class="position-absolute top-0 start-0 m-1 badge rounded-pill text-bg-dark bg-opacity-75">
+                                <i class="fas {{ medium_icon(medium) }}"></i>{% if medium.date %} {{ medium.date|date('d.m. H:i') }}{% endif %}
+                            </span>
+                            {% if canEdit %}
+                                <form method="post" action="{{ path('app_event_remove_medium', {id: event.id, medium: medium.id}) }}" class="position-absolute top-0 end-0 m-1">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('remove' ~ event.id ~ '-' ~ medium.id) }}">
+                                    <button class="btn btn-sm btn-light py-0 px-1 opacity-75" type="submit" title="Aus dem Ereignis entfernen"><i class="fas fa-xmark"></i></button>
+                                </form>
+                            {% endif %}
+                            {% if not member and burst is not empty %}
+                                <button type="button" class="burst-toggle" data-action="burst#toggle" data-burst-id-param="{{ cover.id }}" aria-expanded="false"
+                                        title="Serie mit {{ burst|length + 1 }} Fotos: übrige zeigen"><i class="fas fa-clone me-1"></i>{{ burst|length + 1 }}</button>
+                            {% endif %}
+                        </div>
+                        <div class="small text-truncate mt-1" title="{{ medium.title }}">{{ medium.title }}</div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% else %}
+            <div class="col-12 w-100 text-muted text-center py-5">
+                Noch keine Medien. {% if canEdit and event.startDate %}Mit „Medien aus dem Zeitraum“ werden passende Videos und Fotos automatisch hinzugefügt.{% endif %}
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

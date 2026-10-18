@@ -6,6 +6,7 @@ namespace App\Twig\Components;
 
 use App\Entity\Event;
 use App\Entity\Medium;
+use App\Service\Media\CameraClock;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\UX\TwigComponent\Attribute\AsTwigComponent;
 
@@ -22,7 +23,16 @@ final class MediumDateComponent
 
     public function __construct(
         private readonly Security $security,
+        private readonly CameraClock $cameraClock,
     ) {}
+
+    /**
+     * @return list<string> Hinweise auf eine falsch gehende Kamera-Uhr
+     */
+    public function getWarnings(): array
+    {
+        return $this->cameraClock->warnings($this->medium);
+    }
 
     /**
      * Ereignisse des Mediums, die der Benutzer als Ganzes verschieben darf.

@@ -64,3 +64,28 @@ body {
   min-height: 240px;
   z-index: 0;
 }
+
+// Serienfotos: Knopf am besten Foto, klappt die übrigen auf (Stimulus-Controller "burst")
+.burst-toggle {
+    position: absolute;
+    left: 4px;
+    bottom: 4px;
+    z-index: 2;
+    border: 0;
+    border-radius: 999px;
+    padding: 0.1rem 0.45rem;
+    font-size: 0.75rem;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.6);
+
+    &:hover,
+    &.active {
+        background: var(--bs-primary);
+    }
+}
+
+// die übrigen Fotos einer aufgeklappten Serie
+.burst-member-tile {
+    outline: 2px dashed var(--bs-primary);
+    outline-offset: -2px;
+}

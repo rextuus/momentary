@@ -6,6 +6,7 @@ namespace App\Service\Video\Processing\Handler;
 
 use App\Repository\VideoRepository;
 use App\Service\Geo\PlaceTagger;
+use App\Service\Media\CameraClock;
 use App\Service\Storage\FileManager;
 use App\Service\Storage\FileStorageService;
 use App\Service\Storage\StoragePathProvider;
@@ -36,6 +37,7 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
         private readonly StoragePathProvider $pathProvider,
         private readonly EntityManagerInterface $entityManager,
         private readonly PlaceTagger $placeTagger,
+        private readonly CameraClock $cameraClock,
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
     }
@@ -68,9 +70,14 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
             $video->setDuration($duration);
         }
         // Aufnahmedatum: damit Videos zusammen mit Fotos sortiert und Ereignissen zugeordnet werden können
+        if ($video->getCamera() === null) {
+            $video->setCamera($this->videoAnalyzer->probeCamera($sourceAbsolutePath));
+        }
         if ($video->getTakenAt() === null) {
             $recordedAt = $this->videoAnalyzer->probeRecordedAt($sourceAbsolutePath);
             $video->setRecordedAt($recordedAt?->date, $recordedAt?->source);
+            // Gemerkte Abweichung der Kamera-Uhr (z. B. restliche Videos einer schon korrigierten Reise)
+            $this->cameraClock->adjust($video);
         }
         if (!$video->hasLocation()) {
             $location = $this->videoAnalyzer->probeLocation($sourceAbsolutePath);

@@ -4,18 +4,21 @@ declare(strict_types=1);
 
 namespace App\Service\File;
 
+use App\Service\Storage\StoragePathProvider;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Finder\Finder;
 
+/**
+ * Dateien aus den SFTP-Upload-Verzeichnissen in den Import-Ordner verschieben (Übernahme dort, siehe ImportFolder).
+ */
 class FtpFileManager
 {
-    private const TARGET_DIR = '/var/www/html/public/uploads/import';
-
     public function __construct(
         /** @var list<string> */
         #[Autowire(param: 'app.ftp_source_dirs')]
         private array $sourceDirs,
+        private readonly StoragePathProvider $pathProvider,
     ) {}
 
     /**
@@ -75,11 +78,12 @@ class FtpFileManager
             throw new \RuntimeException('File not found');
         }
 
-        if (!$fs->exists(self::TARGET_DIR)) {
-            $fs->mkdir(self::TARGET_DIR);
+        $targetDir = $this->pathProvider->getImportAbsolutePath();
+        if (!$fs->exists($targetDir)) {
+            $fs->mkdir($targetDir);
         }
 
-        $targetPath = self::TARGET_DIR . DIRECTORY_SEPARATOR . basename($sourcePath);
+        $targetPath = $targetDir . DIRECTORY_SEPARATOR . basename($sourcePath);
 
         if ($fs->exists($targetPath)) {
             throw new \RuntimeException('File already exists in target');
@@ -91,7 +95,7 @@ class FtpFileManager
     public function renameFile(string $oldPath, string $newName): void
     {
         // 1. Check if the file is in app_uploads
-        $appUploadsDir = '/var/www/html/var/uploads/app_uploads';
+        $appUploadsDir = $this->pathProvider->getStorageRoot() . '/app_uploads';
         if (!str_starts_with($oldPath, $appUploadsDir)) {
             throw new \InvalidArgumentException('Renaming is only allowed for app_uploads.');
         }

@@ -1,0 +1,68 @@
+{# Einträge einer Seite der Zeitachse; previousMonth verhindert doppelte Monatsüberschriften beim Nachladen #}
+{% set months = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'] %}
+{% set weekdays = {Mon: 'Mo', Tue: 'Di', Wed: 'Mi', Thu: 'Do', Fri: 'Fr', Sat: 'Sa', Sun: 'So'} %}
+{% set currentMonth = previousMonth ?? '' %}
+
+{% for segment in page.segments %}
+    {% for day in segment.days %}
+        {% set dayMonth = day.date|date('Y-m', false) %}
+        {% if dayMonth != currentMonth %}
+            {% set currentMonth = dayMonth %}
+            <h2 class="timeline-month h4 fw-bold" id="m-{{ dayMonth }}" data-month="{{ dayMonth }}">
+                {{ months[(day.date|date('n', false)) - 1] }} {{ day.date|date('Y', false) }}
+            </h2>
+        {% endif %}
+
+        {% if loop.first and segment.event %}
+            <a href="{{ path('app_event_show', {id: segment.event.id}) }}" class="timeline-event-title d-inline-flex align-items-center gap-2 text-decoration-none mb-1">
+                <i class="fas fa-calendar-days"></i><span class="fw-semibold">{{ segment.event.title }}</span>
+            </a>
+        {% endif %}
+        <section class="timeline-day {{ segment.event ? 'in-event' }}">
+            <div class="timeline-day-label small text-muted fw-semibold mb-1">
+                {{ weekdays[day.date|date('D', false)] }}, {{ day.date|date('d.m.Y', false) }}
+                <span class="fw-normal">· {{ day.media|length }}</span>
+            </div>
+            <div class="timeline-grid">
+                {% for cover in day.media %}
+                    {# Serienfotos: die übrigen Fotos der Serie stehen ausgeblendet hinter dem besten #}
+                    {% set burst = cover.type == 'photo' ? cover.burstMembers|filter(p => is_granted('MEDIUM_VIEW', p)) : [] %}
+                    {% for medium in [cover]|merge(burst) %}
+                        {% set member = not loop.first %}
+                        {% set preview = medium.previewFile %}
+                        <div class="timeline-cell{{ member ? ' d-none' }}"{% if member %} data-burst-member="{{ cover.id }}"{% endif %}>
+                            <a href="{{ medium_path(medium) }}" class="timeline-tile{{ member ? ' burst-member-tile' }}" title="{{ medium.title }}">
+                                {% if preview %}
+                                    <img src="{{ imgproxy_url(preview, 300, 300) }}" alt="{{ medium.title }}" loading="lazy">
+                                {% else %}
+                                    <span class="timeline-placeholder"><i class="fas {{ medium_icon(medium) }} fa-lg"></i></span>
+                                {% endif %}
+                                {% if medium.type == 'video' %}
+                                    <span class="timeline-badge"><i class="fas fa-play"></i>{% if medium.duration %} {{ (medium.duration / 60)|round(0, 'floor') }}:{{ '%02d'|format(medium.duration % 60) }}{% endif %}</span>
+                                {% endif %}
+                                <span class="timeline-time">{{ medium.date|date('H:i') }}</span>
+                            </a>
+                            {% if not member and burst is not empty %}
+                                <button type="button" class="burst-toggle" data-action="burst#toggle" data-burst-id-param="{{ cover.id }}" aria-expanded="false"
+                                        title="Serie mit {{ burst|length + 1 }} Fotos: übrige zeigen">
+                                    <i class="fas fa-clone me-1"></i>{{ burst|length + 1 }}
+                                </button>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+        </section>
+    {% endfor %}
+{% endfor %}
+
+<div class="timeline-more text-center my-4" data-infinite-scroll-target="more" data-month="{{ currentMonth }}">
+    {% if page.nextCursor %}
+        <a href="{{ path('app_media_timeline', filter.toQuery|merge({before: page.nextCursor})) }}"
+           data-infinite-scroll-target="link"
+           data-partial-url="{{ path('app_media_timeline', filter.toQuery|merge({before: page.nextCursor, partial: 1, after_month: currentMonth})) }}"
+           class="btn btn-outline-secondary rounded-pill">Ältere laden</a>
+    {% elseif page.count > 0 %}
+        <span class="small text-muted">Das waren alle Medien.</span>
+    {% endif %}
+</div>

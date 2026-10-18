@@ -1,0 +1,187 @@
+{% extends 'base.html.twig' %}
+{% block title %}{{ photo.title }} - Momentary{% endblock %}
+
+{% block body %}
+{% set canEdit = is_granted('MEDIUM_EDIT', photo) %}
+<div class="container pb-5">
+    <nav aria-label="breadcrumb"><ol class="breadcrumb small">
+        <li class="breadcrumb-item"><a href="{{ path('app_photo_index') }}">Fotos</a></li>
+        <li class="breadcrumb-item active text-truncate">{{ photo.title }}</li>
+    </ol></nav>
+
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="alert alert-{{ label }} alert-dismissible fade show">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+        {% endfor %}
+    {% endfor %}
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="bg-black rounded-3 shadow-sm d-flex justify-content-center">
+                {% if photo.displayFile %}
+                    <div class="position-relative d-inline-block photo-stage">
+                        <img src="{{ imgproxy_url(photo.displayFile, 1600, 1600, 'fit') }}" alt="{{ photo.title }}" class="img-fluid d-block" style="max-height: 78vh;">
+                        {% for face in photo.faces %}
+                            {% set box = face.boundingBox %}
+                            {% if box %}
+                                <a href="{{ face.person ? path('person_detail', {id: face.person.id}) : '#' }}"
+                                   class="face-box position-absolute"
+                                   style="left: {{ box.Left * 100 }}%; top: {{ box.Top * 100 }}%; width: {{ box.Width * 100 }}%; height: {{ box.Height * 100 }}%;"
+                                   title="{{ face.person ? face.person.displayName : 'Unbekannt' }}">
+                                    <span class="face-label">{{ face.person ? face.person.displayName : '?' }}</span>
+                                </a>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-white-50 py-5 my-5 text-center">
+                        <i class="fas {{ photo.status.pending ? 'fa-spinner fa-spin' : 'fa-image' }} fa-3x mb-3"></i>
+                        <div>{{ photo.status.pending ? 'Das Foto wird gerade aufbereitet …' : 'Keine Anzeige verfügbar.' }}</div>
+                    </div>
+                {% endif %}
+            </div>
+            {% if photo.faces|length > 0 %}
+                <div class="form-check form-switch mt-2 small">
+                    <input class="form-check-input" type="checkbox" id="toggle-faces" checked
+                           onchange="document.querySelectorAll('.face-box').forEach(b => b.classList.toggle('d-none', !this.checked))">
+                    <label class="form-check-label" for="toggle-faces">Gesichter markieren</label>
+                </div>
+            {% endif %}
+
+            {% set burst = photo.burst|filter(p => is_granted('MEDIUM_VIEW', p)) %}
+            {% if burst|length > 1 %}
+                {% set cover = photo.burstCover ?? photo %}
+                <div class="card border-0 shadow-sm mt-3" id="burst">
+                    <div class="card-body py-2">
+                        <div class="small fw-semibold mb-2">
+                            <i class="fas fa-clone text-primary me-1"></i>Serie mit {{ burst|length }} Fotos
+                            <span class="text-muted fw-normal">· in Zeitachse und Listen steht nur das beste (★){% if cover.burstPinned %}, von Hand gewählt{% endif %}</span>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for member in burst %}
+                                <a href="{{ path('app_photo_show', {id: member.id}) }}#burst" class="burst-thumb position-relative rounded overflow-hidden {{ member == photo ? 'current' }}" title="{{ member.title }}{% if member.date %} · {{ member.date|date('H:i:s') }}{% endif %}">
+                                    {% if member.thumbnailFile %}<img src="{{ imgproxy_url(member.thumbnailFile, 160, 160) }}" alt="" width="80" height="80" class="object-fit-cover">{% endif %}
+                                    {% if member == cover %}<span class="position-absolute top-0 start-0 m-1 badge rounded-pill text-bg-warning">★</span>{% endif %}
+                                </a>
+                            {% endfor %}
+                        </div>
+                        {% if canEdit %}
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                {% if photo != cover %}
+                                    <form method="post" action="{{ path('app_photo_burst', {id: photo.id}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('burst' ~ photo.id) }}">
+                                        <button class="btn btn-sm btn-outline-primary" name="action" value="pin"><i class="fas fa-star me-1"></i>Als bestes Foto verwenden</button>
+                                    </form>
+                                {% endif %}
+                                <form method="post" action="{{ path('app_photo_burst', {id: photo.id}) }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('burst' ~ photo.id) }}">
+                                    <button class="btn btn-sm btn-outline-secondary" name="action" value="exclude" title="Dieses Foto wird nie wieder einer Serie zugeordnet"><i class="fas fa-scissors me-1"></i>Aus der Serie lösen</button>
+                                </form>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% elseif photo.burstExcluded and canEdit %}
+                <form method="post" action="{{ path('app_photo_burst', {id: photo.id}) }}" class="mt-2 small">
+                    <input type="hidden" name="_token" value="{{ csrf_token('burst' ~ photo.id) }}">
+                    <span class="text-muted"><i class="fas fa-clone me-1"></i>Aus einer Serie gelöst.</span>
+                    <button class="btn btn-link btn-sm p-0 align-baseline" name="action" value="include">Wieder für Serien berücksichtigen</button>
+                </form>
+            {% endif %}
+        </div>
+
+        <div class="col-lg-4">
+            <h1 class="h4 fw-bold mb-1">{{ photo.title }}</h1>
+            <div class="text-muted small mb-3">
+                {{ component('MediumDateComponent', {medium: photo}) }}
+                {% if photo.status.value != 'completed' %}
+                    <span class="badge rounded-pill ms-1 {{ photo.status.value == 'error' ? 'text-bg-danger' : 'text-bg-secondary' }}">{{ photo.status.label }}</span>
+                {% endif %}
+            </div>
+
+            {% if photo.errorMessage %}
+                <div class="alert alert-danger small"><strong>Analyse fehlgeschlagen:</strong> {{ photo.errorMessage }}</div>
+            {% endif %}
+
+            {# Personen #}
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-transparent fw-semibold small text-uppercase text-muted">Personen</div>
+                <div class="card-body">
+                    {% for face in photo.faces %}
+                        {% if face.person %}
+                            <a href="{{ path('person_detail', {id: face.person.id}) }}" class="d-inline-flex align-items-center gap-2 me-3 mb-2 text-decoration-none">
+                                {% if face.faceImage and face.boundingBox %}
+                                    <img src="{{ face_crop_url(face.faceImage.relativePath, face.boundingBox, 96) }}" alt="" class="rounded-circle" width="40" height="40">
+                                {% endif %}
+                                <span class="{{ face.person.hasPlaceholderName ? 'text-muted fst-italic' }}">{{ face.person.displayName }}</span>
+                            </a>
+                        {% endif %}
+                    {% else %}
+                        <span class="text-muted small">{{ photo.status.pending ? 'Wird noch analysiert …' : 'Keine Gesichter erkannt.' }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {# Tags #}
+            {% if photo.tags|length > 0 %}
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-header bg-transparent fw-semibold small text-uppercase text-muted">Tags</div>
+                    <div class="card-body d-flex flex-wrap gap-1">
+                        {% for tag in photo.tags %}
+                            <span class="badge rounded-pill text-bg-light border fw-normal" title="{{ tag.category ? tag.category.name }}">{{ tag.name }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+            {# Details #}
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-transparent fw-semibold small text-uppercase text-muted">Details</div>
+                <ul class="list-group list-group-flush small">
+                    {% if photo.width %}<li class="list-group-item"><i class="fas fa-expand me-2 text-muted"></i>{{ photo.width }} × {{ photo.height }} px</li>{% endif %}
+                    {% if photo.hasLocation %}
+                        <li class="list-group-item">
+                            <i class="fas fa-location-dot me-2 text-muted"></i>{{ photo.placeName ?? (photo.latitude|number_format(5, ',') ~ ', ' ~ photo.longitude|number_format(5, ',')) }}
+                            <a href="https://www.openstreetmap.org/?mlat={{ photo.latitude }}&mlon={{ photo.longitude }}#map=15/{{ photo.latitude }}/{{ photo.longitude }}" target="_blank" rel="noopener" class="small ms-1">OSM</a>
+                        </li>
+                        <li class="list-group-item p-0">{{ include('map/_embed.html.twig', {url: path('app_map_points', {medium: photo.id}), height: '200px'}) }}</li>
+                    {% endif %}
+                    <li class="list-group-item"><i class="fas fa-lock{{ photo.public ? '-open' }} me-2 text-muted"></i>{{ photo.public ? 'Öffentlich' : 'Privat' }}{% if photo.owner %} · gehört {{ photo.owner.email }}{% endif %}</li>
+                </ul>
+            </div>
+
+            {{ component('MediumEventsComponent', {medium: photo}) }}
+
+            {% if canEdit %}
+                <div class="d-grid gap-2">
+                    <form method="post" action="{{ path('app_photo_visibility', {id: photo.id}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('visibility' ~ photo.id) }}">
+                        <input type="hidden" name="public" value="{{ photo.public ? '0' : '1' }}">
+                        <button class="btn btn-sm btn-light border w-100" type="submit">
+                            <i class="fas fa-{{ photo.public ? 'lock' : 'lock-open' }} me-1"></i>{{ photo.public ? 'Privat machen' : 'Öffentlich machen' }}
+                        </button>
+                    </form>
+                    <form method="post" action="{{ path('app_photo_reanalyze', {id: photo.id}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('reanalyze' ~ photo.id) }}">
+                        <button class="btn btn-sm btn-light border w-100" type="submit" {{ photo.status.pending ? 'disabled' }}>
+                            <i class="fas fa-rotate-right me-1"></i>Neu analysieren
+                        </button>
+                    </form>
+                    <form method="post" action="{{ path('app_photo_delete', {id: photo.id}) }}" onsubmit="return confirm('Foto endgültig löschen?')">
+                        <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ photo.id) }}">
+                        <button class="btn btn-sm btn-outline-danger w-100" type="submit"><i class="fas fa-trash-alt me-1"></i>Foto löschen</button>
+                    </form>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<style>
+    .face-box { border: 2px solid rgba(255, 255, 255, 0.85); border-radius: 6px; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35); }
+    .face-box:hover { border-color: var(--bs-primary); }
+    .face-label { position: absolute; left: 0; top: 100%; margin-top: 2px; white-space: nowrap; font-size: 0.7rem;
+        background: rgba(0, 0, 0, 0.65); color: #fff; padding: 0 0.35rem; border-radius: 4px; }
+    .burst-thumb { width: 80px; height: 80px; background: var(--bs-tertiary-bg); outline: 2px solid transparent; }
+    .burst-thumb.current { outline-color: var(--bs-primary); outline-offset: 2px; }
+</style>
+{% endblock %}

@@ -44,8 +44,10 @@ final class PageSmokeTest extends WebTestCase
         yield 'Tinder Resolve' => ['/admin/tinder-resolve'];
         yield 'Mass Resolve' => ['/admin/mass-face-resolve/{person}'];
         yield 'Auftrennen' => ['/admin/reassign-faces'];
+        yield 'Doppelte Personen' => ['/admin/person-duplicates'];
         yield 'Gesichtserkennung' => ['/admin/settings/face-recognition'];
         yield 'Transkription' => ['/admin/settings/transcription'];
+        yield 'Kamera-Uhren' => ['/admin/camera-clocks'];
         yield 'Suche' => ['/search?q=Strand&tags[]=Pool'];
         yield 'Zeitachse' => ['/timeline'];
         yield 'Karte' => ['/map?type=photo'];
@@ -54,7 +56,8 @@ final class PageSmokeTest extends WebTestCase
         yield 'Fotos' => ['/photo/'];
         yield 'Fotos gesucht' => ['/photo/?q=Strand&page=1'];
         yield 'Foto-Detail' => ['/photo/{photo}'];
-        yield 'Fotos hochladen' => ['/photo/upload'];
+        yield 'Upload' => ['/upload'];
+        yield 'Import-Ordner' => ['/admin/import'];
         yield 'Ereignisse' => ['/event/'];
         yield 'Ereignisse mit Lücke' => ['/event/?gap=12'];
         yield 'Ereignis-Detail' => ['/event/{event}'];
@@ -108,8 +111,18 @@ final class PageSmokeTest extends WebTestCase
             'medium' => $photo,
             'person' => $anna,
             'faceImage' => $photo->getDisplayFile(),
+            'faceLabel' => 'anna-face',
             'timestamp' => 0,
             'boundingBox' => ['Left' => 0.4, 'Top' => 0.2, 'Width' => 0.1, 'Height' => 0.15],
+        ]);
+        // Unbenannte Person, die Anna ähnelt: Doppelte Personen und „Wer ist dabei?“
+        VideoFaceFactory::createOne([
+            'medium' => $photo,
+            'person' => $unknown,
+            'faceImage' => FileFactory::new(),
+            'faceLabel' => 'unknown-face',
+            'matchCandidates' => ['anna-face' => 88.0],
+            'boundingBox' => ['Left' => 0.1, 'Top' => 0.2, 'Width' => 0.1, 'Height' => 0.15],
         ]);
         $event = EventFactory::createOne(['title' => 'Mallorca', 'startDate' => new \DateTimeImmutable('2025-03-19')]);
         $event->addMedium($video);

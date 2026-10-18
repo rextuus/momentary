@@ -9,6 +9,8 @@ use App\Form\PersonCombineType;
 use App\Repository\VideoFaceRepository;
 use App\Service\Person\Data\PersonCombineData;
 use App\Service\Person\PersonDeleter;
+use App\Service\Person\PersonMerger;
+use App\Service\Person\PersonNameHints;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormInterface;
@@ -36,7 +38,39 @@ class PersonDetailComponent extends AbstractController
         private VideoFaceRepository $videoFaceRepository,
         private EntityManagerInterface $entityManager,
         private PersonDeleter $personDeleter,
+        private PersonMerger $personMerger,
+        private PersonNameHints $nameHints,
     ) {}
+
+    /**
+     * Namen, die im Gesprochenen fallen, während die Person zu sehen ist.
+     *
+     * @return list<array{name: string, scenes: int}>
+     */
+    public function getNameHints(): array
+    {
+        return $this->person->hasPlaceholderName() ? $this->nameHints->forPerson($this->person) : [];
+    }
+
+    /**
+     * Namenshinweis übernehmen; gibt es den Namen schon, wird mit dieser Person zusammengeführt.
+     */
+    #[LiveAction]
+    public function applyNameHint(#[LiveArg] string $name): ?RedirectResponse
+    {
+        $named = $this->personMerger->name($this->person, $name);
+        if ($named !== $this->person) {
+            $this->addFlash('success', sprintf(
+                'Mit der vorhandenen Person %s zusammengeführt.',
+                $named->getDisplayName(),
+            ));
+
+            return $this->redirectToRoute('person_detail', ['id' => $named->getId()]);
+        }
+        $this->addFlash('success', sprintf('Heißt jetzt %s.', $name));
+
+        return null;
+    }
 
     /**
      * @return FormInterface<PersonCombineData|null>
@@ -66,27 +100,9 @@ class PersonDetailComponent extends AbstractController
             return $this->redirectToRoute('person_detail', ['id' => $this->person->getId()]);
         }
 
-        // Alle Gesichter der aktuellen Person zur Zielperson verschieben
-        foreach ($this->person->getVideoFaces() as $videoFace) {
-            $videoFace->setPerson($targetPerson);
-            $this->entityManager->persist($videoFace);
-        }
+        $this->personMerger->merge($this->person, $targetPerson);
 
-        // Falls vorhanden: DetectionFaces (Referenzbilder) übertragen
-        foreach ($this->person->getDetectionFaces() as $detectionFace) {
-            $detectionFace->setDetection($targetPerson);
-            $this->entityManager->persist($detectionFace);
-        }
-
-        $this->entityManager->flush();
-
-        // Jetzt die alte Person als gemergt markieren
-        $this->person->setStatus(\App\Enum\PersonStatus::MERGED);
-        $this->person->setMergedInto($targetPerson);
-        $this->entityManager->persist($this->person);
-        $this->entityManager->flush();
-
-        $this->addFlash('success', sprintf('Merged into %s', $targetPerson->getName()));
+        $this->addFlash('success', sprintf('Mit %s zusammengeführt.', $targetPerson->getDisplayName()));
         return $this->redirectToRoute('person_index');
     }
 

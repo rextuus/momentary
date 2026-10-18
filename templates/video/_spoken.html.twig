@@ -1,0 +1,30 @@
+{# Gesprochenes eines Zeitraums (Kapitel/Szene). Erwartet: segments, video #}
+{% if segments is not empty %}
+    {% set preview = 2 %}
+    <div class="spoken mt-2">
+        <div class="text-muted fw-bold mb-1" style="font-size: 0.7rem;">
+            <i class="fas fa-closed-captioning me-1 text-success"></i>GESPROCHEN
+        </div>
+        {% for segment in segments|slice(0, preview) %}
+            {{ _self.line(segment, video) }}
+        {% endfor %}
+        {% if segments|length > preview %}
+            <details>
+                <summary class="small text-primary" style="cursor: pointer;">{{ segments|length - preview }} weitere</summary>
+                {% for segment in segments|slice(preview) %}
+                    {{ _self.line(segment, video) }}
+                {% endfor %}
+            </details>
+        {% endif %}
+    </div>
+{% endif %}
+
+{% macro line(segment, video) %}
+    {% set seconds = segment.startSeconds|round(0, 'floor') %}
+    <div class="d-flex gap-2 align-items-start small py-1">
+        <a href="{{ path('app_video_show', {id: video.id}) }}?t={{ seconds }}"
+           class="badge text-bg-light border text-decoration-none font-monospace flex-shrink-0"
+           title="Im Video an diese Stelle springen">{{ (seconds // 60) }}:{{ '%02d'|format(seconds % 60) }}</a>
+        <span class="{{ segment.uncertain ? 'text-muted fst-italic' }}">{{ segment.text }}</span>
+    </div>
+{% endmacro %}

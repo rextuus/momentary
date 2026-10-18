@@ -212,13 +212,6 @@ final class VideoController extends AbstractController
         return $this->redirectToRoute('app_video_show', ['id' => $video->getId()]);
     }
 
-    #[Route('/{id}/trigger/{step}', name: 'app_video_trigger', methods: ['GET'])]
-    #[IsGranted('VIDEO_EDIT', subject: 'video')]
-    public function trigger(Video $video): Response
-    {
-        return $this->redirectToRoute('app_video_show', ['id' => $video->getId()]);
-    }
-
     /**
      * Analyse komplett neu starten (wie bin/console app:video:reprocess).
      */

@@ -1,0 +1,57 @@
+<div {{ attributes }}>
+    {% set weekdays = {Mon: 'Mo', Tue: 'Di', Wed: 'Mi', Thu: 'Do', Fri: 'Fr', Sat: 'Sa', Sun: 'So'} %}
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <span>
+            <i class="far fa-calendar me-1"></i>
+            {% if medium.date %}{{ weekdays[medium.date|date('D')] }}, {{ medium.date|date('d.m.Y, H:i') }} Uhr{% endif %}
+        </span>
+        <span class="badge rounded-pill {{ medium.dateCorrected ? 'text-bg-success' : 'text-bg-light border' }} fw-normal" title="Herkunft der Aufnahmezeit">
+            {% if medium.dateCorrected %}<i class="fas fa-check me-1"></i>{% endif %}{{ medium.dateSourceLabel }}
+        </span>
+        {% if medium.camera %}
+            <span class="text-muted"><i class="fas fa-camera me-1"></i>{{ medium.camera }}</span>
+        {% endif %}
+        {% if medium.dateCorrected and medium.cameraTakenAt %}
+            <span class="small text-muted" title="Zeit laut Kamera vor der Korrektur">Kamera: {{ medium.cameraTakenAt|date('d.m.Y H:i') }}</span>
+        {% endif %}
+        {% if medium.placeName %}
+            <span><i class="fas fa-location-dot me-1"></i>{{ medium.placeName }}</span>
+        {% endif %}
+    </div>
+
+    {% for warning in this.warnings %}
+        <div class="alert alert-warning py-1 px-2 small mt-2 mb-0"><i class="fas fa-clock me-1"></i>{{ warning }}</div>
+    {% endfor %}
+
+    {% if is_granted('MEDIUM_EDIT', medium) %}
+        <details class="mt-2 recorded-at-editor">
+            <summary class="small text-primary" style="cursor: pointer;">Aufnahmezeit korrigieren</summary>
+            <form method="post" action="{{ path('app_medium_recorded_at', {id: medium.id}) }}" class="card card-body bg-body-tertiary border-0 mt-2 small">
+                <input type="hidden" name="_token" value="{{ csrf_token('recorded-at' ~ medium.id) }}">
+                {% if back %}<input type="hidden" name="back" value="{{ back }}">{% endif %}
+                <label class="form-label fw-semibold" for="recorded-at-{{ medium.id }}">Richtige Aufnahmezeit (deutsche Zeit)</label>
+                <input type="datetime-local" id="recorded-at-{{ medium.id }}" name="recorded_at" value="{{ this.inputValue }}" class="form-control form-control-sm mb-2" required>
+
+                {% set events = this.shiftableEvents %}
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="event" value="0" id="scope-single-{{ medium.id }}" {{ events is empty ? 'checked' }}>
+                    <label class="form-check-label" for="scope-single-{{ medium.id }}">Nur dieses {{ medium.type == 'photo' ? 'Foto' : 'Video' }}</label>
+                </div>
+                {% for event in events %}
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="event" value="{{ event.id }}" id="scope-event-{{ medium.id }}-{{ event.id }}" {{ loop.first ? 'checked' }}>
+                        <label class="form-check-label" for="scope-event-{{ medium.id }}-{{ event.id }}">
+                            Alle {{ event.media|length }} Medien von „{{ event.title }}“ um denselben Abstand verschieben
+                        </label>
+                    </div>
+                {% endfor %}
+                {{ include('components/_remember_camera_clock.html.twig', {id: 'remember-clock-' ~ medium.id, cameras: [medium.camera ?? 'Aufnahmen ohne Kamerakennung']}) }}
+                <div class="form-text mb-2">
+                    Praktisch, wenn die Uhr der Kamera falsch gestellt war: Die Abstände zwischen den Aufnahmen bleiben erhalten.
+                    Korrigierte Zeiten werden von späteren Analysen nicht überschrieben.
+                </div>
+                <div><button type="submit" class="btn btn-sm btn-primary">Übernehmen</button></div>
+            </form>
+        </details>
+    {% endif %}
+</div>

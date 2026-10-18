@@ -13,6 +13,7 @@ use App\Service\Aws\AmazonRekognitionService;
 use App\Service\Face\OrphanedPersonCleaner;
 use App\Service\Gemini\GeminiService;
 use App\Service\Geo\PlaceTagger;
+use App\Service\Media\CameraClock;
 use App\Service\Storage\StoragePathProvider;
 use App\Service\Video\Analyze\FrameAnalyzer;
 use App\Service\Video\Analyze\TagService;
@@ -36,6 +37,8 @@ class PhotoAnalyzer
         private readonly TagService $tagService,
         private readonly PhotoSearchIndex $searchIndex,
         private readonly PlaceTagger $placeTagger,
+        private readonly CameraClock $cameraClock,
+        private readonly PhotoBursts $bursts,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -66,9 +69,11 @@ class PhotoAnalyzer
             $photo->setDimensions($meta['width'], $meta['height']);
             $photo->setLocation($meta['latitude'], $meta['longitude']);
             $photo->setCamera($meta['camera']);
+            $photo->setImageMetrics($meta['fingerprint'], $meta['sharpness']);
             // Eine vorhandene (z. B. von Hand korrigierte) Aufnahmezeit bleibt
             if ($photo->getTakenAt() === null) {
                 $photo->setRecordedAt($meta['takenAt'], Medium::DATE_EXIF);
+                $this->cameraClock->adjust($photo);
             }
             $this->entityManager->flush();
 
@@ -82,6 +87,8 @@ class PhotoAnalyzer
 
             $photo->setStatus(PhotoStatus::COMPLETED);
             $this->entityManager->flush();
+            // Erst jetzt: das beste Foto einer Serie hängt auch von den erkannten Gesichtern ab
+            $this->bursts->regroupAround($photo);
         } catch (\Throwable $e) {
             $photo->fail($e->getMessage());
             $this->entityManager->flush();

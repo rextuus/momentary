@@ -1,0 +1,88 @@
+{% extends 'base.html.twig' %}
+{% block title %}Kamera-Uhren - Momentary{% endblock %}
+
+{% block body %}
+<div class="container pb-5">
+    <h1 class="fw-bold mb-1">Kamera-Uhren</h1>
+    <p class="text-muted mb-4">
+        Geht die Uhr einer Kamera falsch, stimmen Zeitachse, Ereignisse und Vorschläge nicht. Korrigieren lässt sich die Zeit auf
+        jeder Video-, Foto- und Ereignisseite (<em>Aufnahmezeit korrigieren</em>); mit <em>Abweichung merken</em> gilt die Korrektur
+        auch für später importierte Aufnahmen derselben Kamera.
+    </p>
+
+    {% if implausible is not empty %}
+        <div class="card border-0 shadow-sm mb-4 border-start border-warning border-4">
+            <div class="card-header bg-transparent fw-semibold"><i class="fas fa-triangle-exclamation text-warning me-2"></i>Unplausible Aufnahmezeiten <span class="text-muted fw-normal">{{ implausible|length }}</span></div>
+            <ul class="list-group list-group-flush">
+                {% for medium in implausible %}
+                    <li class="list-group-item d-flex flex-wrap justify-content-between gap-2">
+                        <a href="{{ medium_path(medium) }}" class="text-decoration-none"><i class="fas {{ medium_icon(medium) }} me-1 text-muted"></i>{{ medium.title }}</a>
+                        <span class="small text-muted">{{ medium.camera ?? 'ohne Kamerakennung' }} · laut Kamera {{ medium.cameraTakenAt|date('d.m.Y H:i') }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent fw-semibold"><i class="fas fa-clock-rotate-left text-primary me-2"></i>Gemerkte Abweichungen</div>
+        {% if offsets is empty %}
+            <div class="card-body text-muted small">Noch keine. Beim Korrigieren einer Aufnahmezeit „Abweichung … merken“ anhaken.</div>
+        {% else %}
+            <div class="table-responsive">
+                <table class="table align-middle mb-0 small">
+                    <thead><tr><th>Kameras</th><th>Zeitraum laut Kamera</th><th>Abweichung</th><th>Aus</th><th class="text-end">Noch nicht angewendet</th><th></th></tr></thead>
+                    <tbody>
+                    {% for entry in offsets %}
+                        {% set o = entry.offset %}
+                        <tr>
+                            <td>{% for camera in o.cameras %}<span class="badge text-bg-light border fw-normal me-1">{{ camera ?: 'ohne Kamerakennung' }}</span>{% endfor %}</td>
+                            <td class="text-nowrap">{{ o.cameraFrom|date('d.m.Y H:i') }} – {{ o.cameraTo|date('d.m.Y H:i') }}<div class="text-muted">± 3 Tage</div></td>
+                            <td class="text-nowrap fw-semibold">{{ o.offsetLabel }}</td>
+                            <td>{{ o.label }}<div class="text-muted">{{ o.createdAt|date('d.m.Y') }}</div></td>
+                            <td class="text-end">
+                                {% if entry.pending > 0 %}
+                                    <form method="post" action="{{ path('app_admin_camera_clocks_apply', {id: o.id}) }}" class="d-inline">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('apply-clock' ~ o.id) }}">
+                                        <button class="btn btn-sm btn-primary">Auf {{ entry.pending }} Medien anwenden</button>
+                                    </form>
+                                {% else %}
+                                    <span class="text-muted">–</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <form method="post" action="{{ path('app_admin_camera_clocks_delete', {id: o.id}) }}" onsubmit="return confirm('Abweichung löschen? Bereits verschobene Medien bleiben.')">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('delete-clock' ~ o.id) }}">
+                                    <button class="btn btn-sm btn-outline-danger" title="Löschen"><i class="fas fa-trash-alt"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent fw-semibold"><i class="fas fa-camera text-secondary me-2"></i>Kameras</div>
+        <div class="card-body small text-muted pb-0">Zeitraum laut Kamera-Uhr (vor Korrekturen). Passt der Zeitraum einer Kamera nicht zu den anderen, ging ihre Uhr vermutlich falsch.</div>
+        <div class="table-responsive">
+            <table class="table align-middle mb-0 small">
+                <thead><tr><th>Kamera</th><th class="text-end">Medien</th><th>Erste Aufnahme</th><th>Letzte Aufnahme</th><th class="text-end">Korrigiert</th></tr></thead>
+                <tbody>
+                {% for c in cameras %}
+                    <tr>
+                        <td>{{ c.camera ?? 'ohne Kamerakennung' }}</td>
+                        <td class="text-end">{{ c.count }}</td>
+                        <td>{{ c.first ? c.first|date('d.m.Y H:i') : '–' }}</td>
+                        <td>{{ c.last ? c.last|date('d.m.Y H:i') : '–' }}</td>
+                        <td class="text-end">{{ c.corrected ?: '–' }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

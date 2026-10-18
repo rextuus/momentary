@@ -63,7 +63,7 @@ class Mp4Converter
     }
 
     /**
-     * @return array{video: ?array{codec: string, pixFmt: string}, audio: list<string>, duration: float, createdAt?: ?string, location?: ?string}
+     * @return array{video: ?array{codec: string, pixFmt: string}, audio: list<string>, duration: float, createdAt?: ?string, location?: ?string, camera?: ?string}
      */
     public function probe(string $path): array
     {
@@ -72,7 +72,7 @@ class Mp4Converter
             '-v',
             'error',
             '-show_entries',
-            'stream=codec_type,codec_name,pix_fmt:format=duration:format_tags=creation_time,location,com.apple.quicktime.location.ISO6709',
+            'stream=codec_type,codec_name,pix_fmt:format=duration:format_tags=creation_time,location,com.apple.quicktime.location.ISO6709,com.apple.quicktime.make,com.apple.quicktime.model,com.android.manufacturer,com.android.model,make,model',
             '-of',
             'json',
             $path,
@@ -105,8 +105,31 @@ class Mp4Converter
         $tags = (array) ($data['format']['tags'] ?? []);
         $location = $tags['com.apple.quicktime.location.ISO6709'] ?? $tags['location'] ?? null;
         $result['location'] = \is_string($location) ? $location : null;
+        $result['camera'] = self::cameraName($tags);
 
         return $result;
+    }
+
+    /**
+     * Gerät laut Metadaten (iPhone, Android), z. B. "Apple iPhone 13"; viele Action-Cams schreiben nichts.
+     *
+     * @param array<mixed> $tags
+     */
+    public static function cameraName(array $tags): ?string
+    {
+        $make = trim(
+            (string) ($tags['com.apple.quicktime.make'] ?? $tags['com.android.manufacturer'] ?? $tags['make'] ?? ''),
+        );
+        $model = trim(
+            (string) ($tags['com.apple.quicktime.model'] ?? $tags['com.android.model'] ?? $tags['model'] ?? ''),
+        );
+        // Wie bei Fotos: "Apple iPhone 13", aber nicht "Samsung Samsung SM-G991B"
+        if ($make !== '' && str_starts_with(strtolower($model), strtolower($make))) {
+            $make = '';
+        }
+        $name = trim($make . ' ' . $model);
+
+        return $name === '' ? null : mb_substr($name, 0, 128);
     }
 
     /**

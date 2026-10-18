@@ -82,7 +82,7 @@ final class AccessControlTest extends WebTestCase
     {
         yield 'Gruppen' => ['/admin/groups/'];
         yield 'Video-Admin' => ['/admin/video/'];
-        yield 'Video-Import' => ['/admin/video/import/'];
+        yield 'Import-Ordner' => ['/admin/import'];
         yield 'Queue' => ['/admin/queue'];
         yield 'FTP-Dateimanager' => ['/admin/files/ftp'];
         yield 'Quick Resolve' => ['/admin/quick-resolve'];
@@ -306,7 +306,7 @@ final class AccessControlTest extends WebTestCase
         $this->client->request('POST', '/jellyfin/export/' . $video->getId());
         self::assertResponseStatusCodeSame(403);
 
-        $this->client->request('GET', '/video/' . $video->getId() . '/trigger/reset');
+        $this->client->request('POST', '/video/' . $video->getId() . '/reprocess');
         self::assertResponseStatusCodeSame(403);
 
         $this->client->request('POST', '/video/' . $video->getId() . '/extract-thumbnail');

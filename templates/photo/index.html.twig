@@ -1,0 +1,83 @@
+{% extends 'base.html.twig' %}
+{% block title %}Fotos - Momentary{% endblock %}
+
+{% block body %}
+<div class="container pb-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-4">
+        <div>
+            <h1 class="fw-bold mb-1">Fotos</h1>
+            <p class="text-muted mb-0">{{ total }} {{ total == 1 ? 'Foto' : 'Fotos' }}{% if search %} für „{{ search }}“{% endif %}, neueste Aufnahme zuerst.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <form method="get" class="input-group" style="max-width: 18rem;">
+                <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                <input type="search" name="q" value="{{ search }}" class="form-control" placeholder="Titel oder Tag …" aria-label="Fotos suchen">
+            </form>
+            <a href="{{ path('app_upload') }}" class="btn btn-primary rounded-pill text-nowrap">
+                <i class="fas fa-cloud-arrow-up me-1"></i> Hochladen
+            </a>
+        </div>
+    </div>
+
+    {% for day, photos in days %}
+        <h2 class="h6 text-uppercase text-muted fw-semibold mt-4 mb-2">
+            {{ day == 'unbekannt' ? 'Ohne Datum' : day|date('l, d.m.Y')|replace({
+                'Monday': 'Montag', 'Tuesday': 'Dienstag', 'Wednesday': 'Mittwoch', 'Thursday': 'Donnerstag',
+                'Friday': 'Freitag', 'Saturday': 'Samstag', 'Sunday': 'Sonntag'}) }}
+        </h2>
+        <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-2" data-controller="burst">
+            {% for cover in photos %}
+                {# Serienfotos: die übrigen Fotos der Serie stehen ausgeblendet hinter dem besten (nicht bei der Suche) #}
+                {% set burst = search ? [] : cover.burstMembers|filter(p => is_granted('MEDIUM_VIEW', p)) %}
+                {% for photo in [cover]|merge(burst) %}
+                    {% set member = not loop.first %}
+                    <div class="col{{ member ? ' d-none' }}"{% if member %} data-burst-member="{{ cover.id }}"{% endif %}>
+                        <div class="position-relative">
+                            <a href="{{ path('app_photo_show', {id: photo.id}) }}" class="photo-tile d-block position-relative rounded overflow-hidden bg-body-secondary{{ member ? ' burst-member-tile' }}" title="{{ photo.title }}">
+                                <div class="ratio ratio-1x1">
+                                    {% if photo.thumbnailFile %}
+                                        <img src="{{ imgproxy_url(photo.thumbnailFile, 360, 360) }}" alt="{{ photo.title }}" loading="lazy" class="object-fit-cover">
+                                    {% else %}
+                                        <div class="d-flex align-items-center justify-content-center text-muted">
+                                            <i class="fas {{ photo.status.pending ? 'fa-spinner fa-spin' : 'fa-image' }} fa-2x opacity-50"></i>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                {% if photo.status.value != 'completed' %}
+                                    <span class="position-absolute top-0 start-0 m-1 badge rounded-pill {{ photo.status.value == 'error' ? 'text-bg-danger' : 'text-bg-secondary' }}">{{ photo.status.label }}</span>
+                                {% endif %}
+                                {% if photo.faces|length > 0 %}
+                                    <span class="position-absolute bottom-0 end-0 m-1 badge rounded-pill text-bg-dark bg-opacity-75"><i class="fas fa-user me-1"></i>{{ photo.faces|length }}</span>
+                                {% endif %}
+                            </a>
+                            {% if not member and burst is not empty %}
+                                <button type="button" class="burst-toggle" data-action="burst#toggle" data-burst-id-param="{{ cover.id }}" aria-expanded="false"
+                                        title="Serie mit {{ burst|length + 1 }} Fotos: übrige zeigen"><i class="fas fa-clone me-1"></i>{{ burst|length + 1 }}</button>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="text-center text-muted py-5">
+            <i class="fas fa-images fa-3x mb-3 opacity-50"></i>
+            <p>Noch keine Fotos. <a href="{{ path('app_upload') }}">Jetzt hochladen</a> oder per <code>bin/console app:photo:import &lt;Ordner&gt;</code> importieren.</p>
+        </div>
+    {% endfor %}
+
+    {% if pages > 1 %}
+        <nav class="mt-4 d-flex justify-content-center" aria-label="Seiten">
+            <ul class="pagination">
+                {% for p in 1..pages %}
+                    <li class="page-item {{ p == page ? 'active' }}"><a class="page-link" href="{{ path('app_photo_index', {page: p, q: search ?: null}) }}">{{ p }}</a></li>
+                {% endfor %}
+            </ul>
+        </nav>
+    {% endif %}
+</div>
+<style>
+    .photo-tile img { transition: transform 0.2s ease; }
+    .photo-tile:hover img { transform: scale(1.05); }
+</style>
+{% endblock %}

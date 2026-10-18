@@ -6,10 +6,8 @@ namespace App\Service\Media;
 
 use App\Entity\Event;
 use App\Entity\Medium;
-use App\Entity\Photo;
-use App\Service\Photo\PhotoSearchIndex;
+use App\Service\Search\MediumIndexer;
 use Doctrine\ORM\EntityManagerInterface;
-use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 
 /**
@@ -23,17 +21,16 @@ class RecordingTimeCorrector
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly Security $security,
-        private readonly PhotoSearchIndex $photoSearchIndex,
-        private readonly LoggerInterface $logger,
+        private readonly MediumIndexer $indexer,
     ) {}
 
     /**
      * @param \DateTimeImmutable $correct richtige Aufnahmezeit des Ankers (beliebige Zeitzone)
      * @param Event|null         $event   alle Medien dieses Ereignisses mit verschieben
      *
-     * @return int Anzahl geänderter Medien
+     * @return list<Medium> die verschobenen Medien
      */
-    public function correct(Medium $anchor, \DateTimeImmutable $correct, ?Event $event = null): int
+    public function correct(Medium $anchor, \DateTimeImmutable $correct, ?Event $event = null): array
     {
         $utc = new \DateTimeZone('UTC');
         $offset = $correct->getTimestamp() - (int) $anchor->getDate()?->getTimestamp();
@@ -57,21 +54,9 @@ class RecordingTimeCorrector
         }
         $this->entityManager->flush();
 
-        foreach ($media as $medium) {
-            if ($medium instanceof Photo) {
-                try {
-                    $this->photoSearchIndex->index($medium);
-                } catch (\Throwable $e) {
-                    $this->logger->warning(sprintf(
-                        'Suchindex für Foto %d: %s',
-                        (int) $medium->getId(),
-                        $e->getMessage(),
-                    ));
-                }
-            }
-        }
+        $this->indexer->reindex($media);
 
-        return \count($media);
+        return $media;
     }
 
     /**

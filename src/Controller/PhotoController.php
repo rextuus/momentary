@@ -10,11 +10,10 @@ use App\Enum\PhotoStatus;
 use App\Message\AnalyzePhotoMessage;
 use App\Repository\PhotoRepository;
 use App\Security\Voter\MediumAccessVoter;
+use App\Service\Photo\PhotoBursts;
 use App\Service\Photo\PhotoDeleter;
-use App\Service\Photo\PhotoImporter;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -56,62 +55,13 @@ final class PhotoController extends AbstractController
         ]);
     }
 
-    #[Route('/upload', name: 'app_photo_upload', methods: ['GET', 'POST'])]
-    public function upload(Request $request, PhotoImporter $importer): Response
+    /**
+     * Alte Adresse: Videos und Fotos haben einen gemeinsamen Upload.
+     */
+    #[Route('/upload', name: 'app_photo_upload', methods: ['GET'])]
+    public function upload(): Response
     {
-        if ($request->isMethod('POST')) {
-            if (!$this->isCsrfTokenValid('photo_upload', $request->request->getString('_token'))) {
-                $this->addFlash('danger', 'Ungültiges CSRF-Token.');
-
-                return $this->redirectToRoute('app_photo_upload');
-            }
-
-            $user = $this->getUser();
-            $imported = 0;
-            $duplicates = 0;
-            $errors = [];
-            /** @var list<UploadedFile> $files */
-            $files = array_filter(
-                (array) $request->files->get('photos', []),
-                static fn($f) => $f instanceof UploadedFile,
-            );
-            foreach ($files as $file) {
-                if (!$file->isValid() || !PhotoImporter::isSupported($file->getClientOriginalName())) {
-                    $errors[] = $file->getClientOriginalName();
-                    continue;
-                }
-                try {
-                    $result = $importer->import(
-                        $file->getPathname(),
-                        $user instanceof User ? $user : null,
-                        $file->getClientOriginalName(),
-                    );
-                    $result->duplicate ? $duplicates++ : $imported++;
-                } catch (\Throwable) {
-                    $errors[] = $file->getClientOriginalName();
-                }
-            }
-
-            if ($imported > 0) {
-                $this->addFlash('success', sprintf(
-                    '%d Foto(s) hochgeladen. Die Analyse läuft im Hintergrund.',
-                    $imported,
-                ));
-            }
-            if ($duplicates > 0) {
-                $this->addFlash('info', sprintf(
-                    '%d Foto(s) waren schon vorhanden und wurden übersprungen.',
-                    $duplicates,
-                ));
-            }
-            if ($errors !== []) {
-                $this->addFlash('warning', 'Nicht übernommen (kein unterstütztes Bild): ' . implode(', ', $errors));
-            }
-
-            return $this->redirectToRoute('app_photo_index');
-        }
-
-        return $this->render('photo/upload.html.twig', ['extensions' => PhotoImporter::EXTENSIONS]);
+        return $this->redirectToRoute('app_upload');
     }
 
     #[Route('/{id}', name: 'app_photo_show', requirements: ['id' => '\d+'], methods: ['GET'])]
@@ -119,6 +69,25 @@ final class PhotoController extends AbstractController
     public function show(Photo $photo): Response
     {
         return $this->render('photo/show.html.twig', ['photo' => $photo]);
+    }
+
+    /**
+     * Serienfotos: dieses als bestes verwenden, aus der Serie lösen oder wieder zulassen.
+     */
+    #[Route('/{id}/burst', name: 'app_photo_burst', methods: ['POST'])]
+    #[IsGranted(MediumAccessVoter::EDIT, subject: 'photo')]
+    public function burst(Photo $photo, Request $request, PhotoBursts $bursts): Response
+    {
+        if ($this->isCsrfTokenValid('burst' . $photo->getId(), $request->request->getString('_token'))) {
+            match ($request->request->getString('action')) {
+                'pin' => $bursts->pin($photo),
+                'exclude' => $bursts->exclude($photo),
+                'include' => $bursts->exclude($photo, false),
+                default => null,
+            };
+        }
+
+        return $this->redirect($this->generateUrl('app_photo_show', ['id' => $photo->getId()]) . '#burst');
     }
 
     #[Route('/{id}/reanalyze', name: 'app_photo_reanalyze', methods: ['POST'])]

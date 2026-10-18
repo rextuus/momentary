@@ -1,0 +1,28 @@
+{% extends 'base.html.twig' %}
+{% block title %}Karte - Momentary{% endblock %}
+
+{% block body %}
+<div class="container pb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+        <div>
+            <h1 class="fw-bold mb-1">Karte</h1>
+            <p class="text-muted mb-0">Videos und Fotos mit Aufnahmeort (GPS aus Foto- bzw. Video-Metadaten).</p>
+        </div>
+        <form method="get" class="d-flex flex-wrap gap-2 align-items-center">
+            <select name="person" class="form-select form-select-sm" style="width: auto;" aria-label="Person" onchange="this.form.submit()">
+                <option value="">Alle Personen</option>
+                {% for person in persons %}
+                    <option value="{{ person.id }}" {{ (query.person ?? null) == person.id ? 'selected' }}>{{ person.displayName }}</option>
+                {% endfor %}
+            </select>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Medientyp">
+                {% for value, label in {'': 'Alle', video: 'Videos', photo: 'Fotos'} %}
+                    <input type="radio" class="btn-check" name="type" id="map-type-{{ value ?: 'all' }}" value="{{ value }}" {{ (query.type ?? '') == value ? 'checked' }} onchange="this.form.submit()">
+                    <label class="btn btn-outline-secondary" for="map-type-{{ value ?: 'all' }}">{{ label }}</label>
+                {% endfor %}
+            </div>
+        </form>
+    </div>
+    {{ include('map/_embed.html.twig', {url: path('app_map_points', query), height: 'calc(100vh - 230px)'}) }}
+</div>
+{% endblock %}

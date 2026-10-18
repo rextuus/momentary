@@ -11,6 +11,7 @@ use App\Form\EventType;
 use App\Repository\EventRepository;
 use App\Security\Voter\MediumAccessVoter;
 use App\Service\Event\EventMediaCollector;
+use App\Service\Event\EventPeople;
 use App\Service\Event\EventSuggester;
 use App\Service\Event\EventSuggestion;
 use App\Service\Gemini\GeminiService;
@@ -133,9 +134,9 @@ final class EventController extends AbstractController
             $title = $gemini->suggestEventTitle(
                 $suggestion->getTopTags(),
                 array_map(static fn(Medium $m): string => (string) $m->getTitle(), $suggestion->media),
-                $suggestion->getPlaces() !== []
-                    ? $period . ', Orte: ' . implode(', ', $suggestion->getPlaces())
-                    : $period,
+                $period
+                . ($suggestion->trip ? ', eine Reise fern von zuhause' : '')
+                . ($suggestion->getPlaces() !== [] ? ', Orte: ' . implode(', ', $suggestion->getPlaces()) : ''),
             );
         } catch (\Throwable) {
             $title = '';
@@ -182,7 +183,7 @@ final class EventController extends AbstractController
     }
 
     #[Route('/event/{id}', name: 'app_event_show', requirements: ['id' => '\d+'], methods: ['GET'])]
-    public function show(Event $event): Response
+    public function show(Event $event, EventPeople $eventPeople): Response
     {
         $media = array_values(array_filter($event->getSortedMedia(), fn(Medium $medium): bool => $this->isGranted(
             MediumAccessVoter::VIEW,
@@ -193,6 +194,9 @@ final class EventController extends AbstractController
             'event' => $event,
             'media' => $media,
             'canEdit' => $this->canEdit($event),
+            'eventCameras' => self::cameraNames($media),
+            'unnamed' => $this->isGranted('ROLE_ADMIN') ? $eventPeople->unnamed($media) : [],
+            'knownNames' => $this->isGranted('ROLE_ADMIN') ? $eventPeople->knownNames() : [],
         ]);
     }
 
@@ -282,6 +286,18 @@ final class EventController extends AbstractController
         }
 
         return $this->redirect($media->mediumPath($medium));
+    }
+
+    /**
+     * @param list<Medium> $media
+     *
+     * @return list<string>
+     */
+    private static function cameraNames(array $media): array
+    {
+        $names = array_map(static fn(Medium $m): string => $m->getCamera() ?? 'Aufnahmen ohne Kamerakennung', $media);
+
+        return array_values(array_unique($names));
     }
 
     private function canEdit(Event $event): bool

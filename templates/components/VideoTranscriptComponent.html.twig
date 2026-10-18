@@ -1,0 +1,99 @@
+<div {{ attributes }} class="card shadow-sm border-0 mb-4" {% if this.pending %}data-poll="delay(4000)|$render"{% endif %}>
+    {% set transcript = this.transcript %}
+    {% set status = transcript ? transcript.status.value : null %}
+
+    <div class="card-header bg-transparent border-bottom p-4 d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div>
+            <h5 class="fw-bold mb-0"><i class="fas fa-closed-captioning me-2 text-success"></i>Transkript</h5>
+            {% if status == 'done' %}
+                <div class="small text-muted mt-1">
+                    {{ transcript.segments|length }} Abschnitte · {{ transcript.model }}{% if transcript.language %} · Sprache {{ transcript.language|upper }}{% endif %}
+                    {% if transcript.finishedAt %} · {{ transcript.finishedAt|date('d.m.Y H:i') }}{% endif %}
+                </div>
+            {% endif %}
+        </div>
+
+        {% if is_granted('VIDEO_EDIT', video) %}
+            {% if this.blockedReason is null %}
+                <form method="post" action="{{ path('video_transcribe', {id: video.id}) }}"
+                      {% if status == 'done' %}onsubmit="return confirm('Neu transkribieren? Das vorhandene Transkript wird ersetzt.')"{% endif %}>
+                    <input type="hidden" name="_token" value="{{ csrf_token('transcribe' ~ video.id) }}">
+                    <button type="submit" class="btn btn-sm {{ transcript ? 'btn-outline-secondary' : 'btn-success' }} rounded-pill px-3">
+                        <i class="fas fa-microphone-lines me-1"></i>
+                        {{ transcript ? 'Neu transkribieren' : 'Ton transkribieren' }}
+                    </button>
+                </form>
+            {% elseif not this.pending %}
+                <span class="small text-muted">{{ this.blockedReason }}</span>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <div class="card-body p-4">
+        {% if transcript is null %}
+            <p class="text-muted mb-0">
+                Der Ton dieses Videos wurde noch nicht verschriftlicht. Die Transkription läuft lokal im Hintergrund,
+                macht das Gesprochene durchsuchbar und kann daraus Tags für die Szenen ableiten.
+            </p>
+        {% elseif status == 'queued' %}
+            <div class="d-flex align-items-center gap-2 text-muted">
+                <i class="fas fa-hourglass-half"></i>
+                Eingeplant seit {{ transcript.queuedAt|date('H:i') }}. Startet, sobald der Transkriptions-Worker frei ist.
+            </div>
+        {% elseif status == 'running' %}
+            <div class="d-flex justify-content-between small mb-1">
+                <span>
+                    <i class="fas fa-spinner fa-spin me-1 text-success"></i>
+                    {% if transcript.audioSeconds > 0 %}
+                        {{ this.formatTime(transcript.processedSeconds) }} von {{ this.formatTime(transcript.audioSeconds) }} transkribiert
+                    {% else %}
+                        Ton wird vorbereitet …
+                    {% endif %}
+                </span>
+                <span class="fw-bold">{{ transcript.percent }}%</span>
+            </div>
+            <div class="progress" style="height: 8px;">
+                <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" style="width: {{ transcript.percent }}%"></div>
+            </div>
+        {% elseif status == 'failed' %}
+            <div class="alert alert-danger mb-0">
+                <div class="fw-semibold mb-1"><i class="fas fa-exclamation-triangle me-1"></i>Transkription fehlgeschlagen</div>
+                <div class="small font-monospace text-break">{{ transcript.error }}</div>
+            </div>
+        {% elseif transcript.segments is empty %}
+            <p class="text-muted mb-0"><i class="fas fa-volume-xmark me-1"></i>In diesem Video wurde keine Sprache erkannt.</p>
+        {% else %}
+            <div class="input-group input-group-sm mb-3">
+                <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                <input type="search" class="form-control" placeholder="Im Transkript suchen …" data-model="debounce(250)|query" value="{{ query }}">
+            </div>
+
+            <div class="transcript-list" style="max-height: 28rem; overflow-y: auto;">
+                {% for group in this.groups %}
+                    <div class="mb-3">
+                        <div class="small text-uppercase fw-semibold text-muted border-bottom pb-1 mb-2">
+                            {% if group.scene %}
+                                Szene {{ group.scene.sceneNumber }}{% if group.scene.title %} · {{ group.scene.title }}{% endif %}
+                            {% else %}
+                                Ohne Szene
+                            {% endif %}
+                        </div>
+                        {% for segment in group.segments %}
+                            <div class="d-flex gap-2 align-items-start py-1">
+                                <button type="button" class="btn btn-sm btn-light border font-monospace py-0 px-2 flex-shrink-0"
+                                        title="Im Video an diese Stelle springen"
+                                        data-action="video-player#jumpTo"
+                                        data-video-player-time-param="{{ segment.startSeconds }}">
+                                    {{ this.formatTime(segment.startSeconds) }}
+                                </button>
+                                <span class="{{ segment.uncertain ? 'text-muted fst-italic' }}" {% if segment.uncertain %}title="Unsicher erkannt"{% endif %}>{{ segment.text }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted small mb-0">Keine Abschnitte enthalten „{{ query }}“.</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</div>

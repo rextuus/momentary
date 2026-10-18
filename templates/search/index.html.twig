@@ -1,0 +1,127 @@
+{% extends 'base.html.twig' %}
+{% block title %}{{ query ? query ~ ' – ' : '' }}Suche - Momentary{% endblock %}
+
+{% macro filterUrl(query, persons, tags) %}{{ path('app_search', {q: query ?: null, persons: persons, tags: tags}) }}{% endmacro %}
+
+{% block body %}
+{% import _self as ui %}
+{% set terms = result.terms %}
+<div class="container pb-5">
+    <form method="get" action="{{ path('app_search') }}" class="mb-3">
+        {% for p in persons %}<input type="hidden" name="persons[]" value="{{ p }}">{% endfor %}
+        {% for t in tags %}<input type="hidden" name="tags[]" value="{{ t }}">{% endfor %}
+        <div class="input-group input-group-lg shadow-sm">
+            <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+            <input type="search" name="q" value="{{ query }}" class="form-control border-start-0" autofocus
+                   placeholder="Was suchst du? z. B. Geburtstag, Pool, „Happy Birthday“ …" aria-label="Suchbegriff">
+            <button class="btn btn-primary px-4" type="submit">Suchen</button>
+        </div>
+        <div class="form-text">Sucht in Titeln, Tags, Personen und im Gesprochenen aller Videos und Fotos, die du sehen darfst.</div>
+    </form>
+
+    {% if persons is not empty or tags is not empty %}
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+            <span class="small text-muted">Gefiltert nach:</span>
+            {% for p in persons %}
+                <a class="badge rounded-pill text-bg-primary text-decoration-none" href="{{ ui.filterUrl(query, persons|filter(x => x != p), tags) }}">
+                    <i class="fas fa-user me-1"></i>{{ p }} <i class="fas fa-xmark ms-1"></i>
+                </a>
+            {% endfor %}
+            {% for t in tags %}
+                <a class="badge rounded-pill text-bg-success text-decoration-none" href="{{ ui.filterUrl(query, persons, tags|filter(x => x != t)) }}">
+                    <i class="fas fa-tag me-1"></i>{{ t }} <i class="fas fa-xmark ms-1"></i>
+                </a>
+            {% endfor %}
+            <a class="small" href="{{ ui.filterUrl(query, [], []) }}">alle Filter entfernen</a>
+        </div>
+    {% endif %}
+
+    {% if result.error %}
+        <div class="alert alert-warning"><i class="fas fa-plug-circle-xmark me-1"></i>{{ result.error }}</div>
+    {% endif %}
+
+    <div class="row g-4">
+        <aside class="col-lg-3 order-2">
+            {% for facet in [{title: 'Personen', values: result.persons, selected: persons, key: 'persons', icon: 'fa-user'}, {title: 'Tags', values: result.tags, selected: tags, key: 'tags', icon: 'fa-tag'}] %}
+                {% if facet.values is not empty %}
+                    <div class="card border-0 shadow-sm mb-3">
+                        <div class="card-header bg-transparent small text-uppercase fw-semibold text-muted">{{ facet.title }}</div>
+                        <div class="card-body d-flex flex-wrap gap-1">
+                            {% for name, count in facet.values|slice(0, 20, true) %}
+                                {% if name not in facet.selected %}
+                                    {% set url = facet.key == 'persons'
+                                        ? ui.filterUrl(query, persons|merge([name]), tags)
+                                        : ui.filterUrl(query, persons, tags|merge([name])) %}
+                                    <a href="{{ url }}" class="badge rounded-pill text-bg-light border text-decoration-none fw-normal">
+                                        <i class="fas {{ facet.icon }} me-1 text-muted"></i>{{ name }} <span class="text-muted">{{ count }}</span>
+                                    </a>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </aside>
+
+        <div class="col-lg-9 order-1">
+            {% if not result.error and result.empty %}
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-magnifying-glass fa-3x mb-3 opacity-50"></i>
+                    <p class="mb-0">Nichts gefunden{% if query %} für „{{ query }}“{% endif %}.</p>
+                </div>
+            {% endif %}
+
+            {% if result.videos is not empty %}
+                <h2 class="h5 fw-bold mb-3"><i class="fas fa-video me-2 text-primary"></i>Videos <span class="text-muted fw-normal">{{ result.videos|length }}</span></h2>
+                {% for hit in result.videos %}
+                    {% set video = hit.video %}
+                    <div class="card border-0 shadow-sm mb-3 search-hit">
+                        <div class="card-body d-flex gap-3">
+                            <a href="{{ medium_path(video) }}" class="flex-shrink-0 rounded overflow-hidden bg-body-secondary hit-thumb">
+                                {% if video.thumbnailFile %}
+                                    <img src="{{ imgproxy_url(video.thumbnailFile, 320, 180) }}" alt="" class="w-100 h-100 object-fit-cover" loading="lazy">
+                                {% endif %}
+                            </a>
+                            <div class="flex-grow-1" style="min-width: 0;">
+                                <a href="{{ medium_path(video) }}" class="fw-semibold text-decoration-none">{{ video.title|highlight(terms) }}</a>
+                                <div class="small text-muted mb-2">{% if video.date %}{{ video.date|date('d.m.Y H:i') }}{% endif %}{% if video.duration %} · {{ (video.duration / 60)|round(0, 'floor') }}:{{ '%02d'|format(video.duration % 60) }} min{% endif %}</div>
+                                {% for moment in hit.moments %}
+                                    <a href="{{ medium_path(video, moment.seconds) }}" class="d-flex align-items-center gap-2 small text-body text-decoration-none py-1 moment">
+                                        <span class="badge text-bg-light border font-monospace">{{ moment.time }}</span>
+                                        <i class="fas {{ moment.kind == 'spoken' ? 'fa-closed-captioning text-success' : (moment.kind == 'person' ? 'fa-user text-primary' : 'fa-tag text-secondary') }}"></i>
+                                        <span class="text-truncate">{% if moment.kind == 'spoken' %}„{{ moment.text|highlight(terms) }}“{% else %}{{ moment.text|highlight(terms) }}{% endif %}</span>
+                                    </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            {% if result.photos is not empty %}
+                <h2 class="h5 fw-bold mt-4 mb-3"><i class="fas fa-image me-2 text-primary"></i>Fotos <span class="text-muted fw-normal">{{ result.photos|length }}</span></h2>
+                <div class="row row-cols-3 row-cols-md-4 row-cols-xl-6 g-2">
+                    {% for photo in result.photos %}
+                        <div class="col">
+                            <a href="{{ medium_path(photo) }}" class="d-block rounded overflow-hidden bg-body-secondary" title="{{ photo.title }}">
+                                <div class="ratio ratio-1x1">
+                                    {% if photo.thumbnailFile %}
+                                        <img src="{{ imgproxy_url(photo.thumbnailFile, 300, 300) }}" alt="{{ photo.title }}" class="object-fit-cover" loading="lazy">
+                                    {% endif %}
+                                </div>
+                            </a>
+                            <div class="small text-truncate mt-1">{{ photo.title|highlight(terms) }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<style>
+    .search-hit .moment:hover { background: var(--bs-tertiary-bg); border-radius: 6px; }
+    .hit-thumb { width: 160px; height: 90px; }
+    @media (max-width: 575.98px) { .hit-thumb { width: 96px; height: 54px; } }
+    .search-hit mark, .row mark { padding: 0 0.1em; }
+</style>
+{% endblock %}

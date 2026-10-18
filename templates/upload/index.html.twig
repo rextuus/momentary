@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Video Upload - Momentary{% endblock %}
+{% block title %}Upload - Momentary{% endblock %}
 
 {% block body %}
     <div class="container pb-5">
@@ -10,13 +10,15 @@
                      id="uploader"
                      data-upload-url="{{ path('app_upload_file') }}"
                      data-check-url="{{ path('app_upload_check') }}"
-                     data-csrf="{{ csrf_token('video_upload') }}">
+                     data-csrf="{{ csrf_token('media_upload') }}"
+                     data-extensions="{{ extensions|join(',') }}"
+                     data-video-extensions="{{ videoExtensions|join(',') }}">
                     <div class="d-flex align-items-center mb-4">
                         <div class="bg-primary bg-opacity-10 p-3 rounded-3 me-3">
                             <i class="fas fa-cloud-upload-alt fa-2x text-primary"></i>
                         </div>
                         <div>
-                            <h2 class="fw-bold mb-0">Video Upload</h2>
+                            <h2 class="fw-bold mb-0">Videos & Fotos hochladen</h2>
                             <p class="text-muted mb-0 small text-uppercase fw-bold">Einzelne Dateien oder ganze Ordner</p>
                         </div>
                     </div>
@@ -24,7 +26,7 @@
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label for="files_input" class="form-label fw-bold small text-uppercase text-muted">Dateien wählen</label>
-                            <input type="file" id="files_input" class="form-control" accept="video/*,.mkv,.mts,.m2ts" multiple>
+                            <input type="file" id="files_input" class="form-control" accept="video/*,image/*,{{ extensions|map(e => '.' ~ e)|join(',') }}" multiple>
                         </div>
                         <div class="col-md-6">
                             <label for="folder_input" class="form-label fw-bold small text-uppercase text-muted">Ganzen Ordner wählen</label>
@@ -36,7 +38,7 @@
                         <label for="batch_name" class="form-label fw-bold small text-uppercase text-muted">Gruppen-Tag (optional)</label>
                         <input type="text" id="batch_name" class="form-control" maxlength="100"
                                placeholder="z. B. Urlaub 2026 – wird bei Ordnern automatisch mit dem Ordnernamen vorbelegt">
-                        <div class="form-text">Alle Videos dieses Uploads erhalten dieses Tag (Kategorie „Upload-Ordner“), damit man sie später gemeinsam findet.</div>
+                        <div class="form-text">Alle Videos und Fotos dieses Uploads erhalten dieses Tag (Kategorie „Upload-Ordner“), damit man sie später gemeinsam findet.</div>
                     </div>
 
                     <div class="mb-3" id="custom_name_wrap">
@@ -55,17 +57,19 @@
                         <button type="button" id="cancel_btn" class="btn btn-outline-danger d-none">
                             <i class="fas fa-stop me-2"></i>Abbrechen
                         </button>
-                        <a href="{{ path('app_video_index') }}" class="btn btn-link text-muted">Zurück zur Übersicht</a>
+                        <a href="{{ path('app_media_timeline') }}" class="btn btn-link text-muted">Zur Zeitachse</a>
                     </div>
                 </div>
 
                 <div class="mt-4 card p-4 border-0 shadow-sm bg-light">
                     <h5 class="fw-bold"><i class="fas fa-history me-2 text-muted"></i>Hinweis</h5>
                     <p class="small text-muted mb-0">
-                        Die Dateien werden nacheinander hochgeladen und sofort in die Verarbeitung eingereiht
-                        (2 Videos laufen parallel, der Rest wartet). Vor jedem Upload wird geprüft, ob das Video
-                        schon existiert; bereits vorhandene Dateien werden übersprungen. Nach einem Abbruch oder
+                        Videos und Fotos dürfen gemischt sein, der Typ ergibt sich aus der Dateiendung
+                        ({{ extensions|join(', ') }}). Die Dateien werden nacheinander hochgeladen und sofort zur
+                        Analyse eingeplant (2 Videos laufen parallel, Fotos danach). Vor jedem Upload wird geprüft, ob
+                        die Datei schon existiert; vorhandene werden übersprungen. Nach einem Abbruch oder
                         Seiten-Reload einfach denselben Ordner erneut wählen.
+                        {% if is_granted('ROLE_ADMIN') %}<br>Große Mengen lieber über den <a href="{{ path('app_admin_import') }}">Import-Ordner</a>.{% endif %}
                     </p>
                 </div>
             </div>
@@ -79,7 +83,10 @@
             const uploadUrl = root.dataset.uploadUrl;
             const checkUrl = root.dataset.checkUrl;
             const csrf = root.dataset.csrf;
-            const VIDEO_EXT = /\.(mp4|mov|mkv|webm|avi|m4v|mts|m2ts|mpg|mpeg|wmv|flv|3gp)$/i;
+            const extensionOf = name => (name.split('.').pop() || '').toLowerCase();
+            const MEDIA_EXT = new Set(root.dataset.extensions.split(','));
+            const VIDEO_EXT = new Set(root.dataset.videoExtensions.split(','));
+            const isMedia = file => MEDIA_EXT.has(extensionOf(file.name));
             const HASH_CHUNK = 8 * 1024 * 1024;
 
             const filesInput = document.getElementById('files_input');
@@ -107,13 +114,14 @@
             function select(fileList, folderName) {
                 const all = Array.from(fileList);
                 queue = all
-                    .filter(f => VIDEO_EXT.test(f.name))
+                    .filter(isMedia)
                     .sort((a, b) => relPath(a).localeCompare(relPath(b), undefined, { numeric: true }))
                     .map(file => ({ file, done: false, result: null }));
 
                 const skipped = all.length - queue.length;
-                infoEl.textContent = queue.length + ' Video(s) ausgewählt'
-                    + (skipped > 0 ? ' · ' + skipped + ' Nicht-Video-Datei(en) übersprungen' : '');
+                const videos = queue.filter(i => VIDEO_EXT.has(extensionOf(i.file.name))).length;
+                infoEl.textContent = videos + ' Video(s) und ' + (queue.length - videos) + ' Foto(s) ausgewählt'
+                    + (skipped > 0 ? ' · ' + skipped + ' andere Datei(en) übersprungen' : '');
 
                 if (folderName) {
                     batchInput.value = folderName;
@@ -137,8 +145,11 @@
                     top.className = 'd-flex justify-content-between align-items-center gap-2';
 
                     const name = document.createElement('span');
-                    name.className = 'text-truncate small';
+                    name.className = 'text-truncate small me-auto';
                     name.textContent = relPath(item.file);
+                    const icon = document.createElement('i');
+                    icon.className = 'fas me-2 text-muted ' + (VIDEO_EXT.has(extensionOf(item.file.name)) ? 'fa-video' : 'fa-image');
+                    top.append(icon);
 
                     const badge = document.createElement('span');
                     badge.className = 'badge bg-secondary flex-shrink-0';
@@ -237,7 +248,7 @@
             function uploadOne(item) {
                 return new Promise(resolve => {
                     const fd = new FormData();
-                    fd.append('video_file', item.file);
+                    fd.append('file', item.file);
                     fd.append('batch_name', batchInput.value.trim());
                     if (queue.length === 1) {
                         fd.append('custom_filename', nameInput.value.trim());

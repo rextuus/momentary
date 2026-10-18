@@ -273,12 +273,6 @@
                                     </button>
                                 </form>
                         {% endif %}
-                        <a href="{{ path('app_video_trigger', {id: video.id, step: 'delete'}) }}"
-                           class="btn btn-sm btn-outline-danger d-flex justify-content-between align-items-center"
-                           onclick="return confirm('Möchtest du wirklich die lokale Videodatei und alle temporären Frames löschen? Die Analyseergebnisse bleiben erhalten.')">
-                            <span><i class="fas fa-trash-alt me-2"></i> Lokale Dateien löschen</span>
-                            <i class="fas fa-chevron-right small opacity-50"></i>
-                        </a>
                         {% endif %}
                     </div>
                 </div>

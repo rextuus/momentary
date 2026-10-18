@@ -1,0 +1,10 @@
+{# Checkbox „Abweichung merken“ für Korrekturformulare (nur Admins: gilt auch für künftige Importe anderer Benutzer) #}
+{% if is_granted('ROLE_ADMIN') %}
+    <div class="form-check mb-2">
+        <input class="form-check-input" type="checkbox" name="remember" value="1" id="{{ id }}">
+        <label class="form-check-label" for="{{ id }}">
+            Abweichung für {{ cameras ? cameras|join(', ') : 'diese Kamera' }} merken
+        </label>
+        <div class="form-text mt-0">Später importierte Aufnahmen derselben Kamera aus diesem Zeitraum werden automatisch genauso verschoben.</div>
+    </div>
+{% endif %}

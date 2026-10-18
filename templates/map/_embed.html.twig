@@ -1,0 +1,7 @@
+{# Eingebettete Karte. Erwartet: url (Punkte-Endpunkt), height (optional) #}
+<div data-controller="media-map" data-media-map-url-value="{{ url }}" class="position-relative">
+    <div data-media-map-target="map" class="rounded media-map" style="height: {{ height|default('320px') }};"></div>
+    <div data-media-map-target="empty" class="d-none position-absolute top-50 start-50 translate-middle bg-white rounded shadow-sm px-3 py-2 small text-muted" style="z-index: 500;">
+        Keine Medien mit Aufnahmeort.
+    </div>
+</div>

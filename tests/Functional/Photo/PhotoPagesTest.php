@@ -15,7 +15,6 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\Filesystem\Filesystem;
-use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 final class PhotoPagesTest extends WebTestCase
 {
@@ -48,38 +47,12 @@ final class PhotoPagesTest extends WebTestCase
         parent::tearDown();
     }
 
-    public function testUploadStoresOriginalSkipsDuplicatesAndStartsAnalysis(): void
+    public function testOldUploadAddressLeadsToTheCommonUpload(): void
     {
-        $owner = UserFactory::createOne();
-        $this->client->loginUser($owner);
-        $crawler = $this->client->request('GET', '/photo/upload');
-        $token = (string) $crawler->filter('input[name="_token"]')->attr('value');
+        $this->client->loginUser(UserFactory::createOne());
+        $this->client->request('GET', '/photo/upload');
 
-        $this->client->request(
-            'POST',
-            '/photo/upload',
-            ['_token' => $token],
-            [
-                'photos' => [
-                    $this->upload('IMG_0001.HEIC', 'a'),
-                    $this->upload('IMG_0002.jpg', 'a'),
-                    $this->upload('notes.txt', 'b'),
-                ],
-            ],
-        );
-
-        self::assertResponseRedirects('/photo/');
-        $photos = static::getContainer()->get(EntityManagerInterface::class)->getRepository(Photo::class)->findAll();
-        self::assertCount(1, $photos, 'gleicher Inhalt zählt nur einmal, .txt wird abgelehnt');
-        $photo = $photos[0];
-        self::assertSame('IMG_0001', $photo->getTitle());
-        self::assertSame($owner->getId(), $photo->getOwner()?->getId());
-        self::assertSame('photos/' . $photo->getId() . '/original.heic', $photo->getSourceFile()?->getRelativePath());
-        self::assertSame([$photo->getId()], $this->analyzed);
-
-        $this->client->followRedirect();
-        self::assertSelectorTextContains('.alert-info', '1 Foto(s) waren schon vorhanden');
-        self::assertSelectorTextContains('.alert-warning', 'notes.txt');
+        self::assertResponseRedirects('/upload');
     }
 
     public function testShowPageMarksFacesAndLinksPersons(): void
@@ -153,13 +126,5 @@ final class PhotoPagesTest extends WebTestCase
         $this->client->submitForm('Neu analysieren');
 
         self::assertSame([$photo->getId()], $this->analyzed);
-    }
-
-    private function upload(string $name, string $content): UploadedFile
-    {
-        $path = sys_get_temp_dir() . '/' . bin2hex(random_bytes(6)) . '-' . $name;
-        file_put_contents($path, $content);
-
-        return new UploadedFile($path, $name, null, null, true);
     }
 }

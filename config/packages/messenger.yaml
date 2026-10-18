@@ -79,3 +79,4 @@ framework:
             App\Message\TranscribeVideoMessage: transcription
             App\Service\Video\Processing\Message\TranscribeStepMessage: transcription
             App\Message\AnalyzePhotoMessage: photos
+            App\Message\ImportMediaFileMessage: async

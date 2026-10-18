@@ -20,7 +20,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  */
 #[AsCommand(
     name: 'app:video:recorded-at',
-    description: 'Liest fehlende Aufnahmedaten von Videos aus den Dateimetadaten',
+    description: 'Liest fehlende Aufnahmedaten und Kameras von Videos aus den Dateimetadaten',
 )]
 final class BackfillRecordedAtCommand extends Command
 {
@@ -51,9 +51,24 @@ final class BackfillRecordedAtCommand extends Command
             $io->text(sprintf('Video %d: %s', (int) $video->getId(), $recordedAt->date->format('d.m.Y H:i')));
             $updated++;
         }
+        $cameras = 0;
+        foreach ($this->videoRepository->findBy(['camera' => null]) as $video) {
+            $file = $video->getSourceFile() ?? $video->getConvertedFile();
+            $path = $file !== null ? $this->pathProvider->getAbsolutePath($file) : null;
+            $camera = $path !== null && is_file($path) ? $this->analyzer->probeCamera($path) : null;
+            if ($camera !== null) {
+                $video->setCamera($camera);
+                $cameras++;
+            }
+        }
         $this->entityManager->flush();
 
-        $io->success(sprintf('%d Aufnahmedatum/-daten nachgetragen, %d ohne Angabe in der Datei.', $updated, $missing));
+        $io->success(sprintf(
+            '%d Aufnahmedatum/-daten nachgetragen, %d ohne Angabe in der Datei; %d Kamera(s) erkannt.',
+            $updated,
+            $missing,
+            $cameras,
+        ));
 
         return Command::SUCCESS;
     }

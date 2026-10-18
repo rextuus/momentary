@@ -1,0 +1,31 @@
+<div {{ attributes }}>
+    {% set blocks = this.blocks %}
+    {% if blocks is not empty %}
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="fw-semibold small"><i class="fas fa-closed-captioning me-1 text-success"></i>Sprach-Spur</div>
+                    <div class="small text-muted">{{ blocks|length }} Abschnitte · etwa {{ this.speechShare }} % des Videos mit Sprache</div>
+                </div>
+                <div class="speech-track position-relative rounded bg-body-secondary" style="height: 26px;">
+                    {% for block in blocks %}
+                        <a href="{{ path('app_video_show', {id: video.id}) }}?t={{ block.start }}"
+                           class="speech-block position-absolute top-0 h-100 rounded-1"
+                           style="left: {{ block.left }}%; width: {{ block.width }}%;"
+                           title="{{ block.label }} – {{ block.text }}"
+                           aria-label="{{ block.label }}: {{ block.text }}"></a>
+                    {% endfor %}
+                </div>
+                <div class="d-flex justify-content-between small text-muted mt-1">
+                    <span>0:00</span>
+                    <span>Abschnitt anklicken, um im Video dorthin zu springen</span>
+                    <span>Ende</span>
+                </div>
+            </div>
+        </div>
+        <style>
+            .speech-block { background: var(--bs-success); opacity: 0.65; transition: opacity 0.15s; }
+            .speech-block:hover, .speech-block:focus { opacity: 1; outline: 2px solid var(--bs-success-border-subtle); }
+        </style>
+    {% endif %}
+</div>

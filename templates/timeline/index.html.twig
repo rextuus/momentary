@@ -1,0 +1,91 @@
+{% extends 'base.html.twig' %}
+{% block title %}Zeitachse - Momentary{% endblock %}
+
+{% block body %}
+{% set monthNames = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'] %}
+<div class="container pb-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+        <div>
+            <h1 class="fw-bold mb-1">Zeitachse</h1>
+            <p class="text-muted mb-0">
+                Alle Videos und Fotos nach Aufnahmezeit{% if selectedPerson %}, in denen <strong>{{ selectedPerson.displayName }}</strong> vorkommt{% endif %}.
+            </p>
+        </div>
+        <form method="get" class="d-flex flex-wrap gap-2 align-items-center">
+            <select name="person" class="form-select form-select-sm" style="width: auto;" aria-label="Person" onchange="this.form.submit()">
+                <option value="">Alle Personen</option>
+                {% for person in persons %}
+                    <option value="{{ person.id }}" {{ filter.personId == person.id ? 'selected' }}>{{ person.displayName }}</option>
+                {% endfor %}
+                {% if selectedPerson and selectedPerson not in persons %}
+                    <option value="{{ selectedPerson.id }}" selected>{{ selectedPerson.displayName }}</option>
+                {% endif %}
+            </select>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Medientyp">
+                {% for value, label in {all: 'Alle', video: 'Videos', photo: 'Fotos'} %}
+                    <input type="radio" class="btn-check" name="type" id="type-{{ value }}" value="{{ value }}" {{ filter.type == value ? 'checked' }} onchange="this.form.submit()">
+                    <label class="btn btn-outline-secondary" for="type-{{ value }}">{{ label }}</label>
+                {% endfor %}
+            </div>
+            <noscript><button class="btn btn-sm btn-primary" type="submit">Anwenden</button></noscript>
+        </form>
+    </div>
+
+    <div class="row g-4">
+        {% if months is not empty %}
+            <nav class="col-lg-2 d-none d-lg-block" aria-label="Monate">
+                <div class="timeline-months sticky-top">
+                    {% set year = null %}
+                    {% for m in months %}
+                        {% if m.year != year %}
+                            {% set year = m.year %}
+                            <div class="fw-bold mt-2">{{ m.year }}</div>
+                        {% endif %}
+                        <a href="{{ path('app_media_timeline', filter.toQuery|merge({before: m.cursor})) }}" class="d-flex justify-content-between small text-decoration-none py-1 px-2 rounded timeline-month-link">
+                            <span>{{ monthNames[m.month - 1] }}</span><span class="text-muted">{{ m.count }}</span>
+                        </a>
+                    {% endfor %}
+                </div>
+            </nav>
+        {% endif %}
+
+        <div class="{{ months is not empty ? 'col-lg-10' : 'col-12' }}" data-controller="infinite-scroll burst">
+            {% if cursor %}
+                <div class="mb-3"><a href="{{ path('app_media_timeline', filter.toQuery) }}" class="small"><i class="fas fa-arrow-up me-1"></i>Zu den neuesten springen</a></div>
+            {% endif %}
+
+            {% if page.count == 0 %}
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-timeline fa-3x mb-3 opacity-50"></i>
+                    <p class="mb-0">Keine Medien{% if selectedPerson or filter.type != 'all' %} für diese Auswahl{% endif %}.</p>
+                </div>
+            {% endif %}
+
+            <div data-infinite-scroll-target="items">
+                {{ include('timeline/_page.html.twig', {previousMonth: ''}) }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .timeline-month { position: sticky; top: 64px; z-index: 5; background: #f8f9fa; padding: 0.5rem 0; margin: 1.5rem 0 0.5rem; }
+    .timeline-months { top: 80px; max-height: calc(100vh - 100px); overflow-y: auto; }
+    .timeline-month-link { color: var(--bs-body-color); }
+    .timeline-month-link:hover { background: var(--bs-tertiary-bg); }
+    .timeline-day { margin-bottom: 1rem; }
+    .timeline-day.in-event { border-left: 3px solid var(--bs-primary); padding-left: 0.75rem; margin-left: 0.25rem; }
+    .timeline-event-title { color: var(--bs-primary); margin-top: 0.5rem; }
+    .timeline-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 4px; }
+    .timeline-cell { position: relative; }
+    .timeline-tile { position: relative; display: block; aspect-ratio: 1; overflow: hidden; border-radius: 6px; background: var(--bs-tertiary-bg); }
+    .timeline-tile img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s ease; }
+    .timeline-tile:hover img { transform: scale(1.05); }
+    .timeline-placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--bs-secondary-color); }
+    .timeline-badge, .timeline-time { position: absolute; font-size: 0.7rem; color: #fff; background: rgba(0, 0, 0, 0.55); border-radius: 4px; padding: 0 0.3rem; }
+    .timeline-badge { top: 4px; left: 4px; }
+    .timeline-time { bottom: 4px; right: 4px; opacity: 0; transition: opacity 0.15s; }
+    .timeline-tile:hover .timeline-time { opacity: 1; }
+    @media (max-width: 575.98px) { .timeline-grid { grid-template-columns: repeat(3, 1fr); } }
+</style>
+{% endblock %}

@@ -30,6 +30,8 @@ abstract class Medium
     public const string DATE_FILENAME = 'filename';
     public const string DATE_METADATA = 'metadata';
     public const string DATE_MANUAL = 'manual';
+    /** Kamerazeit plus gemerkte Abweichung dieser Kamera (siehe CameraClockOffset) */
+    public const string DATE_CAMERA_OFFSET = 'camera_offset';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -54,6 +56,17 @@ abstract class Medium
     /** Woher takenAt stammt (siehe DATE_*); "manual" wird von automatischen Analysen nie überschrieben */
     #[ORM\Column(length: 16, nullable: true)]
     protected ?string $dateSource = null;
+
+    /**
+     * Aufnahmezeit, wie die Kamera sie geliefert hat (EXIF, Dateiname, Metadaten), auch nach einer Korrektur.
+     * Grundlage, um gemerkte Abweichungen einer Kamera anzuwenden.
+     */
+    #[ORM\Column(nullable: true)]
+    protected ?\DateTimeImmutable $cameraTakenAt = null;
+
+    /** Kamera bzw. Gerät (EXIF Hersteller + Modell, Video-Metadaten), z. B. "AKASO EK7000PRO" */
+    #[ORM\Column(length: 128, nullable: true)]
+    protected ?string $camera = null;
 
     /** Aufnahmeort (GPS aus EXIF bzw. Video-Metadaten) */
     #[ORM\Column(nullable: true)]
@@ -174,13 +187,35 @@ abstract class Medium
     {
         $this->takenAt = $takenAt;
         $this->dateSource = $takenAt === null ? null : $source;
+        // Korrekturen ändern die Kamerazeit nicht
+        if (!\in_array($source, [self::DATE_MANUAL, self::DATE_CAMERA_OFFSET], true)) {
+            $this->cameraTakenAt = $takenAt;
+        }
 
         return $this;
     }
 
     public function isDateCorrected(): bool
     {
-        return $this->dateSource === self::DATE_MANUAL;
+        return \in_array($this->dateSource, [self::DATE_MANUAL, self::DATE_CAMERA_OFFSET], true);
+    }
+
+    public function getCameraTakenAt(): ?\DateTimeImmutable
+    {
+        return $this->cameraTakenAt;
+    }
+
+    public function getCamera(): ?string
+    {
+        return $this->camera;
+    }
+
+    public function setCamera(?string $camera): static
+    {
+        $camera = $camera === null ? null : trim($camera);
+        $this->camera = $camera === '' ? null : $camera;
+
+        return $this;
     }
 
     /** Für die Anzeige: woher die Aufnahmezeit stammt */
@@ -191,6 +226,7 @@ abstract class Medium
             self::DATE_FILENAME => 'laut Dateiname',
             self::DATE_METADATA => 'laut Video-Metadaten',
             self::DATE_MANUAL => 'von Hand korrigiert',
+            self::DATE_CAMERA_OFFSET => 'Kamera-Uhr korrigiert',
             default => $this->takenAt === null ? 'unbekannt, Importzeitpunkt' : 'Herkunft unbekannt',
         };
     }

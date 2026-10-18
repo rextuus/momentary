@@ -1,0 +1,47 @@
+{# Ein Ereignis-Vorschlag. Erwartet: suggestion, gap #}
+{% set start = suggestion.start %}
+{% set end = suggestion.end %}
+{% set persons = suggestion.persons %}
+<div class="card border-0 shadow-sm h-100 suggestion-card">
+    <div class="d-flex suggestion-preview">
+        {% for medium in suggestion.preview(5) %}
+            <div class="flex-fill bg-body-secondary" style="background: url('{{ imgproxy_url(medium.previewFile, 300, 240) }}') center/cover;"></div>
+        {% endfor %}
+    </div>
+    <div class="card-body">
+        {% if suggestion.trip %}
+            <span class="badge rounded-pill text-bg-info mb-1"><i class="fas fa-suitcase-rolling me-1"></i>Reise</span>
+        {% endif %}
+        <div class="fw-semibold">
+            {% if start|date('Y-m-d', false) == end|date('Y-m-d', false) %}
+                {{ start|date('d.m.Y', false) }}, {{ start|date('H:i', false) }}–{{ end|date('H:i', false) }} Uhr
+            {% else %}
+                {{ start|date('d.m.Y', false) }} – {{ end|date('d.m.Y', false) }}
+            {% endif %}
+        </div>
+        <div class="small text-muted">
+            {% if suggestion.videoCount %}<i class="fas fa-video me-1"></i>{{ suggestion.videoCount }} {{ suggestion.videoCount == 1 ? 'Video' : 'Videos' }}{% endif %}
+            {% if suggestion.photoCount %}<i class="fas fa-image ms-2 me-1"></i>{{ suggestion.photoCount }} {{ suggestion.photoCount == 1 ? 'Foto' : 'Fotos' }}{% endif %}
+        </div>
+        {% if suggestion.places is not empty %}
+            <div class="small mt-1"><i class="fas fa-location-dot me-1 text-muted"></i>{{ suggestion.places(suggestion.trip ? 5 : 3)|join(' · ') }}</div>
+        {% endif %}
+        {% if persons.named is not empty or persons.unnamed > 0 %}
+            <div class="small mt-1">
+                <i class="fas fa-users me-1 text-muted"></i>
+                {{ persons.named|slice(0, 4)|map(p => p.displayName)|join(', ') }}
+                {%- if persons.named|length > 4 %} +{{ persons.named|length - 4 }}{% endif %}
+                {% if persons.unnamed > 0 %}<span class="text-muted">{{ persons.named is not empty ? ' und ' : '' }}{{ persons.unnamed }} unbenannte</span>{% endif %}
+            </div>
+        {% endif %}
+    </div>
+    <div class="card-footer bg-transparent border-0 pt-0 d-flex gap-2">
+        <a href="{{ path('app_event_suggestion', {key: suggestion.key, gap: gap}) }}" class="btn btn-sm btn-primary">
+            <i class="fas fa-check me-1"></i>Übernehmen
+        </a>
+        <form method="post" action="{{ path('app_event_suggestion_dismiss', {key: suggestion.key, gap: gap}) }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('dismiss-' ~ suggestion.key) }}">
+            <button type="submit" class="btn btn-sm btn-light border" title="Nicht wieder vorschlagen">Verwerfen</button>
+        </form>
+    </div>
+</div>

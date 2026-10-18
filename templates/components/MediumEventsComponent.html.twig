@@ -1,0 +1,23 @@
+<div {{ attributes.defaults({class: 'card border-0 shadow-sm mb-3'}) }}>
+    <div class="card-header bg-transparent fw-semibold small text-uppercase text-muted">Ereignisse</div>
+    <div class="card-body">
+        {% for event in medium.events %}
+            <a href="{{ path('app_event_show', {id: event.id}) }}" class="badge rounded-pill text-bg-primary text-decoration-none me-1 mb-1">{{ event.title }}</a>
+        {% else %}
+            <div class="text-muted small mb-2">Noch keinem Ereignis zugeordnet.</div>
+        {% endfor %}
+        {% if is_granted('MEDIUM_EDIT', medium) %}
+            {% set selectable = this.selectableEvents %}
+            {% if selectable is not empty %}
+                <form method="post" action="{{ path('app_medium_add_event', {id: medium.id}) }}" class="input-group input-group-sm mt-2">
+                    <input type="hidden" name="_token" value="{{ csrf_token('add-event' ~ medium.id) }}">
+                    <select name="event" class="form-select" aria-label="Ereignis">
+                        {% for event in selectable %}<option value="{{ event.id }}">{{ event.title }}</option>{% endfor %}
+                    </select>
+                    <button class="btn btn-outline-primary" type="submit">Hinzufügen</button>
+                </form>
+            {% endif %}
+            <a href="{{ path('app_event_new') }}" class="small d-inline-block mt-2"><i class="fas fa-plus me-1"></i>Neues Ereignis</a>
+        {% endif %}
+    </div>
+</div>
