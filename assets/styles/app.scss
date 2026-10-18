@@ -41,3 +41,8 @@ body {
     }
   }
 }
+
+// Flex-Kinder dürfen schrumpfen, damit text-truncate greift (Bootstrap hat dafür keine Utility)
+.min-w-0 {
+  min-width: 0;
+}

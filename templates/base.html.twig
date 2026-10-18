@@ -43,6 +43,7 @@
             letter-spacing: -0.5px;
             color: var(--primary-color) !important;
         }
+        .navbar .nav-link { white-space: nowrap; }
         .navbar .nav-link {
             font-weight: 500;
             color: var(--secondary-color);
@@ -139,7 +140,7 @@
     {route: 'app_search_test', icon: 'fa-search', color: 'secondary', title: 'Search Explorer', desc: 'Meilisearch testen'},
 ] %}
 
-<nav class="navbar navbar-expand-lg sticky-top mb-4">
+<nav class="navbar navbar-expand-xl sticky-top mb-4">
     <div class="container">
         <a class="navbar-brand d-flex align-items-center" href="{{ path('app_dashboard') }}">
             <i class="fas fa-film me-2"></i>
@@ -150,15 +151,15 @@
         </button>
 
         <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav me-auto ms-lg-4 gap-lg-1">
-                <li class="nav-item">
-                    <a class="nav-link {{ route == 'app_dashboard' ? 'active' }}" href="{{ path('app_dashboard') }}">
-                        <i class="fas fa-home me-1"></i> Dashboard
-                    </a>
-                </li>
+            <ul class="navbar-nav me-auto ms-xl-4 gap-xl-1">
                 <li class="nav-item">
                     <a class="nav-link {{ inVideos ? 'active' }}" href="{{ path('app_video_index') }}">
                         <i class="fas fa-video me-1"></i> Videos
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ route == 'app_media_timeline' ? 'active' }}" href="{{ path('app_media_timeline') }}">
+                        <i class="fas fa-timeline me-1"></i> Zeitachse
                     </a>
                 </li>
                 <li class="nav-item">
@@ -224,9 +225,12 @@
                 </li>
             </ul>
 
-            <div class="d-flex mt-2 mt-lg-0">
-                <a class="btn btn-primary btn-sm rounded-pill px-3 {{ route == 'app_upload' ? 'active' }}" href="{{ path('app_upload') }}">
-                    <i class="fas fa-cloud-upload-alt me-1"></i> Upload
+            <div class="d-flex align-items-center gap-2 mt-2 mt-xl-0">
+                <a href="{{ path('app_search') }}" class="nav-link px-2 {{ route == 'app_search' ? 'active' }}" title="Videos und Fotos durchsuchen" aria-label="Suchen">
+                    <i class="fas fa-search"></i><span class="d-xl-none ms-1">Suchen</span>
+                </a>
+                <a class="btn btn-primary btn-sm rounded-pill px-3 text-nowrap {{ route == 'app_upload' ? 'active' }}" href="{{ path('app_upload') }}" title="Upload">
+                    <i class="fas fa-cloud-upload-alt"></i><span class="d-xl-none d-xxl-inline ms-1">Upload</span>
                 </a>
             </div>
         </div>

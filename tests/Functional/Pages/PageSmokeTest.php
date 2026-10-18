@@ -46,6 +46,9 @@ final class PageSmokeTest extends WebTestCase
         yield 'Auftrennen' => ['/admin/reassign-faces'];
         yield 'Gesichtserkennung' => ['/admin/settings/face-recognition'];
         yield 'Transkription' => ['/admin/settings/transcription'];
+        yield 'Suche' => ['/search?q=Strand&tags[]=Pool'];
+        yield 'Zeitachse' => ['/timeline'];
+        yield 'Zeitachse gefiltert' => ['/timeline?type=photo&person={anna}&before=1742380000.99'];
         yield 'Fotos' => ['/photo/'];
         yield 'Fotos gesucht' => ['/photo/?q=Strand&page=1'];
         yield 'Foto-Detail' => ['/photo/{photo}'];

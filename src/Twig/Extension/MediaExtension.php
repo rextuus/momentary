@@ -8,6 +8,7 @@ use App\Entity\Medium;
 use App\Entity\Photo;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Twig\Extension\AbstractExtension;
+use Twig\TwigFilter;
 use Twig\TwigFunction;
 
 /**
@@ -18,6 +19,32 @@ final class MediaExtension extends AbstractExtension
     public function __construct(
         private readonly UrlGeneratorInterface $urlGenerator,
     ) {}
+
+    public function getFilters(): array
+    {
+        return [new TwigFilter('highlight', $this->highlight(...), ['is_safe' => ['html']])];
+    }
+
+    /**
+     * Suchbegriffe im Text mit <mark> hervorheben (Text wird vorher maskiert).
+     *
+     * @param list<string> $terms
+     */
+    public function highlight(string $text, array $terms): string
+    {
+        $escaped = htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $terms = array_filter($terms, static fn(string $term): bool => $term !== '');
+        if ($terms === []) {
+            return $escaped;
+        }
+
+        $pattern = implode('|', array_map(static fn(string $term): string => preg_quote(
+            htmlspecialchars($term, ENT_QUOTES, 'UTF-8'),
+            '/',
+        ), $terms));
+
+        return preg_replace('/(' . $pattern . ')/iu', '<mark>$1</mark>', $escaped) ?? $escaped;
+    }
 
     public function getFunctions(): array
     {
