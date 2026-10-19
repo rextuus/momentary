@@ -73,7 +73,7 @@
                                             {% endif %}
 
                                             {% if is_granted('ROLE_ADMIN') %}
-                                                <a href="{{ path('app_admin_video_groups', {id: video.id}) }}" class="btn btn-sm btn-outline-secondary rounded-pill px-2 ms-2" title="Zugriff verwalten">
+                                                <a href="{{ path('app_video_show', {id: video.id}) }}#pools" class="btn btn-sm btn-outline-secondary rounded-pill px-2 ms-2" title="Zugriff verwalten">
                                                     <i class="fas fa-shield-alt"></i>
                                                 </a>
                                             {% endif %}

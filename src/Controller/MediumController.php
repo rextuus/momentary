@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\Medium;
+use App\Entity\UserGroup;
 use App\Repository\EventRepository;
 use App\Security\Voter\MediumAccessVoter;
 use App\Service\Media\CameraClock;
 use App\Service\Media\RecordingTimeCorrector;
+use App\Service\Pool\Pools;
 use App\Twig\Extension\MediaExtension;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -54,7 +56,7 @@ final class MediumController extends AbstractController
         }
 
         $event = null;
-        $eventId = $request->request->getInt('event');
+        $eventId = (int) $request->request->getString('event');
         if ($eventId > 0) {
             $event = $eventRepository->find($eventId);
             if ($event === null || !$event->getMedia()->contains($medium)) {
@@ -88,5 +90,27 @@ final class MediumController extends AbstractController
         );
 
         return $this->redirect($back);
+    }
+
+    #[Route('/medium/{id}/pools/{pool}', name: 'app_medium_pool', methods: ['POST'])]
+    #[IsGranted(MediumAccessVoter::EDIT, subject: 'medium')]
+    public function pool(
+        Medium $medium,
+        UserGroup $pool,
+        Request $request,
+        Pools $pools,
+        MediaExtension $media,
+    ): Response {
+        if ($this->isCsrfTokenValid('medium-pool' . $medium->getId(), $request->request->getString('_token'))) {
+            if ($request->request->getString('action') === 'remove') {
+                $pools->remove($pool, $medium);
+                $this->addFlash('info', sprintf('Aus „%s“ herausgenommen.', $pool->getName()));
+            } else {
+                $pools->add($pool, $medium);
+                $this->addFlash('success', sprintf('In „%s“ aufgenommen.', $pool->getName()));
+            }
+        }
+
+        return $this->redirect($media->mediumPath($medium) . '#pools');
     }
 }

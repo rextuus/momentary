@@ -9,6 +9,7 @@ use App\Service\Search\SearchMoment;
 use App\Twig\Extension\MediaExtension;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 
 final class MediaSearchMomentsTest extends TestCase
 {
@@ -77,7 +78,10 @@ final class MediaSearchMomentsTest extends TestCase
 
     public function testHighlightEscapesHtml(): void
     {
-        $extension = new MediaExtension($this->createStub(UrlGeneratorInterface::class));
+        $extension = new MediaExtension(
+            $this->createStub(UrlGeneratorInterface::class),
+            $this->createStub(AuthorizationCheckerInterface::class),
+        );
 
         self::assertSame('&lt;script&gt;alert(1)&lt;/script&gt; <mark>Butter</mark> ist <mark>butter</mark>', $extension->highlight('<script>alert(1)</script> Butter ist butter', [
             'butter',

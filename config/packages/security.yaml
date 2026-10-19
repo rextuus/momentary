@@ -54,6 +54,10 @@ security:
         - { path: ^/s/, roles: PUBLIC_ACCESS }
         - { path: ^/api,       roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/admin, roles: ROLE_ADMIN }
+        # Pflege des Archivs (Personen benennen, hochladen) nur für Bearbeiter; Familie in Pools schaut nur an
+        - { path: ^/person, roles: ROLE_EDITOR }
+        - { path: ^/upload, roles: ROLE_EDITOR }
+        - { path: ^/video/new, roles: ROLE_EDITOR }
         - { path: ^/, roles: ROLE_USER }
 
 when@test:

@@ -24,7 +24,7 @@ final class MediaTimelineController extends AbstractController
     {
         $type = $request->query->getString('type', TimelineFilter::ALL);
         $filter = new TimelineFilter(
-            $request->query->getInt('person') ?: null,
+            (int) $request->query->getString('person') ?: null,
             \in_array($type, [TimelineFilter::VIDEOS, TimelineFilter::PHOTOS], true) ? $type : TimelineFilter::ALL,
         );
         $user = $this->getUser();

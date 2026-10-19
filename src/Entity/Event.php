@@ -176,8 +176,18 @@ class Event
      */
     public function getPersonSummary(): array
     {
+        return self::personSummaryOf($this->media->toArray());
+    }
+
+    /**
+     * @param iterable<Medium> $media
+     *
+     * @return list<array{person: Person, count: int}>
+     */
+    public static function personSummaryOf(iterable $media): array
+    {
         $persons = [];
-        foreach ($this->media as $medium) {
+        foreach ($media as $medium) {
             foreach ($medium->getFaces() as $face) {
                 $person = $face->getPerson();
                 if ($person === null || $person->getId() === null || $person->hasPlaceholderName()) {

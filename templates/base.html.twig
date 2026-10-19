@@ -138,6 +138,8 @@
     {route: 'app_admin_face_recognition_settings', icon: 'fa-user-check', color: 'primary', title: 'Gesichtserkennung', desc: 'Schwellwerte & Tracking'},
     {route: 'app_admin_transcription_settings', icon: 'fa-closed-captioning', color: 'success', title: 'Transkription', desc: 'Whisper-Modell & Tags'},
     {route: 'app_admin_camera_clocks', icon: 'fa-clock', color: 'warning', title: 'Kamera-Uhren', desc: 'Falsche Aufnahmezeiten'},
+    {route: 'app_admin_users', icon: 'fa-users-gear', color: 'primary', title: 'Benutzer', desc: 'Konten für Familie & Bearbeiter'},
+    {route: 'app_admin_pools', icon: 'fa-layer-group', color: 'success', title: 'Pools', desc: 'Wer sieht welche Medien'},
     {route: 'app_admin_api_clients', icon: 'fa-plug', color: 'secondary', title: 'API-Zugänge', desc: 'Hub & App verbinden'},
     {route: 'app_admin_import', icon: 'fa-folder-open', color: 'primary', title: 'Import-Ordner', desc: 'Videos & Fotos übernehmen'},
     {route: 'admin_files_ftp', icon: 'fa-file-upload', color: 'secondary', title: 'FTP Datei-Manager', desc: 'Uploads verwalten'},
@@ -181,6 +183,7 @@
                         <i class="fas fa-map-location-dot me-1"></i> Karte
                     </a>
                 </li>
+                {% if is_granted('ROLE_EDITOR') %}
                 <li class="nav-item">
                     <a class="nav-link {{ inPersons ? 'active' }}" href="{{ path('person_index') }}">
                         <i class="fas fa-users me-1"></i> Personen
@@ -212,7 +215,9 @@
                         {% endfor %}
                     </ul>
                 </li>
+                {% endif %}
 
+                {% if is_granted('ROLE_ADMIN') %}
                 {# Verwalten ▾ #}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle {{ inAdmin ? 'active' }}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -232,15 +237,18 @@
                         {% endfor %}
                     </ul>
                 </li>
+                {% endif %}
             </ul>
 
             <div class="d-flex align-items-center gap-2 mt-2 mt-xxl-0">
                 <a href="{{ path('app_search') }}" class="nav-link px-2 {{ route == 'app_search' ? 'active' }}" title="Videos und Fotos durchsuchen" aria-label="Suchen">
                     <i class="fas fa-search"></i><span class="d-xxl-none ms-1">Suchen</span>
                 </a>
+                {% if is_granted('ROLE_EDITOR') %}
                 <a class="btn btn-primary btn-sm rounded-pill px-3 text-nowrap {{ route == 'app_upload' ? 'active' }}" href="{{ path('app_upload') }}" title="Upload">
                     <i class="fas fa-cloud-upload-alt"></i><span class="ms-1">Upload</span>
                 </a>
+                {% endif %}
             </div>
         </div>
     </div>

@@ -1,0 +1,146 @@
+{% extends 'base.html.twig' %}
+{% block title %}{{ pool.name }} - Pools - Momentary{% endblock %}
+
+{% block body %}
+{% set memberIds = pool.members|map(m => m.user.id) %}
+<div class="container pb-5">
+    <nav aria-label="breadcrumb"><ol class="breadcrumb small">
+        <li class="breadcrumb-item"><a href="{{ path('app_admin_pools') }}">Pools</a></li>
+        <li class="breadcrumb-item active">{{ pool.name }}</li>
+    </ol></nav>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="fas fa-layer-group text-primary me-2"></i>{{ pool.name }}</h1>
+            <div class="text-muted">{{ count }} Medien · {{ pool.members|length }} Mitglied{{ pool.members|length == 1 ? '' : 'er' }}</div>
+        </div>
+        <form method="post" action="{{ path('app_admin_pools_update', {id: pool.id}) }}" onsubmit="return confirm('Pool „{{ pool.name|e('js') }}“ löschen? Die Medien bleiben, nur die Freigabe entfällt.')">
+            <input type="hidden" name="_token" value="{{ csrf_token('pools') }}">
+            <button class="btn btn-sm btn-outline-danger" name="action" value="delete"><i class="fas fa-trash-alt me-1"></i>Pool löschen</button>
+        </form>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent fw-semibold"><i class="fas fa-filter text-primary me-2"></i>Regeln</div>
+                <ul class="list-group list-group-flush small">
+                    {% for rule in pool.rules %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+                            <span>{{ rule.describe }}</span>
+                            <form method="post" action="{{ path('app_admin_pools_update', {id: pool.id}) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token('pools') }}">
+                                <input type="hidden" name="rule" value="{{ rule.id }}">
+                                <button class="btn btn-sm btn-outline-danger py-0" name="action" value="remove_rule" title="Regel entfernen"><i class="fas fa-xmark"></i></button>
+                            </form>
+                        </li>
+                    {% else %}
+                        <li class="list-group-item text-muted">Keine Regeln: Im Pool sind nur einzeln hinzugefügte Medien.</li>
+                    {% endfor %}
+                </ul>
+                <div class="card-body border-top">
+                    <form method="post" action="{{ path('app_admin_pools_update', {id: pool.id}) }}" class="small">
+                        <input type="hidden" name="_token" value="{{ csrf_token('pools') }}">
+                        <div class="fw-semibold mb-2">Regel hinzufügen <span class="fw-normal text-muted">– alle ausgefüllten Felder müssen zutreffen</span></div>
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label class="form-label mb-1" for="rule-event">Ereignis</label>
+                                <select id="rule-event" name="event" class="form-select form-select-sm">
+                                    <option value="">– beliebig –</option>
+                                    {% for event in events %}<option value="{{ event.id }}">{{ event.title }}{% if event.startDate %} ({{ event.startDate|date('Y') }}){% endif %}</option>{% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label mb-1" for="rule-tag">Tag</label>
+                                <input type="text" id="rule-tag" name="tag" class="form-control form-control-sm" list="pool-tags" placeholder="z. B. Upload-Ordner „Heimvideos“" autocomplete="off">
+                                <datalist id="pool-tags">{% for tag in tags %}<option value="{{ tag.name }}">{% endfor %}</datalist>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label mb-1" for="rule-from">Aufnahme von</label>
+                                <input type="date" id="rule-from" name="from" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label mb-1" for="rule-until">bis</label>
+                                <input type="date" id="rule-until" name="until" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-6 d-flex align-items-end">
+                                <button class="btn btn-sm btn-primary" name="action" value="add_rule">Regel hinzufügen</button>
+                            </div>
+                        </div>
+                        <div class="form-text mt-2">Neue Medien, auf die eine Regel passt, kommen automatisch in den Pool. Einzelne Medien nimmst du auf der Video- bzw. Fotoseite heraus.</div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent fw-semibold"><i class="fas fa-eye text-primary me-2"></i>Das sehen die Mitglieder <span class="text-muted fw-normal">{{ count }}</span></div>
+                <div class="card-body">
+                    {% if media is empty %}
+                        <div class="text-muted small">Noch nichts. Regeln hinzufügen oder auf Video- und Fotoseiten einzelne Medien aufnehmen.</div>
+                    {% else %}
+                        <div class="row row-cols-3 row-cols-sm-4 row-cols-md-6 g-2">
+                            {% for medium in media %}
+                                <div class="col">
+                                    <a href="{{ medium_path(medium) }}" class="d-block ratio ratio-1x1 rounded overflow-hidden bg-body-secondary" title="{{ medium.title }}">
+                                        {% if medium.previewFile %}<img src="{{ imgproxy_url(medium.previewFile, 200, 200) }}" alt="" class="object-fit-cover" loading="lazy">{% endif %}
+                                    </a>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {% if count > media|length %}<div class="small text-muted mt-2">und {{ count - media|length }} weitere</div>{% endif %}
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if pool.excludedMedia is not empty %}
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent fw-semibold"><i class="fas fa-ban text-secondary me-2"></i>Ausgenommen <span class="text-muted fw-normal">{{ pool.excludedMedia|length }}</span></div>
+                    <ul class="list-group list-group-flush small">
+                        {% for medium in pool.excludedMedia %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+                                <a href="{{ medium_path(medium) }}"><i class="fas {{ medium_icon(medium) }} me-1"></i>{{ medium.title }}</a>
+                                <form method="post" action="{{ path('app_admin_pools_update', {id: pool.id}) }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('pools') }}">
+                                    <input type="hidden" name="medium" value="{{ medium.id }}">
+                                    <button class="btn btn-sm btn-outline-secondary py-0" name="action" value="unexclude">Wieder aufnehmen</button>
+                                </form>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent fw-semibold"><i class="fas fa-user-group text-primary me-2"></i>Mitglieder</div>
+                <div class="card-body">
+                    <form method="post" action="{{ path('app_admin_pools_update', {id: pool.id}) }}" class="small">
+                        <input type="hidden" name="_token" value="{{ csrf_token('pools') }}">
+                        {% for user in users %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="members[]" value="{{ user.id }}" id="member-{{ user.id }}" {{ user.id in memberIds ? 'checked' }}>
+                                <label class="form-check-label" for="member-{{ user.id }}">{{ user.email }}{% if 'ROLE_ADMIN' in user.roles %} <span class="text-muted">(Admin, sieht ohnehin alles)</span>{% endif %}</label>
+                            </div>
+                        {% endfor %}
+                        <button class="btn btn-sm btn-primary mt-2" name="action" value="members">Mitglieder speichern</button>
+                        <div class="form-text">Neue Konten: <a href="{{ path('app_admin_users') }}">Verwalten → Benutzer</a></div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent fw-semibold"><i class="fas fa-pen text-primary me-2"></i>Name und Beschreibung</div>
+                <div class="card-body">
+                    <form method="post" action="{{ path('app_admin_pools_update', {id: pool.id}) }}" class="small">
+                        <input type="hidden" name="_token" value="{{ csrf_token('pools') }}">
+                        <input type="text" name="name" class="form-control form-control-sm mb-2" value="{{ pool.name }}" required aria-label="Name">
+                        <textarea name="description" class="form-control form-control-sm mb-2" rows="2" aria-label="Beschreibung">{{ pool.description }}</textarea>
+                        <button class="btn btn-sm btn-outline-primary" name="action" value="details">Speichern</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

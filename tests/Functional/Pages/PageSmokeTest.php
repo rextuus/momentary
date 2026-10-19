@@ -51,6 +51,9 @@ final class PageSmokeTest extends WebTestCase
         yield 'API-Zugänge' => ['/admin/settings/api-clients'];
         yield 'Suche' => ['/search?q=Strand&tags[]=Pool'];
         yield 'Zeitachse' => ['/timeline'];
+        yield 'Zeitachse alle Personen' => ['/timeline?person=&type=all'];
+        yield 'Karte alle Personen' => ['/map?person=&type=all'];
+        yield 'Kartenpunkte leere Filter' => ['/map/points?person=&event=&medium='];
         yield 'Karte' => ['/map?type=photo'];
         yield 'Kartenpunkte' => ['/map/points?event={event}'];
         yield 'Zeitachse gefiltert' => ['/timeline?type=photo&person={anna}&before=1742380000.99'];

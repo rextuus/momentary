@@ -53,15 +53,12 @@
                                     </span>
                                 {% else %}
                                     <span class="badge bg-warning text-dark px-3 py-1">
-                                        <i class="fas fa-lock me-1"></i> Zugriff auf {{ video.allowedGroups|length }} Gruppe(n) eingeschränkt
+                                        <i class="fas fa-lock me-1"></i> Nicht öffentlich: Eigentümer, Admins und Pools
                                     </span>
-                                    <div class="small text-muted mt-1">
-                                        Erlaubte Gruppen: {% for group in video.allowedGroups %}{{ group.name }}{% if not loop.last %}, {% endif %}{% endfor %}
-                                    </div>
                                 {% endif %}
 
                                 {% if is_granted('ROLE_ADMIN') %}
-                                    <a href="{{ path('app_admin_video_groups', {id: video.id}) }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 ms-2">
+                                    <a href="#pools" class="btn btn-sm btn-outline-secondary rounded-pill px-3 ms-2">
                                         <i class="fas fa-shield-alt me-1"></i> Zugriff verwalten
                                     </a>
                                 {% endif %}
@@ -98,21 +95,14 @@
                         </div>
                     </div>
 
-                    {% if video.jellyfinPath %}
+                    {% if stream_url %}
                         <div class="alert alert-success border-0 shadow-sm p-4 mb-4">
-                            <h6 class="fw-bold mb-3"><i class="fas fa-play-circle me-2"></i> Jellyfin Stream (Vorschau)</h6>
+                            <h6 class="fw-bold mb-3"><i class="fas fa-play-circle me-2"></i> Video</h6>
                             <div class="bg-black rounded-3 overflow-hidden shadow mb-3">
                                 <video id="jellyfin-player" data-video-player-target="player" class="video-js vjs-big-play-centered vjs-16-9" controls preload="auto" data-setup='{"nativeControlsForTouch": false}' style="max-height: 70vh;">
-                                    {% if video.jellyfinItemId %}
-                                        <source src="{{ jellyfin_host }}/Videos/{{ video.jellyfinItemId }}/stream?static=true&api_key={{ jellyfin_api_key }}" type="video/mp4">
-                                        <source src="{{ jellyfin_host }}/Videos/{{ video.jellyfinItemId }}/master.m3u8?api_key={{ jellyfin_api_key }}" type="application/x-mpegURL">
-                                    {% else %}
-                                        <source src="{{ jellyfin_host }}/Videos/ActiveStream?path={{ video.jellyfinPath|url_encode }}&api_key={{ jellyfin_api_key }}&static=true" type="video/mp4">
-                                    {% endif %}
-                                    <p class="vjs-no-js">
-                                        To view this video please enable JavaScript, and consider upgrading to a
-                                        web browser that <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
-                                    </p>
+                                    {# Signierte, befristete URL aus dem Storage; kein Jellyfin-Key im HTML #}
+                                    <source src="{{ stream_url }}" type="video/mp4">
+                                    <p class="vjs-no-js">Zum Abspielen bitte JavaScript einschalten.</p>
                                 </video>
                             </div>
                             <div id="player-error-message" data-video-player-target="errorMessage" class="alert alert-warning mt-2 d-none">
@@ -120,13 +110,10 @@
                             </div>
                             <div class="mt-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
                                 <div class="small text-muted">
-                                    <i class="fas fa-info-circle me-1"></i> Video wird direkt von Jellyfin gestreamt.
-                                    {% if not video.jellyfinItemId %}
-                                        <br><span class="text-warning"><i class="fas fa-sync fa-spin me-1"></i> Warte auf Item-ID von Jellyfin... (Seite eventuell neu laden)</span>
-                                    {% endif %}
+                                    <i class="fas fa-info-circle me-1"></i> {{ stream_quality == 'web' ? 'Web-Fassung (1080p)' : 'Original' }}{% if stream_quality == 'web' and is_granted('MEDIUM_EDIT', video) %} · <a href="?quality=original">Original abspielen</a>{% elseif stream_quality == 'original' and video.webFile and app.request.query.get('quality') == 'original' %} · <a href="?">Web-Fassung abspielen</a>{% endif %}
                                 </div>
                                 <div class="d-flex gap-2">
-                                    {% if video.jellyfinItemId %}
+                                    {% if video.jellyfinItemId and is_granted('ROLE_EDITOR') %}
                                         <a href="{{ jellyfin_host }}/web/index.html#!/details?id={{ video.jellyfinItemId }}" target="_blank" class="btn btn-sm btn-outline-success">
                                             <i class="fas fa-external-link-alt me-1"></i> In Jellyfin öffnen
                                         </a>
@@ -203,6 +190,7 @@
             {{ component('MediumEventsComponent', {medium: video, class: 'card border-0 shadow-sm mb-4'}) }}
 
             {% if is_granted('MEDIUM_EDIT', video) %}
+                {{ component('MediumPoolsComponent', {medium: video, class: 'card border-0 shadow-sm mb-4'}) }}
                 {{ component('SharePanelComponent', {target: video, back: path('app_video_show', {id: video.id}), class: 'card border-0 shadow-sm mb-4'}) }}
             {% endif %}
 

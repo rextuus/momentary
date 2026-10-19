@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Entity\User;
 use App\Entity\Video;
 use App\Entity\VideoChapter;
 use App\Entity\VideoProcessingStep;
 use App\Entity\VideoScene;
 use App\Form\VideoType;
+use App\Repository\MediumRepository;
 use App\Repository\VideoRepository;
 use App\Service\Face\OrphanedPersonCleaner;
 use App\Service\Storage\FileManager;
@@ -16,7 +18,9 @@ use App\Service\Storage\FileStorageService;
 use App\Service\Tag\TagInitializer;
 use App\Service\Transcription\TranscriptionRequester;
 use App\Service\Video\VideoCreationService;
+use App\Service\Video\VideoFiles;
 use App\Service\Video\VideoReprocessor;
+use App\Service\Video\VideoStreamUrls;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -44,8 +48,17 @@ final class VideoController extends AbstractController
     #[Route('/', name: 'app_video_index', methods: ['GET'])]
     public function index(): Response
     {
+        $user = $this->getUser();
+        $qb = $this->videoRepository->createQueryBuilder('v')->orderBy('v.id', \SortDirection::Descending);
+        MediumRepository::restrictToVisible(
+            $qb,
+            'v',
+            $user instanceof User ? $user : null,
+            $this->isGranted('ROLE_ADMIN'),
+        );
+
         return $this->render('video/index.html.twig', [
-            'videos' => $this->videoRepository->findAll(),
+            'videos' => $qb->getQuery()->getResult(),
         ]);
     }
 
@@ -289,16 +302,31 @@ final class VideoController extends AbstractController
      */
     #[Route('/{id}', name: 'app_video_show', methods: ['GET'])]
     #[IsGranted('VIDEO_VIEW', subject: 'video')]
-    public function show(Video $video, #[Autowire('%env(JELLYFIN_HOST)%')] string $jellyfinHost, #[\SensitiveParameter]
-        #[Autowire('%env(JELLYFIN_API_KEY)%')] string $jellyfinApiKey): Response
-    {
+    public function show(
+        Video $video,
+        Request $request,
+        VideoFiles $videoFiles,
+        VideoStreamUrls $streamUrls,
+        #[Autowire('%env(JELLYFIN_HOST)%')]
+        string $jellyfinHost,
+    ): Response {
         $publicJellyfinHost = str_replace('http://jellyfin:', 'http://localhost:', $jellyfinHost);
         $publicJellyfinHost = rtrim($publicJellyfinHost, '/');
+
+        // Abspielen über die signierte Stream-URL (Web-Fassung); das Original nur für Bearbeiter auf Wunsch
+        $quality = $request->query->getString('quality') === VideoFiles::QUALITY_ORIGINAL
+        && $this->isGranted('VIDEO_EDIT', $video)
+            ? VideoFiles::QUALITY_ORIGINAL
+            : VideoFiles::QUALITY_WEB;
+        $file = $videoFiles->streamFile($video, $quality);
 
         return $this->render('video/show.html.twig', [
             'video' => $video,
             'jellyfin_host' => $publicJellyfinHost,
-            'jellyfin_api_key' => $jellyfinApiKey,
+            'stream_url' => $file !== null
+                ? $streamUrls->create($video, $request, quality: $file['quality'])['url']
+                : null,
+            'stream_quality' => $file['quality'] ?? null,
         ]);
     }
 

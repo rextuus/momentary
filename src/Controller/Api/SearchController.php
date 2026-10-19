@@ -92,7 +92,17 @@ final class SearchController extends AbstractController
                 continue; // veralteter Index-Eintrag
             }
 
-            $blur = $this->isGranted('VIDEO_VIEW', $video) ? 0 : 5;
+            // Nur sichtbare Videos (Pools) oder solche mit öffentlichen Szenen; früher kamen alle mit unscharfen
+            // Bildern, das verriet Titel und Personen
+            $visible = $this->isGranted('VIDEO_VIEW', $video);
+            $publicScenes = array_filter(
+                $scenesByVideo[$videoId] ?? [],
+                fn(VideoScene $scene): bool => $this->isGranted('SCENE_VIEW', $scene),
+            );
+            if (!$visible && $publicScenes === []) {
+                continue;
+            }
+            $blur = $visible ? 0 : 5;
 
             $data = json_decode($this->serializer->serialize($video, 'json', ['groups' => ['video:list']]), true);
             $data['id'] = $video->getId();
@@ -150,16 +160,20 @@ final class SearchController extends AbstractController
             $items = array_filter($items, static fn($item) => in_array($item['name'] ?? null, $requestedNames, true));
         }
 
-        foreach ($items as &$item) {
-            if (!isset($item['thumbnailUrl'])) {
-                continue;
-            }
-
+        foreach ($items as $key => &$item) {
             $itemBlur = $blur;
             $scene = isset($item['start']) ? $sceneByStart[(int) $item['start']] ?? null : null;
             if ($scene !== null) {
                 $itemBlur = $this->isGranted('SCENE_VIEW', $scene) ? 0 : 5;
                 $item['endSeconds'] = $scene->getEndSeconds();
+            }
+            // Im nicht sichtbaren Video nur Fundstellen öffentlicher Szenen
+            if ($blur > 0 && $itemBlur > 0) {
+                unset($items[$key]);
+                continue;
+            }
+            if (!isset($item['thumbnailUrl'])) {
+                continue;
             }
 
             $item['thumbnailUrl'] = $this->imgproxyService->generateUrl(

@@ -55,6 +55,9 @@ final class AccessControlTest extends WebTestCase
 
         self::assertResponseRedirects();
         $this->client->followRedirect();
+        // Familienmitglieder (ohne Bearbeiter-Rolle) landen vom Dashboard auf der Zeitachse
+        self::assertResponseRedirects('/timeline');
+        $this->client->followRedirect();
         self::assertResponseIsSuccessful();
     }
 
@@ -80,7 +83,8 @@ final class AccessControlTest extends WebTestCase
      */
     public static function adminPages(): iterable
     {
-        yield 'Gruppen' => ['/admin/groups/'];
+        yield 'Pools' => ['/admin/pools'];
+        yield 'Benutzer' => ['/admin/users'];
         yield 'Video-Admin' => ['/admin/video/'];
         yield 'Import-Ordner' => ['/admin/import'];
         yield 'Queue' => ['/admin/queue'];

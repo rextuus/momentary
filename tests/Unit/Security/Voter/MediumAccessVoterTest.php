@@ -200,6 +200,6 @@ final class MediumAccessVoterTest extends TestCase
             ->method('isGranted')
             ->willReturnCallback(static fn(mixed $attribute): bool => $attribute === 'ROLE_ADMIN' && $isAdmin);
 
-        return new MediumAccessVoter($security);
+        return new MediumAccessVoter($security, new InMemoryVisibleMedia());
     }
 }

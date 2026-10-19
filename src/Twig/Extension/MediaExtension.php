@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Twig\Extension;
 
 use App\Entity\Medium;
+use App\Entity\Person;
 use App\Entity\Photo;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFilter;
 use Twig\TwigFunction;
@@ -18,6 +20,7 @@ final class MediaExtension extends AbstractExtension
 {
     public function __construct(
         private readonly UrlGeneratorInterface $urlGenerator,
+        private readonly AuthorizationCheckerInterface $authorizationChecker,
     ) {}
 
     public function getFilters(): array
@@ -51,6 +54,7 @@ final class MediaExtension extends AbstractExtension
         return [
             new TwigFunction('medium_path', $this->mediumPath(...)),
             new TwigFunction('medium_icon', $this->mediumIcon(...)),
+            new TwigFunction('person_path', $this->personPath(...)),
         ];
     }
 
@@ -75,5 +79,22 @@ final class MediaExtension extends AbstractExtension
     public function mediumIcon(?Medium $medium): string
     {
         return $medium instanceof Photo ? 'fa-image' : 'fa-video';
+    }
+
+    /**
+     * Link zu einer Person: Bearbeiter kommen zur Personenseite, alle anderen (Familie im Pool) zur Zeitachse mit allen
+     * Medien dieser Person, die sie sehen dürfen.
+     */
+    public function personPath(?Person $person): string
+    {
+        if ($person === null || $person->getId() === null) {
+            return '#';
+        }
+
+        return (
+            $this->authorizationChecker->isGranted('ROLE_EDITOR')
+                ? $this->urlGenerator->generate('person_detail', ['id' => $person->getId()])
+                : $this->urlGenerator->generate('app_media_timeline', ['person' => $person->getId()])
+        );
     }
 }

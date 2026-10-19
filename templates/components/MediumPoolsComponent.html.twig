@@ -1,0 +1,32 @@
+<div {{ attributes.defaults({class: 'card border-0 shadow-sm mb-3', id: 'pools'}) }}>
+    <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+        <span class="fw-semibold small text-uppercase text-muted">Pools</span>
+        {% if is_granted('ROLE_ADMIN') %}<a href="{{ path('app_admin_pools') }}" class="small">verwalten</a>{% endif %}
+    </div>
+    {% set entries = this.entries %}
+    {% if entries is empty %}
+        <div class="card-body small text-muted">Noch keine Pools. {% if is_granted('ROLE_ADMIN') %}<a href="{{ path('app_admin_pools') }}">Pool anlegen</a>, um Medien z. B. mit der Familie zu teilen.{% endif %}</div>
+    {% else %}
+        <ul class="list-group list-group-flush small">
+            {% for entry in entries %}
+                {% set status = entry.status %}
+                <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+                    <span class="min-w-0">
+                        <span class="fw-semibold">{{ entry.pool.name }}</span>
+                        <span class="d-block text-muted">
+                            {{ {rule: 'drin (über eine Regel)', manual: 'drin (einzeln hinzugefügt)', excluded: 'ausgenommen', none: 'nicht drin'}[status] }}
+                        </span>
+                    </span>
+                    <form method="post" action="{{ path('app_medium_pool', {id: medium.id, pool: entry.pool.id}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('medium-pool' ~ medium.id) }}">
+                        {% if status in ['rule', 'manual'] %}
+                            <button class="btn btn-sm btn-outline-secondary py-0" name="action" value="remove">Herausnehmen</button>
+                        {% else %}
+                            <button class="btn btn-sm btn-outline-primary py-0" name="action" value="add">{{ status == 'excluded' ? 'Wieder aufnehmen' : 'Aufnehmen' }}</button>
+                        {% endif %}
+                    </form>
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+</div>

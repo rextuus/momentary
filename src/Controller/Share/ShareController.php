@@ -40,7 +40,7 @@ final class ShareController extends AbstractController
             throw $this->createAccessDeniedException('Ungültiges Formular-Token.');
         }
 
-        $id = $request->request->getInt('target_id');
+        $id = (int) $request->request->getString('target_id');
         $target = $request->request->getString('target') === 'event'
             ? $entityManager->find(Event::class, $id)
             : $entityManager->find(Medium::class, $id);

@@ -32,7 +32,7 @@ final class MapController extends AbstractController
     public function index(Request $request, PersonRepository $personRepository): Response
     {
         $query = array_filter([
-            'person' => $request->query->getInt('person') ?: null,
+            'person' => (int) $request->query->getString('person') ?: null,
             'type' => \in_array($request->query->getString('type'), ['video', 'photo'], true)
                 ? $request->query->getString('type')
                 : null,
@@ -68,20 +68,20 @@ final class MapController extends AbstractController
             $this->isGranted('ROLE_ADMIN'),
         );
 
-        if ($request->query->getInt('event') > 0) {
+        if ((int) $request->query->getString('event') > 0) {
             $qb
                 ->join('m.events', 'e')
                 ->andWhere('e.id = :event')
-                ->setParameter('event', $request->query->getInt('event'));
+                ->setParameter('event', (int) $request->query->getString('event'));
         }
-        if ($request->query->getInt('medium') > 0) {
-            $qb->andWhere('m.id = :medium')->setParameter('medium', $request->query->getInt('medium'));
+        if ((int) $request->query->getString('medium') > 0) {
+            $qb->andWhere('m.id = :medium')->setParameter('medium', (int) $request->query->getString('medium'));
         }
-        if ($request->query->getInt('person') > 0) {
+        if ((int) $request->query->getString('person') > 0) {
             $qb->andWhere(sprintf(
                 'EXISTS (SELECT 1 FROM %s mf WHERE mf.medium = m AND mf.person = :person)',
                 VideoFace::class,
-            ))->setParameter('person', $request->query->getInt('person'));
+            ))->setParameter('person', (int) $request->query->getString('person'));
         }
         match ($request->query->getString('type')) {
             'video' => $qb->andWhere(sprintf('m INSTANCE OF %s', Video::class)),

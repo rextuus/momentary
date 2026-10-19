@@ -73,8 +73,16 @@ final class EventTest extends WebTestCase
         $client = static::createClient();
         $owner = UserFactory::createOne();
         $event = EventFactory::createOne(['owner' => $owner, 'title' => 'Hochzeit']);
+        $hidden = EventFactory::createOne(['owner' => $owner, 'title' => 'Privat']);
+        $event->addMedium(PhotoFactory::new()->public()->ownedBy($owner)->create());
+        static::getContainer()->get('doctrine')->getManager()->flush();
 
         $client->loginUser(UserFactory::createOne());
+        $client->request('GET', '/event/' . $hidden->getId());
+        self::assertResponseStatusCodeSame(404, 'nichts Sichtbares darin: für andere nicht da');
+        $client->request('GET', '/event/');
+        self::assertSelectorTextContains('main, body', 'Hochzeit');
+        self::assertSelectorTextNotContains('main, body', 'Privat');
         $client->request('GET', '/event/' . $event->getId());
         self::assertResponseIsSuccessful();
         self::assertSelectorNotExists('a[href$="/edit"]');

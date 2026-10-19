@@ -16,7 +16,7 @@
                 {% set person = videoFace.person %}
                 {% set profileFace = person.profileFace ?: person.videoFaces|first %}
 
-                <a href="{{ path('person_detail', {id: person.id}) }}"
+                <a href="{{ person_path(person) }}"
                    class="person-mini-overlay shadow-sm hover-scale"
                    title="Profil von {{ person.name }} öffnen"
                    style="z-index: 20; position: absolute; top: 8px; right: 8px; width: 36px; height: 36px; border: 2px solid white; border-radius: 50% !important; background: white; overflow: hidden; display: block;">
@@ -35,7 +35,7 @@
         <div class="card-body p-2 text-center bg-white border-top">
             <div class="fw-bold text-truncate small mb-1">
                 {% if not this.isUnknown %}
-                    <a href="{{ path('person_detail', {id: videoFace.person.id}) }}" class="text-decoration-none text-primary">
+                    <a href="{{ person_path(videoFace.person) }}" class="text-decoration-none text-primary">
                         {{ videoFace.person.name }}
                     </a>
                 {% else %}

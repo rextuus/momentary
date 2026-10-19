@@ -10,7 +10,7 @@ use App\Entity\Photo;
 use App\Entity\ShareLink;
 use App\Entity\User;
 use App\Entity\Video;
-use App\Security\Voter\MediumAccessVoter;
+use App\Security\VisibleMedia;
 use App\Service\Video\VideoFiles;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
@@ -36,6 +36,7 @@ class ShareLinks
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly VideoFiles $videoFiles,
+        private readonly VisibleMedia $visibleMedia,
         private readonly RateLimiterFactoryInterface $sharePasswordLimiter,
     ) {}
 
@@ -107,7 +108,7 @@ class ShareLinks
     {
         $media = $link->getEvent()?->getSortedMedia() ?? array_filter([$link->getMedium()]);
 
-        return array_values(array_filter($media, static fn(Medium $medium): bool => MediumAccessVoter::canView(
+        return array_values(array_filter($media, fn(Medium $medium): bool => $this->visibleMedia->isVisible(
             $link->getCreatedBy(),
             $medium,
         )));

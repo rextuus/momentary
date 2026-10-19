@@ -24,7 +24,7 @@
                         {% for face in photo.faces %}
                             {% set box = face.boundingBox %}
                             {% if box %}
-                                <a href="{{ face.person ? path('person_detail', {id: face.person.id}) : '#' }}"
+                                <a href="{{ person_path(face.person) }}"
                                    class="face-box position-absolute"
                                    style="left: {{ box.Left * 100 }}%; top: {{ box.Top * 100 }}%; width: {{ box.Width * 100 }}%; height: {{ box.Height * 100 }}%;"
                                    title="{{ face.person ? face.person.displayName : 'Unbekannt' }}">
@@ -109,7 +109,7 @@
                 <div class="card-body">
                     {% for face in photo.faces %}
                         {% if face.person %}
-                            <a href="{{ path('person_detail', {id: face.person.id}) }}" class="d-inline-flex align-items-center gap-2 me-3 mb-2 text-decoration-none">
+                            <a href="{{ person_path(face.person) }}" class="d-inline-flex align-items-center gap-2 me-3 mb-2 text-decoration-none">
                                 {% if face.faceImage and face.boundingBox %}
                                     <img src="{{ face_crop_url(face.faceImage.relativePath, face.boundingBox, 96) }}" alt="" class="rounded-circle" width="40" height="40">
                                 {% endif %}
@@ -153,6 +153,7 @@
             {{ component('MediumEventsComponent', {medium: photo}) }}
 
             {% if canEdit %}
+                {{ component('MediumPoolsComponent', {medium: photo}) }}
                 {{ component('SharePanelComponent', {target: photo, back: path('app_photo_show', {id: photo.id}), class: 'card border-0 shadow-sm mb-3'}) }}
             {% endif %}
 

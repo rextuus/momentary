@@ -6,18 +6,14 @@ namespace App\Controller;
 
 use App\Entity\Video;
 use App\Repository\VideoRepository;
-use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/admin/video')]
 final class VideoAdminController extends AbstractController
 {
-    public function __construct(
-        private EntityManagerInterface $entityManager,
-    ) {}
+    public function __construct() {}
 
     #[Route('/', name: 'app_admin_video_index')]
     public function index(VideoRepository $repo): Response
@@ -27,20 +23,12 @@ final class VideoAdminController extends AbstractController
         ]);
     }
 
-    #[Route('/{id}/groups', name: 'app_admin_video_groups', methods: ['GET', 'POST'])]
-    public function editGroups(Video $video, Request $request): Response
+    /**
+     * Alte Adresse: Freigaben laufen jetzt über Pools (Pool-Karte auf der Videoseite).
+     */
+    #[Route('/{id}/groups', name: 'app_admin_video_groups', methods: ['GET'])]
+    public function editGroups(Video $video): Response
     {
-        $form = $this->createForm(\App\Form\VideoGroupsType::class, $video);
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $this->entityManager->flush();
-            return $this->redirectToRoute('app_video_index');
-        }
-
-        return $this->render('admin/video/groups.html.twig', [
-            'video' => $video,
-            'form' => $form,
-        ]);
+        return $this->redirect($this->generateUrl('app_video_show', ['id' => $video->getId()]) . '#pools');
     }
 }

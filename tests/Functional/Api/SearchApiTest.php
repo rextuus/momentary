@@ -64,29 +64,14 @@ final class SearchApiTest extends WebTestCase
         self::assertSame('Sichtbar (Mitglied in Gruppe Familie)', $result[0]['accessInfo']);
     }
 
-    public function testStrangerGetsBlurredThumbnailOfPrivateVideo(): void
+    public function testStrangersAndAnonymousDoNotFindPrivateVideos(): void
     {
         $video = $this->privateVideoWithThumbnail(UserFactory::createOne());
         $this->meilisearchReturns([['id' => $video->getId()]]);
 
+        self::assertSame([], $this->search(), 'ohne Anmeldung');
         $this->authenticateApiClient($this->client, UserFactory::createOne());
-        $result = $this->search();
-
-        self::assertSame(5, $result[0]['blur']);
-        self::assertSame('Nicht sichtbar', $result[0]['accessInfo']);
-        self::assertSame('Privat', $result[0]['availabilityStatus']);
-        self::assertStringStartsWith('http://imgproxy.test/', $result[0]['thumbnailUrl']);
-        self::assertStringContainsString('/bl:5/', $result[0]['thumbnailUrl']);
-    }
-
-    public function testAnonymousSearchIsAllowedButBlurred(): void
-    {
-        $video = $this->privateVideoWithThumbnail(UserFactory::createOne());
-        $this->meilisearchReturns([['id' => $video->getId()]]);
-
-        $result = $this->search();
-
-        self::assertSame(5, $result[0]['blur']);
+        self::assertSame([], $this->search(), 'fremdes privates Video');
     }
 
     public function testPublicSceneThumbnailIsUnblurredInsidePrivateVideo(): void
@@ -117,9 +102,9 @@ final class SearchApiTest extends WebTestCase
         $this->authenticateApiClient($this->client, UserFactory::createOne());
         $persons = $this->search()[0]['persons_with_scenes'];
 
+        self::assertCount(1, $persons, 'nur die Fundstelle in der öffentlichen Szene');
         self::assertStringNotContainsString('/bl:', $persons[0]['thumbnailUrl']);
         self::assertSame(20, $persons[0]['endSeconds']);
-        self::assertStringContainsString('/bl:5/', $persons[1]['thumbnailUrl']);
     }
 
     public function testResultsKeepMeilisearchOrderAndSkipStaleIndexEntries(): void

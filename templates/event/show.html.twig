@@ -74,13 +74,12 @@
         </div>
     {% endif %}
 
-    {% set persons = event.personSummary %}
     {% if persons is not empty %}
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body d-flex flex-wrap align-items-center gap-3">
                 <span class="small text-uppercase fw-semibold text-muted">Dabei</span>
                 {% for entry in persons|slice(0, 20) %}
-                    <a href="{{ path('person_detail', {id: entry.person.id}) }}" class="badge rounded-pill text-bg-light border text-decoration-none fw-normal">
+                    <a href="{{ person_path(entry.person) }}" class="badge rounded-pill text-bg-light border text-decoration-none fw-normal">
                         {{ entry.person.displayName }} <span class="text-muted">{{ entry.count }}</span>
                     </a>
                 {% endfor %}

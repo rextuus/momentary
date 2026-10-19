@@ -40,13 +40,15 @@ class PhotoRepository extends ServiceEntityRepository
             // Serienfotos: nur das beste Foto, die übrigen klappt die Seite darunter auf
             $qb->andWhere('p.burstCover IS NULL');
         } else {
-            $qb
-                ->leftJoin('p.tags', 'search_tag')
-                ->andWhere('p.title LIKE :search OR search_tag.name LIKE :search')
-                ->setParameter('search', '%' . addcslashes(trim($search), '%_') . '%');
+            $qb->andWhere(sprintf(
+                'p.title LIKE :search OR EXISTS (SELECT 1 FROM %s search_p JOIN search_p.tags search_tag '
+                . 'WHERE search_p = p AND search_tag.name LIKE :search)',
+                Photo::class,
+            ))->setParameter('search', '%' . addcslashes(trim($search), '%_') . '%');
         }
         MediumRepository::restrictToVisible($qb, 'p', $user, $isAdmin);
 
-        return new Paginator($qb, fetchJoinCollection: true);
+        // Nur Einzelbeziehungen gejoint: einfaches LIMIT genügt (das Umschreiben für Sammlungen verträgt die Pool-Unterabfragen nicht)
+        return new Paginator($qb, fetchJoinCollection: false);
     }
 }

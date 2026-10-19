@@ -28,7 +28,7 @@ final class PhotoController extends AbstractController
     #[Route('/', name: 'app_photo_index', methods: ['GET'])]
     public function index(Request $request, PhotoRepository $photoRepository): Response
     {
-        $page = max(1, $request->query->getInt('page', 1));
+        $page = max(1, (int) $request->query->getString('page') ?: 1);
         $search = trim($request->query->getString('q'));
         $user = $this->getUser();
         $photos = $photoRepository->findVisiblePage(

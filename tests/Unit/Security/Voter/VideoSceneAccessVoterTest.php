@@ -60,7 +60,7 @@ final class VideoSceneAccessVoterTest extends TestCase
     private function vote(?\App\Entity\User $user, VideoScene $scene, bool $isAdmin = false): int
     {
         $security = $this->createStub(Security::class);
-        $videoVoter = new MediumAccessVoter($security);
+        $videoVoter = new MediumAccessVoter($security, new InMemoryVisibleMedia());
         $token = self::tokenFor($user);
 
         // Security delegiert wie im Framework an den Video-Voter

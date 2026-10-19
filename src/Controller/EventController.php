@@ -39,7 +39,7 @@ final class EventController extends AbstractController
         $gap = self::gapHours($request);
 
         return $this->render('event/index.html.twig', [
-            'events' => $eventRepository->findBy([], ['startDate' => 'DESC', 'id' => 'DESC']),
+            'events' => $eventRepository->findVisible($this->currentUser(), $this->isGranted('ROLE_ADMIN')),
             'suggestions' => $suggester->suggest($this->currentUser(), $this->isGranted('ROLE_ADMIN'), $gap),
             'gap' => $gap,
             'gapOptions' => EventSuggester::GAP_OPTIONS,
@@ -147,7 +147,7 @@ final class EventController extends AbstractController
 
     private static function gapHours(Request $request): int
     {
-        $gap = $request->query->getInt('gap', EventSuggester::DEFAULT_GAP_HOURS);
+        $gap = (int) $request->query->getString('gap') ?: EventSuggester::DEFAULT_GAP_HOURS;
 
         return \in_array($gap, EventSuggester::GAP_OPTIONS, true) ? $gap : EventSuggester::DEFAULT_GAP_HOURS;
     }
@@ -189,12 +189,18 @@ final class EventController extends AbstractController
             MediumAccessVoter::VIEW,
             $medium,
         )));
+        // Ohne sichtbares Medium (und nicht das eigene) ist das Ereignis für diesen Benutzer nicht da
+        if ($media === [] && !$this->canEdit($event)) {
+            throw $this->createNotFoundException();
+        }
 
         return $this->render('event/show.html.twig', [
             'event' => $event,
             'media' => $media,
             'canEdit' => $this->canEdit($event),
             'eventCameras' => self::cameraNames($media),
+            // Personen nur aus sichtbaren Medien, sonst verrät die Liste Namen aus fremden Videos
+            'persons' => Event::personSummaryOf($media),
             'unnamed' => $this->isGranted('ROLE_ADMIN') ? $eventPeople->unnamed($media) : [],
             'knownNames' => $this->isGranted('ROLE_ADMIN') ? $eventPeople->knownNames() : [],
         ]);
@@ -274,7 +280,7 @@ final class EventController extends AbstractController
         EventRepository $eventRepository,
         MediaExtension $media,
     ): Response {
-        $event = $eventRepository->find($request->request->getInt('event'));
+        $event = $eventRepository->find((int) $request->request->getString('event'));
         if (
             $event !== null
             && $this->isCsrfTokenValid('add-event' . $medium->getId(), $request->request->getString('_token'))

@@ -64,7 +64,7 @@ final class MediaUploadTest extends WebTestCase
 
     public function testVideosAndPhotosGoThroughTheSameUpload(): void
     {
-        $me = UserFactory::createOne();
+        $me = UserFactory::new()->editor()->create();
         $this->client->loginUser($me);
         $crawler = $this->client->request('GET', '/upload');
         self::assertResponseIsSuccessful();
@@ -107,7 +107,7 @@ final class MediaUploadTest extends WebTestCase
 
     public function testCheckFindsExistingFilesOfBothTypes(): void
     {
-        $this->client->loginUser(UserFactory::createOne());
+        $this->client->loginUser(UserFactory::new()->editor()->create());
         $csrf = (string) $this->client->request('GET', '/upload')->filter('#uploader')->attr('data-csrf');
         $this->send($csrf, 'clip.mp4', 'video', '');
 
@@ -130,6 +130,14 @@ final class MediaUploadTest extends WebTestCase
             ['HTTP_X-CSRF-Token' => $csrf],
         );
         self::assertFalse(json_decode((string) $this->client->getResponse()->getContent(), true)['exists']);
+    }
+
+    public function testFamilyMembersCannotUpload(): void
+    {
+        $this->client->loginUser(UserFactory::createOne());
+        $this->client->request('GET', '/upload');
+
+        self::assertResponseStatusCodeSame(403);
     }
 
     /**

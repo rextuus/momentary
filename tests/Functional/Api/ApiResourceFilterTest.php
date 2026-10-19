@@ -7,6 +7,7 @@ namespace App\Tests\Functional\Api;
 use App\Entity\VideoScene;
 use App\Enum\VideoStatus;
 use App\Tests\Factory\PersonFactory;
+use App\Tests\Factory\PhotoFactory;
 use App\Tests\Factory\TagFactory;
 use App\Tests\Factory\UserFactory;
 use App\Tests\Factory\VideoFaceFactory;
@@ -26,11 +27,14 @@ final class ApiResourceFilterTest extends WebTestCase
         $this->client = static::createClient();
     }
 
-    public function testTagsArePublicAndFilterableByPartialName(): void
+    public function testTagsOfPublicMediaArePublicAndFilterableByPartialName(): void
     {
-        TagFactory::createOne(['name' => 'Meer']);
-        TagFactory::createOne(['name' => 'Meerjungfrau']);
-        TagFactory::createOne(['name' => 'Berg']);
+        $public = PhotoFactory::new()->public()->create();
+        foreach (['Meer', 'Meerjungfrau', 'Berg'] as $name) {
+            $public->addTag(TagFactory::createOne(['name' => $name]));
+        }
+        TagFactory::createOne(['name' => 'Meer ohne Medium']);
+        static::getContainer()->get('doctrine')->getManager()->flush();
 
         self::assertSame(['Meer', 'Meerjungfrau'], $this->names($this->collection('/api/tags?name=meer')));
         self::assertCount(3, $this->collection('/api/tags'));
@@ -48,7 +52,7 @@ final class ApiResourceFilterTest extends WebTestCase
         VideoFactory::new()->completed()->create(['title' => 'Fertig']);
         VideoFactory::createOne(['title' => 'In Arbeit', 'status' => VideoStatus::SCENE_DETECTION]);
 
-        $this->authenticateApiClient($this->client, UserFactory::createOne());
+        $this->authenticateApiClient($this->client, UserFactory::new()->admin()->create());
 
         self::assertSame(['Fertig'], $this->titles($this->collection('/api/videos')));
     }
@@ -58,7 +62,7 @@ final class ApiResourceFilterTest extends WebTestCase
         VideoFactory::new()->completed()->create(['title' => 'Urlaub Italien']);
         VideoFactory::new()->completed()->create(['title' => 'Geburtstag']);
 
-        $this->authenticateApiClient($this->client, UserFactory::createOne());
+        $this->authenticateApiClient($this->client, UserFactory::new()->admin()->create());
 
         self::assertSame(['Urlaub Italien'], $this->titles($this->collection('/api/videos?title=urlaub')));
     }
@@ -70,7 +74,7 @@ final class ApiResourceFilterTest extends WebTestCase
         VideoFaceFactory::createOne(['video' => $withAnna, 'person' => PersonFactory::new(['name' => 'Anna'])]);
         VideoFaceFactory::createOne(['video' => $withBen, 'person' => PersonFactory::new(['name' => 'Ben'])]);
 
-        $this->authenticateApiClient($this->client, UserFactory::createOne());
+        $this->authenticateApiClient($this->client, UserFactory::new()->admin()->create());
 
         self::assertSame(['Mit Anna'], $this->titles($this->collection('/api/videos?videoFaces.person.name=ann')));
     }
@@ -89,7 +93,7 @@ final class ApiResourceFilterTest extends WebTestCase
             $scene->addSceneTag($mountain);
         })->create(['video' => $inMountains]);
 
-        $this->authenticateApiClient($this->client, UserFactory::createOne());
+        $this->authenticateApiClient($this->client, UserFactory::new()->admin()->create());
 
         self::assertSame(['Am Strand'], $this->titles($this->collection('/api/videos?scenes.tags.name=stra')));
         self::assertSame(

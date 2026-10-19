@@ -9,6 +9,10 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
+/**
+ * Gruppe von Benutzern, in der Oberfläche „Pool“: Ihre Mitglieder sehen die Medien des Pools – einzeln hinzugefügte
+ * (`Medium::allowedGroups`) und solche, auf die eine Regel passt (`rules`), ohne die ausgenommenen (`excludedMedia`).
+ */
 #[ORM\Entity(repositoryClass: UserGroupRepository::class)]
 class UserGroup
 {
@@ -30,9 +34,109 @@ class UserGroup
     #[ORM\OneToMany(targetEntity: UserGroupMember::class, mappedBy: 'userGroup', cascade: ['persist', 'remove'])]
     private Collection $members;
 
+    /** Wofür der Pool gedacht ist, z. B. „Mama und Papa: alte Heimvideos“ */
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $description = null;
+
+    /**
+     * @var Collection<int, PoolRule>
+     */
+    #[ORM\OneToMany(
+        targetEntity: PoolRule::class,
+        mappedBy: 'pool',
+        cascade: ['persist', 'remove'],
+        orphanRemoval: true,
+    )]
+    private Collection $rules;
+
+    /**
+     * Medien, die trotz passender Regel nicht zum Pool gehören.
+     *
+     * @var Collection<int, Medium>
+     */
+    #[ORM\ManyToMany(targetEntity: Medium::class)]
+    #[ORM\JoinTable(name: 'user_group_excluded_medium')]
+    #[ORM\JoinColumn(onDelete: 'CASCADE')]
+    #[ORM\InverseJoinColumn(onDelete: 'CASCADE')]
+    private Collection $excludedMedia;
+
     public function __construct()
     {
         $this->members = new ArrayCollection();
+        $this->rules = new ArrayCollection();
+        $this->excludedMedia = new ArrayCollection();
+    }
+
+    public function getDescription(): ?string
+    {
+        return $this->description;
+    }
+
+    public function setDescription(?string $description): static
+    {
+        $description = $description === null ? null : trim($description);
+        $this->description = $description === '' ? null : $description;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, PoolRule>
+     */
+    public function getRules(): Collection
+    {
+        return $this->rules;
+    }
+
+    public function addRule(PoolRule $rule): static
+    {
+        if (!$this->rules->contains($rule)) {
+            $this->rules->add($rule);
+        }
+
+        return $this;
+    }
+
+    public function removeRule(PoolRule $rule): static
+    {
+        $this->rules->removeElement($rule);
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Medium>
+     */
+    public function getExcludedMedia(): Collection
+    {
+        return $this->excludedMedia;
+    }
+
+    public function exclude(Medium $medium): static
+    {
+        if (!$this->excludedMedia->contains($medium)) {
+            $this->excludedMedia->add($medium);
+        }
+
+        return $this;
+    }
+
+    public function unexclude(Medium $medium): static
+    {
+        $this->excludedMedia->removeElement($medium);
+
+        return $this;
+    }
+
+    public function hasMember(User $user): bool
+    {
+        foreach ($this->members as $member) {
+            if ($member->getUser()?->getId() === $user->getId()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function getId(): ?int

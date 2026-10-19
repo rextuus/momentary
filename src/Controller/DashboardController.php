@@ -31,6 +31,11 @@ final class DashboardController extends AbstractController
         VideoRepository $videoRepo,
         QueueHealthChecker $queueHealthChecker,
     ): Response {
+        // Das Dashboard zeigt Zahlen über das ganze Archiv; die Familie (Pools) beginnt bei der Zeitachse
+        if (!$this->isGranted('ROLE_EDITOR')) {
+            return $this->redirectToRoute('app_media_timeline');
+        }
+
         // Personen: eine einzige gruppierte Query statt 5 einzelner counts
         $personCounts = $this->countByStatus($personRepo->createQueryBuilder('p'), 'p');
 
