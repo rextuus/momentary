@@ -23,7 +23,6 @@ use App\Service\Video\Analyze\FrameAnalyzer;
 use App\Service\Video\Analyze\FrameExtractor;
 use App\Service\Video\Analyze\JellyfinUploader;
 use App\Service\Video\Analyze\Mp4Converter;
-use App\Service\Video\Analyze\PathResolver;
 use App\Service\Video\Analyze\Result\ChapterGenerationResult;
 use App\Service\Video\Analyze\Result\EmptyScenesMergerResult;
 use App\Service\Video\Analyze\Result\FrameSplittingResult;
@@ -44,7 +43,6 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
     private AmazonRekognitionService&Stub $rekognitionServiceMock;
     private Client&Stub $meiliSearchClientMock;
     private Mp4Converter&Stub $mp4Converter;
-    private PathResolver&Stub $pathResolver;
     private SceneDetector&Stub $sceneDetector;
     private SceneThumbnailExtractor&Stub $sceneThumbnailExtractor;
     private FrameExtractor&Stub $frameExtractor;
@@ -74,7 +72,6 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         $this->mp4Converter
             ->method('probe')
             ->willReturn(['video' => ['codec' => 'h264', 'pixFmt' => 'yuv420p'], 'audio' => [], 'duration' => 60.0]);
-        $this->pathResolver = $this->createStub(PathResolver::class);
         $this->sceneDetector = $this->createStub(SceneDetector::class);
         $this->sceneThumbnailExtractor = $this->createStub(SceneThumbnailExtractor::class);
         $this->frameExtractor = $this->createStub(FrameExtractor::class);
@@ -90,7 +87,6 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         static::getContainer()->set(AmazonRekognitionService::class, $this->rekognitionServiceMock);
         static::getContainer()->set(Client::class, $this->meiliSearchClientMock);
         static::getContainer()->set(Mp4Converter::class, $this->mp4Converter);
-        static::getContainer()->set(PathResolver::class, $this->pathResolver);
         static::getContainer()->set(SceneDetector::class, $this->sceneDetector);
         static::getContainer()->set(SceneThumbnailExtractor::class, $this->sceneThumbnailExtractor);
         static::getContainer()->set(FrameExtractor::class, $this->frameExtractor);
@@ -288,7 +284,6 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
                 $this->trackCreatedPath($targetPath);
                 return true;
             });
-        $this->pathResolver->method('resolvePath')->willReturn('test.mov');
         $this->taggingService->method('tagScene')->willReturn($taggingResult ?? new TaggingResult(true, true, [1]));
         $result = new ChapterGenerationResult(true, 11);
         $this->chapterGenerator->method('generateChapters')->willReturn($result);
@@ -454,7 +449,6 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         $this->entityManager->flush();
 
         // 2. Mock Error
-        $this->pathResolver->method('resolvePath')->willReturn('test.mov');
         $this->mp4Converter->method('convertToMp4')->willReturn(false);
 
         // 3. Trigger Pipeline

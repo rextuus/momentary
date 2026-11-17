@@ -1,0 +1,217 @@
+# Momentary – Produktion auf dem ThinkCentre. Aufruf über das Makefile (make prod-up …), siehe documentation/deployment.md.
+# Secrets kommen ausschließlich aus .env.prod.local (Vorlage .env.prod.dist).
+#
+# Projektname „momentary“ ergibt das Netz momentary_momentary-network, an dem der Hub (momentary-hub) hängt und das
+# Backend als http://app erreicht.
+name: momentary
+
+# Docker-Logs begrenzen: je Dienst höchstens 5 × 10 MB
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-app: &app
+  build:
+    context: .
+    dockerfile: docker/php/Dockerfile
+    target: prod
+  image: momentary-app:prod
+  restart: unless-stopped
+  logging: *logging
+  environment:
+    APP_ENV: prod
+    APP_DEBUG: "0"
+    APP_SECRET: ${APP_SECRET:?APP_SECRET fehlt in .env.prod.local}
+    APP_PUBLIC_URL: ${APP_PUBLIC_URL:?APP_PUBLIC_URL fehlt in .env.prod.local}
+    SYMFONY_TRUSTED_PROXIES: ${REVERSE_PROXY_IPS:-PRIVATE_SUBNETS}
+    DATABASE_URL: mysql://${MYSQL_USER:-momentary}:${MYSQL_PASSWORD:?MYSQL_PASSWORD fehlt}@database:3306/${MYSQL_DATABASE:-momentary_prod}?serverVersion=8.4.11&charset=utf8mb4
+    MESSENGER_TRANSPORT_DSN: amqp://${RABBITMQ_USER:-momentary}:${RABBITMQ_PASS:?RABBITMQ_PASS fehlt}@rabbitmq:5672/%2f/messages
+    RABBITMQ_USER: ${RABBITMQ_USER:-momentary}
+    RABBITMQ_PASS: ${RABBITMQ_PASS}
+    MEILISEARCH_URL: http://meilisearch:7700
+    MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?MEILI_MASTER_KEY fehlt}
+    IMGPROXY_KEY: ${IMGPROXY_KEY:?IMGPROXY_KEY fehlt}
+    IMGPROXY_SALT: ${IMGPROXY_SALT:?IMGPROXY_SALT fehlt}
+    IMGPROXY_PUBLIC_HOST: ${IMGPROXY_PUBLIC_HOST:-${APP_PUBLIC_URL}/imgproxy}
+    JELLYFIN_HOST: http://jellyfin:8096
+    JELLYFIN_API_KEY: ${JELLYFIN_API_KEY:-}
+    AWS_ACCESS_KEY: ${AWS_ACCESS_KEY:-}
+    AWS_SECRET_KEY: ${AWS_SECRET_KEY:-}
+    AWS_REGION: ${AWS_REGION:-eu-central-1}
+    GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    OAUTH_ENCRYPTION_KEY: ${OAUTH_ENCRYPTION_KEY:?OAUTH_ENCRYPTION_KEY fehlt}
+    OAUTH_PASSPHRASE: ${OAUTH_PASSPHRASE:-}
+    JWT_PASSPHRASE: ${JWT_PASSPHRASE:-}
+    SENTRY_DSN: ${SENTRY_DSN:-}
+    GEOCODING_ENABLED: ${GEOCODING_ENABLED:-1}
+    IMPORT_FOLDER_WATCH: ${IMPORT_FOLDER_WATCH:-0}
+    PYTHON_BINARY: /usr/bin/python3
+    STORAGE_ROOT: storage
+    WHISPER_MODELS_DIR: /var/www/html/var/whisper-models
+  volumes:
+    # Medien liegen als Ordner auf dem Server (im Projektordner; DATA_ROOT verlegt sie, z. B. für die Generalprobe)
+    - ${DATA_ROOT:-.}/storage:/var/www/html/storage:rw
+    - ./config/oauth2:/run/momentary-keys/oauth2:ro
+    - ./config/jwt:/run/momentary-keys/jwt:ro
+    - whisper_models:/var/www/html/var/whisper-models
+  networks:
+    - momentary-network
+
+services:
+  app:
+    <<: *app
+    ports:
+      # Ein Port nach außen für Weboberfläche, API und Bilder; am besten nur auf der WireGuard-Adresse (HTTP_BIND)
+      - "${HTTP_BIND:-0.0.0.0}:${HTTP_PORT:-8088}:80"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      database:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      meilisearch:
+        condition: service_started
+      imgproxy:
+        condition: service_started
+
+  # Video-Pipeline, Fotos, Import, Zeitplan
+  messenger-worker:
+    <<: *app
+    command: ["php", "bin/console", "messenger:consume", "async", "async_video_processing", "photos", "scheduler_default",
+              "--time-limit=3600", "--memory-limit=512M"]
+    depends_on:
+      app:
+        condition: service_healthy
+
+  # Ton-Transkription (Whisper, CPU-lastig): eigene Queue, ein Job zur Zeit, niedrige Priorität
+  transcription-worker:
+    <<: *app
+    command: ["nice", "-n", "15", "php", "bin/console", "messenger:consume", "transcription",
+              "--time-limit=7200", "--memory-limit=512M"]
+    depends_on:
+      app:
+        condition: service_healthy
+
+  database:
+    image: mysql:8.4.11
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-momentary_prod}
+      MYSQL_USER: ${MYSQL_USER:-momentary}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD fehlt}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD fehlt}
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    volumes:
+      - database_data:/var/lib/mysql:rw
+    networks:
+      - momentary-network
+
+  rabbitmq:
+    image: rabbitmq:3.13.7-management
+    # Fester Hostname: RabbitMQ legt seine Daten unter rabbit@<hostname> ab, sonst sind sie nach jedem Neuanlegen weg
+    hostname: rabbitmq
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-momentary}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:?RABBITMQ_PASS fehlt}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    ports:
+      # Verwaltungsoberfläche nur lokal (per SSH-Tunnel: ssh -L 15672:127.0.0.1:15672 …)
+      - "127.0.0.1:${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - momentary-network
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.53.1
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?MEILI_MASTER_KEY fehlt}
+      MEILI_ENV: production
+      MEILI_NO_ANALYTICS: "true"
+      # Ältere Datenbestände beim Start auf die neue Version heben
+      MEILI_EXPERIMENTAL_DUMPLESS_UPGRADE: "true"
+    volumes:
+      - ${DATA_ROOT:-.}/docker/meilisearch/data:/meili_data
+    networks:
+      - momentary-network
+
+  imgproxy:
+    image: ghcr.io/imgproxy/imgproxy:v4.0.18
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      IMGPROXY_KEY: ${IMGPROXY_KEY:?IMGPROXY_KEY fehlt}
+      IMGPROXY_SALT: ${IMGPROXY_SALT:?IMGPROXY_SALT fehlt}
+      IMGPROXY_LOCAL_FILESYSTEM_ROOT: /public
+      IMGPROXY_ALLOW_ORIGIN: "*"
+      IMGPROXY_WORKERS: "2"
+    # Kein Port nach außen: Browser kommen über app (/imgproxy/) hierher
+    volumes:
+      - ${DATA_ROOT:-.}/storage:/public:ro
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+    networks:
+      - momentary-network
+
+  jellyfin:
+    image: jellyfin/jellyfin:10.11.11
+    restart: unless-stopped
+    logging: *logging
+    ports:
+      - "${JELLYFIN_BIND:-0.0.0.0}:${JELLYFIN_PORT:-8096}:8096"
+    volumes:
+      - ${DATA_ROOT:-.}/docker/jellyfin/config:/config
+      - ${DATA_ROOT:-.}/docker/jellyfin/cache:/cache
+      - ${DATA_ROOT:-.}/storage/jellyfin/uploads:/uploads
+    networks:
+      - momentary-network
+
+  sftp:
+    image: atmoz/sftp:debian
+    restart: unless-stopped
+    logging: *logging
+    ports:
+      - "${SFTP_BIND:-0.0.0.0}:${SFTP_PORT:-2222}:22"
+    environment:
+      SFTP_USERS: "uploaduser:${SFTP_PASSWORD:?SFTP_PASSWORD fehlt}:1000:33:upload"
+    volumes:
+      - ${DATA_ROOT:-.}/storage/jellyfin/uploads:/home/uploaduser/upload/jellyfin_uploads
+      - ${DATA_ROOT:-.}/storage/app_uploads:/home/uploaduser/upload/app_uploads
+      # Import-Ordner: Videos und Fotos hier ablegen, Übernahme unter Verwalten → Import-Ordner
+      - ${DATA_ROOT:-.}/storage/imports:/home/uploaduser/upload/import
+    networks:
+      - momentary-network
+
+volumes:
+  database_data:
+  rabbitmq_data:
+  whisper_models:
+
+networks:
+  momentary-network:
+    driver: bridge

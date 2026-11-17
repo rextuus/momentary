@@ -1,34 +1,24 @@
-# Momentary - Home Video Management & Face Recognition
+# Momentary – Dokumentation
 
-Welcome to the Momentary documentation. This project is designed to help you manage old home videos by automatically identifying people using Amazon Rekognition.
+Familien-Archiv für Videos und Fotos: Import, Analyse (Gesichter mit AWS Rekognition, Szenen, Tags mit Gemini,
+Transkription mit faster-whisper), Web-Oberfläche zum Pflegen und REST-API für Hub und Android-App.
 
-## Table of Contents
+## Betrieb
+- [Entwicklungsumgebung](setup.md) – lokal mit Docker
+- [Deployment](deployment.md) – Produktion auf dem ThinkCentre hinter dem VPS
+- [Konsolenbefehle](console_commands.md)
 
-1.  [Project Overview](architecture.md)
-2.  [Video Processing Pipeline](processing_pipeline.md)
-3.  [Database Schema & Entities](database_schema.md)
-4.  [Console Commands](console_commands.md)
-5.  [Setup & Configuration](setup.md)
-6.  [Jellyfin Integration](jellyfin_integration.md)
-7.  [Alternativen zu Jellyfin](alternatives.md)
-8.  [Tests](testing.md)
-9.  [Code-Qualität](code-quality.md)
-10. [Gesichtserkennung](face_recognition.md)
-11. [Ton-Transkription](transcription.md)
-12. [Fotos, Medien & Ereignisse](media.md)
+## Fachliches
+- [Fotos, Medien & Ereignisse](media.md) (Einstieg)
+- [Video-Pipeline](processing_pipeline.md) und [Automatisierung](architecture/video_automation.md)
+- [Gesichtserkennung](face_recognition.md)
+- [Ton-Transkription](transcription.md)
+- [Pools (Sichtbarkeit)](pools.md) und [Teilen per Link](sharing.md)
+- [Jellyfin-Anbindung](jellyfin_integration.md)
+- [Datenbankschema](database_schema.md), [Architektur](architecture.md), [Projektüberblick](project_overview.md)
+- [Sicherheitskonzept](SECURITY_CONCEPT.md)
 
-## Key Features
-
--   **Video Import**: Support for YouTube URLs (and potentially local files).
--   **Scene Detection**: Automatically splits videos into logical scenes using PySceneDetect.
--   **Face Identification**: Uses Amazon Rekognition to detect and identify persons across different videos.
--   **Person Management**: Group recognized faces into unique person entities.
--   **Timeline View**: Visualize which persons appear in which scenes of a video.
-
-## Technology Stack
-
--   **Backend**: Symfony (PHP 8.2+)
--   **Database**: PostgreSQL / MySQL (Doctrine ORM)
--   **Video Processing**: Python 3 with OpenCV and PySceneDetect
--   **Cloud Services**: Amazon Rekognition
--   **Frontend**: Symfony UX / Twig / Tailwind CSS
+## Clients und Qualität
+- [API-Vertrag für Hub und Android-App](clients/API.md), [Wünsche der Clients](clients/WUENSCHE.md)
+- [Tests](testing.md), [Code-Qualität](code-quality.md)
+- [Offene Aufgaben](TODO.md)

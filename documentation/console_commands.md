@@ -4,6 +4,7 @@ Momentary bietet folgende Konsolenbefehle zur Verwaltung der Anwendung, der Vide
 
 ## Admin & System
 - `app:admin:create` (`App\Command\Admin\CreateAdminCommand`): Erstellt den ersten Administrator-Benutzer.
+- `app:user:create <E-Mail> [--role=family|editor|admin] [--pool=<Name|ID> …] [--password=…] [--reset-password]` (`App\Command\Admin\CreateUserCommand`): Legt ein Konto an (Standard: Familie) und nimmt es in Pools auf; Passwort wird verdeckt abgefragt, leer = gut lesbares erzeugen. `--reset-password` setzt bei vorhandenem Konto nur das Passwort neu.
 - `app:admin:queue-clear` (`App\Command\Admin\QueueClearCommand`): Leert die Messenger-Queue.
 - `app:admin:storage-clear` (`App\Command\Admin\StorageClearCommand`): Bereinigt den Speicher.
 - `app:admin:storage-reset` (`App\Command\Admin\StorageResetCommand`): Setzt den Speicher zurück.

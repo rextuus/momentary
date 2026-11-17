@@ -1,92 +1,49 @@
-# Setup & Configuration
+# Entwicklungsumgebung
 
-To run Momentary, you need both PHP and Python environments configured.
+Alles läuft in Docker (`compose.yaml`); der Code wird in die Container eingebunden, Änderungen wirken sofort
+(Worker nach Codeänderungen neu starten: `docker compose restart messenger-worker transcription-worker`).
+Produktion: [deployment.md](deployment.md).
 
-## Prerequisites
+## Einrichten
 
--   **PHP 8.2+** with Composer.
--   **Python 3.10+** with `pip` and `venv`.
--   **FFmpeg**: Required for video processing and frame extraction.
--   **AWS Account**: With Rekognition access.
-
-## Environment Variables (`.env.local`)
-
-You must configure the following AWS credentials:
-
-```env
-AWS_ACCESS_KEY=your_access_key
-AWS_SECRET_KEY=your_secret_key
-AWS_REGION=eu-central-1
-PYTHON_BINARY=/path/to/your/venv/bin/python3
-
-# Jellyfin Integration (Empfohlen)
-JELLYFIN_HOST=http://localhost:8096
-JELLYFIN_API_KEY=dein_api_key
+```bash
+cp .env.example .env          # Schlüssel für AWS, Gemini, Jellyfin eintragen (kosten teils Geld)
+make up                       # baut das Image (einmal für app und beide Worker) und startet alles
+docker compose exec -T app composer install
+docker compose exec -T app bin/console doctrine:migrations:migrate --no-interaction
+docker compose exec -T app bin/console app:user:create du@example.de --role=admin
 ```
 
-## Installation Steps
+Für die API (Hub, Android-App) braucht es Schlüsselpaare in `config/oauth2/` und `config/jwt/`; `bin/prod-secrets`
+legt sie an, falls sie fehlen (die Datei `.env.prod.local`, die es dabei ebenfalls anlegt, kann lokal gelöscht werden).
 
-1.  **PHP Dependencies**:
-    ```bash
-    composer install
-    ```
+Rechnerspezifisches (z. B. `APP_PUBLIC_URL=http://192.168.178.56:8088` für Handy und Fernseher im WLAN) gehört in
+`.env.local`.
 
-2.  **Database Migration**:
-    ```bash
-    php bin/console doctrine:migrations:migrate
-    ```
+## Dienste
 
-3.  **Python Setup**:
-    Navigate to `video-analyzer/python/`, create a virtual environment and install requirements:
-    ```bash
-    cd video-analyzer/python
-    python3 -m venv venv
-    source venv/bin/activate
-    pip install -r requirements.txt  # Ensure requirements.txt exists or install: opencv-python scenedetect yt-dlp
-    ```
+| Dienst | Aufgabe | Lokal erreichbar |
+|---|---|---|
+| `app` | Apache + PHP (Symfony), Python-Skripte, ffmpeg | `APP_PORT` (8088) |
+| `messenger-worker` | Video-Pipeline, Fotos, Import, Zeitplan | – |
+| `transcription-worker` | Whisper-Transkription (eigene Queue) | – |
+| `database` | MySQL 8.4 LTS | – |
+| `rabbitmq` | Warteschlangen | Verwaltung auf 127.0.0.1:15672 |
+| `meilisearch` | Suche | – |
+| `imgproxy` | Bilder verkleinern | `IMGPROXY_PORT` (8081) |
+| `jellyfin` | Video-Streaming für den Hub | `JELLYFIN_PORT` (8096) |
+| `sftp` | Upload in den Import-Ordner | `SFTP_PORT` (2222) |
 
-4.  **AWS Rekognition Collection**:
-    Create the collection used for face matching (default: `family-archive-collection`):
-    ```bash
-    php bin/console app:rekognition:setup
-    ```
-    See [Console Commands](console_commands.md) for more details.
+## Prüfen
 
-5.  **Running the Worker**:
-    Since video processing is asynchronous, you need to run the messenger worker. 
-    
-    If you are running the application outside of Docker (locally), use:
-    ```bash
-    php bin/console messenger:consume async -vv
-    ```
+```bash
+make test                     # PHPUnit (SQLite, var/storage – nie die Dev-Datenbank)
+make qa                       # Mago, PHPStan Level 8, Tests
+```
 
-    If you want to run it inside the Docker container (Recommended for video processing):
-    ```bash
-    docker exec -it momentary-app-1 php bin/console messenger:consume async -vv
-    ```
+Mehr dazu in [testing.md](testing.md) und [code-quality.md](code-quality.md).
 
-    **Wichtig bei Änderungen am Dockerfile**: Falls du das Dockerfile änderst (z.B. um neue Tools wie `ffmpeg` zu installieren), musst du die Container neu bauen:
-    ```bash
-    docker compose build app
-    docker compose up -d
-    ```
+## Python
 
-    **Hinweis zur Video-Optimierung**: Die Optimierung für Jellyfin erfordert `python3` und `ffmpeg`. 
-    - Im Docker-Container sind diese nun vorinstalliert (nach einem `docker compose build`).
-    - Bei lokalem Betrieb müssen diese auf dem Host installiert sein und die `PYTHON_BINARY` in der `.env.local` muss auf den korrekten Pfad zeigen.
-
-    **Wichtig bei lokalem Betrieb**: Die Anwendung ist so konfiguriert, dass sie Pfade zwischen Docker (`/var/www/html/`) und lokalen Pfaden automatisch auflöst. Zudem gibt es einen Fallback-Mechanismus für die `PYTHON_BINARY`: Falls der konfigurierte Pfad (z.B. ein lokaler venv-Pfad) in der aktuellen Umgebung (Docker) nicht existiert, wird automatisch der systemweite `python3`-Befehl genutzt. Dies stellt sicher, dass die Pipeline sowohl lokal als auch im Container ohne manuelle Anpassung der `.env.local` läuft.
-
-    **Python-Abhängigkeiten im Container**:
-    Falls Fehler wie `ModuleNotFoundError` auftreten, stelle sicher, dass das Docker-Image aktuell ist:
-    ```bash
-    docker compose build app
-    docker compose up -d
-    ```
-
-    **Berechtigungen für Jellyfin-Export**: Falls du den Worker lokal ausführst, musst du dem Upload-Verzeichnis Schreibrechte geben, da Docker dieses Verzeichnis oft als `root` anlegt:
-    ```bash
-    sudo chmod -R 777 docker/jellyfin/uploads/
-    ```
-
-    **Note**: If you are running locally, ensure your `DATABASE_URL` in `.env.local` points to `127.0.0.1:9906`.
+Die Skripte unter `video-analyzer/python/` laufen im Container mit dem System-Python; die Pakete stehen in
+`docker/php/requirements.txt`. Nach Änderungen daran oder am `Dockerfile`: `make up` (baut neu).

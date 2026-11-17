@@ -1,0 +1,41 @@
+name: QA
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  phpunit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: amqp, intl, pdo_sqlite, sodium
+          coverage: none
+
+      - name: Composer-Abhängigkeiten installieren
+        run: composer install --no-interaction --no-progress --no-scripts
+
+      - name: .env aus Vorlage anlegen
+        run: cp .env.example .env
+
+      - name: Container und Konfiguration prüfen
+        run: |
+          php bin/console lint:container --env=test
+          php bin/console lint:yaml config
+          php bin/console lint:twig templates --env=test
+          php bin/console doctrine:schema:validate --skip-sync --env=test
+
+      - name: Code-Stil und Lint (Mago)
+        run: composer cs
+
+      - name: Statische Analyse (PHPStan Level 8)
+        run: composer phpstan
+
+      - name: PHPUnit (ohne slow-Gruppe)
+        run: vendor/bin/phpunit

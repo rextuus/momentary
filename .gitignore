@@ -1,7 +1,9 @@
 ###> symfony/framework-bundle ###
+/.env
 /.env.local
 /.env.local.php
 /.env.*.local
+/.env.prod
 /config/secrets/prod/prod.decrypt.private.php
 /public/bundles/
 /var/
@@ -11,56 +13,33 @@
 ###> phpunit/phpunit ###
 /phpunit.xml
 .phpunit.result.cache
+/.phpunit.cache/
 ###< phpunit/phpunit ###
-
-###> symfony/phpunit-bridge ###
-.phpunit.result.cache
-/phpunit.xml
-###< symfony/phpunit-bridge ###
 
 ###> symfony/asset-mapper ###
 /public/assets/
 /assets/vendor/
 /public/uploads/
 ###< symfony/asset-mapper ###
+
+###> Schlüssel (API) ###
+/config/jwt/*.pem
+/config/oauth2/*.key
+###< Schlüssel ###
+
+# Daten (Medien, Dienste) – liegen nur auf dem jeweiligen Rechner
+/storage/
+/backups/
+/docker/jellyfin/
+/docker/meilisearch/
+
+# Python
 .venv
-
 /video-analyzer/python/venv/
-
-###> symfonycasts/sass-bundle ###
-/public/assets/
-###< symfonycasts/sass-bundle ###
-
-# Docker & Persistence
-/docker/plex/config/
-/docker/plex/movies/
-/docker/plex/tvseries/
-/docker/plex/uploads/
-/docker/db/data/
+__pycache__/
+*.pyc
 
 # IDE & OS
 .idea/
 .DS_Store
 Thumbs.db
-/docker/plex/config/Library/Application Support/Plex Media Server/Logs/
-/docker/jellyfin/cache/
-/docker/jellyfin/
-/FrameBilder/
-/.env.prod
-/.env
-/docker/meilisearch/
-
-###> lexik/jwt-authentication-bundle ###
-/config/jwt/*.pem
-###< lexik/jwt-authentication-bundle ###
-
-###> league/oauth2-server-bundle ###
-/config/jwt/*.pem
-/config/oauth2/*.key
-###< league/oauth2-server-bundle ###
-/media/
-/storage/
-
-# Python
-__pycache__/
-*.pyc

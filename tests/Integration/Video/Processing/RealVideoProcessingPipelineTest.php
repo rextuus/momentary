@@ -17,7 +17,6 @@ use App\Service\Video\Analyze\SceneThumbnailExtractor;
 use App\Service\Video\Processing\Message\ConvertStepMessage;
 use App\Service\Video\Processing\Message\SceneDetectionStepMessage;
 use Doctrine\ORM\EntityManagerInterface;
-use League\Flysystem\FilesystemOperator;
 use Meilisearch\Client;
 use Meilisearch\Endpoints\Indexes;
 use PHPUnit\Framework\Attributes\Group;
@@ -77,7 +76,6 @@ final class RealVideoProcessingPipelineTest extends VideoPipelineTestCase
         $container->set(GeminiService::class, $this->geminiService);
         $container->set(Client::class, $meilisearch);
         $container->set(SceneThumbnailExtractor::class, $thumbnailExtractor);
-        $container->set('default.storage', $this->createStub(FilesystemOperator::class));
         $this->entityManager = $container->get(EntityManagerInterface::class);
         $this->pathProvider = $container->get(StoragePathProvider::class);
     }

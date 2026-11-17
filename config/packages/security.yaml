@@ -45,6 +45,7 @@ security:
         - { path: ^/api/persons, roles: PUBLIC_ACCESS }
         - { path: ^/api/tags, roles: PUBLIC_ACCESS }
         - { path: ^/login, roles: PUBLIC_ACCESS }
+        - { path: ^/healthz$, roles: PUBLIC_ACCESS }
         - { path: ^/token, roles: PUBLIC_ACCESS }
         - { path: ^/authorize, roles: PUBLIC_ACCESS }
         - { path: ^/search-test, roles: PUBLIC_ACCESS }

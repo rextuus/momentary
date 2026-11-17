@@ -1,0 +1,5 @@
+# Python-Pakete im app-Image (docker/php/Dockerfile); Stand wie in Entwicklung getestet.
+scenedetect[av]==0.7.2
+faster-whisper==1.2.1
+pillow==13.0.0
+pillow-heif==1.8.1

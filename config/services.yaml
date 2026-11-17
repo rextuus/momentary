@@ -4,7 +4,6 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
-    app.path.media_images: '%kernel.project_dir%/media/images'
     app.path.jellyfin_uploads: '%kernel.project_dir%/storage/jellyfin/uploads'
     env(JELLYFIN_HOST): 'http://localhost:8096'
     # Ablage der Whisper-Modelle (einmalig ~0,5–1,6 GB je Modell); var/ ist im Container ein Volume
@@ -26,8 +25,6 @@ services:
     _defaults:
         autowire: true      # Automatically injects dependencies in your services.
         autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
-        bind:
-            League\Flysystem\FilesystemOperator: '@default.storage'
 
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name
@@ -40,11 +37,6 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
-    App\Service\Video\Analyze\PathResolver:
-        public: '%kernel.environment == "test"%'
-
-    App\Service\File\FileSystem:
-    
     App\Service\ImageFileService:
         arguments:
             $filesystem: '@video.storage'

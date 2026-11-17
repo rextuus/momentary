@@ -7,7 +7,7 @@ Das Ziel ist es, große Mengen an Videomaterial durchsuchbar zu machen, indem au
 
 ## 2. Tech Stack
 - **Backend:** PHP 8.5+ mit Symfony 8.1 (Full-Stack Framework)
-- **Datenbank:** MySQL 8.0 (verwaltet über Doctrine ORM)
+- **Datenbank:** MySQL 8.4 LTS (verwaltet über Doctrine ORM)
 - **Frontend:** Twig-Templates, Symfony UX (Twig Components, Live Components), Sass für Styling, Webpack Encore
 - **Asynchrone Verarbeitung:** Symfony Messenger (mit Doctrine-Transport)
 - **KI & Analyse:**

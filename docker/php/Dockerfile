@@ -1,63 +1,65 @@
-FROM php:8.5-apache
+# syntax=docker/dockerfile:1
+# Momentary – ein Image für Webserver und Worker (Apache + PHP, ffmpeg, Python für Szenen, Fotos und Whisper).
+# Ziele: `dev` (Code wird eingebunden, compose.yaml) und `prod` (Code steckt im Image, compose.prod.yaml).
+FROM php:8.5-apache AS base
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    libicu-dev \
-    libzip-dev \
-    zip \
-    unzip \
-    git \
-    python3 \
-    python3-pip \
-    ffmpeg \
-    librabbitmq-dev \
+# PHP-Erweiterungen bauen, danach nur die Laufzeit-Bibliotheken behalten (Muster der offiziellen PHP-Images)
+RUN set -eux; \
+    savedAptMark="$(apt-mark showmanual)"; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends libicu-dev libzip-dev librabbitmq-dev; \
+    pecl install amqp; \
+    docker-php-ext-enable amqp; \
+    docker-php-ext-install -j"$(nproc)" intl pdo_mysql zip; \
+    apt-mark auto '.*' > /dev/null; \
+    apt-mark manual $savedAptMark; \
+    find /usr/local -type f -executable -exec ldd '{}' ';' \
+        | awk '/=>/ { so = $(NF-1); if (index(so, "/usr/local/") == 1) { next }; gsub("^/(usr/)?", "", so); printf "*%s\n", so }' \
+        | sort -u | xargs -r dpkg-query --search | awk 'sub(":$", "", $1) { print $1 }' | sort -u | xargs -r apt-mark manual; \
+    apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false; \
+    rm -rf /tmp/pear /var/lib/apt/lists/*
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg python3 python3-pip unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# Install scenedetect for video processing
-RUN python3 -m pip install scenedetect[av] --break-system-packages
+# Szenenerkennung (PySceneDetect), Fotos (EXIF, HEIC vom iPhone), lokale Transkription (faster-whisper auf der CPU)
+COPY docker/php/requirements.txt /tmp/requirements.txt
+RUN python3 -m pip install --no-cache-dir --break-system-packages -r /tmp/requirements.txt && rm /tmp/requirements.txt
 
-# Lokale Ton-Transkription (Whisper auf der CPU); die Modelle landen beim ersten Lauf in var/whisper-models
-RUN python3 -m pip install faster-whisper --break-system-packages
+COPY --from=composer:2.10 /usr/bin/composer /usr/bin/composer
 
-# Fotos: EXIF lesen, drehen, verkleinern; pillow-heif liest HEIC/HEIF vom iPhone
-RUN python3 -m pip install pillow pillow-heif --break-system-packages
-
-# Install PHP extensions
-RUN pecl install amqp && docker-php-ext-enable amqp
-RUN docker-php-ext-configure intl && docker-php-ext-install intl
-RUN docker-php-ext-install pdo_mysql
-RUN docker-php-ext-configure zip && docker-php-ext-install zip
-RUN docker-php-ext-install opcache || echo "Opcache install failed, skipping..."
-
-# Enable Apache mod_rewrite
-RUN a2enmod rewrite
-
-# Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+# Apache: Symfony unter public/, große Uploads, /imgproxy/ an den imgproxy-Container (ein Port für alles)
+RUN a2enmod rewrite headers proxy proxy_http
+COPY docker/php/apache.conf /etc/apache2/sites-available/000-default.conf
+COPY docker/php/conf.d/app.ini $PHP_INI_DIR/conf.d/zz-app.ini
 
 WORKDIR /var/www/html
 
-# Create necessary central storage directories, var structure, and set permissions
-RUN mkdir -p storage/app_uploads storage/jellyfin/uploads public/uploads/faces var/cache var/log \
-    && chown -R www-data:www-data storage var public/uploads \
-    && chmod -R 777 storage var public/uploads
+FROM base AS dev
+RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
 
-# Adjust Apache document root for Symfony
-ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+FROM base AS prod
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+COPY docker/php/conf.d/prod.ini $PHP_INI_DIR/conf.d/zz-prod.ini
+ENV APP_ENV=prod APP_DEBUG=0
 
-# Allow overrides in Apache
-RUN sed -i '/<Directory ${APACHE_DOCUMENT_ROOT}>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf || \
-    echo "<Directory \${APACHE_DOCUMENT_ROOT}>\n\tAllowOverride All\n</Directory>" >> /etc/apache2/apache2.conf
+# Abhängigkeiten zuerst: ändern sich seltener als der Code und bleiben so im Build-Cache
+COPY composer.json composer.lock symfony.lock ./
+RUN composer install --no-dev --no-scripts --no-autoloader --no-interaction --no-progress
 
-# Increase Apache and PHP limits for large video files
-RUN echo "LimitRequestBody 0" >> /etc/apache2/apache2.conf
-RUN echo "upload_max_filesize = 10G" > /usr/local/etc/php/conf.d/uploads.ini \
-    && echo "post_max_size = 10G" >> /usr/local/etc/php/conf.d/uploads.ini \
-    && echo "memory_limit = 512M" >> /usr/local/etc/php/conf.d/uploads.ini \
-    && echo "max_execution_time = 3600" >> /usr/local/etc/php/conf.d/uploads.ini \
-    && echo "max_input_time = 3600" >> /usr/local/etc/php/conf.d/uploads.ini \
-    && echo "output_buffering = 4096" >> /usr/local/etc/php/conf.d/uploads.ini
+COPY . .
+# .env enthält keine Secrets (Vorlage .env.example); die echten Werte setzt compose.prod.yaml als Umgebungsvariablen.
+RUN sed -e 's/^APP_ENV=.*/APP_ENV=prod/' -e 's/^APP_DEBUG=.*/APP_DEBUG=0/' .env.example > .env \
+    && composer dump-autoload --no-dev --classmap-authoritative \
+    && composer dump-env prod \
+    && php bin/console importmap:install \
+    && php bin/console sass:build \
+    && php bin/console asset-map:compile \
+    && php bin/console cache:warmup \
+    && mkdir -p var/log var/transcription var/whisper-models storage public/uploads \
+    && chown -R www-data:www-data var storage public/uploads
 
-EXPOSE 80
+COPY --chmod=755 docker/php/entrypoint.sh /usr/local/bin/momentary-entrypoint
+ENTRYPOINT ["momentary-entrypoint"]
+CMD ["apache2-foreground"]

@@ -1,0 +1,19 @@
+framework:
+    rate_limiter:
+        # Passwort geschützter Share-Links: Versuche je Link und IP-Adresse
+        share_password:
+            policy: sliding_window
+            limit: 10
+            interval: '15 minutes'
+
+when@test:
+    framework:
+        cache:
+            pools:
+                # eigener Pool, den Tests vorab leeren: sonst zählen Versuche aus früheren Tests mit (IDs wiederholen sich)
+                share_limiter.cache:
+                    adapter: cache.adapter.filesystem
+                    public: true
+        rate_limiter:
+            share_password:
+                cache_pool: share_limiter.cache

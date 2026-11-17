@@ -62,8 +62,8 @@ sudo chmod -R 777 docker/jellyfin/uploads/
 ## Funktionsweise des Exports
 
 Der Export erfolgt asynchron über mehrere Schritte:
-1. **Optimierung**: Falls das Video kein MP4 ist, wird es via Python-Skript (`convert_to_mp4.py`) und FFmpeg konvertiert.
-2. **Transfer**: Die Datei wird in den Jellyfin-Ordner (`docker/jellyfin/uploads`) kopiert.
+1. **Optimierung**: Falls das Video kein MP4 ist, wird es mit FFmpeg konvertiert.
+2. **Transfer**: Die Datei wird in den Jellyfin-Ordner (`storage/jellyfin/uploads`) kopiert.
 3. **Scan**: Die Jellyfin-API wird angewiesen, die Bibliothek zu aktualisieren.
 4. **ID-Mapping**: Die App sucht nach der internen Jellyfin Item-ID, um stabiles Streaming zu ermöglichen.
 
