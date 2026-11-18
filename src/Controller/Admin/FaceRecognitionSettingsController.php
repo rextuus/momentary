@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Form\FaceRecognitionSettingsType;
+use App\Repository\VideoFaceRepository;
 use App\Repository\VideoRepository;
 use App\Service\Aws\AmazonRekognitionService;
 use App\Service\Face\FaceRecognitionSettingsProvider;
+use App\Service\Face\InsightFace\FaceServiceClient;
+use App\Service\Face\InsightFace\FaceServiceException;
 use App\Service\Face\Provider\FaceRecognitionProviders;
+use App\Service\Face\Provider\InsightFaceProvider;
 use App\Service\Face\VideoFaceConsolidator;
 use Aws\Exception\AwsException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -87,6 +91,31 @@ final class FaceRecognitionSettingsController extends AbstractController
             'collectionId' => $rekognition->getCollectionId(),
             'faceCount' => $faceCount,
             'error' => $error,
+        ]);
+    }
+
+    /**
+     * Zustand des face-service (InsightFace); nachgeladen, damit die Seite nicht auf den Dienst warten muss.
+     */
+    #[Route(
+        '/admin/settings/face-recognition/face-service/status',
+        name: 'app_admin_face_recognition_face_service_status',
+        methods: ['GET'],
+    )]
+    public function faceServiceStatus(FaceServiceClient $client, VideoFaceRepository $faces): Response
+    {
+        try {
+            $health = $client->health();
+            $error = null;
+        } catch (FaceServiceException $e) {
+            $health = [];
+            $error = $e->getMessage();
+        }
+
+        return $this->render('admin/settings/_face_service_status.html.twig', [
+            'health' => $health,
+            'error' => $error,
+            'faceCount' => $faces->count(['provider' => InsightFaceProvider::NAME]),
         ]);
     }
 

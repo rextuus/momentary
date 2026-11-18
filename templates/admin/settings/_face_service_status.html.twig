@@ -1,0 +1,16 @@
+{% if error %}
+    <div class="text-danger"><i class="fas fa-circle-exclamation me-1"></i>face-service nicht erreichbar: {{ error }}</div>
+    <div class="text-muted mt-2">Läuft der Dienst? <code>docker compose ps face-service</code>, Logs: <code>docker compose logs face-service</code>. Beim ersten Start lädt er die Modelle (einige Minuten).</div>
+{% elseif health.status|default('') != 'ok' %}
+    <div class="text-warning"><i class="fas fa-hourglass-half me-1"></i>face-service startet noch (Modelle werden geladen).</div>
+{% else %}
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge text-bg-success"><i class="fas fa-check me-1"></i>bereit</span>
+        <code>{{ health.model|default('?') }}</code>
+    </div>
+    <dl class="row mb-0 small">
+        <dt class="col-7 fw-normal text-muted">Detektionsgröße</dt><dd class="col-5 text-end mb-1">{{ health.det_size|default('?') }} px</dd>
+        <dt class="col-7 fw-normal text-muted">Threads</dt><dd class="col-5 text-end mb-1">{{ health.intra_op_threads|default('?') }}/{{ health.inter_op_threads|default('?') }}</dd>
+        <dt class="col-7 fw-normal text-muted">Gesichter mit Embedding</dt><dd class="col-5 text-end mb-1">{{ faceCount|number_format(0, ',', '.') }}</dd>
+    </dl>
+{% endif %}

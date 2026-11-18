@@ -6,9 +6,12 @@ namespace App\Tests\Functional\Admin;
 
 use App\Service\Aws\AmazonRekognitionService;
 use App\Service\Face\FaceRecognitionSettingsProvider;
+use App\Service\Face\InsightFace\FaceServiceClient;
+use App\Service\Face\InsightFace\FaceServiceException;
 use App\Service\Face\Provider\FaceRecognitionProviderInterface;
 use App\Service\Face\Provider\FaceRecognitionProviders;
 use App\Tests\Factory\UserFactory;
+use App\Tests\Factory\VideoFaceFactory;
 use App\Tests\Factory\VideoFactory;
 use Aws\CommandInterface;
 use Aws\Exception\AwsException;
@@ -60,6 +63,7 @@ final class FaceRecognitionSettingsTest extends WebTestCase
         self::assertResponseIsSuccessful();
         self::assertSelectorTextContains('body', 'InsightFace (selbst gehostet)');
         self::assertSelectorNotExists('[name="face_recognition_settings[qualityFilter]"]');
+        self::assertSelectorExists('[data-remote-content-url-value$="/face-recognition/face-service/status"]');
         self::assertSelectorNotExists('#aws-reset-form + *, .fa-aws');
         self::assertInputValueSame('face_recognition_settings[insightFaceMatchThreshold]', '0.50');
         self::assertInputValueSame('face_recognition_settings[insightFaceMinFacePx]', '40');
@@ -161,6 +165,46 @@ final class FaceRecognitionSettingsTest extends WebTestCase
             90.0,
             self::getContainer()->get(FaceRecognitionSettingsProvider::class)->get()->getMatchThreshold(),
         );
+    }
+
+    public function testFaceServiceStatusShowsModelAndFaces(): void
+    {
+        $client = static::createClient();
+        $faceService = $this->createStub(FaceServiceClient::class);
+        $faceService
+            ->method('health')
+            ->willReturn([
+                'status' => 'ok',
+                'model' => 'buffalo_l/w600k_r50',
+                'det_size' => 640,
+                'intra_op_threads' => 2,
+                'inter_op_threads' => 1,
+            ]);
+        self::getContainer()->set(FaceServiceClient::class, $faceService);
+        VideoFaceFactory::createMany(3, ['provider' => 'insightface']);
+        VideoFaceFactory::createOne();
+        $client->loginUser(UserFactory::new()->admin()->create());
+
+        $client->request('GET', '/admin/settings/face-recognition/face-service/status');
+
+        self::assertResponseIsSuccessful();
+        self::assertSelectorTextContains('body', 'bereit');
+        self::assertSelectorTextContains('body', 'buffalo_l/w600k_r50');
+        self::assertSelectorTextContains('dl', '3', 'nur InsightFace-Gesichter');
+    }
+
+    public function testFaceServiceStatusShowsErrorInsteadOfFailing(): void
+    {
+        $client = static::createClient();
+        $faceService = $this->createStub(FaceServiceClient::class);
+        $faceService->method('health')->willThrowException(new FaceServiceException('Connection refused'));
+        self::getContainer()->set(FaceServiceClient::class, $faceService);
+        $client->loginUser(UserFactory::new()->admin()->create());
+
+        $client->request('GET', '/admin/settings/face-recognition/face-service/status');
+
+        self::assertResponseIsSuccessful();
+        self::assertSelectorTextContains('body', 'face-service nicht erreichbar: Connection refused');
     }
 
     public function testAwsStatusShowsFaceCount(): void

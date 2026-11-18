@@ -69,7 +69,9 @@ Referenzen plus allen Gesichtern des gerade analysierten Mediums:
 ## Konfiguration
 
 **Admin → Gesichtserkennung** (`/admin/settings/face-recognition`, Tabelle `face_recognition_settings`), wirkt sofort.
-Die Seite zeigt nur die Werte des eingestellten Anbieters; die des anderen bleiben gespeichert.
+Die Seite zeigt nur die Werte des eingestellten Anbieters; die des anderen bleiben gespeichert. Bei InsightFace zeigt eine Karte den
+Zustand des face-service (Modell, Detektionsgröße, Threads, Anzahl Gesichter mit Embedding) oder warum er nicht
+erreichbar ist.
 
 | InsightFace | Standard | |
 |---|---|---|
