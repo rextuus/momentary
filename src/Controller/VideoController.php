@@ -12,12 +12,10 @@ use App\Entity\VideoScene;
 use App\Form\VideoType;
 use App\Repository\MediumRepository;
 use App\Repository\VideoRepository;
-use App\Service\Face\OrphanedPersonCleaner;
-use App\Service\Storage\FileManager;
-use App\Service\Storage\FileStorageService;
 use App\Service\Tag\TagInitializer;
 use App\Service\Transcription\TranscriptionRequester;
 use App\Service\Video\VideoCreationService;
+use App\Service\Video\VideoDeleter;
 use App\Service\Video\VideoFiles;
 use App\Service\Video\VideoReprocessor;
 use App\Service\Video\VideoStreamUrls;
@@ -118,42 +116,10 @@ final class VideoController extends AbstractController
 
     #[Route('/{id}/delete', name: 'video_delete', methods: ['POST'])]
     #[IsGranted('VIDEO_EDIT', subject: 'video')]
-    public function delete(
-        Request $request,
-        Video $video,
-        FileManager $fileManager,
-        FileStorageService $fileStorageService,
-        OrphanedPersonCleaner $orphanedPersonCleaner,
-    ): Response {
+    public function delete(Request $request, Video $video, VideoDeleter $videoDeleter): Response
+    {
         if ($this->isCsrfTokenValid('delete' . $video->getId(), $request->request->getString('_token'))) {
-            $videoId = $video->getId();
-            $affectedPersons = $orphanedPersonCleaner->personIdsOfMedium((int) $videoId);
-
-            // 1. Hauptdateien über den FileManager löschen
-            if ($video->getSourceFile()) {
-                $fileManager->deleteFile($video->getSourceFile(), true);
-            }
-            if ($video->getConvertedFile()) {
-                $fileManager->deleteFile($video->getConvertedFile(), true);
-            }
-            if ($video->getThumbnailFile()) {
-                $fileManager->deleteFile($video->getThumbnailFile(), true);
-            }
-
-            // 2. Video aus der Datenbank entfernen
-            $this->entityManager->remove($video);
-            $this->entityManager->flush();
-
-            // 3. Physische Ordner im Storage löschen (Videodateien + Analyse-Frames)
-            $fileStorageService->deleteDirectory('videos/' . $videoId);
-            $fileStorageService->deleteDirectory('frames/' . $videoId);
-
-            // 4. EntityManager-Cache komplett leeren, damit keine veralteten Identity-Map-Einträge bleiben
-            $this->entityManager->clear();
-
-            // 5. Automatisch angelegte Personen, die nur in diesem Video vorkamen
-            $orphanedPersonCleaner->removeOrphans($affectedPersons);
-
+            $videoDeleter->delete($video);
             $this->addFlash('success', 'Video und alle zugehörigen Daten wurden erfolgreich gelöscht.');
         }
 
