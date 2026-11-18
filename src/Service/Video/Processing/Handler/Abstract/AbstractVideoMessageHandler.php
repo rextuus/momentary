@@ -6,20 +6,22 @@ namespace App\Service\Video\Processing\Handler\Abstract;
 
 use App\Entity\Video;
 use App\Repository\VideoRepository;
-use App\Service\Video\Processing\Enum\VideoWorkflowProcessTransition;
 use App\Service\Video\Processing\Exception\StepMessageDecorationException;
 use App\Service\Video\Processing\Exception\VideoGoneException;
+use App\Service\Video\Processing\VideoFailure;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageHandlerInterface;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use LogicException;
+use Symfony\Contracts\Service\Attribute\Required;
 
 abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHandlerInterface
 {
     protected ?Video $video = null;
     protected ?VideoProcessStepMessageInterface $currentMessage = null;
+    private ?VideoFailure $videoFailure = null;
 
     public function __construct(
         protected VideoRepository $videoRepository,
@@ -153,28 +155,29 @@ abstract class AbstractVideoMessageHandler implements VideoProcessStepMessageHan
         return $nextCurrentStepMessage;
     }
 
+    /**
+     * Per Setter statt Konstruktor: sonst müssten alle Handler ihren Konstruktor anpassen.
+     */
+    #[Required]
+    public function setVideoFailure(VideoFailure $videoFailure): void
+    {
+        $this->videoFailure = $videoFailure;
+    }
+
     protected function stopProcessing(string $errorMsg): void
     {
         echo $errorMsg . PHP_EOL;
 
-        // Fetch a managed instance of the video
-        $videoId = $this->getCurrentMessage()->getVideoId();
-        $video = $this->videoRepository->find($videoId);
-        if (!$video) {
-            // Video wurde währenddessen gelöscht -> nichts mehr zu tun
-            throw VideoGoneException::forId($videoId);
-        }
-
-        if ($this->workflowMachine->can($video, VideoWorkflowProcessTransition::FAIL->value)) {
-            $this->workflowMachine->apply($video, VideoWorkflowProcessTransition::FAIL->value);
-            $this->videoRepository->getEntityManagerPublic()->flush();
-        }
-
-        $this->processingService->failStep(
-            $video,
-            $this->getCurrentMessage()->getVideoStatusForCurrentProcessStepEntity(),
+        $message = $this->getCurrentMessage();
+        $failed = $this->videoFailure?->fail(
+            $message->getVideoId(),
+            $message->getVideoStatusForCurrentProcessStepEntity(),
             $errorMsg,
         );
+        if ($failed === false) {
+            // Video wurde währenddessen gelöscht -> nichts mehr zu tun
+            throw VideoGoneException::forId($message->getVideoId());
+        }
     }
 
     /**

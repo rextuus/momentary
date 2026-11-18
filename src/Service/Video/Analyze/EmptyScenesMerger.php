@@ -10,6 +10,7 @@ use App\Entity\VideoFace;
 use App\Entity\VideoScene;
 use App\Enum\VideoStatus;
 use App\Service\Video\Analyze\Result\EmptyScenesMergerResult;
+use Doctrine\DBAL\Platforms\SQLitePlatform;
 use Doctrine\ORM\EntityManagerInterface;
 
 class EmptyScenesMerger
@@ -81,7 +82,10 @@ class EmptyScenesMerger
      */
     private function lockAndVerifyStatus(Video $video): bool
     {
-        $currentStatus = $this->entityManager->getConnection()->fetchOne('SELECT status FROM video WHERE id = ? FOR UPDATE', [$video->getId()]);
+        $connection = $this->entityManager->getConnection();
+        // SQLite (Tests) kennt keine Zeilensperren und sperrt bei Schreibzugriffen ohnehin die ganze Datenbank
+        $lock = $connection->getDatabasePlatform() instanceof SQLitePlatform ? '' : ' FOR UPDATE';
+        $currentStatus = $connection->fetchOne('SELECT status FROM video WHERE id = ?' . $lock, [$video->getId()]);
 
         return $currentStatus === VideoStatus::MERGING_SCENES->value;
     }
