@@ -71,11 +71,12 @@ Secrets als Komodo-Variablen:
 | `MOMENTARY_IMGPROXY_SALT` | `openssl rand -hex 32` |
 | `MOMENTARY_OAUTH_ENCRYPTION_KEY` | `openssl rand -base64 32` – Änderung macht ausgegebene API-Tokens ungültig |
 | `MOMENTARY_MAILER_DSN` | `null://null` (Momentary verschickt keine Mails) |
-| `MOMENTARY_AWS_ACCESS_KEY`, `MOMENTARY_AWS_SECRET_KEY` | AWS-Konsole, IAM-Benutzer mit Rekognition-Rechten (kostet Geld) |
+| `MOMENTARY_AWS_ACCESS_KEY`, `MOMENTARY_AWS_SECRET_KEY` | nur für `FACE_RECOGNITION_PROVIDER=rekognition`: IAM-Benutzer mit Rekognition-Rechten (kostet Geld). Standard ist InsightFace ohne Schlüssel. |
 | `MOMENTARY_GEMINI_API_KEY` | Google AI Studio (kostet Geld) |
 | `MOMENTARY_JELLYFIN_API_KEY` | später: Jellyfin → Dashboard → API-Schlüssel (siehe [Einrichten](#5-einrichten-nach-dem-ersten-start)) |
 
-Ohne AWS- oder Gemini-Schlüssel laufen Import und Oberfläche, nur die Analyse-Schritte schlagen fehl. Soll ein
+Ohne Gemini-Schlüssel laufen Import und Oberfläche, nur die Gemini-Schritte schlagen fehl. Die Gesichtserkennung
+(InsightFace im Dienst `face-service`) braucht keinen Schlüssel; AWS nur, wenn auf Rekognition umgestellt ist. Soll ein
 Schlüssel fehlen, die Zeile im Environment von `momentary.toml` löschen – eine nicht angelegte Variable lässt den
 Pre-Deploy abbrechen (Komodo lässt `[[…]]` sonst wörtlich stehen).
 
@@ -112,8 +113,22 @@ sudo ls -lR /srv/momentary/keys
 df -h /srv                                               # Platz für die Medien
 ```
 
-`/srv/momentary/storage` darf root gehören: `app` bringt die Ordner beim Start auf `www-data`. Die Schlüssel bleiben
-root/600; der Container kopiert sie beim Start mit den Rechten, die die Bibliotheken verlangen.
+**Rechte von `/srv/momentary/storage`:** Ein von Hand angelegter Ordner mit `root:root` und `755` genügt, ein eigener
+Init-Schritt ist nicht nötig. Wer worauf zugreift:
+
+| Container | Benutzer | Zugriff |
+|---|---|---|
+| `app` (Start) | root | Der Entrypoint (`docker/php/entrypoint.sh`) legt `imports`, `app_uploads`, `jellyfin/uploads` an und übergibt alles, was nicht `www-data` gehört, an **UID/GID 33** (`www-data`); nur Abweichungen, kein volles `chown -R`. |
+| `app` (Apache), `messenger-worker`, `transcription-worker`, `face-worker` | www-data (33) | lesen und schreiben; starten erst, wenn `app` gesund ist, also nach dem Rechte-Setzen |
+| `imgproxy` | imgproxy (999) | nur lesen, über die Rechte für „andere“: Ordner brauchen `o+rx`, Dateien `o+r`. Die App legt sie mit `755`/`644` an (`config/packages/flysystem.yaml`). |
+| `jellyfin` | root | `jellyfin/uploads` |
+| `face-service` | – | kein Zugriff, Bilder kommen per HTTP |
+
+Geprüft mit einem root-eigenen `755`-Ordner: Nach dem Start von `app` gehört er `33:33`, und `www-data` kann darin
+schreiben. Wer den Ordner lieber vorab übergibt: `sudo chown 33:33 /srv/momentary/storage`. Nie `700`/`600` setzen
+(imgproxy liefert dann keine Bilder mehr).
+
+Die Schlüssel bleiben root/600; der Container kopiert sie beim Start mit den Rechten, die die Bibliotheken verlangen.
 
 ### 4. Komodo
 
@@ -152,8 +167,11 @@ alias dc='sudo docker compose -p momentary -f compose.prod.yaml --env-file .env.
 - **Verwaltungskonto:** `dc exec -u www-data app php bin/console app:user:create du@example.de --role=admin`
   (Passwort wird verdeckt abgefragt; weitere Konten: `console_commands.md`).
 - **Suchindex:** `dc exec -T -u www-data app php bin/console app:meilisearch:index-all`
-- **AWS Rekognition:** `dc exec -T -u www-data app php bin/console app:rekognition:setup` (legt die Collection an,
-  kostet nichts).
+- **Gesichtserkennung:** `face-service` lädt beim ersten Start die Modelle (~280 MB) ins Volume `momentary_face_models`
+  (`dc logs -f face-service` bis „Modell buffalo_l/w600k_r50 geladen“; Healthcheck wartet bis zu 5 min). Laufzeit
+  messen: `dc exec face-service python bench.py` und `dc exec -u www-data app php bin/console app:face:analyze <id>`
+  (`face_recognition.md`). Nur bei `FACE_RECOGNITION_PROVIDER=rekognition`:
+  `dc exec -T -u www-data app php bin/console app:rekognition:setup` (legt die AWS-Collection an).
 - **Jellyfin** hat keinen Port nach außen. Einrichten über einen SSH-Tunnel zur Container-IP:
   ```bash
   ssh abyss "sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' momentary-jellyfin-1"
@@ -278,8 +296,10 @@ Ohne Komodo (Notfall): im Stack-Ordner `sudo make prod-up`, `sudo make prod-back
 - **Links mit `http://`, Anmeldung springt zurück:** `APP_PUBLIC_URL` mit `https://`, `REVERSE_PROXY_IPS=10.0.0.1`.
 - **Suche leer / Meilisearch startet nach Versionswechsel nicht:** Stack stoppen,
   `sudo docker volume rm momentary_meilisearch_data`, Deploy, Suchindex neu aufbauen.
-- **Video bleibt bei „wird verarbeitet“:** `dc logs messenger-worker`, `messenger:failed:show`. Häufig: AWS-/Gemini-
-  Schlüssel fehlt oder Kontingent erschöpft; Jellyfin-Export ohne `JELLYFIN_API_KEY`.
+- **Video bleibt bei „wird verarbeitet“:** Ein endgültig gescheiterter Schritt setzt das Video auf „Fehler“ mit Grund
+  (Videoseite, Übersicht). Steht es trotzdem: `dc logs messenger-worker` bzw. `dc logs face-worker` (Gesichter),
+  `messenger:failed:show`. Häufig: Gemini-Schlüssel fehlt oder Kontingent erschöpft; Jellyfin-Export ohne
+  `JELLYFIN_API_KEY`; face-service nicht gesund (`dc ps face-service`).
 - **Backup-Procedure schlägt fehl:** läuft der Stack? (`no_deps`: bei gestopptem Stack scheitert sie absichtlich).
   Sonst Log der Procedure; Ordner `/srv/momentary/backups` vorhanden?
 - **Hub sieht das Backend nicht:** Netz `momentary_momentary-network` vorhanden und Hub daran?

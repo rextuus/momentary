@@ -57,8 +57,16 @@ Umgesetzt (siehe `documentation/media.md`, Abschnitt „Orte & Karte“).
 Vorschläge aus der bisherigen Arbeit, grob nach Nutzen sortiert. Vor dem Umsetzen jeweils prüfen, was es schon gibt.
 
 #### A. Gesichtserkennung mit echten Daten auswerten und nachschärfen
-Seit dem Umbau der Erkennung (Konsolidierung je Video, Einstellungen unter Verwalten → Gesichtserkennung) wurde die
-Qualität noch nicht an echtem Material gemessen.
+Seit November 2026 erkennt InsightFace (selbst gehostet, `face_recognition.md`); die Schwellen sind Startwerte.
+- [ ] Mit `app:face:analyze` an echten Homevideos (VHS/Hi8/MiniDV) messen: Histogramm der besten Ähnlichkeiten,
+  zugeordnet/vorgeschlagen/unbekannt; Schwellen danach festlegen.
+- [ ] Aufbereitete Fassung (HitPaw/VikPea) als zusätzliche Wiedergabe-Datei anhängen, mit Synchronitätsprüfung
+  (Dauer, Startzeit, Schnitte gegen das Original; Versatz melden, Drift ablehnen). Dafür beim Szenenerkennen die rohen
+  Schnitte speichern (die gespeicherten Szenen sind nach dem Zusammenlegen leerer Szenen keine vollständige Schnittliste
+  mehr). Danach nur Web-Fassung, Jellyfin-Export und ggf. Vorschaubilder neu, keine Gesichtsanalyse.
+- [ ] Aufnahmezeit digitalisierter Bänder: DV-Aufnahmedatum aus den Subcodes lesen (z. B. dvrescue/MediaInfo);
+  Dateiname und `creation_time` sind bei Bändern meist das Digitalisierungsdatum.
+Ältere Punkte (aus der Rekognition-Zeit):
 - [ ] Mallorca-Videos und -Fotos durchsehen: Kontaktbogen je Person erzeugen, falsche Zuordnungen und getrennte Doppelungen zählen.
 - [ ] Schwellen (Match, Vorschlag, Video-Link, Tracking) anhand der Zählung anpassen und als neue Standardwerte übernehmen.
 - [ ] Danach die Hochzeits-Videos (viele Personen, schlechte Qualität) als härteren Test nehmen.

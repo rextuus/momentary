@@ -1,8 +1,8 @@
 # Momentary (Backend) – Hinweise für Claude
 
-Familien-Archiv für Videos und Fotos: Import, Analyse (Gesichter mit AWS Rekognition, Szenen, Tags mit Gemini,
-Transkription mit faster-whisper), Web-Oberfläche zum Pflegen und REST-API. Der Benutzer spricht Deutsch; Oberfläche,
-Kommentare und Doku sind deutsch. Doku unter `documentation/` (Einstieg: `media.md`, `TODO.md`).
+Familien-Archiv für Videos und Fotos (vor allem alte Homevideos): Import, Analyse (Gesichter mit InsightFace im
+eigenen `face-service`, optional AWS Rekognition; Szenen, Tags mit Gemini, Transkription mit faster-whisper),
+Web-Oberfläche zum Pflegen und REST-API. Der Benutzer spricht Deutsch; Oberfläche, Kommentare und Doku sind deutsch. Doku unter `documentation/` (Einstieg: `media.md`, `TODO.md`).
 
 ## Clients
 
@@ -17,9 +17,11 @@ Entwicklung: `compose.yaml` (Code eingebunden, `documentation/setup.md`). Produk
 `momentary`: `compose.prod.yaml`, Ressourcen und Environment in `deploy/komodo/momentary.toml`, Secrets als
 Komodo-Variablen `MOMENTARY_*` (Liste in `.env.prod.dist`), Daten unter `/srv/momentary` und in Volumes `momentary_*`,
 Anleitung `documentation/deployment.md`. Ein Image (`docker/php/Dockerfile`, Ziele `dev`/`prod`) für app, migrate und
-beide Worker. Neue Umgebungsvariablen in `.env.example`, `.env.prod.dist`, `compose.prod.yaml` und `momentary.toml`
-eintragen; Python-Pakete in `docker/php/requirements.txt`. Probeläufe von `compose.prod.yaml` lokal nur mit eigenem
-Projektnamen und `VOLUME_PREFIX` (die Entwicklung heißt ebenfalls `momentary`).
+die Worker; der `face-service` hat ein eigenes (`face-service/Dockerfile`, `face_recognition.md`). Neue
+Umgebungsvariablen in `.env.example`, `.env.prod.dist`, `compose.prod.yaml` und `momentary.toml` eintragen;
+Python-Pakete in `docker/php/requirements.txt` (face-service: `face-service/requirements.txt`). Probeläufe von
+`compose.prod.yaml` lokal nur mit eigenem Projektnamen und `VOLUME_PREFIX` (die Entwicklung heißt ebenfalls
+`momentary`).
 
 ## Arbeitsweise
 

@@ -26,6 +26,13 @@ Momentary bietet folgende Konsolenbefehle zur Verwaltung der Anwendung, der Vide
 - `app:meilisearch:index-all` (`App\Command\Meilisearch\IndexAllVideosCommand`): Indiziert alle Videos neu.
 - `app:meilisearch:list-indexes` (`App\Command\Meilisearch\ListIndexesCommand`): Listet alle Meilisearch-Indizes auf.
 
+## Gesichtserkennung
+- `app:face:analyze <videoId> [--fps=…] [--mode=fps|scenes] [--limit=N] [--two-stage[=320]] [--frames] [--save]` (`App\Command\Faces\AnalyzeFacesCommand`): Ein Video mit InsightFace messen: Laufzeit je Frame, Gesichter, Verteilung der besten Ähnlichkeiten, zugeordnet/vorgeschlagen/unbekannt bei den aktuellen Schwellen; mit `--two-stage` zusätzlich der Vorfilter im Vergleich. Standard nur messen; `--save` ersetzt die Gesichter des Videos (siehe `face_recognition.md`).
+- `app:faces:consolidate <videoId>|--all` (`App\Command\Faces\ConsolidateFacesCommand`): Gesichter mit den aktuellen Einstellungen neu gruppieren, ohne neue Analyse.
+- `app:persons:cleanup-orphans` (`App\Command\Faces\CleanupOrphanedPersonsCommand`): Automatisch angelegte Personen ohne Gesicht entfernen.
+- `app:video:source-height <videoId> [Zeilen]` (`App\Command\Video\SourceHeightCommand`): Native Bildhöhe anzeigen oder setzen (z. B. 576 für ein schon hochskaliert importiertes PAL-Band); Bezug der Mindestgröße.
+- `app:video:cleanup-originals [--dry-run] [--include-interlaced]` (`App\Command\CleanupOriginalsCommand`): Originale fertiger Videos und Analyse-Frames löschen; interlaced Originale bleiben, außer mit `--include-interlaced`.
+
 ## AWS Rekognition & Tags
 - `app:rekognition:list-faces` (`App\Command\Rekognition\ListRekognitionFacesCommand`): Listet alle in Rekognition erkannten Gesichter auf.
 - `app:rekognition:reset` (`App\Command\Rekognition\ResetRekognitionCommand`): Setzt die Rekognition-Konfiguration zurück.

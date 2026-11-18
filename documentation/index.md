@@ -1,6 +1,6 @@
 # Momentary – Dokumentation
 
-Familien-Archiv für Videos und Fotos: Import, Analyse (Gesichter mit AWS Rekognition, Szenen, Tags mit Gemini,
+Familien-Archiv für Videos und Fotos: Import, Analyse (Gesichter mit InsightFace, optional AWS Rekognition, Szenen, Tags mit Gemini,
 Transkription mit faster-whisper), Web-Oberfläche zum Pflegen und REST-API für Hub und Android-App.
 
 ## Betrieb
