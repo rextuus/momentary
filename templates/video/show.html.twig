@@ -304,6 +304,16 @@
                             <label class="small text-muted fw-bold text-uppercase mb-1">Zweck (Purpose)</label>
                             <div class="small font-monospace">{{ (video.convertedFile ?? video.sourceFile).purpose.value }}</div>
                         </div>
+
+                        <div class="mb-0">
+                            <label class="small text-muted fw-bold text-uppercase mb-1">Bildmaterial</label>
+                            <div class="small">
+                                {{ video.fieldOrderLabel ?? 'Halbbilder noch nicht geprüft' }}{% if video.interlaced %}<span class="text-muted">; die MP4 ist in 50p umgerechnet, das Original bleibt erhalten</span>{% endif %}
+                            </div>
+                            {% if video.sourceHeight %}
+                                <div class="small text-muted">Native Auflösung: {{ video.sourceHeight }} Zeilen</div>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             {% else %}

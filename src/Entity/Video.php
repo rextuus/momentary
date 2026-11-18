@@ -403,6 +403,11 @@ class Video extends Medium
         return FieldOrder::isInterlaced($this->fieldOrder);
     }
 
+    public function getFieldOrderLabel(): ?string
+    {
+        return FieldOrder::label($this->fieldOrder);
+    }
+
     public function getSourceHeight(): ?int
     {
         return $this->sourceHeight;

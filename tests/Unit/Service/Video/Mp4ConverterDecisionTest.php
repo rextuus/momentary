@@ -94,4 +94,12 @@ final class Mp4ConverterDecisionTest extends TestCase
         self::assertFalse(FieldOrder::isInterlaced(null));
         self::assertSame('tff', FieldOrder::parity('bt'), 'bt: unteres codiert, oberes zuerst angezeigt');
     }
+
+    public function testFieldOrderLabels(): void
+    {
+        self::assertSame('interlaced, unteres Halbbild zuerst', FieldOrder::label('bb'));
+        self::assertSame('interlaced, oberes Halbbild zuerst', FieldOrder::label('tt'));
+        self::assertSame('progressiv (Vollbilder)', FieldOrder::label('progressive'));
+        self::assertNull(FieldOrder::label(null));
+    }
 }

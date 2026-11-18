@@ -50,6 +50,20 @@ final class FieldOrder
     }
 
     /**
+     * Für die Videoseite, z. B. „interlaced, unteres Halbbild zuerst“; null = noch nicht geprüft.
+     */
+    public static function label(?string $fieldOrder): ?string
+    {
+        return match ($fieldOrder) {
+            null, '' => null,
+            self::PROGRESSIVE => 'progressiv (Vollbilder)',
+            'tt', 'bt' => 'interlaced, oberes Halbbild zuerst',
+            'bb', 'tb' => 'interlaced, unteres Halbbild zuerst',
+            default => $fieldOrder,
+        };
+    }
+
+    /**
      * bwdif-Parität: welches Halbbild zuerst angezeigt wird.
      */
     public static function parity(string $fieldOrder): string
