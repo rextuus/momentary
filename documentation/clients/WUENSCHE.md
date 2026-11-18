@@ -24,7 +24,7 @@ Vorlage:
 - Endpunkt/Felder: keine API-Änderung. Nach jeder Änderung an Personen/Gesichtern die betroffenen Videos neu
   indexieren (z. B. Doctrine-Listener auf `Person`/`VideoFace` oder Nachricht `ReindexVideos(ids)`); dasselbe bei
   Änderungen an Szenen-Tags, Titel und Sichtbarkeit, falls dort auch nicht. Bis dahin auf dem Server nach dem
-  Benennen `make prod-reindex`.
+  Benennen `app:meilisearch:index-all` (live siehe deployment.md).
 - Status: offen
 
 ### Größeres Vorschaubild in `/api/search` (von: hub, 21.10.2026)

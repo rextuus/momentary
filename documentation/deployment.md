@@ -1,333 +1,356 @@
-# Momentary auf dem ThinkCentre betreiben
+# Momentary auf abyss betreiben (Komodo)
 
-Diese Anleitung bringt Momentary auf den Rechner zu Hause (ThinkCentre „abyss“, Ubuntu 24.04), auf dem auch Wedora,
-der Momentary-Hub und das Praxis-CMS laufen. Erreichbar ist das Backend unter `https://admin.momentary.wh-company.com`.
-
-**Aufbau live:** Momentary läuft als Docker-Stack und bietet die Weboberfläche, die API und die Bilder über **einen
-HTTP-Port** an (Standard `8088`). HTTPS und Zertifikat übernimmt der **Caddy auf dem VPS** mit fester IP, der die
-Anfragen über **WireGuard** an diesen Port weiterleitet – wie bei den anderen Projekten auf dem Rechner.
+Momentary läuft als Komodo-Stack `momentary` auf abyss (ThinkCentre, Ubuntu 26.04) und ist unter
+`https://admin.momentary.wh-company.com` erreichbar. Deployt wird über Komodo aus GitHub (`rextuus/momentary`,
+Branch `main`); die Ressourcen stehen in [`deploy/komodo/momentary.toml`](../deploy/komodo/momentary.toml).
+Übergreifendes (Komodo, Caddy, Backups, Offsite) steht im Repo `homelab` (`docs/komodo.md`, `docs/backups.md`,
+`docs/offsite.md`).
 
 ```
-Browser ──HTTPS──▶ VPS (Caddy, Zertifikat) ──WireGuard──▶ ThinkCentre :8088 (app: Apache + Symfony) ──▶ imgproxy (/imgproxy/)
-Hub (:8089) ──────── Docker-Netz momentary_momentary-network ──────────▶ app:80, jellyfin:8096
-Fernseher/Hub ─HTTPS─▶ VPS ─WireGuard─▶ ThinkCentre :8096 (Jellyfin)
+Browser ──HTTPS──▶ VPS (Caddy, TLS) ──WireGuard──▶ abyss 10.0.0.2:8194 (app: Apache + Symfony) ──▶ imgproxy (/imgproxy/)
+Hub ──────────── Docker-Netz momentary_momentary-network ─────────────▶ app:80
+app/Worker ───── intern ───────────────────────────────────────────────▶ jellyfin:8096 (Export-Ziel, kein Port)
 ```
 
-| Domain | Ziel auf dem ThinkCentre | Dienst |
+---
+
+## Was läuft
+
+`compose.prod.yaml`, Projektname `momentary`. **Nur `app` hat einen Host-Port** (`10.0.0.2:8194`).
+
+| Dienst | Aufgabe | Art |
 |---|---|---|
-| `admin.momentary.wh-company.com` | `10.0.0.2:8088` | Momentary-Backend (dieser Stack) |
-| `momentary.wh-company.com` | `10.0.0.2:8089` | Momentary-Hub (eigenes Repo `momentary-hub`) |
-| `media.momentary.wh-company.com` | `10.0.0.2:8096` | Jellyfin (dieser Stack) |
+| `migrate` | Datenbank-Migrationen, einmal je Deploy, beendet sich | One-Shot (Komodo ignoriert ihn) |
+| `app` | Apache + PHP: Weboberfläche, API, Video-Streams, `/imgproxy/` → imgproxy | dauerhaft, Healthcheck `/healthz` (bis zur DB) |
+| `messenger-worker` | Video-Pipeline, Fotos, Import-Ordner, Zeitplan (Symfony Scheduler) | dauerhaft |
+| `transcription-worker` | Whisper-Transkription, niedrige Priorität | dauerhaft |
+| `database` | MySQL 8.4 | dauerhaft |
+| `rabbitmq` | Warteschlangen (Verwaltung nur per `exec`) | dauerhaft |
+| `meilisearch` | Suche | dauerhaft |
+| `imgproxy` | Bildvarianten, nur über `app` erreichbar | dauerhaft |
+| `jellyfin` | Ziel des Video-Exports (Pipeline-Schritt 22), intern | dauerhaft |
+| `backup` | Datenbank-Dump nach `/srv/momentary/backups` (`deploy/komodo/db-backup.sh`) | nur auf Abruf (Profil) |
 
-Getestet am 21.10.2026 als Generalprobe auf dem Entwicklungsrechner (gleiche Befehle, andere Ports, leere Datenbank,
-ohne echte Domain, siehe [Generalprobe](#generalprobe-auf-dem-eigenen-rechner)): Bauen, `make prod-up` mit Migration,
-alle Dienste gesund, `make prod-status`, `/healthz` (auch 503 bei fehlender Datenbank), Anmeldung, Seiten, Foto über den
-Import-Ordner bis zur Auslieferung über `/imgproxy/`, Weiterleitungen hinter einem Proxy (`X-Forwarded-Proto: https`),
-`make prod-backup` und Wiederherstellen der Datenbank.
+Reihenfolge beim Start: `database` → `migrate` → `app` (gesund) → Worker und Jellyfin. Komodo deployt mit
+`up -d --wait`: Der Deploy gilt erst als erfolgreich, wenn alle Dienste gesund sind.
 
----
+### Wo die Daten liegen
 
-## Was auf dem Server läuft
+Nichts liegt im Stack-Ordner `/etc/komodo/stacks/momentary` – Komodo darf ihn jederzeit neu klonen.
 
-Alles in Docker, gestartet über `compose.prod.yaml` (Projektname `momentary`):
-
-| Dienst | Aufgabe | Von außen erreichbar? |
+| Was | Wo | Gesichert |
 |---|---|---|
-| `app` | Apache + PHP (Symfony): Weboberfläche, API, Video-Streams; reicht `/imgproxy/` an imgproxy weiter | ja, **ein Port** (`HTTP_PORT`, 8088) – für den VPS |
-| `messenger-worker` | Video-Pipeline, Fotos, Import-Ordner, Zeitplan | nein |
-| `transcription-worker` | Ton-Transkription (Whisper, CPU), eigene Warteschlange, niedrige Priorität | nein |
-| `database` | MySQL 8.4 (LTS) | nein |
-| `rabbitmq` | Warteschlangen | nur `127.0.0.1:15672` (Verwaltung) |
-| `meilisearch` | Suche | nein |
-| `imgproxy` | verkleinert Bilder | nein (nur über `app`) |
-| `jellyfin` | Video-Streaming für Hub und Fernseher | ja, `JELLYFIN_PORT` (8096) |
-| `sftp` | Upload in den Import-Ordner | ja, `SFTP_PORT` (2222) – fürs Heimnetz |
+| Datenbank | Volume `momentary_database_data` | täglich 02:00 + vor jedem Deploy als Dump; Dumps auch offsite |
+| Medien (Videos, Fotos, Gesichter, Import-Ordner, Jellyfin-Uploads) | `/srv/momentary/storage` (Bind-Mount) | **nicht** (bewusst, zu groß für B2 – siehe [Sicherung](#sicherung-und-wiederherstellung)) |
+| API-Schlüssel (OAuth2, JWT) | `/srv/momentary/keys/{oauth2,jwt}` (nur lesend eingebunden) | offsite (`backup.offsite_paths`) |
+| Dumps | `/srv/momentary/backups` | offsite (`backup.target`) |
+| Suchindex | Volume `momentary_meilisearch_data` | nein, `app:meilisearch:index-all` baut neu |
+| Warteschlangen | Volume `momentary_rabbitmq_data` | nein |
+| Jellyfin-Einstellungen, Cache | Volumes `momentary_jellyfin_config`, `momentary_jellyfin_cache` | nein (schnell neu eingerichtet) |
+| Whisper-Modelle | Volume `momentary_whisper_models` | nein, lädt sich neu (~1,6 GB) |
+| Secrets | Komodo-Variablen `MOMENTARY_*` | Komodo-Datenbank-Backup (01:00) |
 
-`app` und die beiden Worker nutzen **dasselbe Image** (`momentary-app:prod`, Code ist eingebaut, nichts wird zur
-Laufzeit eingebunden außer den Daten).
+Die Volume-Namen sind in `compose.prod.yaml` per `name:` festgelegt und hängen nicht am Projektnamen. **Nie
+umbenennen.** `VOLUME_PREFIX` nur für Probeläufe setzen (siehe [Probelauf](#probelauf-auf-dem-entwicklungsrechner)).
 
-**Wo die Daten liegen** (ein Neustart oder Update löscht nichts):
+### Variablen
 
-| Was | Wo |
+Die vollständige Liste mit Erklärung steht in [`.env.prod.dist`](../.env.prod.dist). Komodo schreibt bei jedem
+Deploy `.env.prod.local` aus dem Environment in `momentary.toml`. Nicht geheime Werte stehen dort direkt
+(`APP_PUBLIC_URL`, `HTTP_BIND=10.0.0.2`, `HTTP_PORT=8194`, `REVERSE_PROXY_IPS=10.0.0.1`, Pfade unter `/srv/momentary`),
+Secrets als Komodo-Variablen:
+
+| Komodo-Variable (Secret) | Wert |
 |---|---|
-| Datenbank | Docker-Volume `momentary_database_data` |
-| Videos, Fotos, Gesichter, Import-Ordner | `/opt/momentary/storage/` |
-| Suchindex | `/opt/momentary/docker/meilisearch/data/` (lässt sich jederzeit neu aufbauen) |
-| Jellyfin-Einstellungen und -Bibliothek | `/opt/momentary/docker/jellyfin/config/` |
-| Whisper-Modelle | Docker-Volume `momentary_whisper_models` (lädt sich beim ersten Transkribieren, ~1,6 GB) |
-| Secrets | `/opt/momentary/.env.prod.local`, Schlüssel in `config/oauth2/` und `config/jwt/` |
+| `MOMENTARY_APP_SECRET` | `openssl rand -hex 32` |
+| `MOMENTARY_MYSQL_PASSWORD` | `openssl rand -hex 16` – gilt nur beim allerersten Start, danach nie ändern |
+| `MOMENTARY_MYSQL_ROOT_PASSWORD` | `openssl rand -hex 16` – wie oben |
+| `MOMENTARY_RABBITMQ_PASS` | `openssl rand -hex 16` – wie oben (RabbitMQ-Volume) |
+| `MOMENTARY_MEILI_MASTER_KEY` | `openssl rand -hex 32` |
+| `MOMENTARY_IMGPROXY_KEY` | `openssl rand -hex 32` |
+| `MOMENTARY_IMGPROXY_SALT` | `openssl rand -hex 32` |
+| `MOMENTARY_OAUTH_ENCRYPTION_KEY` | `openssl rand -base64 32` – Änderung macht ausgegebene API-Tokens ungültig |
+| `MOMENTARY_MAILER_DSN` | `null://null` (Momentary verschickt keine Mails) |
+| `MOMENTARY_AWS_ACCESS_KEY`, `MOMENTARY_AWS_SECRET_KEY` | AWS-Konsole, IAM-Benutzer mit Rekognition-Rechten (kostet Geld) |
+| `MOMENTARY_GEMINI_API_KEY` | Google AI Studio (kostet Geld) |
+| `MOMENTARY_JELLYFIN_API_KEY` | später: Jellyfin → Dashboard → API-Schlüssel (siehe [Einrichten](#5-einrichten-nach-dem-ersten-start)) |
 
-Alles außer den Volumes liegt in Ordnern, die Git ignoriert – `git pull` fasst sie nicht an.
-
----
-
-## 1. Voraussetzungen
-
-**Server** (läuft bereits für die anderen Projekte)
-- Docker Engine mit Compose-Plugin, `git`, `make`, `openssl`
-- Platz: Medien + ca. 5 GB für Images und Whisper-Modelle. Prüfen: `df -h /opt`
-- Der ThinkCentre (i5-6500T, 16 GB RAM) reicht; Transkription läuft dort etwa in Echtzeit
-  (siehe `transcription.md`).
-
-**VPS und Domains**
-- DNS-Einträge `admin.momentary.wh-company.com` und `media.momentary.wh-company.com` zeigen auf die VPS-IP
-  (`dig +short admin.momentary.wh-company.com`).
-- WireGuard steht: ThinkCentre `10.0.0.2`, VPS `10.0.0.1` (`sudo wg show` zeigt einen aktuellen Handshake).
-
-**Ports auf dem ThinkCentre**
-- Momentary braucht `8088` (Backend), `8096` (Jellyfin), `2222` (SFTP) und lokal `15672`.
-  Prüfen: `ss -ltn | grep -E ':(8088|8096|2222|15672) '` darf nichts ausgeben.
-- Belegt durch andere Projekte: u. a. 3307, 7999, 8080 (CMS), 8089 (Hub), 8190 (Wedora).
+Ohne AWS- oder Gemini-Schlüssel laufen Import und Oberfläche, nur die Analyse-Schritte schlagen fehl. Soll ein
+Schlüssel fehlen, die Zeile im Environment von `momentary.toml` löschen – eine nicht angelegte Variable lässt den
+Pre-Deploy abbrechen (Komodo lässt `[[…]]` sonst wörtlich stehen).
 
 ---
 
-## 2. Code auf den Server bringen
+## Inbetriebnahme (erster Deploy)
 
-Deployt wird über Git (`https://github.com/rextuus/momentary.git`, **öffentlich** – also nie Secrets committen). Das
-Projekt liegt unter **`/opt/momentary`**.
+Momentary lief bisher nirgends; es startet **leer**, es gibt keine Daten zu übernehmen und keine Ausfallzeit. Die
+Reihenfolge ist so gewählt, dass jeder Schritt gefahrlos ist und sich prüfen lässt, bevor Caddy die Domain freigibt.
 
-Auf den Server kommt nur, was **committet und gepusht** ist. Vor jedem Deployment lokal prüfen:
-`git status -sb` zeigt weder `ahead` noch unversionierte Dateien unter `src/`, `migrations/`, `config/`, `templates/`
-oder `video-analyzer/`.
+### 1. Code
 
-Einmalig auf dem ThinkCentre:
+`git diff` prüfen (Volume-Namen, Ports, keine Secrets), committen, pushen. Auf den Server kommt nur, was auf `main`
+in GitHub liegt.
+
+### 2. GitHub
+
+Das Repo `rextuus/momentary` zum fein granularen Token von Komodo (`komodo-abyss`, Settings → Developer settings →
+Fine-grained tokens → Repository access) hinzufügen.
+
+### 3. abyss vorbereiten
 
 ```bash
-sudo mkdir -p /opt/momentary && sudo chown "$USER": /opt/momentary
-git clone https://github.com/rextuus/momentary.git /opt/momentary
+ssh abyss
+ss -ltn | grep ':8194 '                                  # darf nichts ausgeben
+sudo install -d -m 700 /srv/momentary /srv/momentary/backups /srv/momentary/keys
+sudo install -d -m 755 /srv/momentary/storage
+# API-Schlüsselpaare (OAuth2 für Hub/App, JWT) – nur einmal; neue Schlüssel machen ausgegebene Tokens ungültig
+sudo sh -c 'umask 077; cd /srv/momentary/keys && mkdir -p oauth2 jwt &&
+  openssl genrsa -out oauth2/private.key 2048 && openssl rsa -in oauth2/private.key -pubout -out oauth2/public.key &&
+  openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out jwt/private.pem &&
+  openssl pkey -in jwt/private.pem -pubout -out jwt/public.pem'
+sudo ls -lR /srv/momentary/keys
+df -h /srv                                               # Platz für die Medien
 ```
 
-Nicht in Git und deshalb auf dem Server dauerhaft erhalten: `.env.prod.local`, `config/oauth2/`, `config/jwt/`,
-`storage/`, `docker/jellyfin/`, `docker/meilisearch/`, `backups/`.
+`/srv/momentary/storage` darf root gehören: `app` bringt die Ordner beim Start auf `www-data`. Die Schlüssel bleiben
+root/600; der Container kopiert sie beim Start mit den Rechten, die die Bibliotheken verlangen.
+
+### 4. Komodo
+
+1. **Settings → Variables:** alle Variablen aus der [Tabelle](#variablen) anlegen, jeweils mit Häkchen „Secret“
+   (außer `MOMENTARY_JELLYFIN_API_KEY`, die kommt später). Werte zusätzlich im Passwortmanager ablegen.
+2. **Syncs → New Resource Sync:** Mode „Git Repo“, Repo `rextuus/momentary`, Branch `main`, Account `rextuus`,
+   Resource Path `deploy/komodo/momentary.toml`, „Delete Unmatched“ **aus**. Refresh → Änderungen prüfen (ein neuer
+   Stack `momentary`, eine neue Procedure `momentary-backup`) → Execute Sync.
+3. **Stack `momentary` → Deploy.** Ablauf: `git pull` → Pre-Deploy (meldet „Noch keine Datenbank vorhanden –
+   Sicherung übersprungen“) → Bauen (erstes Mal ca. 10 Minuten, Python-Pakete) → `up -d --wait` → Post-Deploy (Zustand,
+   `/healthz`, Warteschlangen).
+4. **Procedure `momentary-backup` → Run.** Danach `sudo ls -l /srv/momentary/backups` → eine Datei
+   `momentary-db-…-daily.sql.gz` mit Rechten 600.
+
+### 5. Smoke-Test (vor Caddy)
+
+Auf abyss:
+
+```bash
+curl -s http://10.0.0.2:8194/healthz                    # {"status":"ok","database":"ok"}
+curl -sI http://10.0.0.2:8194/login | head -1            # HTTP/1.1 200 OK
+sudo docker volume ls | grep momentary_                  # momentary_database_data usw.
+```
+
+Im Komodo-UI: alle Dienste „running/healthy“, `migrate` „exited (0)“.
+
+### 6. Einrichten nach dem ersten Start
+
+Befehle im Stack-Ordner; Kurzform für die folgenden Abschnitte:
+
+```bash
+cd /etc/komodo/stacks/momentary
+alias dc='sudo docker compose -p momentary -f compose.prod.yaml --env-file .env.prod.local'
+```
+
+- **Verwaltungskonto:** `dc exec -u www-data app php bin/console app:user:create du@example.de --role=admin`
+  (Passwort wird verdeckt abgefragt; weitere Konten: `console_commands.md`).
+- **Suchindex:** `dc exec -T -u www-data app php bin/console app:meilisearch:index-all`
+- **AWS Rekognition:** `dc exec -T -u www-data app php bin/console app:rekognition:setup` (legt die Collection an,
+  kostet nichts).
+- **Jellyfin** hat keinen Port nach außen. Einrichten über einen SSH-Tunnel zur Container-IP:
+  ```bash
+  ssh abyss "sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' momentary-jellyfin-1"
+  ssh -L 8096:<IP>:8096 abyss          # dann http://localhost:8096
+  ```
+  Assistent durchlaufen, Bibliothek „Filme/Videos“ mit dem Ordner `/uploads`. Unter Dashboard → API-Schlüssel einen
+  Schlüssel anlegen → Komodo-Variable `MOMENTARY_JELLYFIN_API_KEY` (Secret), in `momentary.toml` im Environment die
+  Zeile `JELLYFIN_API_KEY = [[MOMENTARY_JELLYFIN_API_KEY]]` ergänzen (beim Kommentar zu Jellyfin), committen, pushen,
+  Sync ausführen, Deploy.
+- **API-Clients** (Hub, Android-App): in der Weboberfläche unter Verwalten → „API-Zugänge“.
+
+### 7. Domain freischalten (Repo homelab, dort ändern – nicht hier)
+
+1. DNS: `admin.momentary.wh-company.com` → VPS (`dig +short admin.momentary.wh-company.com` = 217.154.91.97).
+2. `inventory.yaml`: den Eintrag `momentary` durch den [Block unten](#eintrag-im-homelab-inventar) ersetzen.
+3. `bin/inventory` → `bin/gen-docs` → `bin/gen-caddy` → `bin/gen-offsite` → committen →
+   `bin/caddy-deploy` (Trockenlauf; Komodo muss Port 8194 bestätigen) → `bin/caddy-deploy --apply`.
+4. Prüfen: `curl -sI https://admin.momentary.wh-company.com/login` → `HTTP/2 200`; im Browser anmelden, ein Foto
+   hochladen, Vorschaubild kommt über `…/imgproxy/…`.
+5. `bin/monitors` → `bin/monitors --apply`, dann `bin/check` – grün?
+
+**Rückfallebene:** Es gibt keinen alten Betrieb. Geht etwas schief: Stack in Komodo stoppen (Daten bleiben) oder im
+Inventar `maintenance: true` setzen und Caddy ausrollen (Wartungsseite). Ganz von vorn (nur solange keine echten Daten
+drin sind): Stack „Destroy“, `sudo docker volume rm momentary_database_data momentary_rabbitmq_data`, Deploy.
 
 ---
 
-## 3. Secrets anlegen
+## Deploy (Updates)
 
-```bash
-cd /opt/momentary
-make prod-secrets
-nano .env.prod.local
-```
+Lokal committen und pushen, dann in Komodo **Stack `momentary` → Deploy**. Automatische Deploys sind aus.
 
-`make prod-secrets` erzeugt `.env.prod.local` aus `.env.prod.dist` mit zufälligen Passwörtern (Rechte 600) und legt
-die Schlüsselpaare für die API in `config/oauth2/` und `config/jwt/` an, falls sie fehlen. Eintragen bzw. prüfen:
+Was passiert: Pre-Deploy sichert die Datenbank (`momentary-db-…-pre-deploy.sql.gz`, Abbruch bei Fehler oder fehlender
+Variable) → Images bauen → `migrate` → neue Container → Post-Deploy räumt alte Images **dieses** Projekts auf.
 
-```dotenv
-APP_PUBLIC_URL=https://admin.momentary.wh-company.com
-HTTP_PORT=8088
-HTTP_BIND=10.0.0.2             # WireGuard-IP: Backend nur über den VPS erreichbar
-REVERSE_PROXY_IPS=10.0.0.1     # WireGuard-IP des VPS: nur dessen X-Forwarded-* (https, Besucher-IP) gelten
-JELLYFIN_BIND=0.0.0.0          # Jellyfin auch im Heimnetz (Fernseher); nur über VPS: 10.0.0.2
-SFTP_BIND=0.0.0.0              # SFTP aus dem Heimnetz; der VPS leitet 2222 nicht weiter
-AWS_ACCESS_KEY=…               # Gesichtserkennung
-AWS_SECRET_KEY=…
-GEMINI_API_KEY=…               # Tags, Titel, Kapitel
-JELLYFIN_API_KEY=…             # erst nach dem ersten Start in Jellyfin anlegen (Schritt 6), dann make prod-up
-```
+Laufende Video-Analysen werden unterbrochen und danach neu zugestellt, eine laufende Transkription beginnt von vorn.
+Wer das vermeiden will, wartet auf leere Warteschlangen (`dc exec -T rabbitmq rabbitmqctl list_queues name messages`).
 
-- `APP_PUBLIC_URL` steckt in signierten Video-Links (Fernseher, Share-Links) – öffentliche Adresse mit `https://`.
-- `IMGPROXY_PUBLIC_HOST` leer lassen: Bilder laufen dann über `<APP_PUBLIC_URL>/imgproxy`.
-- `HTTP_BIND`: Docker veröffentlicht Ports an der Firewall (ufw) vorbei. Mit der WireGuard-IP kommt niemand aus dem
-  Heimnetz oder Internet am VPS vorbei. Wer das Backend im WLAN direkt (`http://192.168.…:8088`) nutzen will, nimmt
-  `0.0.0.0`.
-- AWS und Gemini **kosten Geld**. Ohne Schlüssel laufen Import und Oberfläche, die Analyse-Schritte schlagen fehl.
-- `.env.prod.local`, `config/oauth2/` und `config/jwt/` **nie** ins Repository; sicher aufbewahren (Passwortmanager).
-  Ohne sie lassen sich Sicherungen nicht wieder einspielen und die API-Clients (Hub, App) müssen neu eingerichtet
-  werden.
+Ändert sich nur `momentary.toml` (z. B. Environment): Sync ausführen, dann Deploy.
+
+## Rollback
+
+1. In `momentary.toml` `commit = "<hash>"` setzen (letzter guter Stand), pushen, Sync, Deploy. Alternativ im
+   Komodo-UI beim Stack den Commit eintragen – der nächste Sync setzt ihn zurück.
+2. Hat der fehlerhafte Stand Migrationen ausgeführt, passt das alte Schema nicht mehr: vorher den Dump
+   `…-pre-deploy.sql.gz` dieses Deploys einspielen (siehe [Wiederherstellen](#datenbank-wiederherstellen)).
+3. Danach `commit = ""` wieder leeren.
+
+Schlägt `migrate` fehl, sind `app` und Worker schon gestoppt und starten nicht – die Seite ist unten, bis der Fehler
+behoben oder der Rollback durch ist. Ursache: `dc logs migrate`.
 
 ---
 
-## 4. Weiterleitung auf dem VPS
+## Sicherung und Wiederherstellung
 
-Auf dem **VPS** in `/etc/caddy/Caddyfile` ergänzen:
+**Lokal:** Der Dienst `backup` schreibt gzip-Dumps nach `/srv/momentary/backups` (700, Dateien 600, atomar über eine
+`.partial`-Datei, abgeschlossen geprüft). Anlässe: `daily` (Procedure `momentary-backup`, 02:00), `pre-deploy`,
+`manuell` (`dc run --rm --no-TTY backup manuell`). Je Anlass bleiben die neuesten 14 (`BACKUP_KEEP`).
 
-```caddyfile
-# Momentary Backend (Weboberfläche, API, Bilder unter /imgproxy/)
-admin.momentary.wh-company.com {
-	reverse_proxy 10.0.0.2:8088
-}
+**Außer Haus:** Die nächtliche Offsite-Sicherung von abyss (05:15, restic → Backblaze B2) nimmt `/srv/momentary/backups`
+und `/srv/momentary/keys` mit (aus dem Inventar). Wiederherstellen daraus: `homelab/docs/offsite.md`.
 
-# Jellyfin
-media.momentary.wh-company.com {
-	reverse_proxy 10.0.0.2:8096 {
-		# Streaming und WebSockets
-		flush_interval -1
-	}
-}
+> **Medien sind nicht außer Haus gesichert.** `/srv/momentary/storage` geht bewusst nicht nach B2 (Datenmenge). Ein
+> Plattendefekt auf abyss bedeutet: Datenbank und Schlüssel sind wiederherstellbar, die Videos und Fotos nicht. Die
+> Originale also an anderer Stelle behalten oder die Medien regelmäßig auf eine zweite Platte spiegeln
+> (`rsync -a /srv/momentary/storage/ <ziel>/`).
+
+### Datenbank wiederherstellen
+
+```bash
+cd /etc/komodo/stacks/momentary
+sudo ls -lt /srv/momentary/backups | head
+dc stop app messenger-worker transcription-worker
+sudo gunzip -c /srv/momentary/backups/momentary-db-<zeit>-<anlass>.sql.gz \
+  | dc exec -T database sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD"'
+dc start app messenger-worker transcription-worker
+dc exec -T -u www-data app php bin/console app:meilisearch:index-all
 ```
 
-Caddy setzt `X-Forwarded-For`, `-Proto` und `-Host` selbst; `header_up`-Zeilen braucht es nicht. imgproxy hat keinen
-eigenen Port, Bilder laufen über `admin.momentary…/imgproxy/`. Danach `sudo systemctl reload caddy`.
-
-Vom VPS aus prüfen (nach Schritt 5): `curl -s http://10.0.0.2:8088/healthz` → `{"status":"ok","database":"ok"}`.
+Der Dump enthält `CREATE DATABASE`/`USE` und ersetzt die Tabellen. Auf einem frischen Server: erst Schritte 3–4 der
+[Inbetriebnahme](#inbetriebnahme-erster-deploy) mit den **bisherigen** Variablenwerten (Komodo-Backup) und den
+gesicherten Schlüsseln, dann wie oben einspielen.
 
 ---
 
-## 5. Starten
+## Betrieb
 
-```bash
-cd /opt/momentary
-make prod-up
-```
-
-Baut das Image (beim ersten Mal ca. 10 Minuten, vor allem Python-Pakete), startet alle Dienste, wartet bis sie gesund
-sind und migriert die Datenbank. Die Medienordner werden beim Start auf den Besitzer `www-data` gebracht (nur
-abweichende Dateien, das geht schnell).
-
-Prüfen:
-
-```bash
-make prod-status                                             # alle Dienste laufen, Gesundheit {"status":"ok",…}
-curl -I https://admin.momentary.wh-company.com/login          # vom eigenen Rechner: HTTP/2 200 (über den VPS)
-```
-
-Im Browser anmelden, ein Video und ein Foto öffnen: Vorschaubilder kommen über `…/imgproxy/…`, das Video spielt.
-
----
-
-## 6. Einrichten nach dem ersten Start
-
-**Verwaltungskonto:**
-
-```bash
-make prod-console CMD="app:user:create du@example.de --role=admin"
-```
-
-Das Passwort wird verdeckt abgefragt. Weitere Konten (Familie, Pools): siehe `console_commands.md`.
-
-**Suchindex** (einmalig, und wenn die Suche leer bleibt): `make prod-reindex`.
-
-**Jellyfin:** `https://media.momentary.wh-company.com` öffnen, Assistent durchlaufen,
-Bibliothek „Filme/Videos“ mit dem Ordner `/uploads` anlegen. Unter Dashboard → API-Schlüssel einen Schlüssel anlegen,
-als `JELLYFIN_API_KEY` in `.env.prod.local` eintragen, `make prod-up`.
-
-**AWS Rekognition:** Gesichts-Collection anlegen –
-`make prod-console CMD="app:rekognition:setup"`.
-
-**API-Clients** (Hub, Android-App): in der Weboberfläche unter Verwalten → „API-Zugänge“; Zugangsdaten in die
-`.env` des Hubs. Den Hub erst danach deployen – er hängt am Docker-Netz `momentary_momentary-network`, das dieser
-Stack anlegt.
-
----
-
-## 7. Updates einspielen
-
-Lokal committen und `git push`, dann auf dem Server:
-
-```bash
-cd /opt/momentary
-make prod-backup   # empfohlen
-git pull
-make prod-up
-```
-
-Baut neu (nur geänderte Schichten), ersetzt die Container von `app` und Workern, migriert die Datenbank. Laufende
-Video-Analysen werden dabei unterbrochen und danach neu zugestellt; eine laufende Transkription beginnt von vorn. Wer
-das vermeiden will, wartet, bis `make prod-status` leere Warteschlangen zeigt.
-
-Ändert sich nur der Hub: im Hub-Repo deployen, hier nichts zu tun.
-
----
-
-## 8. Sicherung und Wiederherstellung
-
-```bash
-make prod-backup
-```
-
-Legt in `backups/<datum>/` (Rechte 700) ab: Datenbank-Dump, Jellyfin-Einstellungen und die Secrets
-(`.env.prod.local`, API-Schlüssel). **Die Medien** (`storage/`, viele GB) sichert das nicht – dafür regelmäßig auf eine
-andere Platte oder ein NAS spiegeln, z. B.:
-
-```bash
-rsync -a /opt/momentary/storage/ /mnt/sicherung/momentary-storage/
-rsync -a /opt/momentary/backups/ /mnt/sicherung/momentary-backups/
-```
-
-(Ohne `--delete`: so überlebt auch ein versehentlich gelöschtes Video. Ein Suchindex muss nicht gesichert werden,
-`make prod-reindex` baut ihn neu.)
-
-Alte Sicherungen aufräumen (älter als 14 Tage): `find backups -mindepth 1 -maxdepth 1 -mtime +14 -exec rm -rf {} +`.
-
-**Wiederherstellen** (frischer Server, Repo geklont, Medien zurück nach `storage/` kopiert):
-
-```bash
-tar -xzf backups/<datum>/schluessel.tar.gz              # .env.prod.local, config/oauth2, config/jwt
-sudo mkdir -p docker/jellyfin && sudo tar -xzf backups/<datum>/jellyfin-config.tar.gz -C docker/jellyfin
-make prod-up
-gunzip -c backups/<datum>/datenbank.sql.gz \
-  | docker compose -p momentary -f compose.prod.yaml --env-file .env.prod.local exec -T database sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD"'
-make prod-up
-make prod-reindex
-```
-
----
-
-## 9. Betrieb
-
-| Was | Befehl |
+| Was | Befehl (`dc` wie oben) |
 |---|---|
-| **Zustand auf einen Blick** (Container, Gesundheit, Speicherplatz, Warteschlangen) | `make prod-status` |
-| Logs ansehen (alle / ein Dienst) | `make prod-logs` / `make prod-logs S=messenger-worker` |
-| Konto anlegen / Passwort neu setzen | `make prod-console CMD="app:user:create du@example.de --role=admin"` / `… --reset-password` |
-| Fehlgeschlagene Hintergrundjobs | `make prod-console CMD="messenger:failed:show"` |
-| Fehlgeschlagene Jobs erneut versuchen | `make prod-console CMD="messenger:failed:retry"` |
-| Video transkribieren | `make prod-console CMD="app:video:transcribe <Video-ID>"` |
-| Suchindex neu aufbauen | `make prod-reindex` |
-| RabbitMQ-Verwaltung | `ssh -L 15672:127.0.0.1:15672 master@abyss`, dann `http://localhost:15672` |
-| Alles stoppen (Daten bleiben) | `make prod-down` |
+| Zustand | Komodo-UI, oder `dc ps` und `curl -s http://10.0.0.2:8194/healthz` |
+| Logs | Komodo-UI, oder `dc logs -f --tail=100 messenger-worker` |
+| Konsole | `dc exec -u www-data app php bin/console <befehl>` |
+| Konto anlegen / Passwort neu | `… app:user:create du@example.de --role=admin` / `… --reset-password` |
+| Fehlgeschlagene Jobs | `… messenger:failed:show`, `… messenger:failed:retry` |
+| Video transkribieren | `… app:video:transcribe <Video-ID>` |
+| Warteschlangen | `dc exec -T rabbitmq rabbitmqctl list_queues name messages` |
+| Speicher | `df -h /srv/momentary/storage` |
+| Medien ablegen (Import-Ordner) | `rsync` nach `abyss:/srv/momentary/storage/imports/`, dann Verwalten → Import-Ordner |
 
-**Läuft von selbst:**
-- **Zeitplan im `messenger-worker`** (Symfony Scheduler): u. a. Import-Ordner prüfen, wenn `IMPORT_FOLDER_WATCH=1`.
-  Kein Cron nötig.
-- **Worker-Neustart:** Die Worker beenden sich nach 1 h (Transkription 2 h) bzw. 512 MB und werden von Docker neu
-  gestartet – so wächst kein Speicher.
-- **Log-Begrenzung:** Docker behält je Dienst höchstens 5 × 10 MB Logs.
+Die Worker beenden sich nach 1 h (Transkription 2 h) bzw. 512 MB und werden neu gestartet. Docker-Logs: höchstens
+5 × 10 MB je Dienst. Externe Überwachung: `https://admin.momentary.wh-company.com/healthz` (UptimeRobot über
+`bin/monitors` im Repo homelab).
 
-**Überwachung (empfohlen):** Externer Uptime-Check auf `https://admin.momentary.wh-company.com/healthz` (z. B. Uptime
-Kuma, UptimeRobot). Antwortet mit `{"status":"ok","database":"ok"}`, sonst mit HTTP 503.
+Ohne Komodo (Notfall): im Stack-Ordner `sudo make prod-up`, `sudo make prod-backup`, `sudo make prod-status` – sofern
+`make` installiert ist; sonst die `dc`-Befehle. Achtung: Komodo überschreibt `.env.prod.local` beim nächsten Deploy.
 
 ---
 
-## 10. Wenn etwas nicht klappt
+## Fehlersuche
 
-- **502 Bad Gateway vom VPS:** Der VPS erreicht das Backend nicht. Auf dem VPS `curl http://10.0.0.2:8088/healthz`;
-  klappt das nicht: WireGuard (`sudo wg show`), `HTTP_BIND`/`HTTP_PORT` in `.env.prod.local`, `make prod-status`.
-- **„… fehlt in .env.prod.local“ beim Start:** Wert in `.env.prod.local` fehlt (Schritt 3).
-- **`make prod-up` bricht bei der Migration mit „Access denied“ ab:** Die Datenbank-Passwörter in `.env.prod.local`
-  wurden nach dem ersten Start geändert – MySQL übernimmt sie nur beim allerersten Start. Alte Werte wieder eintragen
-  (oder, solange noch keine Daten drin sind: `make prod-down`, `docker volume rm momentary_database_data`, `make prod-up`).
-- **Bilder fehlen, Seite lädt:** `imgproxy` läuft? (`make prod-status`). `IMGPROXY_PUBLIC_HOST` leer oder
-  `<APP_PUBLIC_URL>/imgproxy`? Im Browser ein Bild direkt öffnen – 403 heißt: `IMGPROXY_KEY`/`SALT` passen nicht.
-- **Links mit `http://` statt `https://` oder Anmeldung springt zurück:** `APP_PUBLIC_URL` mit `https://`;
-  `REVERSE_PROXY_IPS` muss die WireGuard-IP des VPS enthalten (oder `PRIVATE_SUBNETS`).
-- **Suche leer oder Meilisearch startet nicht** (z. B. nach Versionswechsel): Stack stoppen, Ordner
-  `docker/meilisearch/data` umbenennen, `make prod-up`, `make prod-reindex`.
-- **Video bleibt bei „wird verarbeitet“:** `make prod-logs S=messenger-worker`; fehlgeschlagene Jobs mit
-  `messenger:failed:show`. Häufigste Ursache: AWS- oder Gemini-Schlüssel fehlt oder Kontingent erschöpft.
-- **Hub zeigt nichts mehr:** Läuft der Hub-Container und hängt er am Netz `momentary_momentary-network`?
-  (`docker network inspect momentary_momentary-network`). Nach `make prod-down` den Hub neu starten.
-- **SFTP-Programm warnt vor geändertem Host-Schlüssel:** Der SFTP-Container erzeugt seine Schlüssel bei jedem
-  Neuanlegen neu; Warnung bestätigen bzw. alten Eintrag aus `known_hosts` löschen.
+- **Pre-Deploy bricht ab „In Komodo fehlen diese Variablen“:** Variable unter Settings → Variables anlegen
+  (Namen genau wie angezeigt) oder Zeile aus dem Environment in `momentary.toml` entfernen.
+- **Pre-Deploy bricht ab wegen VOLUME_PREFIX:** In Produktion darf `VOLUME_PREFIX` nicht gesetzt sein.
+- **Deploy scheitert mit „bind source path does not exist“:** `/srv/momentary/storage`, `…/keys` oder `…/backups`
+  fehlt (Inbetriebnahme Schritt 3).
+- **Deploy hängt bis zum Timeout:** `dc ps` – welcher Dienst ist nicht „healthy“? `dc logs <dienst>`. `migrate` mit
+  „Access denied“: Datenbank-Passwörter wurden nach dem ersten Start geändert – alte Werte in Komodo zurück.
+- **502 vom VPS:** auf dem VPS `curl http://10.0.0.2:8194/healthz`; WireGuard (`sudo wg show`), Stack läuft?
+- **`/healthz` 503:** Datenbank nicht erreichbar – `dc logs database`.
+- **API-Clients melden „invalid key“ / 500 bei Token:** Schlüssel unter `/srv/momentary/keys` fehlen oder sind
+  vertauscht (`dc logs app`); nach Austausch der Schlüssel `dc restart app`.
+- **Bilder fehlen:** `imgproxy` gesund? 403 beim direkten Öffnen: `IMGPROXY_KEY`/`SALT` passen nicht.
+- **Links mit `http://`, Anmeldung springt zurück:** `APP_PUBLIC_URL` mit `https://`, `REVERSE_PROXY_IPS=10.0.0.1`.
+- **Suche leer / Meilisearch startet nach Versionswechsel nicht:** Stack stoppen,
+  `sudo docker volume rm momentary_meilisearch_data`, Deploy, Suchindex neu aufbauen.
+- **Video bleibt bei „wird verarbeitet“:** `dc logs messenger-worker`, `messenger:failed:show`. Häufig: AWS-/Gemini-
+  Schlüssel fehlt oder Kontingent erschöpft; Jellyfin-Export ohne `JELLYFIN_API_KEY`.
+- **Backup-Procedure schlägt fehl:** läuft der Stack? (`no_deps`: bei gestopptem Stack scheitert sie absichtlich).
+  Sonst Log der Procedure; Ordner `/srv/momentary/backups` vorhanden?
+- **Hub sieht das Backend nicht:** Netz `momentary_momentary-network` vorhanden und Hub daran?
+  (`sudo docker network inspect momentary_momentary-network`).
 
 ---
 
-## Generalprobe auf dem eigenen Rechner
+## Probelauf auf dem Entwicklungsrechner
 
-Vor dem ersten Deployment lässt sich der Produktions-Stack lokal starten – getrennt von der Entwicklungsumgebung (eigener
-Projektname, eigene Ports, eigene Datenordner unter `DATA_ROOT`):
+Getrennt von der Entwicklungsumgebung: eigener Projektname, eigener `VOLUME_PREFIX` (**Pflicht** – die Entwicklung
+heißt ebenfalls `momentary` und hat `momentary_database_data`), Wegwerf-Ordner statt `/srv`.
 
 ```bash
-P=$(mktemp -d)
-make prod-secrets PROD_ENV=$P/probe.env
-sed -i "s#^APP_PUBLIC_URL=.*#APP_PUBLIC_URL=http://localhost:8290#; s/^HTTP_PORT=.*/HTTP_PORT=8290/; s/^HTTP_BIND=.*/HTTP_BIND=127.0.0.1/; s/^JELLYFIN_PORT=.*/JELLYFIN_PORT=8296/; s/^JELLYFIN_BIND=.*/JELLYFIN_BIND=127.0.0.1/; s/^SFTP_PORT=.*/SFTP_PORT=2322/; s/^SFTP_BIND=.*/SFTP_BIND=127.0.0.1/" $P/probe.env
-printf 'DATA_ROOT=%s\nRABBITMQ_MANAGEMENT_PORT=15772\n' $P >> $P/probe.env
-make prod-up PROD_ENV=$P/probe.env PROD_PROJECT=momentary-probe
-make prod-status PROD_ENV=$P/probe.env PROD_PROJECT=momentary-probe
-curl -I http://localhost:8290/login                              # HTTP/1.1 200
+P=$(mktemp -d); mkdir -p $P/storage $P/backups
+bin/prod-secrets $P/probe.env $P/keys
+sed -i "s#^APP_PUBLIC_URL=.*#APP_PUBLIC_URL=http://localhost:8294#; s/^HTTP_PORT=.*/HTTP_PORT=8294/; s/^HTTP_BIND=.*/HTTP_BIND=127.0.0.1/; s#^STORAGE_DIR=.*#STORAGE_DIR=$P/storage#; s#^KEYS_DIR=.*#KEYS_DIR=$P/keys#; s#^BACKUP_DIR=.*#BACKUP_DIR=$P/backups#; s/^\#VOLUME_PREFIX=.*/VOLUME_PREFIX=momentaryprobe/" $P/probe.env
+export COMPOSE_PROJECT=momentary-probe ENV_FILE=$P/probe.env
+DC="docker compose -p $COMPOSE_PROJECT -f compose.prod.yaml --env-file $ENV_FILE"
+sh deploy/komodo/pre-deploy.sh && $DC up -d --build --wait --wait-timeout 600 && sh deploy/komodo/post-deploy.sh
+$DC run --rm --no-TTY --no-deps backup daily
+curl -s http://localhost:8294/healthz
 
-# aufräumen
-docker compose -p momentary-probe -f compose.prod.yaml --env-file $P/probe.env down -v
-sudo rm -rf $P
+# aufräumen – nur das Probe-Projekt
+$DC down -v && sudo rm -rf $P
+```
+
+Realistischer: `pre-deploy.sh`/`post-deploy.sh` im Periphery-Image ausführen (`ghcr.io/moghtech/komodo-periphery:2`,
+Docker-Socket und Repo unter demselben Pfad einbinden, `-w <repo>`, `--entrypoint sh`).
+
+---
+
+## Eintrag im homelab-Inventar
+
+Ersetzt den bisherigen Eintrag `momentary` (Status `retired`) in `homelab/inventory.yaml`:
+
+```yaml
+  momentary:
+    description: Verwaltung von Familien Videos und Fotos
+    repo: rextuus/momentary
+    branch: main
+    host: abyss
+    komodo_stack: momentary
+    compose_project: momentary
+    status: live-komodo
+    ingress: caddy
+    domains:
+      - admin.momentary.wh-company.com
+    former_domains: # aufgegeben, nie in Betrieb
+      - momentary.wh-company.de
+      - admin.momentary.wh-company.de
+      - media.momentary.wh-company.de
+    monitor: { path: /healthz }
+    port: 8194
+    bind: 10.0.0.2
+    # Kein caddy:-Block nötig: Caddy setzt X-Forwarded-* selbst, große Uploads und Range-Requests laufen ohne
+    # Sonderwünsche durch.
+    data:
+      - /srv/momentary/storage (Bind-Mount, Medien – nicht offsite)
+      - /srv/momentary/keys (API-Schlüssel OAuth2/JWT)
+      - Named Volumes momentary_* (database_data, rabbitmq_data, meilisearch_data, jellyfin_config, jellyfin_cache, whisper_models)
+      - /srv/momentary/backups
+    backup:
+      time: "02:00"
+      what: DB
+      target: /srv/momentary/backups
+      active: true
+      offsite_paths:
+        - /srv/momentary/keys # API-Schlüssel, nicht im Dump; Medien bewusst NICHT offsite (zu groß)
+      notes: Komodo-Procedure momentary-backup, täglich 02:00; dazu ein Dump vor jedem Deploy. Je Anlass bleiben 14.
+    notes: >-
+      Komodo-Stack momentary auf 10.0.0.2:8194, gestartet leer (nie zuvor in Betrieb). Jellyfin läuft nur intern
+      (Export-Ziel der Pipeline), kein SFTP. Hub (momentary-hub) hängt am Netz momentary_momentary-network.
+      Whisper ist CPU-lastig.
 ```

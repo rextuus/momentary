@@ -13,11 +13,13 @@ Wünsche der Clients: `documentation/clients/WUENSCHE.md`.
 
 ## Betrieb
 
-Entwicklung: `compose.yaml` (Code eingebunden, `documentation/setup.md`). Produktion auf dem ThinkCentre:
-`compose.prod.yaml` + `make prod-*`, Secrets in `.env.prod.local` (Vorlage `.env.prod.dist`), Anleitung
-`documentation/deployment.md`. Ein Image (`docker/php/Dockerfile`, Ziele `dev`/`prod`) für app und beide Worker.
-Neue Umgebungsvariablen in `.env.example`, `.env.prod.dist` und `compose.prod.yaml` eintragen; Python-Pakete in
-`docker/php/requirements.txt`.
+Entwicklung: `compose.yaml` (Code eingebunden, `documentation/setup.md`). Produktion auf abyss als Komodo-Stack
+`momentary`: `compose.prod.yaml`, Ressourcen und Environment in `deploy/komodo/momentary.toml`, Secrets als
+Komodo-Variablen `MOMENTARY_*` (Liste in `.env.prod.dist`), Daten unter `/srv/momentary` und in Volumes `momentary_*`,
+Anleitung `documentation/deployment.md`. Ein Image (`docker/php/Dockerfile`, Ziele `dev`/`prod`) für app, migrate und
+beide Worker. Neue Umgebungsvariablen in `.env.example`, `.env.prod.dist`, `compose.prod.yaml` und `momentary.toml`
+eintragen; Python-Pakete in `docker/php/requirements.txt`. Probeläufe von `compose.prod.yaml` lokal nur mit eigenem
+Projektnamen und `VOLUME_PREFIX` (die Entwicklung heißt ebenfalls `momentary`).
 
 ## Arbeitsweise
 

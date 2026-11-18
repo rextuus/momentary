@@ -1,0 +1,142 @@
+# Momentary – Komodo-Ressourcen (Resource Sync). Feldnamen geprüft gegen komodo_client 2.3.2 (docs.rs) und
+# komo.do (Sync Resources, Compose, Procedures); Muster wie wedora.toml (läuft auf Komodo v2.3).
+#
+# Einbinden: Komodo → Syncs → New Resource Sync, Quelle = dieses Repo, Resource Path = deploy/komodo/momentary.toml.
+# Hier stehen keine Secrets. Alles in doppelten eckigen Klammern im Environment sind Komodo-Secrets (Settings →
+# Variables, Häkchen „Secret“); die Liste steht in .env.prod.dist und documentation/deployment.md.
+# Achtung: Komodo ersetzt eine unbekannte Variable nicht und meldet auch keinen Fehler. Deshalb prüft
+# pre-deploy.sh die geschriebene .env.prod.local und bricht ab, wenn noch ein Platzhalter darin steht.
+# Deshalb auch im Environment-Block unten keine Platzhalter in Kommentaren – sie landen in der Env-Datei.
+
+[[stack]]
+name = "momentary"
+description = "Verwaltung von Familien Videos und Fotos"
+tags = ["momentary", "projekt"]
+# Ein Sync legt den Stack nur an bzw. gleicht ihn an. Deployt wird bewusst von Hand („Deploy“).
+deploy = false
+
+[stack.config]
+# Name des Servers in Komodo (Servers-Liste), nicht der Hostname.
+server = "abyss"
+# Quick-Links im Kopf des Stacks
+links = [
+  "https://admin.momentary.wh-company.com",
+  "https://github.com/rextuus/momentary",
+  "http://localhost:9121/projekte/#momentary",
+]
+
+# Quelle: GitHub-Repo. git_account = unter Settings → Providers für github.com hinterlegter Account mit Token
+# (das Repo muss zum Token gehören).
+git_provider = "github.com"
+git_https = true
+git_account = "rextuus"
+repo = "rextuus/momentary"
+branch = "main"
+# Leer = neuester Commit von branch. Für einen Rollback hier einen Commit-Hash eintragen und deployen.
+commit = ""
+# Nicht neu klonen; Daten liegen ohnehin außerhalb (/srv/momentary, Volumes momentary_*).
+reclone = false
+
+# Ergibt: docker compose -p momentary -f compose.prod.yaml --env-file .env.prod.local …
+# project_name MUSS „momentary“ bleiben; die Volumes sind zusätzlich per name: in compose.prod.yaml festgenagelt.
+file_paths = ["compose.prod.yaml"]
+project_name = "momentary"
+env_file_path = ".env.prod.local"
+
+# Wird bei jedem Deploy nach .env.prod.local geschrieben (KEY=wert, Rechte 600).
+# Die Datenbank-Passwörter gelten nur beim allerersten Start; danach nie ändern (passen sonst nicht zum Volume).
+environment = """
+# Öffentliche Adresse (signierte Video-Links, Bilder unter /imgproxy); TLS macht der Caddy auf dem VPS
+APP_PUBLIC_URL = https://admin.momentary.wh-company.com
+
+# Secrets
+APP_SECRET = [[MOMENTARY_APP_SECRET]]
+MYSQL_PASSWORD = [[MOMENTARY_MYSQL_PASSWORD]]
+MYSQL_ROOT_PASSWORD = [[MOMENTARY_MYSQL_ROOT_PASSWORD]]
+RABBITMQ_PASS = [[MOMENTARY_RABBITMQ_PASS]]
+MEILI_MASTER_KEY = [[MOMENTARY_MEILI_MASTER_KEY]]
+IMGPROXY_KEY = [[MOMENTARY_IMGPROXY_KEY]]
+IMGPROXY_SALT = [[MOMENTARY_IMGPROXY_SALT]]
+OAUTH_ENCRYPTION_KEY = [[MOMENTARY_OAUTH_ENCRYPTION_KEY]]
+MAILER_DSN = [[MOMENTARY_MAILER_DSN]]
+# Analyse-Dienste, kosten Geld
+AWS_ACCESS_KEY = [[MOMENTARY_AWS_ACCESS_KEY]]
+AWS_SECRET_KEY = [[MOMENTARY_AWS_SECRET_KEY]]
+GEMINI_API_KEY = [[MOMENTARY_GEMINI_API_KEY]]
+# Jellyfin-API-Schlüssel: erst nach dem ersten Start in Jellyfin anlegen, dann hier die Zeile
+# JELLYFIN_API_KEY mit der Komodo-Variable MOMENTARY_JELLYFIN_API_KEY ergänzen (documentation/deployment.md)
+
+# Datenbank und Warteschlange (nicht ändern, gehört zum bestehenden Volume)
+MYSQL_DATABASE = momentary_prod
+MYSQL_USER = momentary
+RABBITMQ_USER = momentary
+AWS_REGION = eu-central-1
+
+# Verhalten
+GEOCODING_ENABLED = 1
+IMPORT_FOLDER_WATCH = 0
+
+# Eingang: Caddy auf dem VPS (10.0.0.1) → WireGuard → abyss 10.0.0.2:8194
+HTTP_BIND = 10.0.0.2
+HTTP_PORT = 8194
+REVERSE_PROXY_IPS = 10.0.0.1
+
+# Daten auf dem Host (einmalig anlegen, documentation/deployment.md)
+STORAGE_DIR = /srv/momentary/storage
+KEYS_DIR = /srv/momentary/keys
+BACKUP_DIR = /srv/momentary/backups
+BACKUP_KEEP = 14
+"""
+
+# Images für app/Worker/migrate werden auf dem Server gebaut (docker compose build vor up).
+run_build = true
+# Kein „compose pull“ vor jedem Deploy: Fremd-Images sind auf feste Versionen gepinnt, up holt fehlende selbst.
+auto_pull = false
+destroy_before_deploy = false
+
+# Ergibt: docker compose … up -d --wait --wait-timeout 600
+# --wait: Der Deploy gilt erst als erfolgreich, wenn alle Dienste „healthy“ sind. 600 s, weil app beim ersten
+# Start die Rechte im Medienspeicher prüft und die Worker erst nach app starten.
+extra_args = ["--wait", "--wait-timeout", "600"]
+
+# migrate läuft bei jedem Deploy einmal und beendet sich, backup läuft nur auf Abruf.
+ignore_services = ["migrate", "backup"]
+
+# Vor dem Bauen: Datenbank sichern (läuft im Periphery-Container im Stack-Ordner; Exit ≠ 0 bricht ab).
+pre_deploy.path = "."
+pre_deploy.command = "sh deploy/komodo/pre-deploy.sh"
+
+# Nach erfolgreichem up: Zustand ins Deploy-Log, alte Momentary-Images aufräumen.
+post_deploy.path = "."
+post_deploy.command = "sh deploy/komodo/post-deploy.sh"
+
+# Kein automatisches Deploy bei Push oder neuen Images – deployt wird bewusst.
+webhook_enabled = false
+poll_for_updates = false
+auto_update = false
+send_alerts = true
+
+# ---------------------------------------------------------------------------------------------------------
+# Tägliche Datenbanksicherung: `docker compose run --rm --no-TTY --no-deps backup daily` im Stack
+# (momentary-db-<zeit>-daily.sql.gz in /srv/momentary/backups, 14 bleiben liegen). Medien sichert das nicht.
+# no_deps: Ändert ein noch nicht deployter Commit den Dienst database, würde `compose run` ihn sonst nebenbei neu
+# erstellen. Läuft der Stack nicht, scheitert der Dump absichtlich, und Komodo alarmiert (failure_alert).
+
+[[procedure]]
+name = "momentary-backup"
+description = "Momentary: täglicher Datenbank-Dump nach /srv/momentary/backups (Rotation: BACKUP_KEEP)"
+tags = ["momentary", "projekt"]
+
+[procedure.config]
+schedule_format = "English"
+schedule = "Every day at 02:00"
+schedule_timezone = "Europe/Berlin"
+schedule_enabled = true
+schedule_alert = false
+failure_alert = true
+
+[[procedure.config.stage]]
+name = "Datenbank sichern"
+executions = [
+  { execution.type = "RunStackService", execution.params = { stack = "momentary", service = "backup", command = ["daily"], no_tty = true, no_deps = true } },
+]

@@ -17,8 +17,8 @@ Stand: 18.10.2026 (Backend: Symfony 8.1, API Platform, PHP 8.5).
 | **momentary-android** | `../momentary-android` | Hotwire-Native-App, zeigt den Hub im WebView, castet Videos per Google Cast | – |
 
 Weitere Dienste des Backends (lokal `momentary/compose.yaml`, live `compose.prod.yaml`): imgproxy (Bilder; lokal
-8081, live nur über das Backend unter `/imgproxy/`), Jellyfin (Videos, 8096), Meilisearch (Suche, nur intern), RabbitMQ,
-MySQL, SFTP (2222). Betrieb: `documentation/deployment.md`.
+8081, live nur über das Backend unter `/imgproxy/`), Jellyfin (Videos; lokal 8096, live nur intern), Meilisearch (Suche,
+nur intern), RabbitMQ, MySQL, SFTP (nur lokal, 2222). Betrieb: `documentation/deployment.md`.
 
 Der Hub-Container hängt im Docker-Netz des Backends (`momentary_momentary-network`) und spricht es intern als
 `http://app:80` an (`MOMENTARY_API_URL`, `MOMENTARY_OAUTH2_TOKEN_URL=http://app:80/token`). Browser und Android-App

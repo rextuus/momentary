@@ -24,22 +24,20 @@ test: ## Entwicklung: PHPUnit (ohne slow-Gruppe)
 qa: ## Entwicklung: Code-Stil, PHPStan, Tests
 	$(DC) exec -T app composer qa
 
-# ---------- Produktion (auf dem Server ausführen, siehe documentation/deployment.md) ----------
+# ---------- Produktion: Rückfallweg ohne Komodo (auf dem Server, siehe documentation/deployment.md) ----------
+# Normalfall ist Komodo (deploy/komodo/momentary.toml). Komodo schreibt .env.prod.local als root (600) – dann sudo.
 PROD_ENV     ?= .env.prod.local
 PROD_PROJECT ?= momentary
 PROD_DC       = docker compose -p $(PROD_PROJECT) -f compose.prod.yaml --env-file $(PROD_ENV)
 PROD_PHP      = $(PROD_DC) exec -T -u www-data app php
-BACKUP_DIR   ?= backups/$(shell date +%F)
 
 prod-secrets: ## Produktion: .env.prod.local und API-Schlüssel anlegen (überschreibt nichts)
 	bin/prod-secrets $(PROD_ENV)
 
-prod-up: ## Produktion: Image bauen, starten, Datenbank migrieren
+prod-up: ## Produktion: sichern, Image bauen, migrieren (Dienst migrate), starten
 	@test -f $(PROD_ENV) || ( echo "$(PROD_ENV) fehlt – zuerst make prod-secrets (documentation/deployment.md)." && exit 1 )
-	$(PROD_DC) build
-	$(PROD_DC) up -d --wait app
-	$(PROD_PHP) bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
-	$(PROD_DC) up -d --wait --remove-orphans
+	COMPOSE_PROJECT=$(PROD_PROJECT) ENV_FILE=$(PROD_ENV) sh deploy/komodo/pre-deploy.sh
+	$(PROD_DC) up -d --build --wait --wait-timeout 600 --remove-orphans
 
 prod-down: ## Produktion: stoppen (Daten bleiben)
 	$(PROD_DC) down
@@ -63,10 +61,5 @@ prod-status: ## Produktion: Zustand auf einen Blick (Container, Gesundheit, Spei
 	@echo; echo "Warteschlangen (wartende Nachrichten):"
 	@$(PROD_DC) exec -T rabbitmq rabbitmqctl -q list_queues name messages 2>/dev/null | sed 's/^/  /' || echo "  FEHLER"
 
-prod-backup: ## Produktion: Datenbank, Jellyfin-Einstellungen und Schlüssel nach backups/<datum>/ sichern (Medien: siehe Doku)
-	@mkdir -p $(BACKUP_DIR) && chmod 700 $(BACKUP_DIR) $(dir $(BACKUP_DIR))
-	$(PROD_DC) exec -T database sh -c 'mysqldump -uroot -p"$$MYSQL_ROOT_PASSWORD" --single-transaction --routines --databases "$$MYSQL_DATABASE"' | gzip > $(BACKUP_DIR)/datenbank.sql.gz
-	$(PROD_DC) exec -T jellyfin tar -czf - -C / config > $(BACKUP_DIR)/jellyfin-config.tar.gz
-	tar -czf $(BACKUP_DIR)/schluessel.tar.gz $(PROD_ENV) config/oauth2 config/jwt
-	@chmod 600 $(BACKUP_DIR)/*
-	@echo "Sicherung in $(BACKUP_DIR)/"
+prod-backup: ## Produktion: Datenbank-Dump nach BACKUP_DIR (/srv/momentary/backups), Anlass „manuell“
+	$(PROD_DC) run --rm --no-TTY backup manuell
