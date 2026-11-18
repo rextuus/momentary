@@ -297,7 +297,8 @@ Ohne Komodo (Notfall): im Stack-Ordner `sudo make prod-up`, `sudo make prod-back
 - **Suche leer / Meilisearch startet nach Versionswechsel nicht:** Stack stoppen,
   `sudo docker volume rm momentary_meilisearch_data`, Deploy, Suchindex neu aufbauen.
 - **Video bleibt bei „wird verarbeitet“:** Ein endgültig gescheiterter Schritt setzt das Video auf „Fehler“ mit Grund
-  (Videoseite, Übersicht). Steht es trotzdem: `dc logs messenger-worker` bzw. `dc logs face-worker` (Gesichter),
+  (Videoseite, Übersicht). **Admin → Warteschlange** zeigt je Queue wartende Nachrichten und aktive Worker
+  (RabbitMQ-Management-API) und markiert Queues, deren Nachrichten liegen bleiben. Steht es trotzdem: `dc logs messenger-worker` bzw. `dc logs face-worker` (Gesichter),
   `messenger:failed:show`. Häufig: Gemini-Schlüssel fehlt oder Kontingent erschöpft; Jellyfin-Export ohne
   `JELLYFIN_API_KEY`; face-service nicht gesund (`dc ps face-service`).
 - **Backup-Procedure schlägt fehl:** läuft der Stack? (`no_deps`: bei gestopptem Stack scheitert sie absichtlich).

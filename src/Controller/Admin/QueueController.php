@@ -46,6 +46,7 @@ final class QueueController extends AbstractController
         return $this->render('admin/queue/index.html.twig', [
             'videos' => $videos,
             'isWorkerRunning' => $this->queueHealthChecker->isWorkerRunning(),
+            'queues' => $this->queueHealthChecker->queues(),
         ]);
     }
 }

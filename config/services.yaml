@@ -17,6 +17,10 @@ parameters:
     env(FACE_PREFILTER_DET_SIZE): '0'
     # Abgleich neuer Gesichter: höchstens so viele Referenzgesichter je Person
     env(FACE_MATCH_REFERENCES_PER_PERSON): '20'
+    # Worker-Status (Admin → Warteschlange, Dashboard); leer = abgeschaltet
+    env(RABBITMQ_MANAGEMENT_URL): 'http://rabbitmq:15672'
+    env(RABBITMQ_USER): 'guest'
+    env(RABBITMQ_PASS): 'guest'
     app.frame_analysis_fps: 0.2
     app.min_scene_length_for_refinement: 2.0
     app.refined_frame_analysis_fps: 1.0

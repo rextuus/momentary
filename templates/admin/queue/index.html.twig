@@ -13,12 +13,38 @@
 
         <h1 class="fw-bold mb-4">Aktuelle Warteschlange</h1>
 
-        <div class="alert {{ isWorkerRunning ? 'alert-success' : 'alert-danger' }} shadow-sm">
-            Worker-Status: <strong>{{ isWorkerRunning ? 'Aktiv' : 'Gestoppt (Worker läuft nicht!)' }}</strong>
-            {% if not isWorkerRunning %}
-                <br>Bitte starten Sie den Worker: <code>php bin/console messenger:consume async_video_processing</code>
-            {% endif %}
-        </div>
+        {% if queues is null %}
+            <div class="alert alert-secondary shadow-sm">
+                Worker-Status unbekannt: RabbitMQ-Management nicht erreichbar.
+            </div>
+        {% else %}
+            <div class="alert {{ isWorkerRunning ? 'alert-success' : 'alert-danger' }} shadow-sm">
+                Worker-Status: <strong>{{ isWorkerRunning ? 'Aktiv' : 'Nachrichten bleiben liegen' }}</strong>
+                {% if not isWorkerRunning %}
+                    <br>Mindestens eine Queue hat wartende Nachrichten, aber keinen Worker. Prüfen:
+                    <code>docker compose ps</code>, Logs des genannten Dienstes.
+                {% endif %}
+            </div>
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                            <tr><th>Queue</th><th>Worker</th><th class="text-end">wartend</th><th class="text-end">Worker aktiv</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for queue in queues %}
+                                <tr class="{{ queue.stuck ? 'table-danger' : '' }}">
+                                    <td><code>{{ queue.name }}</code></td>
+                                    <td>{{ queue.worker }}</td>
+                                    <td class="text-end">{{ queue.messages }}</td>
+                                    <td class="text-end">{{ queue.consumers }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endif %}
 
         <div class="card shadow-sm">
             <div class="card-body p-0">
