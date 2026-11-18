@@ -84,7 +84,7 @@ class SplitFirstSceneInFramesStepMessageHandler extends AbstractSplitInFramesSte
         );
 
         // add the first frames to global array
-        $this->prepareFirstFramesForAnalyzing($frameSplitResult, $scene->getStartSeconds());
+        $this->prepareFirstFramesForAnalyzing($frameSplitResult);
 
         // check if there are more scenes needing refining
         $remainingScenes = $message->getRemainingSceneIds();

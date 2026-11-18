@@ -77,7 +77,7 @@ class SplitLastSceneInFramesStepMessageHandler extends AbstractSplitInFramesStep
         // store collection form message in handler
         $this->framePathCollection = $message->getFramePathCollection();
         // append the frames to list
-        $this->addFramesToAnalyzingStep($frameSplitResult, $scene->getStartSeconds());
+        $this->addFramesToAnalyzingStep($frameSplitResult);
         $this->recordItemDone(0);
 
         $successMsg = sprintf(

@@ -82,7 +82,7 @@ class SplitVideoInFramesStepMessageHandler extends AbstractSplitInFramesStepMess
             $frameSplitResult->getFrameDirPath(),
         );
 
-        $this->prepareFirstFramesForAnalyzing($frameSplitResult, $startTime);
+        $this->prepareFirstFramesForAnalyzing($frameSplitResult);
         $this->finishCurrentStep($successMsg);
     }
 

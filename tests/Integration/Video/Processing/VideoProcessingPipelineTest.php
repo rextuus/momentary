@@ -57,6 +57,9 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
     /** @var list<string> */
     private array $analyzedFrames = [];
 
+    /** @var array<string, int> Frame => Zeitpunkt, mit dem er analysiert wurde */
+    private array $analyzedTimestamps = [];
+
     /** @var list<int|null> */
     private array $transcribedVideos = [];
 
@@ -186,6 +189,21 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         // Erst die Frames des ganzen Videos, danach die Refinement-Frames der vier (noch) gesichtslosen Szenen
         $expected = array_map(static fn(int $n): string => sprintf('frame_%04d.jpg', $n), range(1, 12));
         self::assertSame($expected, $this->analyzedFrames);
+    }
+
+    /**
+     * Die Zeitpunkte von extract_frames.py sind schon absolut (inklusive Szenenstart). Früher wurde der Szenenstart
+     * noch einmal addiert: Frames der zweiten Szene (Start 10 s) kamen mit 21 s statt 11 s an.
+     */
+    public function testRefinementFramesKeepTheirAbsoluteTimestamps(): void
+    {
+        $video = $this->arrangeSuccessfulPipeline();
+
+        $this->dispatch(new ConvertStepMessage(self::idOf($video), 0, 'INITIAL'));
+
+        self::assertSame(8, $this->analyzedTimestamps['frame_0009.jpg'], 'Szene 1 (Start 0 s)');
+        self::assertSame(11, $this->analyzedTimestamps['frame_0011.jpg'], 'Szene 2 (Start 10 s)');
+        self::assertSame(13, $this->analyzedTimestamps['frame_0012.jpg']);
     }
 
     /**
@@ -332,8 +350,9 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         // Mocks konfigurieren
         $this->frameAnalyzer
             ->method('analyzeFrame')
-            ->willReturnCallback(function (int $videoId, string $framePath): bool {
+            ->willReturnCallback(function (int $videoId, string $framePath, int $timestamp): bool {
                 $this->analyzedFrames[] = basename($framePath);
+                $this->analyzedTimestamps[basename($framePath)] = $timestamp;
 
                 return true;
             });

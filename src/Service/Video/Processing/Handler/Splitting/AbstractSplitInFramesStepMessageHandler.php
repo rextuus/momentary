@@ -45,29 +45,24 @@ abstract class AbstractSplitInFramesStepMessageHandler extends AbstractVideoMess
         $this->remainingSceneIds = [];
     }
 
-    protected function prepareFirstFramesForAnalyzing(FrameSplittingResult $frameSplitResult, float $startTime): void
+    /**
+     * Die Zeitpunkte von extract_frames.py sind schon absolut (Sekunden ab Videobeginn, inklusive Szenenstart).
+     * Früher wurde der Szenenstart hier noch einmal addiert: Refinement-Frames ab der zweiten Szene bekamen doppelte
+     * Zeitpunkte, oft hinter dem Videoende und ohne Szene.
+     */
+    /**
+     * Die Zeitpunkte von extract_frames.py sind schon absolut (Sekunden ab Videobeginn, inklusive Szenenstart).
+     * Früher wurde der Szenenstart hier noch einmal addiert: Refinement-Frames ab der zweiten Szene bekamen doppelte
+     * Zeitpunkte, oft hinter dem Videoende und ohne Szene.
+     */
+    protected function prepareFirstFramesForAnalyzing(FrameSplittingResult $frameSplitResult): void
     {
-        $preparedFrames = [];
-        foreach ($frameSplitResult->getFrameList() as $frame) {
-            $timestamp = $frame->getTimestamp();
-            $timestamp += (int) $startTime;
-
-            $preparedFrames[] = new VideoFrame($frame->getPath(), $timestamp);
-        }
-        $this->framePathCollection = $preparedFrames;
+        $this->framePathCollection = $frameSplitResult->getFrameList();
     }
 
-    protected function addFramesToAnalyzingStep(FrameSplittingResult $frameSplitResult, float $startTime): void
+    protected function addFramesToAnalyzingStep(FrameSplittingResult $frameSplitResult): void
     {
-        $preparedFrames = [];
-        foreach ($frameSplitResult->getFrameList() as $frame) {
-            $timestamp = $frame->getTimestamp();
-            $timestamp += (int) $startTime;
-
-            $preparedFrames[] = new VideoFrame($frame->getPath(), $timestamp);
-        }
-
-        $this->framePathCollection = array_merge($this->framePathCollection, $preparedFrames);
+        $this->framePathCollection = array_merge($this->framePathCollection, $frameSplitResult->getFrameList());
     }
 
     public function decorateNextStepMessage(VideoProcessStepMessageInterface $nextStepMessage): void
