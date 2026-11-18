@@ -6,11 +6,14 @@ namespace App\Tests\Functional\Admin;
 
 use App\Service\Aws\AmazonRekognitionService;
 use App\Service\Face\FaceRecognitionSettingsProvider;
+use App\Service\Face\Provider\FaceRecognitionProviderInterface;
+use App\Service\Face\Provider\FaceRecognitionProviders;
 use App\Tests\Factory\UserFactory;
 use App\Tests\Factory\VideoFactory;
 use Aws\CommandInterface;
 use Aws\Exception\AwsException;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\DependencyInjection\ServiceLocator;
 
 final class FaceRecognitionSettingsTest extends WebTestCase
 {
@@ -41,6 +44,65 @@ final class FaceRecognitionSettingsTest extends WebTestCase
         self::assertFalse($settings->isTrackingEnabled());
         self::assertSame(0.05, $settings->getMinFaceWidth(), 'Prozentangabe wird als Anteil gespeichert');
         self::assertNotNull($settings->getUpdatedAt());
+    }
+
+    public function testInsightFaceShowsOnlyItsOwnFieldsAndKeepsRekognitionValues(): void
+    {
+        $client = static::createClient();
+        $client->disableReboot();
+        $provider = $this->createStub(FaceRecognitionProviderInterface::class);
+        self::getContainer()->set(FaceRecognitionProviders::class, new FaceRecognitionProviders(new ServiceLocator([
+            'insightface' => static fn() => $provider,
+        ]), 'insightface'));
+        $client->loginUser(UserFactory::new()->admin()->create());
+
+        $crawler = $client->request('GET', '/admin/settings/face-recognition');
+        self::assertResponseIsSuccessful();
+        self::assertSelectorTextContains('body', 'InsightFace (selbst gehostet)');
+        self::assertSelectorNotExists('[name="face_recognition_settings[qualityFilter]"]');
+        self::assertSelectorNotExists('#aws-reset-form + *, .fa-aws');
+        self::assertInputValueSame('face_recognition_settings[insightFaceMatchThreshold]', '0.50');
+        self::assertInputValueSame('face_recognition_settings[insightFaceMinFacePx]', '40');
+
+        $client->submit($crawler
+            ->selectButton('Speichern')
+            ->form([
+                'face_recognition_settings[insightFaceMatchThreshold]' => '0.55',
+                'face_recognition_settings[insightFaceMinFacePx]' => '48',
+                'face_recognition_settings[insightFaceMaxFaces]' => '0',
+                'face_recognition_settings[insightFaceGenderCheck]' => true,
+            ]));
+
+        self::assertResponseRedirects('/admin/settings/face-recognition');
+        $settings = self::getContainer()->get(FaceRecognitionSettingsProvider::class)->get();
+        self::assertSame(0.55, $settings->getInsightFaceMatchThreshold());
+        self::assertSame(48, $settings->getInsightFaceMinFacePx());
+        self::assertSame(0, $settings->getInsightFaceMaxFaces());
+        self::assertTrue($settings->isInsightFaceGenderCheck());
+        self::assertSame(90.0, $settings->getMatchThreshold(), 'Rekognition-Werte bleiben');
+        self::assertSame(0.03, $settings->getMinFaceWidth());
+    }
+
+    public function testInsightFaceCandidateThresholdAboveOthersIsRejected(): void
+    {
+        $client = static::createClient();
+        $client->disableReboot();
+        $provider = $this->createStub(FaceRecognitionProviderInterface::class);
+        self::getContainer()->set(FaceRecognitionProviders::class, new FaceRecognitionProviders(new ServiceLocator([
+            'insightface' => static fn() => $provider,
+        ]), 'insightface'));
+        $client->loginUser(UserFactory::new()->admin()->create());
+
+        $crawler = $client->request('GET', '/admin/settings/face-recognition');
+        $crawler = $client->submit($crawler
+            ->selectButton('Speichern')
+            ->form(['face_recognition_settings[insightFaceCandidateThreshold]' => '0.6']));
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertStringContainsString(
+            'Muss unter allen anderen Schwellen liegen',
+            $crawler->filter('.invalid-feedback')->text(),
+        );
     }
 
     public function testInvalidValuesAreRejected(): void

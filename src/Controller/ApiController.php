@@ -25,7 +25,7 @@ final class ApiController extends AbstractController
             ->createQueryBuilder('vf')
             ->join('vf.person', 'p')
             ->addSelect('p')
-            ->where('vf.embedding IS NOT NULL')
+            ->where('vf.embeddingData IS NOT NULL')
             ->getQuery()
             ->getResult();
 

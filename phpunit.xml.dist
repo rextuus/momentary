@@ -25,6 +25,11 @@
     <env name="IMGPROXY_HOST" value="http://imgproxy.test" force="true"/>
     <!-- Keine echten Anfragen an OpenStreetMap aus Tests -->
     <env name="GEOCODING_ENABLED" value="0" force="true"/>
+    <!-- Gesichtserkennung: die meisten Tests mocken AmazonRekognitionService, InsightFace-Tests setzen den Anbieter
+         selbst; der echte face-service ist aus Tests nie erreichbar (Compose setzt sonst http://face-service:8000) -->
+    <env name="FACE_RECOGNITION_PROVIDER" value="rekognition" force="true"/>
+    <env name="FACE_SERVICE_URL" value="http://face-service.test" force="true"/>
+    <env name="FACE_PREFILTER_DET_SIZE" value="0" force="true"/>
     <env name="IMGPROXY_PUBLIC_HOST" value="http://imgproxy.test" force="true"/>
     <server name="SHELL_VERBOSITY" value="-1"/>
     <!-- Tests räumen ihre Dateien weg: nie im echten Storage (im Container ist STORAGE_ROOT=storage gesetzt) -->

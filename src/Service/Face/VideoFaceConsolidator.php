@@ -52,7 +52,7 @@ class VideoFaceConsolidator
         $settings = $this->settingsProvider->get();
         $clusters = $this->clusterer->cluster(
             $nodes,
-            $settings->getVideoLinkThreshold(),
+            $this->settingsProvider->thresholds()->videoLink,
             $settings->isTrackingEnabled(),
             $settings->getTrackingMinIou(),
             $settings->getTrackingMaxGapSeconds(),

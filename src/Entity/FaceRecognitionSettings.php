@@ -12,6 +12,10 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
 /**
  * Einstellungen der Gesichtserkennung, im laufenden Betrieb über /admin/settings/face-recognition änderbar.
  * Es gibt genau eine Zeile; solange keine gespeichert ist, gelten die Standardwerte unten.
+ *
+ * Rekognition und InsightFace haben eigene Filter und Schwellen: Rekognition misst Ähnlichkeit in Prozent (90 = sehr
+ * ähnlich), InsightFace als Kosinus der Embeddings (0,45 = dieselbe Person). Welche gelten, hängt vom Anbieter in
+ * FACE_RECOGNITION_PROVIDER ab (FaceThresholds). Tracking und „Kandidaten pro Gesicht“ gelten für beide.
  */
 #[ORM\Entity(repositoryClass: FaceRecognitionSettingsRepository::class)]
 class FaceRecognitionSettings
@@ -79,6 +83,59 @@ class FaceRecognitionSettings
     #[ORM\Column]
     #[Assert\Range(min: 1, max: 60)]
     private int $trackingMaxGapSeconds = 6;
+
+    /** InsightFace: Gesichter mit kürzerer Box-Seite darunter (Pixel im Originalbild) bekommen kein Embedding. */
+    #[ORM\Column(options: ['default' => 40])]
+    #[Assert\Range(min: 0, max: 500)]
+    private int $insightFaceMinFacePx = 40;
+
+    /** InsightFace: höchstens so viele Gesichter pro Bild, die größten zuerst; 0 = alle. */
+    #[ORM\Column(options: ['default' => 10])]
+    #[Assert\Range(min: 0, max: 100)]
+    private int $insightFaceMaxFaces = 10;
+
+    /** InsightFace: ab diesem Kosinus wird ein Gesicht als Kandidat gespeichert. */
+    #[ORM\Column(options: ['default' => 0.25])]
+    #[Assert\Range(min: 0, max: 1)]
+    private float $insightFaceCandidateThreshold = 0.25;
+
+    /** InsightFace: ab diesem Kosinus werden Gesichter innerhalb eines Videos gruppiert. */
+    #[ORM\Column(options: ['default' => 0.35])]
+    #[Assert\Range(min: 0, max: 1)]
+    private float $insightFaceVideoLinkThreshold = 0.35;
+
+    /** InsightFace: ab diesem Kosinus wird eine benannte Person vorgeschlagen. */
+    #[ORM\Column(options: ['default' => 0.38])]
+    #[Assert\Range(min: 0, max: 1)]
+    private float $insightFaceSuggestionThreshold = 0.38;
+
+    /**
+     * InsightFace: ab diesem Kosinus wird ein Gesicht direkt einer vorhandenen Person zugeordnet. Bewusst höher als
+     * „Vorschlagen“: bei alten, verrauschten Videos lieber ein Vorschlag mehr als eine falsche Zuordnung.
+     */
+    #[ORM\Column(options: ['default' => 0.5])]
+    #[Assert\Range(min: 0, max: 1)]
+    private float $insightFaceMatchThreshold = 0.5;
+
+    /**
+     * InsightFace: Nur Gesichter ab diesem Detektions-Score dienen als Referenz einer Person. Schlechte Aufnahmen
+     * streuen stärker; sie werden trotzdem zugeordnet, prägen aber nicht, wie die Person „aussieht“.
+     */
+    #[ORM\Column(options: ['default' => 0.7])]
+    #[Assert\Range(min: 0, max: 1)]
+    private float $insightFaceReferenceMinScore = 0.7;
+
+    /** InsightFace: Nur Gesichter ab dieser Größe (kürzere Seite, Pixel) dienen als Referenz einer Person. */
+    #[ORM\Column(options: ['default' => 60])]
+    #[Assert\Range(min: 0, max: 500)]
+    private int $insightFaceReferenceMinFacePx = 60;
+
+    /**
+     * InsightFace: abweichendes geschätztes Geschlecht schließt einen Treffer aus. Standardmäßig aus, weil die Schätzung
+     * bei Kindern und schlechten Aufnahmen oft danebenliegt.
+     */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $insightFaceGenderCheck = false;
 
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $updatedAt = null;
@@ -229,6 +286,114 @@ class FaceRecognitionSettings
         return $this;
     }
 
+    public function getInsightFaceMinFacePx(): int
+    {
+        return $this->insightFaceMinFacePx;
+    }
+
+    public function setInsightFaceMinFacePx(int $insightFaceMinFacePx): static
+    {
+        $this->insightFaceMinFacePx = $insightFaceMinFacePx;
+
+        return $this;
+    }
+
+    public function getInsightFaceMaxFaces(): int
+    {
+        return $this->insightFaceMaxFaces;
+    }
+
+    public function setInsightFaceMaxFaces(int $insightFaceMaxFaces): static
+    {
+        $this->insightFaceMaxFaces = $insightFaceMaxFaces;
+
+        return $this;
+    }
+
+    public function getInsightFaceCandidateThreshold(): float
+    {
+        return $this->insightFaceCandidateThreshold;
+    }
+
+    public function setInsightFaceCandidateThreshold(float $insightFaceCandidateThreshold): static
+    {
+        $this->insightFaceCandidateThreshold = $insightFaceCandidateThreshold;
+
+        return $this;
+    }
+
+    public function getInsightFaceVideoLinkThreshold(): float
+    {
+        return $this->insightFaceVideoLinkThreshold;
+    }
+
+    public function setInsightFaceVideoLinkThreshold(float $insightFaceVideoLinkThreshold): static
+    {
+        $this->insightFaceVideoLinkThreshold = $insightFaceVideoLinkThreshold;
+
+        return $this;
+    }
+
+    public function getInsightFaceSuggestionThreshold(): float
+    {
+        return $this->insightFaceSuggestionThreshold;
+    }
+
+    public function setInsightFaceSuggestionThreshold(float $insightFaceSuggestionThreshold): static
+    {
+        $this->insightFaceSuggestionThreshold = $insightFaceSuggestionThreshold;
+
+        return $this;
+    }
+
+    public function getInsightFaceMatchThreshold(): float
+    {
+        return $this->insightFaceMatchThreshold;
+    }
+
+    public function setInsightFaceMatchThreshold(float $insightFaceMatchThreshold): static
+    {
+        $this->insightFaceMatchThreshold = $insightFaceMatchThreshold;
+
+        return $this;
+    }
+
+    public function getInsightFaceReferenceMinScore(): float
+    {
+        return $this->insightFaceReferenceMinScore;
+    }
+
+    public function setInsightFaceReferenceMinScore(float $insightFaceReferenceMinScore): static
+    {
+        $this->insightFaceReferenceMinScore = $insightFaceReferenceMinScore;
+
+        return $this;
+    }
+
+    public function getInsightFaceReferenceMinFacePx(): int
+    {
+        return $this->insightFaceReferenceMinFacePx;
+    }
+
+    public function setInsightFaceReferenceMinFacePx(int $insightFaceReferenceMinFacePx): static
+    {
+        $this->insightFaceReferenceMinFacePx = $insightFaceReferenceMinFacePx;
+
+        return $this;
+    }
+
+    public function isInsightFaceGenderCheck(): bool
+    {
+        return $this->insightFaceGenderCheck;
+    }
+
+    public function setInsightFaceGenderCheck(bool $insightFaceGenderCheck): static
+    {
+        $this->insightFaceGenderCheck = $insightFaceGenderCheck;
+
+        return $this;
+    }
+
     public function getUpdatedAt(): ?\DateTimeImmutable
     {
         return $this->updatedAt;
@@ -259,6 +424,21 @@ class FaceRecognitionSettings
                     'Muss unter allen anderen Schwellen liegen, sonst liefert AWS die nötigen Treffer gar nicht.',
                 )
                 ->atPath('candidateThreshold')
+                ->addViolation();
+        }
+
+        if (
+            $this->insightFaceCandidateThreshold > min(
+                $this->insightFaceVideoLinkThreshold,
+                $this->insightFaceSuggestionThreshold,
+                $this->insightFaceMatchThreshold,
+            )
+        ) {
+            $context
+                ->buildViolation(
+                    'Muss unter allen anderen Schwellen liegen, sonst werden die nötigen Kandidaten gar nicht gespeichert.',
+                )
+                ->atPath('insightFaceCandidateThreshold')
                 ->addViolation();
         }
     }

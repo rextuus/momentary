@@ -39,6 +39,14 @@
 {% block body %}
     {% import _self as ui %}
     {% set colors = {candidate: '#94a3b8', link: '#f59e0b', suggestion: '#0ea5e9', match: '#10b981'} %}
+    {% set insightface = provider == 'insightface' %}
+    {% if insightface %}
+        {% set thresholds = {candidate: form.insightFaceCandidateThreshold, link: form.insightFaceVideoLinkThreshold, suggestion: form.insightFaceSuggestionThreshold, match: form.insightFaceMatchThreshold} %}
+        {% set scale = {min: 0.2, max: 0.7, unit: '', legend: ['0,2', '0,45', '0,7']} %}
+    {% else %}
+        {% set thresholds = {candidate: form.candidateThreshold, link: form.videoLinkThreshold, suggestion: form.suggestionThreshold, match: form.matchThreshold} %}
+        {% set scale = {min: 50, max: 100, unit: ' %', legend: ['50 %', '75 %', '100 %']} %}
+    {% endif %}
     {% set qualityHints = {
         NONE: 'Alle erkannten Gesichter, auch sehr unscharfe.',
         LOW: 'Nur grob unbrauchbare raus. Empfohlen für alte Videos.',
@@ -83,12 +91,18 @@
         @media (max-width: 575.98px) { .scale-items { grid-template-columns: 1fr; } .value-box { width: 7rem; } .quality-options .btn { flex-basis: calc(50% - .25rem); } }
     </style>
 
-    <div class="container settings-page" data-controller="face-settings">
+    <div class="container settings-page" data-controller="face-settings"
+         data-face-settings-scale-min-value="{{ scale.min }}" data-face-settings-scale-max-value="{{ scale.max }}"
+         data-face-settings-unit-value="{{ scale.unit }}">
         <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
             <div>
                 <div class="text-uppercase small fw-semibold text-muted mb-1">Verwalten</div>
                 <h1 class="h3 mb-1">Gesichtserkennung</h1>
-                <p class="text-muted mb-0">Änderungen gelten sofort, auch für einen laufenden Worker.</p>
+                <p class="text-muted mb-0">
+                    Änderungen gelten sofort, auch für einen laufenden Worker.
+                    Anbieter: <strong>{{ insightface ? 'InsightFace (selbst gehostet)' : 'AWS Rekognition' }}</strong>
+                    <span class="small">(FACE_RECOGNITION_PROVIDER)</span>
+                </p>
             </div>
             {% if settings.updatedAt %}
                 <span class="badge rounded-pill text-bg-light border fw-normal px-3 py-2">
@@ -112,6 +126,12 @@
                         </div>
                     </div>
                     <div class="card-body">
+                        {% if insightface %}
+                        {{ ui.number(form.insightFaceMinFacePx, 'px') }}
+                        {{ ui.number(form.insightFaceMaxFaces, 'max.') }}
+                        {{ ui.number(form.insightFaceReferenceMinScore, '') }}
+                        {{ ui.number(form.insightFaceReferenceMinFacePx, 'px') }}
+                        {% else %}
                         <div class="setting-row">
                             <div class="form-label fw-semibold">{{ form.qualityFilter.vars.label }}</div>
                             <div class="d-flex flex-wrap gap-2 quality-options">
@@ -127,6 +147,7 @@
                         </div>
                         {{ ui.slider(form.minFaceWidth, {unit: '%'}) }}
                         {{ ui.number(form.maxFacesPerFrame, 'max.') }}
+                        {% endif %}
                     </div>
                 </div>
 
@@ -136,38 +157,48 @@
                         <span class="section-icon bg-success-subtle text-success"><i class="fas fa-people-arrows"></i></span>
                         <div>
                             <div class="fw-semibold">Wann sind zwei Gesichter dieselbe Person?</div>
-                            <div class="small text-muted">Ähnlichkeit laut AWS, von unsicher (links) bis sicher (rechts)</div>
+                            <div class="small text-muted">{{ insightface ? 'Kosinus-Ähnlichkeit der Embeddings' : 'Ähnlichkeit laut AWS' }}, von unsicher (links) bis sicher (rechts)</div>
                         </div>
                     </div>
                     <div class="card-body">
                         <div class="threshold-scale" aria-hidden="true">
-                            {% for key, field in {candidate: form.candidateThreshold, link: form.videoLinkThreshold, suggestion: form.suggestionThreshold, match: form.matchThreshold} %}
+                            {% for key, field in thresholds %}
                                 <div class="marker" data-face-settings-target="marker" data-input="{{ field.vars.id }}" style="--dot: {{ colors[key] }}" title="{{ field.vars.label }}">
                                     <div class="pin"></div>
                                 </div>
                             {% endfor %}
                         </div>
-                        <div class="scale-legend"><span>50 %</span><span>75 %</span><span>100 %</span></div>
+                        <div class="scale-legend">{% for label in scale.legend %}<span>{{ label }}</span>{% endfor %}</div>
                         <div class="scale-items mt-3 small">
-                            {% for key, field in {candidate: form.candidateThreshold, link: form.videoLinkThreshold, suggestion: form.suggestionThreshold, match: form.matchThreshold} %}
+                            {% for key, field in thresholds %}
                                 <span class="d-flex align-items-center gap-2 text-muted">
                                     <span class="scale-dot" style="--dot: {{ colors[key] }}"></span>{{ field.vars.label }}
-                                    <strong class="text-body ms-auto" data-face-settings-target="markerLabel" data-input="{{ field.vars.id }}">{{ field.vars.value }} %</strong>
+                                    <strong class="text-body ms-auto" data-face-settings-target="markerLabel" data-input="{{ field.vars.id }}">{{ field.vars.value }}{{ scale.unit }}</strong>
                                 </span>
                             {% endfor %}
                         </div>
                         <div class="alert alert-warning small py-2 mt-3 mb-0" hidden
                              data-face-settings-target="scaleWarning"
-                             data-candidate="{{ form.candidateThreshold.vars.id }}"
-                             data-others="{{ form.videoLinkThreshold.vars.id }},{{ form.suggestionThreshold.vars.id }},{{ form.matchThreshold.vars.id }}">
-                            <i class="fas fa-triangle-exclamation me-1"></i>„Kandidaten ab“ liegt über einer anderen Schwelle. AWS liefert dann die Treffer dafür gar nicht.
+                             data-candidate="{{ thresholds.candidate.vars.id }}"
+                             data-others="{{ thresholds.link.vars.id }},{{ thresholds.suggestion.vars.id }},{{ thresholds.match.vars.id }}">
+                            <i class="fas fa-triangle-exclamation me-1"></i>„Kandidaten ab“ liegt über einer anderen Schwelle. Die Treffer dafür werden dann gar nicht gespeichert.
                         </div>
 
-                        {{ ui.slider(form.matchThreshold, {unit: '%', color: colors.match}) }}
-                        {{ ui.slider(form.videoLinkThreshold, {unit: '%', color: colors.link}) }}
-                        {{ ui.slider(form.suggestionThreshold, {unit: '%', color: colors.suggestion}) }}
-                        {{ ui.slider(form.candidateThreshold, {unit: '%', color: colors.candidate}) }}
+                        {% set unit = insightface ? 'cos' : '%' %}
+                        {{ ui.slider(thresholds.match, {unit: unit, color: colors.match}) }}
+                        {{ ui.slider(thresholds.link, {unit: unit, color: colors.link}) }}
+                        {{ ui.slider(thresholds.suggestion, {unit: unit, color: colors.suggestion}) }}
+                        {{ ui.slider(thresholds.candidate, {unit: unit, color: colors.candidate}) }}
                         {{ ui.number(form.maxCandidates, '') }}
+                        {% if insightface %}
+                            <div class="setting-row">
+                                <div class="form-check form-switch">
+                                    {{ form_widget(form.insightFaceGenderCheck, {attr: {class: 'form-check-input', role: 'switch'}}) }}
+                                    <label class="form-check-label fw-semibold" for="{{ form.insightFaceGenderCheck.vars.id }}">{{ form.insightFaceGenderCheck.vars.label }}</label>
+                                </div>
+                                <div class="form-text mt-0">{{ form.insightFaceGenderCheck.vars.help }}</div>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
 
@@ -177,7 +208,7 @@
                         <span class="section-icon bg-warning-subtle text-warning"><i class="fas fa-route"></i></span>
                         <div class="flex-grow-1">
                             <div class="fw-semibold">Tracking innerhalb einer Szene</div>
-                            <div class="small text-muted">Hilft, wenn AWS dieselbe Person wegen schlechter Bildqualität nicht wiedererkennt</div>
+                            <div class="small text-muted">Hilft, wenn die Erkennung dieselbe Person wegen schlechter Bildqualität nicht wiedererkennt</div>
                         </div>
                         <div class="form-check form-switch fs-5 mb-0">
                             {{ form_widget(form.trackingEnabled, {attr: {class: 'form-check-input', role: 'switch', 'data-face-settings-target': 'trackingToggle', 'data-action': 'face-settings#toggleTracking', 'aria-label': form.trackingEnabled.vars.label}}) }}
@@ -201,13 +232,17 @@
                         <div class="card-body small">
                             <div class="tip"><i class="fas fa-clone text-primary"></i><div><strong>gleiche Person mehrfach angelegt</strong><br>„Im Video gruppieren“ senken, Tracking anlassen.</div></div>
                             <div class="tip"><i class="fas fa-object-group text-danger"></i><div><strong>verschiedene Personen zusammengelegt</strong><br>„Sofort zuordnen“ erhöhen und Mindestgröße anheben.</div></div>
+                            {% if insightface %}
+                            <div class="tip"><i class="fas fa-eye-slash text-secondary"></i><div><strong>viele Gesichter fehlen ganz</strong><br>Mindestgröße senken, „Gesichter pro Bild“ erhöhen.</div></div>
+                            {% else %}
                             <div class="tip"><i class="fas fa-eye-slash text-secondary"></i><div><strong>viele Gesichter fehlen ganz</strong><br>Qualitätsfilter auf „Niedrig“ oder „Aus“, Mindestgröße senken.</div></div>
+                            {% endif %}
                         </div>
                     </div>
                     <div class="card mb-4">
                         <div class="card-header fw-semibold"><i class="fas fa-rotate text-primary me-2"></i>Bestehende Videos neu gruppieren</div>
                         <div class="card-body small">
-                            <p class="text-muted mt-3 mb-2">Wendet die aktuellen Einstellungen auf alle bereits analysierten Videos an. Nutzt die gespeicherten Ähnlichkeiten, <strong>ohne AWS-Kosten</strong>. Bestätigte Personen bleiben unverändert.</p>
+                            <p class="text-muted mt-3 mb-2">Wendet die aktuellen Einstellungen auf alle bereits analysierten Videos an. Nutzt die gespeicherten Ähnlichkeiten, <strong>ohne neue Analyse</strong>. Bestätigte Personen bleiben unverändert.</p>
                             <button type="submit" form="consolidate-form" class="btn btn-outline-primary btn-sm w-100 mb-3"
                                     onclick="return confirm('Alle Videos mit den aktuellen Einstellungen neu gruppieren?')">
                                 <i class="fas fa-people-arrows me-1"></i>Alle Videos neu gruppieren
@@ -216,6 +251,7 @@
                             <code class="cmd">bin/console app:faces:consolidate &lt;videoId&gt;</code>
                         </div>
                     </div>
+                    {% if not insightface %}
                     <div class="card border-danger-subtle">
                         <div class="card-header fw-semibold"><i class="fab fa-aws text-warning me-2"></i>AWS-Collection</div>
                         <div class="card-body small">
@@ -234,6 +270,7 @@
                             </button>
                         </div>
                     </div>
+                    {% endif %}
                 </div>
             </div>
         </div>

@@ -6,6 +6,7 @@ namespace App\Service\Face;
 
 use App\Entity\FaceRecognitionSettings;
 use App\Repository\FaceRecognitionSettingsRepository;
+use App\Service\Face\Provider\FaceRecognitionProviders;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -19,11 +20,20 @@ class FaceRecognitionSettingsProvider
     public function __construct(
         private readonly FaceRecognitionSettingsRepository $repository,
         private readonly EntityManagerInterface $entityManager,
+        private readonly FaceRecognitionProviders $providers,
     ) {}
 
     public function get(): FaceRecognitionSettings
     {
         return $this->repository->findOneBy([], ['id' => 'ASC']) ?? new FaceRecognitionSettings();
+    }
+
+    /**
+     * Schwellen des eingestellten Anbieters (FACE_RECOGNITION_PROVIDER), Skala 0–100.
+     */
+    public function thresholds(): FaceThresholds
+    {
+        return FaceThresholds::of($this->get(), $this->providers->activeName());
     }
 
     /**

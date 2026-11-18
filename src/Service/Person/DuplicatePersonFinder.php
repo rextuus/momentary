@@ -30,7 +30,7 @@ class DuplicatePersonFinder
      */
     public function find(int $limit = 50): array
     {
-        $minimum = $this->settingsProvider->get()->getCandidateThreshold();
+        $minimum = $this->settingsProvider->thresholds()->candidate;
         $rows = $this->entityManager->getConnection()->fetchAllAssociative('SELECT f.id, f.person_id, f.face_label, f.face_image_id, f.match_candidates
              FROM video_face f JOIN person p ON p.id = f.person_id
              WHERE p.status NOT IN (?, ?)', [

@@ -11,7 +11,7 @@ use App\Entity\Photo;
 use App\Enum\FilePurpose;
 use App\Enum\PhotoStatus;
 use App\Service\Aws\AmazonRekognitionService;
-use App\Service\Aws\DetectedFace;
+use App\Service\Face\DetectedFace;
 use App\Service\Gemini\GeminiService;
 use App\Service\Photo\PhotoAnalyzer;
 use App\Service\Photo\PhotoProcessor;

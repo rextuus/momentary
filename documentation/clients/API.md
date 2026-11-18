@@ -161,6 +161,11 @@ deshalb selbst, siehe `BackendApiClient::request()`).
 
 `playbackUrl` ist nur bei **öffentlichen Szenen** eines nach Jellyfin exportierten Videos gesetzt (siehe Abschnitt 6).
 
+`emotion` an Gesichtern ist optional: Die selbst gehostete Gesichtserkennung (InsightFace, Standard seit 11/2026)
+schätzt keine Emotion, das Feld **fehlt** dann (Werte `null` werden nicht ausgegeben). Nur mit AWS Rekognition
+erkannte Gesichter haben es. `age` und `gender` sind weiterhin immer gesetzt (`gender`: `Male`, `Female` oder
+`Unknown`).
+
 ### Beispiel `GET /api/persons`
 
 ```json

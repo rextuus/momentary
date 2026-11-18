@@ -44,7 +44,7 @@
             </div>
             <div class="d-flex justify-content-center align-items-center gap-2 text-muted" style="font-size: 0.7rem;">
                 <span><i class="fas fa-child me-1"></i>{{ videoFace.age }}</span>
-                <span>{{ this.emotionEmoji }}</span>
+                {% if this.emotionEmoji %}<span>{{ this.emotionEmoji }}</span>{% endif %}
             </div>
         </div>
     </div>

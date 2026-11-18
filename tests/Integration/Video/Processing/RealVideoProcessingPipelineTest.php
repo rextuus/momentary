@@ -10,7 +10,7 @@ use App\Entity\VideoScene;
 use App\Enum\FilePurpose;
 use App\Enum\VideoStatus;
 use App\Service\Aws\AmazonRekognitionService;
-use App\Service\Aws\DetectedFace;
+use App\Service\Face\DetectedFace;
 use App\Service\Gemini\GeminiService;
 use App\Service\Storage\StoragePathProvider;
 use App\Service\Video\Analyze\SceneThumbnailExtractor;

@@ -7,10 +7,9 @@ namespace App\Service\Face;
 use App\Entity\Person;
 use App\Enum\PersonStatus;
 use App\Repository\VideoFaceRepository;
-use App\Service\Aws\DetectedFace;
 
 /**
- * Ordnet ein neu erkanntes Gesicht anhand seiner Rekognition-Kandidaten einer vorhandenen Person zu.
+ * Ordnet ein neu erkanntes Gesicht anhand seiner Kandidaten (Rekognition oder InsightFace) einer vorhandenen Person zu.
  */
 class FaceMatcher
 {
@@ -25,10 +24,12 @@ class FaceMatcher
      * Bester Kandidat je Person, absteigend nach Ähnlichkeit.
      *
      * @param list<int> $excludedPersonIds Personen, die schon im selben Frame vorkommen
+     * @param bool      $genderCheck       abweichendes Geschlecht schließt unsichere Treffer aus (bei InsightFace
+     *                                     abschaltbar, weil dessen Schätzung unzuverlässiger ist)
      *
      * @return list<FaceMatch>
      */
-    public function rankPersons(DetectedFace $face, array $excludedPersonIds = []): array
+    public function rankPersons(DetectedFace $face, array $excludedPersonIds = [], bool $genderCheck = true): array
     {
         $known = $this->videoFaceRepository->findByFaceLabels(array_keys($face->candidates));
 
@@ -48,7 +49,8 @@ class FaceMatcher
             }
 
             if (
-                $similarity < self::GENDER_OVERRIDE_SIMILARITY
+                $genderCheck
+                && $similarity < self::GENDER_OVERRIDE_SIMILARITY
                 && self::gendersConflict($face->gender, $candidateFace->getGender())
             ) {
                 continue;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service\Aws;
 
+use App\Service\Face\DetectedFace;
 use App\Service\Face\FaceRecognitionSettingsProvider;
 use Aws\Rekognition\RekognitionClient;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;

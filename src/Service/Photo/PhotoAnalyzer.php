@@ -9,7 +9,8 @@ use App\Entity\Medium;
 use App\Entity\Photo;
 use App\Enum\FilePurpose;
 use App\Enum\PhotoStatus;
-use App\Service\Aws\AmazonRekognitionService;
+use App\Service\Face\FaceForgetter;
+use App\Service\Face\MediumGoneException;
 use App\Service\Face\OrphanedPersonCleaner;
 use App\Service\Gemini\GeminiService;
 use App\Service\Geo\PlaceTagger;
@@ -31,7 +32,7 @@ class PhotoAnalyzer
         private readonly StoragePathProvider $pathProvider,
         private readonly PhotoProcessor $processor,
         private readonly FrameAnalyzer $frameAnalyzer,
-        private readonly AmazonRekognitionService $rekognition,
+        private readonly FaceForgetter $faceForgetter,
         private readonly OrphanedPersonCleaner $orphanedPersonCleaner,
         private readonly GeminiService $gemini,
         private readonly TagService $tagService,
@@ -89,6 +90,11 @@ class PhotoAnalyzer
             $this->entityManager->flush();
             // Erst jetzt: das beste Foto einer Serie hängt auch von den erkannten Gesichtern ab
             $this->bursts->regroupAround($photo);
+        } catch (MediumGoneException $e) {
+            // Während der Analyse gelöscht: nichts mehr zu speichern
+            $this->logger->info(sprintf('Foto %d: %s', (int) $photo->getId(), $e->getMessage()));
+
+            return;
         } catch (\Throwable $e) {
             $photo->fail($e->getMessage());
             $this->entityManager->flush();
@@ -121,7 +127,7 @@ class PhotoAnalyzer
     }
 
     /**
-     * Bei erneuter Analyse: alte Gesichter samt AWS-Einträgen entfernen und dadurch leere Personen aufräumen.
+     * Bei erneuter Analyse: alte Gesichter (auch beim Anbieter) entfernen und dadurch leere Personen aufräumen.
      */
     private function removeFaces(Photo $photo): void
     {
@@ -130,22 +136,15 @@ class PhotoAnalyzer
         }
 
         $personIds = $this->orphanedPersonCleaner->personIdsOfMedium((int) $photo->getId());
-        $labels = [];
+        $labels = FaceForgetter::labelsByProvider($photo->getFaces());
         foreach ($photo->getFaces()->toArray() as $face) {
-            if ($face->getFaceLabel() !== null) {
-                $labels[] = $face->getFaceLabel();
-            }
             $face->getPerson()?->removeVideoFace($face);
             $photo->removeFace($face);
             $this->entityManager->remove($face);
         }
         $this->entityManager->flush();
 
-        try {
-            $this->rekognition->deleteFaces($labels);
-        } catch (\Throwable $e) {
-            $this->logger->warning(sprintf('AWS-Gesichter von Foto %d: %s', (int) $photo->getId(), $e->getMessage()));
-        }
+        $this->faceForgetter->forget($labels, sprintf('Foto %d', (int) $photo->getId()));
         $this->orphanedPersonCleaner->removeOrphans($personIds);
     }
 

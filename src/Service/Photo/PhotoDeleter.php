@@ -5,21 +5,22 @@ declare(strict_types=1);
 namespace App\Service\Photo;
 
 use App\Entity\Photo;
-use App\Service\Aws\AmazonRekognitionService;
+use App\Service\Face\FaceForgetter;
 use App\Service\Face\OrphanedPersonCleaner;
 use App\Service\Storage\FileStorageService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 
 /**
- * Löscht ein Foto vollständig: Dateien, Gesichter (auch in AWS), dadurch leere Personen und den Sucheintrag.
+ * Löscht ein Foto vollständig: Dateien, Gesichter (auch beim Anbieter, z. B. AWS), dadurch leere Personen und den
+ * Sucheintrag.
  */
 class PhotoDeleter
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly FileStorageService $fileStorage,
-        private readonly AmazonRekognitionService $rekognition,
+        private readonly FaceForgetter $faceForgetter,
         private readonly OrphanedPersonCleaner $orphanedPersonCleaner,
         private readonly PhotoSearchIndex $searchIndex,
         private readonly PhotoBursts $bursts,
@@ -30,10 +31,7 @@ class PhotoDeleter
     {
         $photoId = (int) $photo->getId();
         $personIds = $this->orphanedPersonCleaner->personIdsOfMedium($photoId);
-        $labels = array_values(array_filter(array_map(
-            static fn($face): ?string => $face->getFaceLabel(),
-            $photo->getFaces()->toArray(),
-        )));
+        $labels = FaceForgetter::labelsByProvider($photo->getFaces());
 
         foreach ($photo->getFaces()->toArray() as $face) {
             // Das Foto ist zugleich Bilddatei der Gesichter; die löscht das Foto selbst
@@ -60,11 +58,7 @@ class PhotoDeleter
         $this->fileStorage->deleteDirectory('photos/' . $photoId);
         $this->orphanedPersonCleaner->removeOrphans($personIds);
 
-        try {
-            $this->rekognition->deleteFaces($labels);
-        } catch (\Throwable $e) {
-            $this->logger->warning(sprintf('AWS-Gesichter von Foto %d: %s', $photoId, $e->getMessage()));
-        }
+        $this->faceForgetter->forget($labels, sprintf('Foto %d', $photoId));
         try {
             $this->searchIndex->remove($photoId);
         } catch (\Throwable $e) {

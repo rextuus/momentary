@@ -8,12 +8,15 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use App\Repository\VideoFaceRepository;
+use App\Service\Face\Embedding\EmbeddingMath;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: VideoFaceRepository::class)]
+#[ORM\Index(name: 'idx_video_face_embedding_model', columns: ['embedding_model'])]
 #[ApiResource(operations: [
     new GetCollection(normalizationContext: ['groups' => ['videoface:list']]),
     new Get(normalizationContext: ['groups' => ['videoface:detail']]),
@@ -61,9 +64,29 @@ class VideoFace
     #[Groups(['video:detail', 'videoface:detail'])]
     private ?array $boundingBox = null;
 
-    /** @var list<float>|null */
+    /** Anbieter, der das Gesicht erkannt hat (rekognition, insightface); faceLabel ist nur dort eindeutig. */
+    #[ORM\Column(length: 20, options: ['default' => 'rekognition'])]
+    private string $provider = 'rekognition';
+
+    /**
+     * InsightFace: Embedding als float32 (2 KB), siehe EmbeddingMath. Doctrine liefert BLOBs als Stream.
+     *
+     * @var string|resource|null
+     */
+    #[ORM\Column(type: Types::BLOB, length: 65535, nullable: true)]
+    private mixed $embeddingData = null;
+
+    /** Erkennungsmodell des Embeddings; Embeddings verschiedener Modelle sind nicht vergleichbar. */
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $embeddingModel = null;
+
+    /** Sicherheit der Detektion (0–100). */
     #[ORM\Column(nullable: true)]
-    private ?array $embedding = null;
+    private ?float $detectionScore = null;
+
+    /** InsightFace: kürzere Seite des Gesichts in Pixeln des analysierten Bildes (Referenzauswahl, EmbeddingIndex). */
+    #[ORM\Column(nullable: true)]
+    private ?int $faceSizePx = null;
 
     /**
      * Ähnliche, bereits indizierte Gesichter laut Rekognition: FaceId => Ähnlichkeit.
@@ -82,7 +105,8 @@ class VideoFace
     #[Groups(['video:list', 'video:detail', 'videoface:list', 'videoface:detail'])]
     private ?string $gender = null;
 
-    #[ORM\Column(length: 255)]
+    /** Nur Rekognition; InsightFace schätzt keine Emotion. */
+    #[ORM\Column(length: 255, nullable: true)]
     #[Groups(['video:list', 'video:detail', 'videoface:list', 'videoface:detail'])]
     private ?string $emotion = null;
 
@@ -266,7 +290,7 @@ class VideoFace
         return $this->emotion;
     }
 
-    public function setEmotion(string $emotion): static
+    public function setEmotion(?string $emotion): static
     {
         $this->emotion = $emotion;
         return $this;
@@ -323,20 +347,70 @@ class VideoFace
         return $this;
     }
 
+    public function getProvider(): string
+    {
+        return $this->provider;
+    }
+
+    public function setProvider(string $provider): static
+    {
+        $this->provider = $provider;
+
+        return $this;
+    }
+
     /**
      * @return list<float>|null
      */
     public function getEmbedding(): ?array
     {
-        return $this->embedding;
+        $data = $this->embeddingData;
+        if (\is_resource($data)) {
+            $data = stream_get_contents($data, offset: 0);
+            $this->embeddingData = $data === false ? null : $data;
+            $data = $this->embeddingData;
+        }
+
+        return \is_string($data) && $data !== '' ? EmbeddingMath::unpack($data) : null;
     }
 
     /**
      * @param list<float>|null $embedding
      */
-    public function setEmbedding(?array $embedding): self
+    public function setEmbedding(?array $embedding, ?string $model = null): static
     {
-        $this->embedding = $embedding;
+        $this->embeddingData = $embedding === null ? null : EmbeddingMath::pack($embedding);
+        $this->embeddingModel = $embedding === null ? null : $model;
+
+        return $this;
+    }
+
+    public function getEmbeddingModel(): ?string
+    {
+        return $this->embeddingModel;
+    }
+
+    public function getDetectionScore(): ?float
+    {
+        return $this->detectionScore;
+    }
+
+    public function setDetectionScore(?float $detectionScore): static
+    {
+        $this->detectionScore = $detectionScore;
+
+        return $this;
+    }
+
+    public function getFaceSizePx(): ?int
+    {
+        return $this->faceSizePx;
+    }
+
+    public function setFaceSizePx(?int $faceSizePx): static
+    {
+        $this->faceSizePx = $faceSizePx;
+
         return $this;
     }
 

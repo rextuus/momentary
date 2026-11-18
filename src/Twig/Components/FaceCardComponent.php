@@ -18,9 +18,13 @@ class FaceCardComponent
         return !$person || $person->getStatus()->value === 'unknown';
     }
 
-    public function getEmotionEmoji(): string
+    /**
+     * Nur Rekognition schätzt die Emotion; bei InsightFace-Gesichtern null (dann wird nichts angezeigt).
+     */
+    public function getEmotionEmoji(): ?string
     {
         return match ($this->videoFace->getEmotion()) {
+            null => null,
             'HAPPY' => '😊',
             'SAD' => '😢',
             'ANGRY' => '😠',

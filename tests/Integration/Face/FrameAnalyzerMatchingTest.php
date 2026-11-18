@@ -11,7 +11,7 @@ use App\Entity\VideoFace;
 use App\Enum\PersonStatus;
 use App\Repository\VideoFaceRepository;
 use App\Service\Aws\AmazonRekognitionService;
-use App\Service\Aws\DetectedFace;
+use App\Service\Face\DetectedFace;
 use App\Service\Face\FaceRecognitionSettingsProvider;
 use App\Service\ImageFileService;
 use App\Service\Storage\StoragePathProvider;

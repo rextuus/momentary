@@ -7,15 +7,15 @@ namespace App\Service\Person;
 use App\Entity\File;
 use App\Entity\Person;
 use App\Entity\VideoFace;
-use App\Service\Aws\AmazonRekognitionService;
+use App\Service\Face\FaceForgetter;
 use App\Service\Storage\FileManager;
 use Doctrine\ORM\EntityManagerInterface;
-use Psr\Log\LoggerInterface;
 
 /**
  * Löscht eine Person samt aller ihrer Sichtungen, z. B. für Fehlerkennungen wie Spiegelungen oder Plakate.
  *
- * Die Gesichter werden auch aus der AWS-Collection entfernt, damit spätere Analysen nicht wieder auf sie matchen.
+ * Die Gesichter werden auch beim Anbieter entfernt (Rekognition: AWS-Collection), damit spätere Analysen nicht wieder
+ * auf sie matchen. Fehler dabei blockieren das Löschen nicht.
  * Gesichtsbilder sind ganze Frames, die sich mehrere Gesichter teilen: eine Bilddatei wird nur gelöscht, wenn kein
  * anderes Gesicht mehr darauf verweist.
  */
@@ -23,9 +23,8 @@ class PersonDeleter
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly AmazonRekognitionService $rekognition,
+        private readonly FaceForgetter $faceForgetter,
         private readonly FileManager $fileManager,
-        private readonly LoggerInterface $logger,
     ) {}
 
     /**
@@ -35,7 +34,10 @@ class PersonDeleter
     {
         $faces = array_values($person->getVideoFaces()->toArray());
 
-        $this->removeFromCollection($faces);
+        $this->faceForgetter->forget(
+            FaceForgetter::labelsByProvider($faces),
+            sprintf('Person %d', (int) $person->getId()),
+        );
 
         // Gesichter anderer Personen, die diese Person nur als Referenz (detection) nennen, behalten
         foreach ($person->getDetectionFaces()->toArray() as $face) {
@@ -77,27 +79,6 @@ class PersonDeleter
         $this->entityManager->flush();
 
         return \count($faces);
-    }
-
-    /**
-     * @param list<VideoFace> $faces
-     */
-    private function removeFromCollection(array $faces): void
-    {
-        $labels = array_values(array_filter(array_map(
-            static fn(VideoFace $face): ?string => $face->getFaceLabel(),
-            $faces,
-        )));
-        if ($labels === []) {
-            return;
-        }
-
-        try {
-            $this->rekognition->deleteFaces($labels);
-        } catch (\Throwable $e) {
-            // Die Person trotzdem löschen: übrig gebliebene AWS-Gesichter erzeugen höchstens neue Vorschläge
-            $this->logger->warning('PersonDeleter: AWS-Gesichter konnten nicht gelöscht werden: ' . $e->getMessage());
-        }
     }
 
     private function isStillUsed(File $image): bool

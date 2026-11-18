@@ -8,6 +8,7 @@ use App\Form\FaceRecognitionSettingsType;
 use App\Repository\VideoRepository;
 use App\Service\Aws\AmazonRekognitionService;
 use App\Service\Face\FaceRecognitionSettingsProvider;
+use App\Service\Face\Provider\FaceRecognitionProviders;
 use App\Service\Face\VideoFaceConsolidator;
 use Aws\Exception\AwsException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -20,10 +21,15 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 final class FaceRecognitionSettingsController extends AbstractController
 {
     #[Route('/admin/settings/face-recognition', name: 'app_admin_face_recognition_settings', methods: ['GET', 'POST'])]
-    public function edit(Request $request, FaceRecognitionSettingsProvider $settingsProvider): Response
-    {
+    public function edit(
+        Request $request,
+        FaceRecognitionSettingsProvider $settingsProvider,
+        FaceRecognitionProviders $providers,
+    ): Response {
         $settings = $settingsProvider->get();
-        $form = $this->createForm(FaceRecognitionSettingsType::class, $settings);
+        $form = $this->createForm(FaceRecognitionSettingsType::class, $settings, [
+            'provider' => $providers->activeName(),
+        ]);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -38,6 +44,7 @@ final class FaceRecognitionSettingsController extends AbstractController
             [
                 'form' => $form,
                 'settings' => $settings,
+                'provider' => $providers->activeName(),
             ],
             new Response(status: $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK),
         );
