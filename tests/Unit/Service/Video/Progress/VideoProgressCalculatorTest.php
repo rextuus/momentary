@@ -18,6 +18,9 @@ final class VideoProgressCalculatorTest extends TestCase
 {
     private const string NOW = '2026-10-18 12:00:00';
 
+    /** Die App läuft mit Europe/Berlin; Uhr und Zeitstempel im Test ausdrücklich in derselben Zeitzone. */
+    private const string TIMEZONE = 'Europe/Berlin';
+
     public function testCountedStepUsesItemsInsteadOfTime(): void
     {
         $video = $this->videoIn(VideoStatus::ANALYZING_FACES_INITIAL, startedSecondsAgo: 30);
@@ -90,7 +93,7 @@ final class VideoProgressCalculatorTest extends TestCase
         $video->addProcessingStep(
             new VideoProcessingStep()
                 ->setStep(VideoStatus::CONVERTING)
-                ->setFinishedAt(new \DateTimeImmutable(self::NOW))
+                ->setFinishedAt(self::now())
                 ->setDuration(65),
         );
         $video->addProcessingStep(
@@ -123,7 +126,7 @@ final class VideoProgressCalculatorTest extends TestCase
         $video->addProcessingStep(
             new VideoProcessingStep()
                 ->setStep($status)
-                ->setStartedAt(new \DateTimeImmutable(self::NOW)->modify(sprintf('-%d seconds', $startedSecondsAgo))),
+                ->setStartedAt(self::now()->modify(sprintf('-%d seconds', $startedSecondsAgo))),
         );
 
         return $video;
@@ -134,6 +137,11 @@ final class VideoProgressCalculatorTest extends TestCase
         $estimator = $this->createStub(StepDurationEstimator::class);
         $estimator->method('expectedSeconds')->willReturn(10.0);
 
-        return new VideoProgressCalculator($estimator, new MockClock(self::NOW));
+        return new VideoProgressCalculator($estimator, new MockClock(self::now()));
+    }
+
+    private static function now(): \DateTimeImmutable
+    {
+        return new \DateTimeImmutable(self::NOW, new \DateTimeZone(self::TIMEZONE));
     }
 }
