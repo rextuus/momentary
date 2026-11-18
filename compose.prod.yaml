@@ -145,6 +145,18 @@ services:
     healthcheck: *worker-healthcheck
     depends_on: *after-app
 
+  # Gesichtserkennung der Video-Frames: eigene Queue, genau ein Consumer (ein Frame zur Zeit beim face-service).
+  # Rechnet selbst kaum; die Inferenz läuft im face-service mit dessen Limits.
+  face-worker:
+    <<: *app
+    command: ["nice", "-n", "10", "php", "bin/console", "messenger:consume", "face_recognition",
+              "--time-limit=3600", "--memory-limit=512M"]
+    healthcheck: *worker-healthcheck
+    depends_on:
+      <<: *after-app
+      face-service:
+        condition: service_healthy
+
   # Ton-Transkription (Whisper, CPU-lastig): eigene Queue, ein Job zur Zeit, niedrige Priorität
   transcription-worker:
     <<: *app

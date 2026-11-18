@@ -210,6 +210,67 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         self::assertStringStartsWith('scene_', (string) $folders[0]);
     }
 
+    /**
+     * Ist die Erstanalyse schon so dicht wie das Refinement (FRAME_ANALYSIS_FPS >= Refinement-fps), wird nichts
+     * erneut extrahiert. Die State Machine muss trotzdem sauber durch alle Refinement-Zustände bis zum Ende laufen.
+     */
+    public function testRefinementIsSkippedWhenFirstAnalysisIsAlreadyDenseEnough(): void
+    {
+        $video = $this->arrangeSuccessfulPipeline();
+        $video->setAnalysisFps(1.0);
+        $video->setRefinedAnalysisFps(1.0);
+        $this->entityManager->flush();
+
+        $this->dispatch(new ConvertStepMessage(self::idOf($video), 0, 'INITIAL'));
+
+        $updatedVideo = $this->reload($video);
+        self::assertSame(VideoStatus::COMPLETED, $updatedVideo->getStatus());
+        self::assertCount(1, $this->extractCalls, 'nur die Erstanalyse');
+        self::assertFalse($this->extractCalls[0]['refinement']);
+        self::assertSame(
+            array_map(static fn(int $n): string => sprintf('frame_%04d.jpg', $n), range(1, 4)),
+            $this->analyzedFrames,
+            'keine Refinement-Frames',
+        );
+
+        $steps = [];
+        foreach ($updatedVideo->getProcessingSteps() as $step) {
+            self::assertNull($step->getErrorMessage(), (string) $step->getStep()?->value);
+            $steps[] = $step->getStep();
+        }
+        foreach ([
+            VideoStatus::REFINING_EXTRACTION,
+            VideoStatus::REFINING_SPLITTING,
+            VideoStatus::ANALYZING_FACES_REFINEMENT,
+            VideoStatus::CONSOLIDATING_FACES,
+            VideoStatus::MERGING_SCENES,
+        ] as $status) {
+            self::assertContains($status, $steps, sprintf('Zustand %s wird durchlaufen', $status->value));
+        }
+    }
+
+    /**
+     * Eine Exception in einem Schritt darf das Video nicht still im Zustand stehen lassen: Fehler mit Grund und
+     * Schritt, sichtbar am Video und am Schritt.
+     */
+    public function testExceptionInAStepSetsVideoToErrorWithReason(): void
+    {
+        // Vor arrangeSuccessfulPipeline(): die erste Konfiguration eines Stubs gilt
+        $this->chapterGenerator
+            ->method('generateChapters')
+            ->willThrowException(new \RuntimeException('Gemini antwortet nicht'));
+        $video = $this->arrangeSuccessfulPipeline();
+
+        $this->dispatch(new ConvertStepMessage(self::idOf($video), 0, 'INITIAL'));
+
+        $updated = $this->reload($video);
+        self::assertSame(VideoStatus::ERROR, $updated->getStatus());
+        self::assertSame('Kapitel erzeugen: Gemini antwortet nicht', $updated->getErrorMessage());
+        $failed = self::singleFailedStep($updated);
+        self::assertSame(VideoStatus::CHAPTER_GENERATION, $failed->getStep());
+        self::assertSame('Gemini antwortet nicht', $failed->getErrorMessage());
+    }
+
     public function testFailedTaggingStopsPipelineWithError(): void
     {
         $video = $this->arrangeSuccessfulPipeline(new TaggingResult(false, false, [], 'Gemini API Error'));

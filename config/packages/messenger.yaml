@@ -27,6 +27,21 @@ framework:
                         transcription: ~
                 retry_strategy:
                     max_retries: 0
+            # Gesichtserkennung der Video-Frames: eigene Queue mit genau einem Consumer (face-worker), damit nie zwei
+            # Frames gleichzeitig beim face-service landen. Retries mit Backoff (5 s, 15 s, 45 s), falls der Dienst
+            # kurz weg ist (Neustart, Modell lädt); danach failed, und FailedStepSubscriber setzt das Video auf Fehler.
+            face_recognition:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    exchange:
+                        name: face_recognition
+                    queues:
+                        face_recognition: ~
+                retry_strategy:
+                    max_retries: 3
+                    delay: 5000
+                    multiplier: 3
+                    max_delay: 60000
             # Fotos: eigene Queue, vom messenger-worker zuletzt abgearbeitet (Videos haben Vorrang)
             photos:
                 dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
@@ -54,9 +69,9 @@ framework:
             Symfony\Component\Notifier\Message\SmsMessage: async
             App\Service\Video\Processing\Message\SceneDetectionStepMessage: async_video_processing
             App\Service\Video\Processing\Message\ConvertStepMessage: async_video_processing
-            App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeVideoFrameStepMessage: async_video_processing
-            App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeLastVideoFrameStepMessage: async_video_processing
-            App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeFirstVideoFrameStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeVideoFrameStepMessage: face_recognition
+            App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeLastVideoFrameStepMessage: face_recognition
+            App\Service\Video\Processing\Message\FrameAnalyze\Video\AnalyzeFirstVideoFrameStepMessage: face_recognition
             App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractFirstSceneThumbnailStepMessage: async_video_processing
             App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractLastSceneThumbnailStepMessage: async_video_processing
             App\Service\Video\Processing\Message\ThumbnailExtraction\ExtractSceneThumbnailStepMessage: async_video_processing
@@ -65,9 +80,9 @@ framework:
             App\Service\Video\Processing\Message\Splitting\Scene\SplitFirstSceneInFramesStepMessage: async_video_processing
             App\Service\Video\Processing\Message\Splitting\Scene\SplitSceneInFramesStepMessage: async_video_processing
             App\Service\Video\Processing\Message\Splitting\Video\SplitVideoInFramesStepMessage: async_video_processing
-            App\Service\Video\Processing\Message\FrameAnalyze\Scene\AnalyzeFirstSceneFrameStepMessage: async_video_processing
-            App\Service\Video\Processing\Message\FrameAnalyze\Scene\AnalyzeLastSceneFrameStepMessage: async_video_processing
-            App\Service\Video\Processing\Message\FrameAnalyze\Scene\AnalyzeSceneFrameStepMessage: async_video_processing
+            App\Service\Video\Processing\Message\FrameAnalyze\Scene\AnalyzeFirstSceneFrameStepMessage: face_recognition
+            App\Service\Video\Processing\Message\FrameAnalyze\Scene\AnalyzeLastSceneFrameStepMessage: face_recognition
+            App\Service\Video\Processing\Message\FrameAnalyze\Scene\AnalyzeSceneFrameStepMessage: face_recognition
             App\Service\Video\Processing\Message\Tagging\TagFirstSceneStepMessage: async_video_processing
             App\Service\Video\Processing\Message\Tagging\TagSceneStepMessage: async_video_processing
             App\Service\Video\Processing\Message\Tagging\TagLastSceneStepMessage: async_video_processing

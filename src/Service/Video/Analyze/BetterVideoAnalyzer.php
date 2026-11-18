@@ -29,6 +29,10 @@ readonly class BetterVideoAnalyzer
         private VideoFileService $videoFileService,
         #[Autowire('%env(default:app.min_scene_length_for_refinement:MIN_SCENE_LENGTH_FOR_REFINEMENT)%')]
         private float $minSceneLengthForRefinement = 2.0,
+        #[Autowire('%env(default:app.frame_analysis_fps:FRAME_ANALYSIS_FPS)%')]
+        private float $defaultFps = 0.2,
+        #[Autowire('%env(default:app.refined_frame_analysis_fps:REFINED_FRAME_ANALYSIS_FPS)%')]
+        private float $defaultRefinedFps = 1.0,
     ) {}
 
     public function getAbsolutePath(string $path): string
@@ -197,8 +201,21 @@ readonly class BetterVideoAnalyzer
         );
     }
 
+    /**
+     * Szenen ohne Gesicht, die mit der Refinement-Bildrate noch einmal analysiert werden.
+     *
+     * Analysiert schon die Erstanalyse mindestens so dicht (z. B. FRAME_ANALYSIS_FPS=1 für InsightFace), brächte das
+     * Refinement nur dieselben Frames noch einmal: dann keine Szenen. Die Pipeline läuft trotzdem durch alle
+     * Refinement-Zustände, nur ohne Arbeit.
+     */
     public function refineSceneAnalysis(Video $video): RefinementAnalyzeResult
     {
+        $fps = $video->getAnalysisFps() ?? $this->defaultFps;
+        $refinedFps = $video->getRefinedAnalysisFps() ?? $this->defaultRefinedFps;
+        if ($fps >= $refinedFps) {
+            return RefinementAnalyzeResult::create([]);
+        }
+
         $minSceneLength = $video->getMinSceneLengthForRefinement() ?? $this->minSceneLengthForRefinement;
 
         $scenesToRefine = [];

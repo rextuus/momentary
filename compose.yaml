@@ -65,6 +65,20 @@ services:
     restart: always
     command: ["sh", "-c", "php bin/console cache:clear && exec php bin/console messenger:consume async async_video_processing photos scheduler_default --time-limit=3600 --memory-limit=512M"]
 
+  # Gesichtserkennung der Video-Frames: eigene Queue, genau ein Consumer (ein Frame zur Zeit beim face-service)
+  face-worker:
+    <<: *app
+    user: www-data
+    restart: always
+    command: ["sh", "-c", "sleep 20 && exec nice -n 10 php bin/console messenger:consume face_recognition --time-limit=3600 --memory-limit=512M"]
+    depends_on:
+      database:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      face-service:
+        condition: service_healthy
+
   # Ton-Transkription (Whisper, CPU-lastig): eigene Queue, ein Job zur Zeit, niedrige Priorität
   transcription-worker:
     <<: *app
