@@ -8,6 +8,15 @@ parameters:
     env(JELLYFIN_HOST): 'http://localhost:8096'
     # Ablage der Whisper-Modelle (einmalig ~0,5–1,6 GB je Modell); var/ ist im Container ein Volume
     env(WHISPER_MODELS_DIR): '%kernel.project_dir%/var/whisper-models'
+    # face-service (InsightFace) im Docker-Netz; Timeout schließt das Warten auf eine laufende Anfrage ein
+    env(FACE_SERVICE_URL): 'http://face-service:8000'
+    env(FACE_SERVICE_TIMEOUT): '60'
+    # Anbieter der Gesichtserkennung: insightface (face-service) oder rekognition (AWS, kostet)
+    env(FACE_RECOGNITION_PROVIDER): 'insightface'
+    # Vorfilter mit kleiner Detektionsgröße (z. B. 320); 0 = aus
+    env(FACE_PREFILTER_DET_SIZE): '0'
+    # Abgleich neuer Gesichter: höchstens so viele Referenzgesichter je Person
+    env(FACE_MATCH_REFERENCES_PER_PERSON): '20'
     app.frame_analysis_fps: 0.2
     app.min_scene_length_for_refinement: 2.0
     app.refined_frame_analysis_fps: 1.0

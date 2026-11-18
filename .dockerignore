@@ -26,6 +26,8 @@ tests/
 var/
 vendor/
 video-analyzer/python/venv/
+# Eigenes Image (face-service/Dockerfile)
+face-service/
 **/__pycache__
 *.md
 !README.md

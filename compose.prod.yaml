@@ -42,6 +42,11 @@ x-app: &app
     IMGPROXY_SALT: ${IMGPROXY_SALT:?IMGPROXY_SALT fehlt}
     IMGPROXY_PUBLIC_HOST: ${IMGPROXY_PUBLIC_HOST:-${APP_PUBLIC_URL}/imgproxy}
     JELLYFIN_HOST: http://jellyfin:8096
+    FACE_SERVICE_URL: http://face-service:8000
+    FACE_SERVICE_TIMEOUT: ${FACE_SERVICE_TIMEOUT:-60}
+    FACE_RECOGNITION_PROVIDER: ${FACE_RECOGNITION_PROVIDER:-insightface}
+    FACE_PREFILTER_DET_SIZE: ${FACE_PREFILTER_DET_SIZE:-0}
+    FACE_MATCH_REFERENCES_PER_PERSON: ${FACE_MATCH_REFERENCES_PER_PERSON:-20}
     JELLYFIN_API_KEY: ${JELLYFIN_API_KEY:-}
     AWS_ACCESS_KEY: ${AWS_ACCESS_KEY:-}
     AWS_SECRET_KEY: ${AWS_SECRET_KEY:-}
@@ -147,6 +152,40 @@ services:
               "--time-limit=7200", "--memory-limit=512M"]
     healthcheck: *worker-healthcheck
     depends_on: *after-app
+
+  # Gesichtserkennung (InsightFace, CPU), docs: documentation/face_recognition.md. Ein Bild zur Zeit.
+  face-service:
+    build:
+      context: face-service
+    image: momentary-face:prod
+    pull_policy: build
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      FACE_DET_SIZE: ${FACE_DET_SIZE:-640}
+      FACE_MIN_DET_SCORE: ${FACE_MIN_DET_SCORE:-0.5}
+      FACE_INTRA_OP_THREADS: ${FACE_INTRA_OP_THREADS:-2}
+      FACE_INTER_OP_THREADS: ${FACE_INTER_OP_THREADS:-1}
+    # Kein Port nach außen: Nur app und die Worker sprechen den Dienst über http://face-service:8000 an.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      # Erster Start lädt die Modelle (ca. 280 MB) ins Volume face_models
+      start_period: 300s
+    # Die Inferenz darf die anderen Projekte auf dem Host nicht ausbremsen: höchstens 2 Kerne und 2 GB, und bei
+    # Konkurrenz um die CPU nur halbes Gewicht (Standard 1024).
+    cpu_shares: 512
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2g
+    volumes:
+      - face_models:/models
+    networks:
+      - momentary-network
 
   database:
     image: mysql:8.4.13
@@ -303,6 +342,9 @@ volumes:
     name: ${VOLUME_PREFIX:-momentary}_jellyfin_cache
   whisper_models:
     name: ${VOLUME_PREFIX:-momentary}_whisper_models
+  # InsightFace-Modelle; lassen sich jederzeit neu laden, werden nicht gesichert
+  face_models:
+    name: ${VOLUME_PREFIX:-momentary}_face_models
 
 networks:
   # Fester Name: Der Hub (momentary-hub) hängt sich als externes Netz daran.
