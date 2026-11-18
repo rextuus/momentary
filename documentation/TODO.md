@@ -64,8 +64,8 @@ Seit November 2026 erkennt InsightFace (selbst gehostet, `face_recognition.md`);
   (Dauer, Startzeit, Schnitte gegen das Original; Versatz melden, Drift ablehnen). Die rohen Schnitte des Originals
   stehen seit 11/2026 in `Video::sceneCuts`. Danach nur Web-Fassung, Jellyfin-Export und ggf. Vorschaubilder neu,
   keine Gesichtsanalyse.
-- [ ] Aufnahmezeit digitalisierter Bänder: DV-Aufnahmedatum aus den Subcodes lesen (z. B. dvrescue/MediaInfo);
-  Dateiname und `creation_time` sind bei Bändern meist das Digitalisierungsdatum.
+- [ ] Aufnahmezeit digitalisierter Bänder: DV-Aufnahmedatum je Frame aus den Subcodes (dvrescue), Aufnahme-Segmente
+  am Video; Vorschlag in `dv_aufnahmedatum.md`, offene Fragen in `RUECKFRAGEN.md`.
 Ältere Punkte (aus der Rekognition-Zeit):
 - [ ] Mallorca-Videos und -Fotos durchsehen: Kontaktbogen je Person erzeugen, falsche Zuordnungen und getrennte Doppelungen zählen.
 - [ ] Schwellen (Match, Vorschlag, Video-Link, Tracking) anhand der Zählung anpassen und als neue Standardwerte übernehmen.
