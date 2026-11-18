@@ -12,6 +12,7 @@ use App\Service\Video\Processing\Handler\Abstract\AbstractVideoMessageHandler;
 use App\Service\Video\Processing\Message\SceneDetectionStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
+use App\Service\Video\VideoAnalysisReset;
 use App\Service\Video\VideoSceneService;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
@@ -31,6 +32,7 @@ class SceneDetectionStepMessageHandler extends AbstractVideoMessageHandler
         private readonly StoragePathProvider $pathProvider,
         private readonly VideoSceneService $videoSceneService,
         private readonly EntityManagerInterface $entityManager,
+        private readonly VideoAnalysisReset $analysisReset,
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
 
@@ -67,6 +69,12 @@ class SceneDetectionStepMessageHandler extends AbstractVideoMessageHandler
         if (!file_exists($videoPath)) {
             $this->stopProcessing("Source video for scene detection not found: $videoPath");
             return;
+        }
+
+        // Neuverarbeiten: alte Szenen und Gesichter weg, sonst kämen die neuen zusätzlich dazu
+        $removed = $this->analysisReset->reset($video);
+        if ($removed['scenes'] > 0 || $removed['faces'] > 0) {
+            printf("[i] %d alte Szenen und %d alte Gesichter entfernt.\n", $removed['scenes'], $removed['faces']);
         }
 
         $scenes = $this->videoAnalyzer->detectScenes($videoPath, $message->getVideoId());

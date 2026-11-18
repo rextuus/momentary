@@ -45,6 +45,13 @@ und `FailedStepSubscriber` setzt das Video auf `error`.
 Wird ein Video gelöscht, während eine seiner Messages unterwegs ist, wirft der Handler `VideoGoneException`;
 `DiscardGoneVideoMessageMiddleware` verwirft die Message dann still (kein Retry, kein `failed`).
 
+### Neuverarbeiten
+
+Schritt 2 (Szenenerkennung) entfernt zuerst, was ein früherer Durchlauf hinterlassen hat (`VideoAnalysisReset`): alle
+Gesichter samt Gesichtsbildern, dadurch leer gewordene automatische Personen und die alten Szenen. Benannte Personen
+bleiben; ihre Gesichter in diesem Video werden neu erkannt und wieder zugeordnet. Von Hand geänderte
+Szeneneinstellungen (öffentlich, Gruppen, Tags) gehen dabei verloren, weil die Szenen neu erkannt werden.
+
 ### Refinement überspringen
 
 Das Refinement (10–16) analysiert Szenen ohne Gesicht noch einmal mit `REFINED_FRAME_ANALYSIS_FPS`. Ist die

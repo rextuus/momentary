@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Face;
 
 use App\Entity\Video;
+use App\Entity\VideoFace;
 use App\Service\Storage\FileStorageService;
 use App\Service\Storage\StoragePathProvider;
 use Doctrine\ORM\EntityManagerInterface;
@@ -27,8 +28,11 @@ class VideoFaceRemover
     {
         $videoId = (int) $video->getId();
         $personIds = $this->orphanedPersonCleaner->personIdsOfMedium($videoId);
-        $labels = FaceForgetter::labelsByProvider($video->getFaces());
-        foreach ($video->getFaces()->toArray() as $face) {
+        // Aus der Datenbank, nicht aus Video::getFaces(): die Collection ist im selben EntityManager nicht immer aktuell
+        // (FaceRecorder setzt nur VideoFace::medium)
+        $faces = $this->entityManager->getRepository(VideoFace::class)->findBy(['medium' => $video]);
+        $labels = FaceForgetter::labelsByProvider($faces);
+        foreach ($faces as $face) {
             $face->getPerson()?->removeVideoFace($face);
             $face->getVideoScene()?->removeVideoFace($face);
             $video->removeFace($face);

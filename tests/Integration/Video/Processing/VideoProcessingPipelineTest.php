@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Video\Processing;
 
 use App\Entity\File;
+use App\Entity\Person;
 use App\Entity\TranscriptionSettings;
 use App\Entity\Video;
 use App\Entity\VideoScene;
 use App\Entity\VideoTranscript;
 use App\Enum\FilePurpose;
+use App\Enum\PersonStatus;
 use App\Enum\VideoStatus;
 use App\Service\Aws\AmazonRekognitionService;
 use App\Service\Face\DetectedFace;
@@ -32,6 +34,8 @@ use App\Service\Video\Analyze\SceneDetector;
 use App\Service\Video\Analyze\SceneThumbnailExtractor;
 use App\Service\Video\Analyze\TaggingService;
 use App\Service\Video\Processing\Message\ConvertStepMessage;
+use App\Tests\Factory\PersonFactory;
+use App\Tests\Factory\VideoFaceFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use Meilisearch\Client;
 use Meilisearch\Endpoints\Indexes;
@@ -189,6 +193,37 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
         // Erst die Frames des ganzen Videos, danach die Refinement-Frames der vier (noch) gesichtslosen Szenen
         $expected = array_map(static fn(int $n): string => sprintf('frame_%04d.jpg', $n), range(1, 12));
         self::assertSame($expected, $this->analyzedFrames);
+    }
+
+    /**
+     * Neuverarbeiten: Szenen und Gesichter des früheren Durchlaufs verschwinden, statt neben den neuen zu bleiben;
+     * dadurch leer gewordene automatische Personen auch. Benannte Personen bleiben.
+     */
+    public function testReprocessingReplacesOldScenesAndFaces(): void
+    {
+        $video = $this->arrangeSuccessfulPipeline();
+        $oldScene = new VideoScene();
+        $oldScene->setSceneNumber(1);
+        $oldScene->setStartSeconds(0.0);
+        $oldScene->setEndSeconds(60.0);
+        $video->addScene($oldScene);
+        $this->entityManager->persist($oldScene);
+        $auto = PersonFactory::createOne(['name' => 'unknown_alt', 'status' => PersonStatus::NEW]);
+        $anna = PersonFactory::createOne(['name' => 'Anna', 'status' => PersonStatus::IDENTIFIED]);
+        VideoFaceFactory::createOne(['video' => $video, 'person' => $auto, 'videoScene' => $oldScene]);
+        VideoFaceFactory::createOne(['video' => $video, 'person' => $anna, 'videoScene' => $oldScene]);
+        $this->entityManager->flush();
+        $autoId = $auto->getId();
+        $annaId = $anna->getId();
+
+        $this->dispatch(new ConvertStepMessage(self::idOf($video), 0, 'INITIAL'));
+
+        $updated = $this->reload($video);
+        self::assertSame(VideoStatus::COMPLETED, $updated->getStatus(), (string) $updated->getErrorMessage());
+        self::assertCount(4, $updated->getScenes(), 'nur die neu erkannten Szenen');
+        self::assertCount(0, $updated->getFaces(), 'FrameAnalyzer ist im Test ein Stub: keine neuen, keine alten');
+        self::assertNull($this->entityManager->find(Person::class, $autoId), 'leere automatische Person entfernt');
+        self::assertNotNull($this->entityManager->find(Person::class, $annaId), 'benannte Person bleibt');
     }
 
     /**
