@@ -16,7 +16,11 @@ class VideoNamingService
     public function suggestName(Video $video): string
     {
         $filename = $video->getSourceFilename();
-        $createdAt = $video->getCreatedAt()?->format('Y-m-d H:i:s');
+        // Gespeichert in UTC; Gemini bekommt die Ortszeit
+        $createdAt = $video
+            ->getCreatedAt()
+            ?->setTimezone(new \DateTimeZone('Europe/Berlin'))
+            ->format('Y-m-d H:i:s');
 
         $tags = [];
         foreach ($video->getTags() as $tag) {

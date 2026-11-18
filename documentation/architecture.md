@@ -23,15 +23,13 @@ Ermöglicht das Streamen und Betrachten der verarbeiteten Videos:
 -   **Export**: Abgeschlossene Videos werden in ein von Jellyfin überwachtes Verzeichnis verschoben.
 -   **API-Integration**: Momentary triggert automatisch einen Library-Scan in Jellyfin nach dem Export.
 
-### 4. Amazon Rekognition
-Cloud-Dienst für:
--   **Face Indexing**: Speicherung von Gesichtsvektoren in einer Collection.
--   **Face Searching**: Identifizierung von Personen durch Vergleich erkannter Gesichter.
--   **Attribute Extraction**: Analyse von Alter, Geschlecht und Emotionen.
+### 4. Gesichtserkennung
+-   **InsightFace** (Standard) im eigenen Container `face-service`: Detektion, Embeddings, Alter/Geschlecht; der
+    Abgleich gegen bekannte Personen läuft in PHP (`documentation/face_recognition.md`).
+-   **Amazon Rekognition** (optional, `FACE_RECOGNITION_PROVIDER=rekognition`): Cloud-Dienst mit eigener Collection.
 
 ### 5. Tagging & KI-Integration
 -   **Google Gemini**: Wird als KI-Modell für die automatische, inhaltsbasierte Verschlagwortung (Tagging) der Szenen und die Kapitelgenerierung eingesetzt.
--   **Amazon Rekognition**: Unterstützt bei der Erkennung und Analyse von Gesichtern.
 
 ## Kommunikationsfluss
 Die Symfony-Anwendung steuert den Prozess über den `messenger-worker`:
@@ -67,3 +65,14 @@ Alle Uploads werden unter `public/uploads/` gespeichert:
 -   **Defaults**: `public/uploads/defaults/` — Platzhalterbilder
 
 Flysystem ist so konfiguriert, dass alle Dateien mit `0644` und Verzeichnisse mit `0755` angelegt werden, damit imgproxy lesend zugreifen kann.
+
+## Zeiten und Zeitzonen
+-   **Speicherung in UTC, Anzeige in Europe/Berlin.** PHP läuft mit `date.timezone = Europe/Berlin`
+    (`docker/php/conf.d/app.ini`), alle Zeitpunkte (`datetime_immutable`, `datetime`) liegen aber in UTC in der
+    Datenbank: Die Typen `UtcDateTimeImmutableType`/`UtcDateTimeType` (`src/Doctrine/Type`, eingetragen in
+    `config/packages/doctrine.yaml`) rechnen beim Schreiben nach UTC um und lesen als UTC. Geladene Werte sind
+    UTC-Objekte; Twig zeigt sie in Europe/Berlin an (`config/packages/twig.yaml`), PHP-Code für die Anzeige rechnet mit
+    `setTimezone(new \DateTimeZone('Europe/Berlin'))` um.
+-   Rohe SQL-Werte (DBAL, `KnownMedia`, `EmbeddingIndex`) sind UTC-Zeichenketten.
+-   Reine Kalenderdaten (`date_immutable`, z. B. Ereignis- und Pool-Zeiträume) haben keine Zeitzone.
+-   Tests erzeugen Zeiten mit ausdrücklicher Zeitzone; die Suite läuft in jeder `date.timezone` grün.

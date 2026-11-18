@@ -7,6 +7,10 @@ doctrine:
         #server_version: '16'
 
         profiling_collect_backtrace: '%kernel.debug%'
+        # Zeitpunkte immer in UTC speichern und lesen, angezeigt wird in Europe/Berlin (documentation/architecture.md)
+        types:
+            datetime_immutable: App\Doctrine\Type\UtcDateTimeImmutableType
+            datetime: App\Doctrine\Type\UtcDateTimeType
     orm:
         auto_mapping: true
         identity_generation_preferences:
