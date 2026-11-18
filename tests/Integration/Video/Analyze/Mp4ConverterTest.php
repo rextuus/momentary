@@ -54,6 +54,84 @@ final class Mp4ConverterTest extends TestCase
         self::assertSame(['h264', 'aac'], $this->codecs($target));
     }
 
+    public function testInterlacedVideoIsDetectedAndConvertedTo50p(): void
+    {
+        // 50 Bewegungsphasen/s zu 25 Bildern mit je zwei Halbbildern, als interlaced gekennzeichnet (wie AVCHD 50i)
+        $source = $this->interlaced('source.mp4', ['-c:v', 'libx264', '-flags', '+ilme+ildct', '-pix_fmt', 'yuv420p']);
+        $target = $this->dir . '/target.mp4';
+        $converter = new Mp4Converter(new NullLogger());
+
+        $fieldOrder = $converter->detectFieldOrder($source);
+        self::assertSame('tt', $fieldOrder);
+        self::assertTrue($converter->convertToMp4($source, $target, $fieldOrder));
+
+        // Trotz H.264 nicht nur umgepackt: neu kodiert, progressiv, doppelte Bildrate
+        self::assertNotSame($this->videoStreamHash($source), $this->videoStreamHash($target));
+        self::assertSame(['progressive', '50/1'], $this->fieldOrderAndRate($target));
+    }
+
+    public function testUnmarkedInterlacedVideoIsFoundByIdet(): void
+    {
+        // MJPEG in AVI gibt keine Halbbild-Reihenfolge an ("unknown")
+        $source = $this->interlaced('source.avi', ['-c:v', 'mjpeg']);
+
+        self::assertSame('tt', new Mp4Converter(new NullLogger())->detectFieldOrder($source));
+    }
+
+    public function testProgressiveVideoStaysProgressive(): void
+    {
+        $source = $this->generate('source.mov', ['-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac']);
+
+        self::assertSame('progressive', new Mp4Converter(new NullLogger())->detectFieldOrder($source));
+    }
+
+    /**
+     * @param list<string> $codecArgs
+     */
+    private function interlaced(string $name, array $codecArgs): string
+    {
+        $path = $this->dir . '/' . $name;
+        new Process([
+            'ffmpeg',
+            '-v',
+            'error',
+            '-y',
+            '-f',
+            'lavfi',
+            '-i',
+            'testsrc2=duration=4:size=720x576:rate=50',
+            '-vf',
+            'tinterlace=mode=interleave_top,fieldorder=tff',
+            ...$codecArgs,
+            $path,
+        ])->mustRun();
+
+        return $path;
+    }
+
+    /**
+     * @return array{string, string}
+     */
+    private function fieldOrderAndRate(string $path): array
+    {
+        $process = new Process([
+            'ffprobe',
+            '-v',
+            'error',
+            '-select_streams',
+            'v:0',
+            '-show_entries',
+            'stream=field_order,r_frame_rate',
+            '-of',
+            'json',
+            $path,
+        ]);
+        $process->mustRun();
+        $stream = json_decode($process->getOutput(), true, flags: \JSON_THROW_ON_ERROR)['streams'][0] ?? [];
+
+        return [(string) ($stream['field_order'] ?? ''), (string) ($stream['r_frame_rate'] ?? '')];
+    }
+
     /**
      * @param list<string> $codecArgs
      */

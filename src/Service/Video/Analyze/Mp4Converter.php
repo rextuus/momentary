@@ -13,10 +13,17 @@ use Symfony\Component\Process\Process;
  * Ist das Video schon H.264 (8 Bit, 4:2:0) mit AAC/MP3-Ton, wird nur der Container umgepackt: das dauert
  * Sekunden statt Minuten und behält die Originalqualität. Nur andere Formate (z. B. MPEG-2, DV, MJPEG,
  * 10-Bit-Material) werden neu kodiert.
+ *
+ * Interlaced Material (Camcorder: VHS, Hi8, MiniDV, AVCHD 50i) wird immer neu kodiert und dabei mit bwdif in
+ * Vollbilder gewandelt, ein Bild je Halbbild (aus 50i wird 50p): Browser deinterlacen nicht selbst, und die
+ * flüssige Bewegung der Camcorder bleibt erhalten. Das Original bleibt dafür liegen (VideoOriginalCleanupService).
  */
 class Mp4Converter
 {
     private const array COPYABLE_AUDIO = ['aac', 'mp3'];
+
+    /** So viele Bilder prüft idet, wenn der Container keine Halbbild-Reihenfolge angibt. */
+    private const int IDET_FRAMES = 600;
 
     /** Mindestlaufzeit für ffmpeg; bei längeren Videos wächst das Limit mit der Videolänge. */
     private const int MIN_TIMEOUT_SECONDS = 1800;
@@ -25,10 +32,18 @@ class Mp4Converter
         private readonly LoggerInterface $logger,
     ) {}
 
-    public function convertToMp4(string $sourcePath, string $targetPath): bool
+    /**
+     * @param string|null $fieldOrder Halbbild-Reihenfolge (detectFieldOrder); interlaced wird immer neu kodiert
+     */
+    public function convertToMp4(string $sourcePath, string $targetPath, ?string $fieldOrder = null): bool
     {
         $probe = $this->probe($sourcePath);
         $timeout = max(self::MIN_TIMEOUT_SECONDS, (int) ceil($probe['duration'] * 4));
+
+        if (FieldOrder::isInterlaced($fieldOrder)) {
+            // Doppelte Bildrate braucht mehr Zeit
+            return $this->run($this->reencodeCommand($sourcePath, $targetPath, $fieldOrder), $timeout * 2);
+        }
 
         if (self::canBeRemuxed($probe)) {
             if ($this->run($this->remuxCommand($sourcePath, $targetPath), $timeout)) {
@@ -43,6 +58,42 @@ class Mp4Converter
         }
 
         return $this->run($this->reencodeCommand($sourcePath, $targetPath), $timeout);
+    }
+
+    /**
+     * Halbbild-Reihenfolge des Videos: tt, bb, tb, bt (interlaced) oder progressive.
+     *
+     * Erst laut Container (field_order). Fehlt die Angabe ("unknown", häufig bei MPEG-2 und digitalisierten Bändern),
+     * entscheidet der ffmpeg-Filter idet anhand der ersten Bilder.
+     */
+    public function detectFieldOrder(string $path): string
+    {
+        $declared = $this->probe($path)['video']['fieldOrder'] ?? '';
+        if ($declared === FieldOrder::PROGRESSIVE || FieldOrder::isInterlaced($declared)) {
+            return $declared;
+        }
+
+        $process = new Process([
+            'ffmpeg',
+            '-hide_banner',
+            '-nostats',
+            '-i',
+            $path,
+            '-map',
+            '0:v:0',
+            '-frames:v',
+            (string) self::IDET_FRAMES,
+            '-vf',
+            'idet',
+            '-an',
+            '-f',
+            'null',
+            '-',
+        ]);
+        $process->setTimeout(300);
+        $process->run();
+
+        return FieldOrder::fromIdet($process->getErrorOutput()) ?? FieldOrder::PROGRESSIVE;
     }
 
     /**
@@ -63,7 +114,7 @@ class Mp4Converter
     }
 
     /**
-     * @return array{video: ?array{codec: string, pixFmt: string}, audio: list<string>, duration: float, createdAt?: ?string, location?: ?string, camera?: ?string}
+     * @return array{video: ?array{codec: string, pixFmt: string, fieldOrder?: string, width?: int, height?: int}, audio: list<string>, duration: float, createdAt?: ?string, location?: ?string, camera?: ?string}
      */
     public function probe(string $path): array
     {
@@ -72,7 +123,7 @@ class Mp4Converter
             '-v',
             'error',
             '-show_entries',
-            'stream=codec_type,codec_name,pix_fmt:format=duration:format_tags=creation_time,location,com.apple.quicktime.location.ISO6709,com.apple.quicktime.make,com.apple.quicktime.model,com.android.manufacturer,com.android.model,make,model',
+            'stream=codec_type,codec_name,pix_fmt,field_order,width,height:format=duration:format_tags=creation_time,location,com.apple.quicktime.location.ISO6709,com.apple.quicktime.make,com.apple.quicktime.model,com.android.manufacturer,com.android.model,make,model',
             '-of',
             'json',
             $path,
@@ -92,6 +143,9 @@ class Mp4Converter
                 $result['video'] = [
                     'codec' => (string) ($stream['codec_name'] ?? ''),
                     'pixFmt' => (string) ($stream['pix_fmt'] ?? ''),
+                    'fieldOrder' => (string) ($stream['field_order'] ?? ''),
+                    'width' => (int) ($stream['width'] ?? 0),
+                    'height' => (int) ($stream['height'] ?? 0),
                 ];
             } elseif ($type === 'audio') {
                 $result['audio'][] = (string) ($stream['codec_name'] ?? '');
@@ -159,10 +213,16 @@ class Mp4Converter
     }
 
     /**
+     * @param string|null $fieldOrder interlaced: Halbbilder mit bwdif zu Vollbildern (send_field: aus 50i wird 50p)
+     *
      * @return list<string>
      */
-    private function reencodeCommand(string $sourcePath, string $targetPath): array
+    public function reencodeCommand(string $sourcePath, string $targetPath, ?string $fieldOrder = null): array
     {
+        $deinterlace = FieldOrder::isInterlaced($fieldOrder)
+            ? ['-vf', sprintf('bwdif=mode=send_field:parity=%s:deint=all', FieldOrder::parity((string) $fieldOrder))]
+            : [];
+
         return [
             'ffmpeg',
             '-y',
@@ -175,6 +235,7 @@ class Mp4Converter
             // Aufnahmedatum (creation_time) und andere Metadaten des Originals behalten
             '-map_metadata',
             '0',
+            ...$deinterlace,
             '-c:v',
             'libx264',
             '-preset',

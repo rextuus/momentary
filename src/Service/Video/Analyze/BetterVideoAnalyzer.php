@@ -136,9 +136,24 @@ readonly class BetterVideoAnalyzer
         return [$lat, $lon];
     }
 
-    public function convertToMp4(string $sourcePath, string $targetPath): bool
+    public function convertToMp4(string $sourcePath, string $targetPath, ?string $fieldOrder = null): bool
     {
-        return $this->mp4Converter->convertToMp4($sourcePath, $targetPath);
+        return $this->mp4Converter->convertToMp4($sourcePath, $targetPath, $fieldOrder);
+    }
+
+    public function detectFieldOrder(string $path): string
+    {
+        return $this->mp4Converter->detectFieldOrder($path);
+    }
+
+    /**
+     * Bildhöhe des ersten Videostreams in Zeilen, null wenn nicht ermittelbar.
+     */
+    public function probeHeight(string $path): ?int
+    {
+        $height = $this->mp4Converter->probe($path)['video']['height'] ?? 0;
+
+        return $height > 0 ? $height : null;
     }
 
     /**

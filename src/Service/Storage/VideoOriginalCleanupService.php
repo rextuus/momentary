@@ -12,7 +12,9 @@ use Psr\Log\LoggerInterface;
 /**
  * Räumt doppelte/temporäre Videodaten auf:
  *  - Original-Datei: Nach erfolgreicher Verarbeitung wird die konvertierte MP4 zur Quelldatei,
- *    das (meist deutlich größere) Original wird gelöscht.
+ *    das (meist deutlich größere) Original wird gelöscht. Ausnahme: interlaced Originale (Camcorder-Bänder) bleiben,
+ *    weil die MP4 deinterlacet ist und eine spätere KI-Aufbereitung die echten Halbbilder braucht; nur mit
+ *    $includeInterlaced (app:video:cleanup-originals --include-interlaced) werden auch sie gelöscht.
  *  - Analyse-Frames (frames/{id}): werden nach Abschluss nicht mehr gebraucht.
  *  - Verwaiste Ordner (frames/{id}, videos/{id} ohne zugehöriges Video).
  */
@@ -35,12 +37,12 @@ final class VideoOriginalCleanupService
      *
      * @return int freigegebene (bzw. im Dry-Run freigebbare) Bytes
      */
-    public function cleanupCompleted(Video $video, bool $dryRun = false): int
+    public function cleanupCompleted(Video $video, bool $dryRun = false, bool $includeInterlaced = false): int
     {
         $bytes = 0;
 
         if (self::DELETE_ORIGINAL_AFTER_COMPLETION) {
-            $bytes += $this->cleanupOriginal($video, $dryRun);
+            $bytes += $this->cleanupOriginal($video, $dryRun, $includeInterlaced);
         }
         if (self::DELETE_FRAMES_AFTER_COMPLETION) {
             $bytes += $this->cleanupFrames($video, $dryRun);
@@ -49,9 +51,18 @@ final class VideoOriginalCleanupService
         return $bytes;
     }
 
-    public function cleanupOriginal(Video $video, bool $dryRun = false): int
+    public function cleanupOriginal(Video $video, bool $dryRun = false, bool $includeInterlaced = false): int
     {
         if ($video->getStatus() !== VideoStatus::COMPLETED) {
+            return 0;
+        }
+
+        if ($video->isInterlaced() && !$includeInterlaced) {
+            $this->logger->info(sprintf(
+                'Cleanup: Video %d übersprungen (interlaced Original bleibt).',
+                $video->getId(),
+            ));
+
             return 0;
         }
 

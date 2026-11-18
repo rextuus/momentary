@@ -12,6 +12,7 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\QueryParameter;
 use App\Enum\VideoStatus;
 use App\Repository\VideoRepository;
+use App\Service\Video\Analyze\FieldOrder;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -81,6 +82,22 @@ class Video extends Medium
     #[ORM\Column(options: ['default' => false])]
     #[Groups(['video:detail'])]
     private bool $mergeEmptyScenesWithLastPersonScene = false;
+
+    /**
+     * Halbbild-Reihenfolge des Originals (Mp4Converter::detectFieldOrder): tt, bb, tb, bt = interlaced, sonst
+     * progressive; null = noch nicht geprüft. Wird einmal beim ersten Verarbeiten gesetzt und danach nicht mehr
+     * überschrieben, auch wenn die Quelldatei später die deinterlacte MP4 ist. Für eine spätere KI-Aufbereitung.
+     */
+    #[ORM\Column(length: 12, nullable: true)]
+    private ?string $fieldOrder = null;
+
+    /**
+     * Native Bildhöhe des Materials in Zeilen (z. B. 576 bei PAL). Beim ersten Verarbeiten per ffprobe gesetzt; bei
+     * schon hochskaliert importierten Videos von Hand (app:video:source-height). Bezugsgröße für die
+     * Mindestgröße von Gesichtern: hochskalierte Pixel enthalten keine zusätzlichen Details.
+     */
+    #[ORM\Column(nullable: true)]
+    private ?int $sourceHeight = null;
 
     #[ORM\Column(type: 'text', nullable: true)]
     #[Groups(['video:list', 'video:detail'])]
@@ -357,6 +374,33 @@ class Video extends Medium
     public function setDuration(?float $duration): self
     {
         $this->duration = $duration;
+        return $this;
+    }
+
+    public function getFieldOrder(): ?string
+    {
+        return $this->fieldOrder;
+    }
+
+    public function setFieldOrder(?string $fieldOrder): self
+    {
+        $this->fieldOrder = $fieldOrder;
+        return $this;
+    }
+
+    public function isInterlaced(): bool
+    {
+        return FieldOrder::isInterlaced($this->fieldOrder);
+    }
+
+    public function getSourceHeight(): ?int
+    {
+        return $this->sourceHeight;
+    }
+
+    public function setSourceHeight(?int $sourceHeight): self
+    {
+        $this->sourceHeight = $sourceHeight;
         return $this;
     }
 

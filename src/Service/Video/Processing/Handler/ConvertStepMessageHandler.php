@@ -5,17 +5,17 @@ declare(strict_types=1);
 namespace App\Service\Video\Processing\Handler;
 
 use App\Repository\VideoRepository;
-use App\Service\Geo\PlaceTagger;
-use App\Service\Media\CameraClock;
 use App\Service\Storage\FileManager;
 use App\Service\Storage\FileStorageService;
 use App\Service\Storage\StoragePathProvider;
 use App\Service\Video\Analyze\BetterVideoAnalyzer;
+use App\Service\Video\Analyze\FieldOrder;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Handler\Abstract\AbstractVideoMessageHandler;
 use App\Service\Video\Processing\Message\ConvertStepMessage;
 use App\Service\Video\Processing\VideoProcessMessageDispatcher;
 use App\Service\Video\Processing\VideoProcessStepMessageInterface;
+use App\Service\Video\VideoSourceMetadata;
 use App\Service\VideoProcessingService;
 use App\Service\WorkflowMachine;
 use Doctrine\ORM\EntityManagerInterface;
@@ -36,8 +36,7 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
         private readonly FileStorageService $fileStorageService,
         private readonly StoragePathProvider $pathProvider,
         private readonly EntityManagerInterface $entityManager,
-        private readonly PlaceTagger $placeTagger,
-        private readonly CameraClock $cameraClock,
+        private readonly VideoSourceMetadata $sourceMetadata,
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
     }
@@ -64,34 +63,12 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
             return;
         }
 
-        // Laufzeit merken: Grundlage für Fortschritts- und Restzeitschätzung aller weiteren Schritte
-        $duration = $this->videoAnalyzer->probeDuration($sourceAbsolutePath);
-        if ($duration !== null) {
-            $video->setDuration($duration);
-        }
-        // Aufnahmedatum: damit Videos zusammen mit Fotos sortiert und Ereignissen zugeordnet werden können
-        if ($video->getCamera() === null) {
-            $video->setCamera($this->videoAnalyzer->probeCamera($sourceAbsolutePath));
-        }
-        if ($video->getTakenAt() === null) {
-            $recordedAt = $this->videoAnalyzer->probeRecordedAt($sourceAbsolutePath);
-            $video->setRecordedAt($recordedAt?->date, $recordedAt?->source);
-            // Gemerkte Abweichung der Kamera-Uhr (z. B. restliche Videos einer schon korrigierten Reise)
-            $this->cameraClock->adjust($video);
-        }
-        if (!$video->hasLocation()) {
-            $location = $this->videoAnalyzer->probeLocation($sourceAbsolutePath);
-            if ($location !== null) {
-                $video->setLocation($location[0], $location[1]);
-            }
-        }
-        if ($video->hasLocation() && $video->getPlaceName() === null) {
-            $this->placeTagger->tag($video);
-        }
+        // Halbbilder der aktuellen Quelldatei entscheiden über die Konvertierung (siehe VideoSourceMetadata)
+        $fieldOrder = $this->sourceMetadata->read($video, $sourceAbsolutePath);
         $this->entityManager->flush();
 
-        // Wenn es bereits eine MP4-Datei ist, überspringen wir die Konvertierung
-        if (str_ends_with(strtolower($sourceAbsolutePath), '.mp4')) {
+        // Eine MP4 wird übernommen, wie sie ist; interlaced Material (z. B. AVCHD 50i) wird trotzdem deinterlacet
+        if (str_ends_with(strtolower($sourceAbsolutePath), '.mp4') && !FieldOrder::isInterlaced($fieldOrder)) {
             $this->finishCurrentStep(sprintf('Video "%s" is already MP4.', $video->getTitle()));
             return;
         }
@@ -129,7 +106,7 @@ class ConvertStepMessageHandler extends AbstractVideoMessageHandler
         $this->fileStorageService->ensureDirectoryExists($convertedFile);
         $targetAbsolutePath = $this->pathProvider->getAbsolutePath($convertedFile);
 
-        if (!$this->videoAnalyzer->convertToMp4($sourceAbsolutePath, $targetAbsolutePath)) {
+        if (!$this->videoAnalyzer->convertToMp4($sourceAbsolutePath, $targetAbsolutePath, $fieldOrder)) {
             if (is_file($targetAbsolutePath)) {
                 unlink($targetAbsolutePath);
             }

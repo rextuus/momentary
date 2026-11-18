@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Face\Provider;
 
 use App\Entity\Medium;
+use App\Entity\Video;
 use App\Service\Face\DetectedFace;
 use App\Service\Face\Embedding\EmbeddingIndex;
 use App\Service\Face\FaceRecognitionSettingsProvider;
@@ -55,7 +56,9 @@ final class InsightFaceProvider implements FaceRecognitionProviderInterface
     public function detect(string $imagePath, Medium $medium, int $prefilterDetSize): array
     {
         $settings = $this->settingsProvider->get();
-        $minFacePx = $settings->getInsightFaceMinFacePx();
+        // Hochskaliertes Material: Gesichter sind in Pixeln größer, ohne mehr Details zu enthalten
+        $scale = self::upscaleFactor($medium, $imagePath);
+        $minFacePx = (int) ceil($settings->getInsightFaceMinFacePx() * $scale);
         $maxFaces = $settings->getInsightFaceMaxFaces();
 
         $prefilter = null;
@@ -103,7 +106,8 @@ final class InsightFaceProvider implements FaceRecognitionProviderInterface
                 candidates: array_map(static fn(float $cosine): float => round($cosine * 100, 2), $candidates),
                 embedding: $face->embedding,
                 embeddingModel: $analysis->model,
-                sizePx: (int) round($face->shortSide()),
+                // In nativen Pixeln, damit Referenzen hochskalierter und originaler Videos vergleichbar sind
+                sizePx: (int) round($face->shortSide() / $scale),
             );
         }
         // Erst nach dem Abgleich merken: Gesichter desselben Bildes sind nie dieselbe Person
@@ -119,6 +123,21 @@ final class InsightFaceProvider implements FaceRecognitionProviderInterface
             'analysis' => $analysis,
             'matchMs' => (microtime(true) - $started) * 1000,
         ];
+    }
+
+    /**
+     * Wie stark das Bild gegenüber der nativen Auflösung des Videos (Video::sourceHeight) vergrößert ist; nie unter 1.
+     */
+    public static function upscaleFactor(Medium $medium, string $imagePath): float
+    {
+        $sourceHeight = $medium instanceof Video ? $medium->getSourceHeight() : null;
+        if ($sourceHeight === null || $sourceHeight <= 0) {
+            return 1.0;
+        }
+        $size = is_file($imagePath) ? getimagesize($imagePath) : false;
+        $height = $size !== false ? $size[1] : 0;
+
+        return $height > $sourceHeight ? $height / $sourceHeight : 1.0;
     }
 
     /**

@@ -3,6 +3,30 @@ import subprocess
 import json
 from pathlib import Path
 
+# Bildaufbereitung für die Gesichtserkennung (gilt für Erstanalyse und Refinement):
+# - Deinterlacing nur für Bilder, die als interlaced markiert sind (bwdif, ein Bild je Vollbild); progressives Material
+#   bleibt unberührt. Muss vor fps stehen, weil bwdif die Nachbarbilder braucht. Neu verarbeitete Videos sind nach der
+#   Konvertierung ohnehin progressiv, das ist die Absicherung für alte MP4s.
+# - Nicht-quadratische Pixel (SD: SAR 16:15 bei 4:3, 64:45 bei anamorphem 16:9) entzerren: nur die Breite wird
+#   angepasst, die Zeilenzahl bleibt; Breite immer gerade. Sonst sind Gesichter bis zu 30 % zu schmal.
+# - Nie verkleinern, außer auf höchstens 1920 px lange Seite (Hoch- und Querformat), Kanten gerade.
+# - JPEG in hoher Qualität (-q:v 2): Kompressionsartefakte verschlechtern Detektion und Embeddings.
+DEINTERLACE = "bwdif=mode=send_frame:parity=auto:deint=interlaced"
+SQUARE_PIXELS = "scale=w='trunc(iw*if(gt(sar,0),sar,1)/2)*2':h=ih:flags=lanczos,setsar=1"
+MAX_LONG_SIDE = "scale=w='if(gte(iw,ih),min(1920,iw),-2)':h='if(gte(iw,ih),-2,min(1920,ih))':flags=lanczos"
+JPEG_QUALITY = ["-q:v", "2"]
+
+
+def filter_chain(fps=None, pixel_format=True):
+    """Filterkette für ein Segment; fps=None für ein einzelnes Bild."""
+    parts = [DEINTERLACE]
+    if fps is not None:
+        parts.append(f"fps={fps}")
+    parts += [SQUARE_PIXELS, MAX_LONG_SIDE]
+    if pixel_format:
+        parts.append("format=yuvj420p")
+    return ",".join(parts)
+
 
 def count_new_frames(frame_dir, start_number):
     """Zählt die Frames, die ab start_number geschrieben wurden (also vom aktuellen Segment)."""
@@ -37,8 +61,8 @@ def run_ffmpeg(video_path, frame_dir, fps, s_time, d_time, start_number):
     als Fallback dient -strict unofficial.
     """
     attempts = [
-        ("fps + yuvj420p", f"fps={fps},format=yuvj420p", []),
-        ("fps + strict unofficial", f"fps={fps}", ["-strict", "unofficial"]),
+        ("fps + yuvj420p", filter_chain(fps), JPEG_QUALITY),
+        ("fps + strict unofficial", filter_chain(fps, pixel_format=False), ["-strict", "unofficial"] + JPEG_QUALITY),
     ]
 
     # Clips kürzer als ein Intervall: der fps-Filter liefert dort evtl. kein Frame -> erstes Frame nehmen
@@ -50,8 +74,12 @@ def run_ffmpeg(video_path, frame_dir, fps, s_time, d_time, start_number):
         segment_length = None if total is None else max(0.0, total - (s_time or 0))
 
     if segment_length is not None and segment_length < interval:
-        attempts.append(("single frame + yuvj420p", "format=yuvj420p", ["-frames:v", "1"]))
-        attempts.append(("single frame + strict unofficial", "null", ["-frames:v", "1", "-strict", "unofficial"]))
+        attempts.append(("single frame + yuvj420p", filter_chain(), ["-frames:v", "1"] + JPEG_QUALITY))
+        attempts.append((
+            "single frame + strict unofficial",
+            filter_chain(pixel_format=False),
+            ["-frames:v", "1", "-strict", "unofficial"] + JPEG_QUALITY,
+        ))
 
     errors = []
     for label, vf, extra in attempts:

@@ -154,4 +154,42 @@ final class InsightFaceProviderTest extends TestCase
             'faces' => $faces,
         ];
     }
+
+    public function testUpscaledVideoRaisesTheMinimumFaceSizeAndStoresNativeSize(): void
+    {
+        // Frame 1920×1080 eines auf HD hochgerechneten PAL-Bands (576 Zeilen): Faktor 1,875
+        file_put_contents($this->image, self::jpegHeader(1920, 1080));
+        $video = self::video()->setSourceHeight(576);
+        $index = $this->createStub(EmbeddingIndex::class);
+        $index->method('candidates')->willReturn([]);
+
+        $faces = $this->provider(
+            [self::analysis([self::face()])],
+            new FaceRecognitionSettings()->setInsightFaceMinFacePx(40),
+            $index,
+        )->detectFaces($this->image, $video);
+
+        self::assertStringContainsString('min_face_px=75', $this->urls[0], '40 native Pixel × 1,875');
+        self::assertSame(53, $faces[0]->sizePx, 'kürzere Seite 100 px / 1,875, in nativen Pixeln');
+    }
+
+    public function testOriginalResolutionNeedsNoScaling(): void
+    {
+        file_put_contents($this->image, self::jpegHeader(1024, 576));
+
+        self::assertSame(1.0, InsightFaceProvider::upscaleFactor(self::video()->setSourceHeight(576), $this->image));
+        self::assertSame(1.0, InsightFaceProvider::upscaleFactor(self::video(), $this->image), 'ohne sourceHeight');
+    }
+
+    /**
+     * Kleinstmögliches JPEG, aus dem getimagesize() die Größe liest (SOI, SOF0, EOI); GD ist im Image nicht installiert.
+     */
+    private static function jpegHeader(int $width, int $height): string
+    {
+        return (
+            "\xFF\xD8\xFF\xC0\x00\x11\x08"
+            . pack('nn', $height, $width)
+            . "\x03\x01\x22\x00\x02\x11\x01\x03\x11\x01\xFF\xD9"
+        );
+    }
 }

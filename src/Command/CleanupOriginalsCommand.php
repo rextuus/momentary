@@ -30,19 +30,26 @@ class CleanupOriginalsCommand extends Command
     protected function configure(): void
     {
         $this->addOption('dry-run', null, InputOption::VALUE_NONE, 'Nur anzeigen, was freigegeben würde.');
+        $this->addOption(
+            'include-interlaced',
+            null,
+            InputOption::VALUE_NONE,
+            'Auch interlaced Originale löschen (sonst bleiben sie für eine spätere KI-Aufbereitung erhalten).',
+        );
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
         $dryRun = (bool) $input->getOption('dry-run');
+        $includeInterlaced = (bool) $input->getOption('include-interlaced');
         $verb = $dryRun ? 'Würde freigeben' : 'Freigegeben';
 
         // 1. Fertige Videos: Original + Frames
         $count = 0;
         $totalBytes = 0;
         foreach ($this->videoRepository->findBy(['status' => VideoStatus::COMPLETED]) as $video) {
-            $bytes = $this->cleanupService->cleanupCompleted($video, $dryRun);
+            $bytes = $this->cleanupService->cleanupCompleted($video, $dryRun, $includeInterlaced);
             if ($bytes > 0) {
                 $count++;
                 $totalBytes += $bytes;
