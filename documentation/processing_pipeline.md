@@ -45,6 +45,12 @@ und `FailedStepSubscriber` setzt das Video auf `error`.
 Wird ein Video gelöscht, während eine seiner Messages unterwegs ist, wirft der Handler `VideoGoneException`;
 `DiscardGoneVideoMessageMiddleware` verwirft die Message dann still (kein Retry, kein `failed`).
 
+### Rohe Schnitte
+
+Schritt 2 speichert die Schnitte der Szenenerkennung am Video (`Video::sceneCuts`, Sekunden ab Beginn), bevor Schritt
+18 leere Szenen zusammenlegt. Gebraucht für den Abgleich einer später angehängten, aufbereiteten Fassung mit dem
+Original (`face_recognition.md`, Designentscheidungen).
+
 ### Neuverarbeiten
 
 Schritt 2 (Szenenerkennung) entfernt zuerst, was ein früherer Durchlauf hinterlassen hat (`VideoAnalysisReset`): alle

@@ -99,6 +99,16 @@ class Video extends Medium
     #[ORM\Column(nullable: true)]
     private ?int $sourceHeight = null;
 
+    /**
+     * Schnitte laut Szenenerkennung (Sekunden ab Videobeginn), vor dem Zusammenlegen leerer Szenen. Die gespeicherten
+     * Szenen sind danach keine vollständige Schnittliste mehr; gebraucht wird sie, um eine später angehängte,
+     * aufbereitete Fassung mit dem Original abzugleichen (documentation/face_recognition.md).
+     *
+     * @var list<float>|null
+     */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $sceneCuts = null;
+
     #[ORM\Column(type: 'text', nullable: true)]
     #[Groups(['video:list', 'video:detail'])]
     private ?string $errorMessage = null;
@@ -401,6 +411,23 @@ class Video extends Medium
     public function setSourceHeight(?int $sourceHeight): self
     {
         $this->sourceHeight = $sourceHeight;
+        return $this;
+    }
+
+    /**
+     * @return list<float>|null
+     */
+    public function getSceneCuts(): ?array
+    {
+        return $this->sceneCuts;
+    }
+
+    /**
+     * @param list<float>|null $sceneCuts
+     */
+    public function setSceneCuts(?array $sceneCuts): self
+    {
+        $this->sceneCuts = $sceneCuts;
         return $this;
     }
 

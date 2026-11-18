@@ -61,9 +61,9 @@ Seit November 2026 erkennt InsightFace (selbst gehostet, `face_recognition.md`);
 - [ ] Mit `app:face:analyze` an echten Homevideos (VHS/Hi8/MiniDV) messen: Histogramm der besten Ähnlichkeiten,
   zugeordnet/vorgeschlagen/unbekannt; Schwellen danach festlegen.
 - [ ] Aufbereitete Fassung (HitPaw/VikPea) als zusätzliche Wiedergabe-Datei anhängen, mit Synchronitätsprüfung
-  (Dauer, Startzeit, Schnitte gegen das Original; Versatz melden, Drift ablehnen). Dafür beim Szenenerkennen die rohen
-  Schnitte speichern (die gespeicherten Szenen sind nach dem Zusammenlegen leerer Szenen keine vollständige Schnittliste
-  mehr). Danach nur Web-Fassung, Jellyfin-Export und ggf. Vorschaubilder neu, keine Gesichtsanalyse.
+  (Dauer, Startzeit, Schnitte gegen das Original; Versatz melden, Drift ablehnen). Die rohen Schnitte des Originals
+  stehen seit 11/2026 in `Video::sceneCuts`. Danach nur Web-Fassung, Jellyfin-Export und ggf. Vorschaubilder neu,
+  keine Gesichtsanalyse.
 - [ ] Aufnahmezeit digitalisierter Bänder: DV-Aufnahmedatum aus den Subcodes lesen (z. B. dvrescue/MediaInfo);
   Dateiname und `creation_time` sind bei Bändern meist das Digitalisierungsdatum.
 Ältere Punkte (aus der Rekognition-Zeit):

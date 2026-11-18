@@ -141,6 +141,11 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
                 ->getValues(),
         );
         self::assertNotNull($updatedVideo->getConvertedFile(), 'Konvertierte Datei sollte hinterlegt sein');
+        self::assertSame(
+            [10.0, 25.5, 40.0],
+            $updatedVideo->getSceneCuts(),
+            'rohe Schnitte bleiben nach dem Zusammenlegen',
+        );
         self::assertEqualsWithDelta(60.0, $updatedVideo->getDuration(), 0.01, 'Videolänge für Zeitschätzungen');
         $tagged = $updatedVideo->getProgressFor(VideoStatus::TAGGING_SCENES);
         self::assertNotNull($tagged, 'Tagging zählt seinen Fortschritt');

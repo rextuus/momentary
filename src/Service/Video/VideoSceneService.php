@@ -20,6 +20,7 @@ readonly class VideoSceneService
     public function storeScenes(Video $video, array $scenes): void
     {
         $this->entityManager->persist($video); // Stelle sicher, dass das Video persistiert ist
+        $video->setSceneCuts(self::cuts($scenes));
         foreach ($scenes as $data) {
             $scene = new VideoScene();
             $scene->setSceneNumber((int) $data['scene_number']);
@@ -30,5 +31,26 @@ readonly class VideoSceneService
         }
 
         $this->entityManager->flush();
+    }
+
+    /**
+     * Rohe Schnitte: Beginn jeder Szene außer der ersten, aufsteigend, auf Millisekunden gerundet.
+     *
+     * @param list<array<string, mixed>> $scenes
+     *
+     * @return list<float>
+     */
+    public static function cuts(array $scenes): array
+    {
+        $cuts = [];
+        foreach ($scenes as $data) {
+            $start = round((float) ($data['start_seconds'] ?? 0.0), 3);
+            if ($start > 0.0) {
+                $cuts[] = $start;
+            }
+        }
+        sort($cuts);
+
+        return array_values(array_unique($cuts, \SORT_REGULAR));
     }
 }

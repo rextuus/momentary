@@ -163,8 +163,9 @@ HD-Gesicht Median 0,73 (min. 0,47); neue Kette 6 Gesichter, 0,83, 0,75 (min. 0,6
   Gesichtserkennung genutzt. Code darf nicht voraussetzen, dass analysierte und exportierte Datei dieselbe sind.
 - **Synchronität wird beim Anhängen geprüft.** Weil alle Zeitpunkte vom Original stammen, muss die aufbereitete Fassung
   deckungsgleich sein: Dauer (Toleranz ~2 Frames), normalisierte Startzeit, Schnitte der Szenenerkennung gegen die
-  des Originals. Konstanter Versatz: melden, optional speichern; Drift oder fehlende Schnitte: ablehnen. Eine andere
-  Bildrate ist erlaubt. (Noch nicht gebaut, siehe `TODO.md`.)
+  des Originals (`Video::sceneCuts`, rohe Schnitte vor dem Zusammenlegen leerer Szenen). Konstanter Versatz: melden,
+  optional speichern; Drift oder fehlende Schnitte: ablehnen. Eine andere Bildrate ist erlaubt. (Das Anhängen ist
+  noch nicht gebaut, siehe `TODO.md`.)
 - **Dedupe aufeinanderfolgender Frames gibt es bewusst nicht:** Das Embedding ist dann schon berechnet, und Tracking,
   Konsolidierung und die Zeitabschnitte je Person in der Suche brauchen jede Sichtung.
 
