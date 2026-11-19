@@ -284,6 +284,9 @@ Ohne Komodo (Notfall): im Stack-Ordner `sudo make prod-up`, `sudo make prod-back
 - **Pre-Deploy bricht ab „In Komodo fehlen diese Variablen“:** Variable unter Settings → Variables anlegen
   (Namen genau wie angezeigt) oder Zeile aus dem Environment in `momentary.toml` entfernen.
 - **Pre-Deploy bricht ab wegen VOLUME_PREFIX:** In Produktion darf `VOLUME_PREFIX` nicht gesetzt sein.
+- **Pre-Deploy startet die Datenbank, obwohl der Stack nie lief:** Ein früherer Deploy hat das Volume schon
+  angelegt. Ist die Datenbank noch leer (migrate lief nie durch), überspringt der Dump die Sicherung und der Deploy
+  läuft weiter; die eigentliche Ursache des ersten Fehlschlags steht dann im `up`-Teil des Logs.
 - **Deploy scheitert mit „bind source path does not exist“:** `/srv/momentary/storage`, `…/keys` oder `…/backups`
   fehlt (Inbetriebnahme Schritt 3).
 - **Deploy hängt bis zum Timeout:** `dc ps` – welcher Dienst ist nicht „healthy“? `dc logs <dienst>`. `migrate` mit

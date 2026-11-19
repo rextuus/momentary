@@ -41,7 +41,16 @@ mysqldump -h database -u root \
 
 # mysqldump schreibt am Ende „-- Dump completed“; fehlt die Zeile, ist der Dump unvollständig.
 tail -n 1 "$tmp" | grep -q '^-- Dump completed' || { echo "Dump unvollständig (Abschlusszeile fehlt)." >&2; exit 1; }
-grep -q -m 1 '^CREATE TABLE' "$tmp" || { echo "Dump enthält keine Tabellen." >&2; exit 1; }
+if ! grep -q -m 1 '^CREATE TABLE' "$tmp"; then
+  # Ein früherer Deploy hat die Datenbank angelegt, migrate lief aber nie durch: nichts zu sichern, und der Deploy
+  # muss weiterlaufen dürfen, sonst kommt er nie bis zur Migration. Täglich ist eine leere Datenbank ein Fehler.
+  if [ "$reason" = pre-deploy ]; then
+    echo "Datenbank ${MYSQL_DATABASE} ist noch leer (keine Tabellen) – Sicherung übersprungen."
+    exit 0
+  fi
+  echo "Dump enthält keine Tabellen." >&2
+  exit 1
+fi
 
 gzip -6 "$tmp"
 gzip -t "$tmp.gz"
