@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Momentary – ein Image für Webserver und Worker (Apache + PHP, ffmpeg, Python für Szenen, Fotos und Whisper).
 # Ziele: `dev` (Code wird eingebunden, compose.yaml) und `prod` (Code steckt im Image, compose.prod.yaml).
-FROM php:8.5-apache AS base
+FROM php:8.5.13-apache AS base
 
 # PHP-Erweiterungen bauen, danach nur die Laufzeit-Bibliotheken behalten (Muster der offiziellen PHP-Images)
 RUN set -eux; \
