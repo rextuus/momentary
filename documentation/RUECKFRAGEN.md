@@ -2,37 +2,37 @@
 
 Offene Entscheidungen aus der Arbeit an Gesichtserkennung und Homevideos. Antwort gern direkt hier darunter.
 
+## Entschieden (19.11.2026)
+
+- **DV-Testdateien:** zwei Beispiele unter `dv_example/` (Befund in `dv_aufnahmedatum.md`), echte Kassette folgt.
+- **DV auslesen:** eigener Python-Leser statt dvrescue; Kamerazeit als Europe/Berlin; Stufe 1 = Segmente, `takenAt`,
+  Szenengrenzen. Gebaut (`dv_aufnahmedatum.md` → Umsetzung).
+- **Früheste plausible Kamerazeit:** 1995-01-01; Werksdatum (1. Januar, erste Stunde) verwerfen; über Kassetten
+  wiederkehrende Tage nur als Hinweis zur Prüfung, Datum gilt weiter. DV ohne gültige Subcodes (analoge Hi8/Video8 über Digital8) ist der
+  Normalfall: Rückfall auf die bisherigen Quellen, Segment ohne Datum, von Hand nachtragbar. Beschrieben in
+  `dv_aufnahmedatum.md` (6, 7); umgesetzt wird es zusammen mit dem DV-Aufnahmedatum.
+- **Bestätigte Gesichter beim Neuverarbeiten:** bleiben erhalten, über Zeitpunkt und Box-IoU (`VerifiedFaceCarryover`,
+  `face_recognition.md` → Neuverarbeiten). Gebaut und getestet.
+- **Dev-Datenbank:** nach `mysqldump` migriert (Sicherungen unter `var/backups/`). Jede Migration vorher an einer
+  Kopie testen, auch kleine.
+- **Was gilt als bestätigt:** jede Zuordnung von Hand (Liste in `face_recognition.md` → Neuverarbeiten). Gebaut.
+- **Ablehnungen („nicht diese Person“):** sollen ebenfalls erhalten bleiben; zurückgestellt, Plan in `TODO.md`
+  (Gesichtserkennung, A).
+
 ## DV-Aufnahmedatum (Vorschlag: `dv_aufnahmedatum.md`)
 
-1. **Testdatei:** Lokal gibt es keine echte DV-AVI. Getestet habe ich mit einer künstlichen Kassette; ob echte
-   Camcorder `rec_start` setzen und wie robust dvrescue bei Bandfehlern ist, zeigt nur eine echte Datei. Bitte eine
-   (gern kurze, z. B. 2–3 Aufnahmen) MiniDV- oder Digital8-AVI bereitstellen, am besten mit Aufnahmen von
-   verschiedenen Tagen.
-2. **dvrescue ins App-Image:** über das MediaArea-Apt-Repository (Fremdquelle im Build) oder feste `.deb`-Dateien mit
-   Prüfsumme? Mein Vorschlag: feste `.deb` mit Prüfsumme, dann baut Komodo reproduzierbar.
-3. **Früheste plausible Aufnahmezeit:** `CameraClock::EARLIEST_PLAUSIBLE` ist 2000-01-01. Gibt es Aufnahmen vor 2000
-   (MiniDV ab 1995, Digital8 ab 1999, Hi8/VHS noch älter, dort aber ohne Datum)? Vorschlag: 1990-01-01, oder für DV eine
-   eigene Grenze.
-4. **Zeitzone der Kamerazeit:** DV speichert Ortszeit ohne Zone. Als Europe/Berlin lesen, wie beim Dateinamen? Bei
-   Urlaubsaufnahmen im Ausland liegt das dann um die Zeitverschiebung daneben.
-5. **Umfang der ersten Stufe:** Mein Vorschlag ist (a) Segmente lesen und speichern, `takenAt` = erstes Segment,
-   Segmentgrenzen als Szenengrenzen. Ereignisse, Pools und Zeitleiste je Segment erst danach. Passt die Reihenfolge?
-6. **Pools/Freigaben:** Gehört eine Kassette mit Weihnachten 2005 und Urlaub 2006 dann ganz in beide Pools, oder soll es
+1. **Echte Kassette:** kommt heute Abend (2–3 Aufnahmen hintereinander). Daran prüfen: setzt die Kamera REC ST am
+   Aufnahmebeginn (angenommen: Bit = 0 heißt Beginn; unbestätigt), Datumssprung, PAL, AVI aus der Capture-Software.
+   Gegenprobe mit dvrescue (lokal, `docker/dvrescue-check/`); Abweichungen werden aufgelistet.
+2. **Pools/Freigaben:** Gehört eine Kassette mit Weihnachten 2005 und Urlaub 2006 dann ganz in beide Pools, oder soll es
    später Freigaben je Segment/Szene geben?
 
 ## Neuverarbeiten
 
-7. Beim Neuverarbeiten werden jetzt alte Szenen und Gesichter ersetzt. Von Hand geänderte Szeneneinstellungen
-   (öffentlich, Gruppen, Tags) und bestätigte Gesichter dieses Videos gehen dabei verloren; benannte Personen bleiben
-   und werden neu zugeordnet. Ist das so gewollt, oder sollen bestätigte Zuordnungen erhalten bleiben (z. B. über die
-   Bildposition auf die neuen Gesichter übertragen)?
+3. **Szeneneinstellungen** (öffentlich, Gruppen, Tags von Hand) gehen beim Neuverarbeiten weiterhin verloren, weil die
+   Szenen neu entstehen. Sollen sie ähnlich übertragen werden (über die Zeitüberlappung alter und neuer Szenen)?
 
 ## Aufbereitete Fassung
 
-8. Beim späteren Anhängen: eigene Upload-Schaltfläche auf der Videoseite zusätzlich zum Command, oder reicht der
+4. Beim späteren Anhängen: eigene Upload-Schaltfläche auf der Videoseite zusätzlich zum Command, oder reicht der
    Import-Ordner (`enhanced/<videoId>_….mp4`) für die großen Dateien?
-
-## Sonstiges
-
-9. Dev-Datenbank `momentary_dev` ist noch nicht migriert (vier neue Migrationen). Soll ich sie nach einer Sicherung
-   migrieren, oder machst du das selbst?

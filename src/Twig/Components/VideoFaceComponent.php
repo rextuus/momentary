@@ -65,6 +65,7 @@ final class VideoFaceComponent extends AbstractController
             return $this->redirectToRoute('person_detail', ['id' => $currentPerson->getId()]);
         }
         $this->videoFace->setPerson($newPerson);
+        $this->videoFace->setIsVerified(true);
         $newPerson->addVideoFace($this->videoFace);
 
         $this->entityManager->persist($currentPerson);

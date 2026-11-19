@@ -57,6 +57,7 @@ final class PersonName extends AbstractController
         }
         $this->person->setName($name);
         $this->person->setIdentified(true);
+        $this->person->confirmFaces();
         $this->person->setDescription(sprintf(
             'Was identified as %s at %s',
             $this->person->getName(),

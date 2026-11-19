@@ -25,6 +25,7 @@ class PersonMerger
 
     /**
      * Alle Gesichter von $source gehen an $target; $source bleibt als "zusammengeführt" mit Verweis erhalten.
+     * Die umgehängten Gesichter gelten als von Hand bestätigt, die eigenen von $target bleiben, wie sie sind.
      */
     public function merge(Person $source, Person $target): Person
     {
@@ -34,6 +35,7 @@ class PersonMerger
 
         // Nur umhängen, nicht aus $source entfernen: die Sammlung hat orphanRemoval, das Gesicht würde sonst gelöscht
         foreach ($source->getVideoFaces()->toArray() as $face) {
+            $face->setIsVerified(true);
             $face->setPerson($target);
             $target->addVideoFace($face);
         }
@@ -63,7 +65,7 @@ class PersonMerger
 
     /**
      * Einer Person einen Namen geben. Gibt es schon eine (nicht zusammengeführte) Person mit diesem Namen, wird
-     * zusammengeführt statt eine zweite "Oma" anzulegen.
+     * zusammengeführt statt eine zweite "Oma" anzulegen. Ihre Gesichter gelten danach als bestätigt.
      *
      * @return Person die Person, die jetzt den Namen trägt
      */
@@ -82,6 +84,7 @@ class PersonMerger
         $person->setName($name);
         $person->setStatus(PersonStatus::IDENTIFIED);
         $person->setIdentified(true);
+        $person->confirmFaces();
         $this->entityManager->flush();
         $this->reindex($person);
 

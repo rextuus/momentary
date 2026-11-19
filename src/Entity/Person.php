@@ -226,6 +226,17 @@ class Person
         return $this->videoFaces;
     }
 
+    /**
+     * Alle Gesichter als von Hand bestätigt markieren (Benennen, Zusammenführen). Bestätigte Gesichter bleiben beim
+     * Neuverarbeiten erhalten (VerifiedFaceCarryover) und zeigt die Massen-Bestätigung nicht mehr.
+     */
+    public function confirmFaces(): void
+    {
+        foreach ($this->videoFaces as $face) {
+            $face->setIsVerified(true);
+        }
+    }
+
     public function addVideoFace(VideoFace $videoFace): static
     {
         if (!$this->videoFaces->contains($videoFace)) {

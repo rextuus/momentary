@@ -281,6 +281,7 @@ class PersonResolverComponent extends AbstractController
             foreach ($personsToMerge as $p) {
                 foreach ($p->getVideoFaces() as $face) {
                     $face->setPerson($targetPerson);
+                    $face->setIsVerified(true);
                 }
                 if ($p !== $targetPerson) {
                     $p->setStatus(PersonStatus::MERGED);
@@ -309,11 +310,13 @@ class PersonResolverComponent extends AbstractController
             $currentPerson->setCharacteristics($this->newCharacteristics);
             $currentPerson->setStatus(PersonStatus::IDENTIFIED);
             $currentPerson->setIdentified(true); // Kompatibilität
+            $currentPerson->confirmFaces();
 
             // Auch hier: mergeIds verarbeiten
             foreach ($this->getMergePersons() as $p) {
                 foreach ($p->getVideoFaces() as $face) {
                     $face->setPerson($currentPerson);
+                    $face->setIsVerified(true);
                 }
                 $p->setStatus(PersonStatus::MERGED);
                 $p->setMergedInto($currentPerson);
@@ -508,6 +511,7 @@ class PersonResolverComponent extends AbstractController
         foreach ($personsToMerge as $p) {
             foreach ($p->getVideoFaces() as $face) {
                 $face->setPerson($targetPerson);
+                $face->setIsVerified(true);
             }
             if ($p !== $targetPerson) {
                 $p->setStatus(PersonStatus::MERGED);

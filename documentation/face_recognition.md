@@ -171,6 +171,40 @@ HD-Gesicht Median 0,73 (min. 0,47); neue Kette 6 Gesichter, 0,83, 0,75 (min. 0,6
 - **Dedupe aufeinanderfolgender Frames gibt es bewusst nicht:** Das Embedding ist dann schon berechnet, und Tracking,
   Konsolidierung und die Zeitabschnitte je Person in der Suche brauchen jede Sichtung.
 
+## Neuverarbeiten
+
+Die Szenenerkennung entfernt vorher alte Szenen und Gesichter (`VideoAnalysisReset`). Bestätigte Gesichter
+(`VideoFace.isVerified`) überstehen das (`VerifiedFaceCarryover`, Zuordnung in `CarryoverMatcher`).
+
+Bestätigt ist jedes Gesicht, das von Hand einer Person zugeordnet wurde:
+- einzeln umgehängt (Gesicht auf der Personen-/Videoseite, „Neu zuordnen“, auch „Unbekannt“ für ein Gesicht);
+- Vorschlag übernommen oder zusammengeführt (Tinder, Schnell zuordnen, Personen identifizieren, Doppelte Personen,
+  Personendetail): die umgehängten Gesichter, nicht die, die die Zielperson schon hatte;
+- benannt oder umbenannt (Personendetail, Ereignisseite, Namenshinweis, Identifizieren): alle Gesichter der Person;
+- in der Massen-Bestätigung.
+
+Nicht bestätigt wird beim Markieren einer ganzen Person als unbekannt/ausgeblendet (passiert auch automatisch nach
+zu vielen Anzeigen) und beim Abspalten eines Gesichts zum späteren Zuordnen. Die API ändert keine Personen. Ablehnungen
+(„nicht diese Person“) werden noch nicht gemerkt (`TODO.md`).
+
+Ablauf:
+
+1. Vor dem Entfernen werden Zeitpunkt, Box und Person jedes bestätigten Gesichts am Video gemerkt
+   (`Video.verifiedFaceCarryover`). Deren Personen räumt das Entfernen nicht auf, auch automatisch angelegte nicht.
+   Benannte oder sonst bearbeitete Personen bleiben ohnehin immer.
+2. Die Analyse läuft normal: Jedes neue Gesicht wird über die Embeddings zugeordnet.
+3. Zu Beginn der Konsolidierung bekommt jedes gemerkte Gesicht höchstens ein neues Gesicht: Zeitabstand höchstens ein
+   halbes Intervall der Analyse-Frames (`0,5 / analysisFps`, mindestens 1 s, weil Zeitstempel ganze Sekunden sind;
+   bei 0,2 fps also 2,5 s) und Box-IoU ≥ 0,5. Die kleinste Zeitdifferenz gewinnt, danach die größte Überlappung. Das
+   neue Gesicht übernimmt Person und Bestätigung und ist damit Anker der Konsolidierung. Hatte der Embedding-Abgleich
+   einem anderen Gesicht im selben Frame dieselbe Person gegeben, bekommt dieses eine eigene automatische Person (zwei
+   Gesichter eines Frames sind nie dieselbe Person).
+4. Die Merkliste wird geleert. Automatische Personen, die dabei leer geworden sind (auch nicht wiedergefundene),
+   werden aufgeräumt.
+
+Nur automatisch zugeordnete Gesichter werden also neu entschieden. Bricht ein Lauf vor der Konsolidierung ab, bleibt
+die Merkliste stehen, und der nächste Lauf ergänzt sie. `app:face:analyze --save` nutzt dieselbe Merkliste.
+
 ## Löschen
 
 `VideoDeleter` (und `PhotoDeleter`, `PersonDeleter`): Datenbank per Cascade, Ordner `videos/<id>`, `frames/<id>`,

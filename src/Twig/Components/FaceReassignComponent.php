@@ -89,6 +89,7 @@ class FaceReassignComponent extends AbstractController
 
         $this->entityManager->persist($newPerson);
         $face->setPerson($newPerson);
+        $face->setIsVerified(true);
 
         $this->checkOldPerson($oldPerson);
 
@@ -108,6 +109,7 @@ class FaceReassignComponent extends AbstractController
 
         $oldPerson = $face->getPerson();
         $face->setPerson($targetPerson);
+        $face->setIsVerified(true);
 
         // Falls die Zielperson UNKNOWN oder WASTED war, aber nun aktiv zugewiesen wird,
         // setzen wir sie auf IDENTIFIED (optional, je nach Workflow)
@@ -140,6 +142,7 @@ class FaceReassignComponent extends AbstractController
 
         $this->entityManager->persist($newPerson);
         $face->setPerson($newPerson);
+        $face->setIsVerified(true);
 
         $this->checkOldPerson($oldPerson);
 

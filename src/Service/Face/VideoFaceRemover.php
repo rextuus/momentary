@@ -24,10 +24,16 @@ class VideoFaceRemover
         private readonly FaceForgetter $faceForgetter,
     ) {}
 
-    public function removeAll(Video $video): void
+    /**
+     * @param list<int> $keepPersonIds Personen, die trotz fehlender Gesichter bleiben (VerifiedFaceCarryover)
+     */
+    public function removeAll(Video $video, array $keepPersonIds = []): void
     {
         $videoId = (int) $video->getId();
-        $personIds = $this->orphanedPersonCleaner->personIdsOfMedium($videoId);
+        $personIds = array_values(array_diff(
+            $this->orphanedPersonCleaner->personIdsOfMedium($videoId),
+            $keepPersonIds,
+        ));
         // Aus der Datenbank, nicht aus Video::getFaces(): die Collection ist im selben EntityManager nicht immer aktuell
         // (FaceRecorder setzt nur VideoFace::medium)
         $faces = $this->entityManager->getRepository(VideoFace::class)->findBy(['medium' => $video]);

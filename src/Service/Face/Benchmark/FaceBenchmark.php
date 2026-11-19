@@ -12,6 +12,7 @@ use App\Service\Face\FaceRecorder;
 use App\Service\Face\InsightFace\FaceServiceClient;
 use App\Service\Face\Provider\FaceRecognitionProviders;
 use App\Service\Face\Provider\InsightFaceProvider;
+use App\Service\Face\VerifiedFaceCarryover;
 use App\Service\Face\VideoFaceConsolidator;
 use App\Service\Face\VideoFaceRemover;
 
@@ -39,6 +40,7 @@ class FaceBenchmark
         private readonly VideoSceneRepository $sceneRepository,
         private readonly VideoFaceConsolidator $consolidator,
         private readonly VideoFaceRemover $faceRemover,
+        private readonly VerifiedFaceCarryover $carryover,
     ) {}
 
     /**
@@ -64,7 +66,8 @@ class FaceBenchmark
         }
         $report = new FaceBenchmarkReport($prefilterDetSize);
         if ($save) {
-            $this->faceRemover->removeAll($video);
+            // Bestätigte Gesichter wie beim Neuverarbeiten auf die neuen übertragen
+            $this->faceRemover->removeAll($video, $this->carryover->remember($video));
         }
 
         $settings = $this->settingsProvider->get();
@@ -142,6 +145,7 @@ class FaceBenchmark
         }
 
         if ($save) {
+            $this->carryover->apply($video);
             $this->consolidator->consolidate($video);
         }
 

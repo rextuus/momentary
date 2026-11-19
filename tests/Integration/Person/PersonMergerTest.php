@@ -35,7 +35,7 @@ final class PersonMergerTest extends KernelTestCase
         $source = PersonFactory::createOne(['status' => PersonStatus::NEW]);
         $target = PersonFactory::createOne(['name' => 'Oma', 'status' => PersonStatus::IDENTIFIED]);
         VideoFaceFactory::createMany(3, ['person' => $source]);
-        VideoFaceFactory::createOne(['person' => $target]);
+        $own = VideoFaceFactory::createOne(['person' => $target]);
 
         $this->merger()->merge($this->reload($source), $this->reload($target));
         $em = $this->em();
@@ -46,6 +46,12 @@ final class PersonMergerTest extends KernelTestCase
         $merged = $em->find(Person::class, $source->getId());
         self::assertSame(PersonStatus::MERGED, $merged?->getStatus());
         self::assertSame($target->getId(), $merged->getMergedInto()?->getId());
+        self::assertSame(
+            3,
+            $em->getRepository(VideoFace::class)->count(['isVerified' => true]),
+            'umgehängte bestätigt',
+        );
+        self::assertFalse($em->find(VideoFace::class, $own->getId())?->isVerified(), 'eigene bleiben automatisch');
     }
 
     public function testNamingWithAnExistingNameMergesIntoThatPerson(): void
@@ -63,11 +69,14 @@ final class PersonMergerTest extends KernelTestCase
     public function testNamingWithANewNameIdentifiesThePerson(): void
     {
         $unknown = PersonFactory::createOne(['status' => PersonStatus::NEW]);
+        $face = VideoFaceFactory::createOne(['person' => $unknown]);
 
         $result = $this->merger()->name($this->reload($unknown), 'Joscha');
 
         self::assertSame('Joscha', $result->getName());
         self::assertSame(PersonStatus::IDENTIFIED, $result->getStatus());
+        $this->em()->clear();
+        self::assertTrue($this->em()->find(VideoFace::class, $face->getId())?->isVerified(), 'Benennen bestätigt');
     }
 
     public function testFinderSuggestsSimilarPersonsKeepingTheNamedOne(): void

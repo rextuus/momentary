@@ -109,6 +109,15 @@ class Video extends Medium
     #[ORM\Column(type: 'json', nullable: true)]
     private ?array $sceneCuts = null;
 
+    /**
+     * Bestätigte Gesichter aus dem letzten Durchlauf, gemerkt beim Neuverarbeiten (VerifiedFaceCarryover). Vor der
+     * Konsolidierung werden sie den neu erkannten Gesichtern zugeordnet und danach geleert.
+     *
+     * @var list<array{timestamp: int, box: array<string, float>, person: int}>|null
+     */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $verifiedFaceCarryover = null;
+
     #[ORM\Column(type: 'text', nullable: true)]
     #[Groups(['video:list', 'video:detail'])]
     private ?string $errorMessage = null;
@@ -448,6 +457,23 @@ class Video extends Medium
     public function setSceneCuts(?array $sceneCuts): self
     {
         $this->sceneCuts = $sceneCuts;
+        return $this;
+    }
+
+    /**
+     * @return list<array{timestamp: int, box: array<string, float>, person: int}>
+     */
+    public function getVerifiedFaceCarryover(): array
+    {
+        return $this->verifiedFaceCarryover ?? [];
+    }
+
+    /**
+     * @param list<array{timestamp: int, box: array<string, float>, person: int}> $carryover
+     */
+    public function setVerifiedFaceCarryover(array $carryover): self
+    {
+        $this->verifiedFaceCarryover = $carryover === [] ? null : $carryover;
         return $this;
     }
 

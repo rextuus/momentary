@@ -152,6 +152,7 @@ class QuickResolveComponent
         if ($person && $detectedPerson && $person !== $detectedPerson) {
             foreach ($person->getVideoFaces() as $face) {
                 $face->setPerson($detectedPerson);
+                $face->setIsVerified(true);
             }
             $person->setStatus(PersonStatus::MERGED);
             $person->setMergedInto($detectedPerson);

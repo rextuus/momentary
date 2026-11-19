@@ -232,6 +232,30 @@ class VideoProcessingPipelineTest extends VideoPipelineTestCase
     }
 
     /**
+     * Bestätigte Gesichter merkt sich die Szenenerkennung, der Konsolidierungsschritt überträgt sie und leert die
+     * Merkliste. Ohne neue Gesichter (Stub) findet sich keins wieder: die automatische Person geht dann doch.
+     */
+    public function testReprocessingCarriesConfirmedFacesUntilConsolidation(): void
+    {
+        $video = $this->arrangeSuccessfulPipeline();
+        $confirmed = PersonFactory::createOne(['name' => 'unknown_kind', 'status' => PersonStatus::NEW]);
+        VideoFaceFactory::createOne([
+            'video' => $video,
+            'person' => $confirmed,
+            'isVerified' => true,
+            'boundingBox' => ['Left' => 0.2, 'Top' => 0.3, 'Width' => 0.1, 'Height' => 0.15],
+        ]);
+        $confirmedId = $confirmed->getId();
+
+        $this->dispatch(new ConvertStepMessage(self::idOf($video), 0, 'INITIAL'));
+
+        $updated = $this->reload($video);
+        self::assertSame(VideoStatus::COMPLETED, $updated->getStatus(), (string) $updated->getErrorMessage());
+        self::assertSame([], $updated->getVerifiedFaceCarryover());
+        self::assertNull($this->entityManager->find(Person::class, $confirmedId));
+    }
+
+    /**
      * Die Zeitpunkte von extract_frames.py sind schon absolut (inklusive Szenenstart). Früher wurde der Szenenstart
      * noch einmal addiert: Frames der zweiten Szene (Start 10 s) kamen mit 21 s statt 11 s an.
      */

@@ -8,13 +8,15 @@ use App\Entity\File;
 use App\Entity\Video;
 use App\Entity\VideoFace;
 use App\Entity\VideoScene;
+use App\Service\Face\VerifiedFaceCarryover;
 use App\Service\Face\VideoFaceRemover;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
  * Vor einer neuen Analyse (Neuverarbeiten): alte Gesichter samt Gesichtsbildern und leeren automatischen Personen
  * (VideoFaceRemover) sowie die alten Szenen entfernen. Sonst legte die Szenenerkennung neue Szenen zusätzlich an,
- * und alte Gesichter blieben neben den neuen stehen.
+ * und alte Gesichter blieben neben den neuen stehen. Bestätigte Gesichter merkt sich vorher VerifiedFaceCarryover,
+ * ihre Personen bleiben bis zur Übertragung erhalten.
  *
  * Vorschaubilder der Szenen: Die File-Zeile verschwindet, wenn nichts anderes sie nutzt; die Datei bleibt liegen
  * (wie beim Zusammenlegen leerer Szenen) und wird beim nächsten Vorschaubild überschrieben.
@@ -24,6 +26,7 @@ class VideoAnalysisReset
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly VideoFaceRemover $faceRemover,
+        private readonly VerifiedFaceCarryover $carryover,
     ) {}
 
     /**
@@ -33,7 +36,7 @@ class VideoAnalysisReset
     {
         $faces = $this->entityManager->getRepository(VideoFace::class)->count(['medium' => $video]);
         if ($faces > 0) {
-            $this->faceRemover->removeAll($video);
+            $this->faceRemover->removeAll($video, $this->carryover->remember($video));
         }
 
         $thumbnails = [];

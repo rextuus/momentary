@@ -83,6 +83,11 @@ class PersonDetailComponent extends AbstractController
     #[LiveAction]
     public function save(): void
     {
+        // Umbenennen heißt: diese Gesichter sind die Person (wie PersonMerger::name)
+        $original = $this->entityManager->getUnitOfWork()->getOriginalEntityData($this->person);
+        if (($original['name'] ?? null) !== $this->person->getName()) {
+            $this->person->confirmFaces();
+        }
         $this->entityManager->persist($this->person);
         $this->entityManager->flush();
 

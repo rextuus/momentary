@@ -74,6 +74,24 @@ Seit November 2026 erkennt InsightFace (selbst gehostet, `face_recognition.md`);
 - [ ] DV Stufe 2/3: Referenzauswahl, Suche, Ereignisse, Pools und Zeitleiste je Segment (`dv_aufnahmedatum.md`, 4).
 - [ ] `CameraOverview::implausible()` kennt die Werksdatum-Regel (1. Januar, erste Stunde) noch nicht, nur die
   Grenzen; `CameraClock::warnings()` schon.
+- [x] Bestätigte Gesichter überstehen das Neuverarbeiten (`VerifiedFaceCarryover`); jede Zuordnung von Hand
+  bestätigt (`face_recognition.md` → Neuverarbeiten).
+- [ ] **Ablehnungen merken („nicht diese Person“).** Wer einen Vorschlag ablehnt oder ein Gesicht von einer Person
+  entfernt, soll das nicht wiederholen müssen. Zurückgestellt, weil es Abgleich und Konsolidierung ändert, nicht
+  nur die Oberfläche. Plan:
+  - `VideoFace.rejectedPersons` (JSON, Personen-IDs). Setzen beim Entfernen/Umhängen von einer Person
+    (`PersonDetailComponent::reassignFace`, `VideoFaceComponent::submit`, `FaceReassignComponent`, Massen-Bestätigung
+    „nicht diese Person“) und beim Ablehnen eines Vorschlags (Vorschlag = `VideoFace.detection`; heute gibt es dafür
+    nur „Überspringen“ in Tinder/Schnell zuordnen, das je Person zählt, nicht je Gesicht). Beim Zusammenführen auf
+    die Zielperson umschreiben (`PersonMerger`, auch die Merges in den Resolver-Komponenten).
+  - Neuverarbeiten: in `verifiedFaceCarryover` mitmerken (Einträge mit `rejected` statt `person`), über denselben
+    `CarryoverMatcher` übertragen, auch auf Gesichter ohne Bestätigung.
+  - Abgleich: `FaceMatcher::rankPersons` überspringt abgelehnte Personen des Gesichts (Zuordnung und Vorschlag);
+    nach dem Übertragen ein Gesicht, dessen automatische Person abgelehnt ist, auf eine neue automatische Person
+    setzen.
+  - Konsolidierung: Cluster mit einem Gesicht, das die gewählte Person ablehnt, nicht dieser Person zuschlagen
+    (das Gesicht abspalten oder die nächstbeste Person der Gruppe nehmen); Tests für beides.
+  - `DuplicatePersonFinder` und die Vorschläge in Tinder/Schnell zuordnen/Resolver beachten die Ablehnungen.
 Ältere Punkte (aus der Rekognition-Zeit):
 - [ ] Mallorca-Videos und -Fotos durchsehen: Kontaktbogen je Person erzeugen, falsche Zuordnungen und getrennte Doppelungen zählen.
 - [ ] Schwellen (Match, Vorschlag, Video-Link, Tracking) anhand der Zählung anpassen und als neue Standardwerte übernehmen.

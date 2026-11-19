@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Video\Processing\Handler;
 
 use App\Repository\VideoRepository;
+use App\Service\Face\VerifiedFaceCarryover;
 use App\Service\Face\VideoFaceConsolidator;
 use App\Service\Video\Processing\Attribute\StepOrder;
 use App\Service\Video\Processing\Handler\Abstract\AbstractVideoMessageHandler;
@@ -16,7 +17,8 @@ use App\Service\WorkflowMachine;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
- * Gruppiert nach der (Refinement-)Analyse alle Gesichter des Videos zu Personen.
+ * Gruppiert nach der (Refinement-)Analyse alle Gesichter des Videos zu Personen. Vorher übernehmen die neuen
+ * Gesichter beim Neuverarbeiten die Bestätigungen der alten (VerifiedFaceCarryover); sie sind dann feste Anker.
  */
 #[AsMessageHandler]
 #[StepOrder(stepNumber: 17)]
@@ -28,6 +30,7 @@ class ConsolidateFacesStepMessageHandler extends AbstractVideoMessageHandler
         WorkflowMachine $workflowMachine,
         VideoProcessingService $processingService,
         private readonly VideoFaceConsolidator $consolidator,
+        private readonly VerifiedFaceCarryover $carryover,
     ) {
         parent::__construct($videoRepository, $dispatcher, $workflowMachine, $processingService);
     }
@@ -38,10 +41,12 @@ class ConsolidateFacesStepMessageHandler extends AbstractVideoMessageHandler
         $video = $this->getVideo();
         $this->startCurrentStep();
 
+        $carried = $this->carryover->apply($video);
         $result = $this->consolidator->consolidate($video);
 
         $this->finishCurrentStep(sprintf(
-            'Consolidated %d faces of video "%s": %d persons before, %d after (%d faces reassigned, %d empty persons removed).',
+            '%d confirmed faces carried over. Consolidated %d faces of video "%s": %d persons before, %d after (%d faces reassigned, %d empty persons removed).',
+            $carried,
             $result->faces,
             $video->getTitle(),
             $result->personsBefore,
