@@ -10,6 +10,7 @@ use App\Entity\VideoFace;
 use App\Entity\VideoScene;
 use App\Enum\VideoStatus;
 use App\Service\Video\Analyze\Result\EmptyScenesMergerResult;
+use App\Service\Video\Recording\RecordingGroups;
 use Doctrine\DBAL\Platforms\SQLitePlatform;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -40,15 +41,26 @@ class EmptyScenesMerger
                 return EmptyScenesMergerResult::skipped('Status conflict or concurrent processing', $originalCount);
             }
 
-            /** @var array<VideoScene> $sceneArray */
-            $sceneArray = array_values($video->getScenes()->toArray());
-            $scenesWithPerson = $this->extractScenesWithFaces($sceneArray);
-
-            if (count($scenesWithPerson) === 0) {
-                $result = $this->mergeAllScenesIntoOne($video, $sceneArray, $originalCount);
-            } else {
-                $result = $this->mergeWithFaces($video, $sceneArray, $scenesWithPerson, $originalCount);
+            // Nie über eine Aufnahmegrenze hinweg: jede Aufnahme (anderer Tag auf der Kassette) für sich
+            $groups = RecordingGroups::scenes(
+                array_values($video->getScenes()->toArray()),
+                $video->getRecordingBoundaries(),
+            );
+            $allMerged = \count($groups) === 1;
+            foreach ($groups as $sceneArray) {
+                $scenesWithPerson = $this->extractScenesWithFaces($sceneArray);
+                if (count($scenesWithPerson) === 0) {
+                    $this->mergeAllScenesIntoOne($video, $sceneArray);
+                } else {
+                    $allMerged = false;
+                    $this->mergeWithFaces($video, $sceneArray, $scenesWithPerson);
+                }
             }
+            $result = EmptyScenesMergerResult::success(
+                $originalCount,
+                $video->getScenes()->count(),
+                fallbackAllMerged: $allMerged,
+            );
 
             $this->renumberScenes($video);
             $this->entityManager->flush();
@@ -93,7 +105,7 @@ class EmptyScenesMerger
     /**
      * @param array<VideoScene> $scenes
      */
-    private function mergeAllScenesIntoOne(Video $video, array $scenes, int $originalCount): EmptyScenesMergerResult
+    private function mergeAllScenesIntoOne(Video $video, array $scenes): void
     {
         $firstScene = $scenes[0];
         $lastScene = $scenes[count($scenes) - 1];
@@ -104,20 +116,14 @@ class EmptyScenesMerger
         for ($i = 1; $i < $sceneCount; $i++) {
             $this->removeScene($video, $scenes[$i]);
         }
-
-        return EmptyScenesMergerResult::success($originalCount, 1, fallbackAllMerged: true);
     }
 
     /**
      * @param array<VideoScene> $allScenes
      * @param array<VideoScene> $scenesWithPerson
      */
-    private function mergeWithFaces(
-        Video $video,
-        array $allScenes,
-        array $scenesWithPerson,
-        int $originalCount,
-    ): EmptyScenesMergerResult {
+    private function mergeWithFaces(Video $video, array $allScenes, array $scenesWithPerson): void
+    {
         $lastSceneWithPerson = null;
         $currentPersonSceneIndex = 0;
         $extendedNextScenes = [];
@@ -147,8 +153,6 @@ class EmptyScenesMerger
                 $this->removeScene($video, $scene);
             }
         }
-
-        return EmptyScenesMergerResult::success($originalCount, $video->getScenes()->count(), fallbackAllMerged: false);
     }
 
     private function removeScene(Video $video, VideoScene $scene): void

@@ -8,6 +8,7 @@ use App\Entity\Video;
 use App\Entity\VideoChapter;
 use App\Service\Gemini\GeminiService;
 use App\Service\Video\Analyze\Result\ChapterGenerationResult;
+use App\Service\Video\VideoSceneService;
 use Doctrine\ORM\EntityManagerInterface;
 
 class ChapterGenerator
@@ -55,7 +56,14 @@ class ChapterGenerator
                 if (empty($data['title']) || !isset($data['startSeconds'], $data['endSeconds'])) {
                     continue;
                 }
-                $this->createChapter($video, $data);
+                // Ein Kapitel gehört zu genau einer Aufnahme (DV-Kassette): an Aufnahmegrenzen teilen
+                $parts = VideoSceneService::splitAtBoundaries([[
+                    (float) $data['startSeconds'],
+                    (float) $data['endSeconds'],
+                ]], $video->getRecordingBoundaries());
+                foreach ($parts as [$start, $end]) {
+                    $this->createChapter($video, ['startSeconds' => $start, 'endSeconds' => $end] + $data);
+                }
             }
 
             $this->entityManager->flush();
