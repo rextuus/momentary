@@ -6,7 +6,10 @@ namespace App\Service\Media;
 
 use App\Entity\CameraClockOffset;
 use App\Entity\Medium;
+use App\Entity\Video;
 use App\Service\Search\MediumIndexer;
+use App\Service\Video\Recording\FactoryDate;
+use App\Service\Video\Recording\RecordingSegments;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -14,8 +17,11 @@ use Doctrine\ORM\EntityManagerInterface;
  */
 class CameraClock
 {
-    /** Davor gab es keine Digitalkameras in der Familie: Uhr nach leerem Akku auf Werkseinstellung */
-    public const string EARLIEST_PLAUSIBLE = '2000-01-01';
+    /**
+     * Davor gab es keine Kamera mit Datum in der Familie (MiniDV ab 1995): Uhr nach leerem Akku auf Werkseinstellung.
+     * Später zurückgesprungene Uhren (z. B. 01.01.2000) erkennt FactoryDate.
+     */
+    public const string EARLIEST_PLAUSIBLE = '1995-01-01';
 
     /** Größter Abstand der Aufnahmen, aus denen eine Abweichung gemerkt wird */
     private const string MAX_REMEMBERED_SPAN = '31 days';
@@ -177,7 +183,15 @@ class CameraClock
                 );
             } elseif ($time > new \DateTimeImmutable('+1 day')) {
                 $warnings[] = 'Die Aufnahmezeit liegt in der Zukunft: Die Uhr der Kamera ging vor.';
+            } elseif (FactoryDate::matches($time)) {
+                $warnings[] = sprintf(
+                    'Die Kamera meldet den 1. Januar %s kurz nach Mitternacht: vermutlich Werkseinstellung nach leerem Akku.',
+                    $time->format('Y'),
+                );
             }
+        }
+        if ($medium instanceof Video) {
+            array_push($warnings, ...RecordingSegments::warnings($medium));
         }
         if (\in_array(
             $medium->getDateSource(),

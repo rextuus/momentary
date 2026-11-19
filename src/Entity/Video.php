@@ -126,6 +126,20 @@ class Video extends Medium
     #[Groups(['video:detail'])]
     private Collection $scenes;
 
+    /**
+     * Aufnahmen im Video mit eigener Aufnahmezeit (DV-Kassetten, RecordingSegments). Leer, wenn unbekannt.
+     *
+     * @var Collection<int, RecordingSegment>
+     */
+    #[ORM\OneToMany(
+        targetEntity: RecordingSegment::class,
+        mappedBy: 'video',
+        cascade: ['persist', 'remove'],
+        orphanRemoval: true,
+    )]
+    #[ORM\OrderBy(['startSeconds' => \SortDirection::Ascending])]
+    private Collection $recordingSegments;
+
     #[ORM\OneToOne(targetEntity: VideoTranscript::class, mappedBy: 'video', cascade: ['remove'])]
     private ?VideoTranscript $transcript = null;
 
@@ -197,6 +211,7 @@ class Video extends Medium
     {
         parent::__construct();
         $this->scenes = new ArrayCollection();
+        $this->recordingSegments = new ArrayCollection();
         $this->chapters = new ArrayCollection();
         $this->processingSteps = new ArrayCollection();
     }
@@ -456,6 +471,50 @@ class Video extends Medium
     {
         $this->currentRefinementFrameDirectory = $currentRefinementFrameDirectory;
         return $this;
+    }
+
+    /**
+     * @return Collection<int, RecordingSegment>
+     */
+    public function getRecordingSegments(): Collection
+    {
+        return $this->recordingSegments;
+    }
+
+    /**
+     * Segmente ersetzen (neu gelesen).
+     *
+     * @param list<RecordingSegment> $segments
+     */
+    public function replaceRecordingSegments(array $segments): static
+    {
+        foreach ($this->recordingSegments->toArray() as $old) {
+            $this->recordingSegments->removeElement($old);
+        }
+        foreach ($segments as $segment) {
+            $segment->setVideo($this);
+            $this->recordingSegments->add($segment);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Grenzen zwischen Aufnahmen (Beginn jedes Segments außer dem ersten): Szenen und Kapitel reichen nie darüber.
+     *
+     * @return list<float>
+     */
+    public function getRecordingBoundaries(): array
+    {
+        $starts = [];
+        foreach ($this->recordingSegments as $segment) {
+            if ($segment->getStartSeconds() > 0.0) {
+                $starts[] = $segment->getStartSeconds();
+            }
+        }
+        sort($starts);
+
+        return $starts;
     }
 
     /**

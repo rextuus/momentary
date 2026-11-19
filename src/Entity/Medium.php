@@ -30,6 +30,8 @@ abstract class Medium
     public const string DATE_FILENAME = 'filename';
     public const string DATE_METADATA = 'metadata';
     public const string DATE_MANUAL = 'manual';
+    /** Aufnahmedatum aus den Subcodes einer DV-Kassette (erstes Segment mit gültigem Datum, RecordingSegment) */
+    public const string DATE_DV = 'dv';
     /** Kamerazeit plus gemerkte Abweichung dieser Kamera (siehe CameraClockOffset) */
     public const string DATE_CAMERA_OFFSET = 'camera_offset';
 
@@ -225,6 +227,7 @@ abstract class Medium
             self::DATE_EXIF => 'laut Kamera (EXIF)',
             self::DATE_FILENAME => 'laut Dateiname',
             self::DATE_METADATA => 'laut Video-Metadaten',
+            self::DATE_DV => 'laut DV-Kassette',
             self::DATE_MANUAL => 'von Hand korrigiert',
             self::DATE_CAMERA_OFFSET => 'Kamera-Uhr korrigiert',
             default => $this->takenAt === null ? 'unbekannt, Importzeitpunkt' : 'Herkunft unbekannt',
