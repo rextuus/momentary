@@ -64,8 +64,16 @@ Seit November 2026 erkennt InsightFace (selbst gehostet, `face_recognition.md`);
   (Dauer, Startzeit, Schnitte gegen das Original; Versatz melden, Drift ablehnen). Die rohen Schnitte des Originals
   stehen seit 11/2026 in `Video::sceneCuts`. Danach nur Web-Fassung, Jellyfin-Export und ggf. Vorschaubilder neu,
   keine Gesichtsanalyse.
-- [ ] Aufnahmezeit digitalisierter Bänder: DV-Aufnahmedatum je Frame aus den Subcodes (dvrescue), Aufnahme-Segmente
-  am Video; Vorschlag in `dv_aufnahmedatum.md`, offene Fragen in `RUECKFRAGEN.md`.
+- [x] Aufnahmezeit digitalisierter Bänder, Stufe 1: DV-Subcodes lesen (eigener Leser), Aufnahme-Segmente am Video,
+  `takenAt` aus dem ersten verlässlichen Segment, Segmentgrenzen als Szenen- und Kapitelgrenzen, Werksdatum verworfen,
+  wiederkehrende Tage als Hinweis, Grenze 1995 (`dv_aufnahmedatum.md` → Umsetzung).
+- [ ] DV: an einer echten Kassette prüfen (REC ST, Datumssprung, PAL, AVI aus der Capture-Software); Schwellen für
+  wiederkehrende Daten nachschärfen.
+- [ ] DV: Segmente von Hand datieren und teilen (Videoseite, `source = manual`, Genauigkeit Tag/Monat/Jahr),
+  Werksdatum-Segmente bestätigen oder „ab hier“ korrigieren; Kamera-Uhr-Korrektur verschiebt alle Segmente.
+- [ ] DV Stufe 2/3: Referenzauswahl, Suche, Ereignisse, Pools und Zeitleiste je Segment (`dv_aufnahmedatum.md`, 4).
+- [ ] `CameraOverview::implausible()` kennt die Werksdatum-Regel (1. Januar, erste Stunde) noch nicht, nur die
+  Grenzen; `CameraClock::warnings()` schon.
 Ältere Punkte (aus der Rekognition-Zeit):
 - [ ] Mallorca-Videos und -Fotos durchsehen: Kontaktbogen je Person erzeugen, falsche Zuordnungen und getrennte Doppelungen zählen.
 - [ ] Schwellen (Match, Vorschlag, Video-Link, Tracking) anhand der Zählung anpassen und als neue Standardwerte übernehmen.
