@@ -33,6 +33,13 @@ if missing=$(grep -o '\[\[[A-Za-z0-9_]*\]\]' "$env_file"); then
   exit 1
 fi
 
+# Fehlende Fremd-Images einzeln holen. Sonst lädt `up` sie parallel, und mit dem containerd-Image-Store scheiterte
+# das (19.11.2026) an zwei Downloads derselben Schicht: „failed commit on ref layer-sha256:…: rename … no such file“.
+# Vorhandene Images werden nicht neu geholt (wie auto_pull = false); selbst gebaute (momentary-*) überspringen.
+for image in $(dc config --images | grep -v '^momentary-' | sort -u); do
+  docker image inspect "$image" >/dev/null 2>&1 || docker pull -q "$image"
+done
+
 # Läuft die Datenbank, den Dump mit --no-deps gegen genau diesen Container ziehen. Ohne --no-deps würde Compose
 # eine im neuen Commit geänderte database (z. B. neues MySQL-Image) schon VOR der Sicherung neu erstellen.
 deps=--no-deps

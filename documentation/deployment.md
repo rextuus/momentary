@@ -291,6 +291,8 @@ Ohne Komodo (Notfall): im Stack-Ordner `sudo make prod-up`, `sudo make prod-back
   fehlt (Inbetriebnahme Schritt 3).
 - **Deploy hängt bis zum Timeout:** `dc ps` – welcher Dienst ist nicht „healthy“? `dc logs <dienst>`. `migrate` mit
   „Access denied“: Datenbank-Passwörter wurden nach dem ersten Start geändert – alte Werte in Komodo zurück.
+- **Compose Up scheitert mit „failed commit on ref layer-sha256:…“:** Zwei parallele Downloads derselben Schicht
+  (containerd-Image-Store). `pre-deploy.sh` holt fehlende Fremd-Images deshalb vorher einzeln; erneut deployen.
 - **502 vom VPS:** auf dem VPS `curl http://10.0.0.2:8194/healthz`; WireGuard (`sudo wg show`), Stack läuft?
 - **`/healthz` 503:** Datenbank nicht erreichbar – `dc logs database`.
 - **API-Clients melden „invalid key“ / 500 bei Token:** Schlüssel unter `/srv/momentary/keys` fehlen oder sind
