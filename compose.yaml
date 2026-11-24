@@ -173,7 +173,7 @@ services:
       - momentary-network
 
   meilisearch:
-    image: getmeili/meilisearch:v1.53.1
+    image: getmeili/meilisearch:v1.58.0
     container_name: momentary_meilisearch
     restart: unless-stopped
     logging: *logging
@@ -187,7 +187,7 @@ services:
       - momentary-network
 
   imgproxy:
-    image: ghcr.io/imgproxy/imgproxy:v4.0.18
+    image: ghcr.io/imgproxy/imgproxy:v4.0.25
     restart: unless-stopped
     logging: *logging
     environment:

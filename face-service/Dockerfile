@@ -2,14 +2,14 @@
 # Die Modelle sind nicht im Image, sie landen beim ersten Start im Volume unter /models.
 
 # insightface gibt es nur als Quellpaket mit Cython-Teil: hier mit Compiler zu Wheels bauen
-FROM python:3.12.8-slim-bookworm AS build
+FROM python:3.12.16-slim-bookworm AS build
 RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential \
     && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt /tmp/requirements.txt
 RUN pip wheel --no-cache-dir --wheel-dir /wheels -r /tmp/requirements.txt
 
-FROM python:3.12.8-slim-bookworm
+FROM python:3.12.16-slim-bookworm
 # libgl/libglib braucht opencv auch in der headless-Variante nicht, libgomp aber onnxruntime
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libgomp1 \

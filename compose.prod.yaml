@@ -244,7 +244,7 @@ services:
 
   # Suche. Index lässt sich jederzeit neu aufbauen (app:meilisearch:index-all), wird nicht gesichert.
   meilisearch:
-    image: getmeili/meilisearch:v1.53.1
+    image: getmeili/meilisearch:v1.58.0
     restart: unless-stopped
     logging: *logging
     environment:
@@ -265,7 +265,7 @@ services:
       - momentary-network
 
   imgproxy:
-    image: ghcr.io/imgproxy/imgproxy:v4.0.18
+    image: ghcr.io/imgproxy/imgproxy:v4.0.25
     restart: unless-stopped
     logging: *logging
     environment:
