@@ -223,7 +223,7 @@ services:
   # Warteschlangen. Kein Port nach außen; Verwaltung per
   # `docker compose … exec rabbitmq rabbitmqctl list_queues name messages`.
   rabbitmq:
-    image: rabbitmq:3.13.7-management
+    image: rabbitmq:4.4.1-management
     # Fester Hostname: RabbitMQ legt seine Daten unter rabbit@<hostname> ab, sonst sind sie nach jedem Neuanlegen weg
     hostname: rabbitmq
     restart: unless-stopped
